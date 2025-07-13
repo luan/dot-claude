@@ -53,7 +53,6 @@ ide/*.lock
 shell-snapshots/
 
 # Sensitive/personal data that shouldn't be committed
-settings.json
 *.key
 *.pem
 *.p12

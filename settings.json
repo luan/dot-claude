@@ -1,0 +1,86 @@
+{
+  "includeCoAuthoredBy": false,
+  "enableAllProjectMcpServers": true,
+  "permissions": {
+    "defaultMode": "plan",
+    "allow": [
+      "Bash(rg:*)",
+      "Bash(fd:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(eza:*)",
+      "Bash(lsd:*)",
+      "Bash(bat:*)",
+      "Bash(echo:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(mkdir:*)",
+      "Bash(rm:*)",
+      "Bash(mv:*)",
+      "Bash(cp:*)",
+      "Bash(chmod:*)",
+      "Bash(git:*)",
+      "Bash(cmake:*)",
+      "Bash(clang++:*)",
+      "Bash(brew:*)",
+      "Bash(docker:*)",
+      "Bash(docker-compose:*)",
+      "Bash(bun:*)",
+      "Bash(npm:*)",
+      "Bash(yarn:*)",
+      "Bash(pnpm:*)",
+      "Bash(node:*)",
+      "Bash(python:*)",
+      "Bash(pip:*)",
+      "Bash(cargo:*)",
+      "Bash(rustc:*)",
+      "Bash(go:*)",
+      "Bash(export:*)",
+      "Bash(timeout:*)",
+      "Bash(orb:*)",
+      "mcp__filesystem__*",
+      "mcp__playwright__*",
+      "mcp__puppeteer__*",
+      "mcp__browser-tools__*",
+      "mcp__sequential-thinking__*",
+      "mcp__magic__*",
+      "mcp__context7__*",
+      "mcp__fetch__*"
+    ],
+    "deny": []
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/smart-lint.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/smart-test.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/update_ai_local.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/ntfy-notifier.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
