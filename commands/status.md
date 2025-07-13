@@ -9,8 +9,14 @@ Quick project orientation and progress overview.
 
 ## Status Workflow
 
-### 1. 🔍 Context Analysis
-Check `.ai.local/` for project memory and load context transparently
+### 1. 🧠 Memory Load & Context Analysis
+**FIRST**: Run memory tracking script:
+```bash
+~/.claude/workflows/status.sh
+```
+
+**THEN**: Continue with context analysis:
+- Check `.ai.local/` for project memory and load context transparently
 
 ### 2. 📋 Project Overview
 **If memory exists**: Present project type, current task, recent activities, known issues

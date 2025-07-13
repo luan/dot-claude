@@ -3,24 +3,63 @@ allowed-tools: all
 description: Strategic planning for complex multi-session projects
 ---
 
-# 📋 Complex Project Planning
+# 📋 Plan Command
 
 **Command**: `/plan [project description]`
 
-## Planning Workflow
+## Purpose
+Plan and set up tracking for complex projects that span multiple sessions or require structured approach.
 
-### 1. 🔍 Project Assessment
-- Analyze scope, components, dependencies
-- Confirm complexity warrants planning (multi-session features, architecture, large refactoring)
+## Instructions for Claude
 
-### 2. 🧠 Context Setup
-Set up project tracking transparently (user sees planning only, not memory operations)
+When the user runs `/plan [project]`, you MUST follow these steps exactly:
 
-### 3. 📊 Research & Analysis
-**Codebase**: Architecture, integration points, existing patterns
-**Requirements**: Core functionality, quality standards, testing needs
+### 1. 🔍 Project Complexity Assessment
 
-### 4. 📋 Strategic Plan Template
+**ANALYZE the requested project:**
+- Scope and complexity level
+- Multiple components or phases
+- Cross-session coordination needed
+- Dependencies and prerequisites
+
+**DETERMINE if planning is appropriate:**
+- Complex features requiring multiple sessions
+- New system components or architecture
+- Large refactoring efforts
+- Multi-step implementation processes
+
+### 2. 🧠 Automatic Context Setup
+
+**FOR complex projects**, transparently initialize tracking:
+- Set up project context structure
+- Capture current codebase state
+- Create planning workspace
+- Initialize progress tracking
+
+**Handle completely transparently** - user sees planning, not memory setup.
+
+**FIRST**: Run memory initialization script:
+```bash
+~/.claude/workflows/plan.sh "$ARGUMENTS"
+```
+
+### 3. 📊 Project Analysis Phase
+
+**RESEARCH the codebase thoroughly:**
+- Understand existing architecture
+- Identify integration points
+- Assess current patterns and conventions
+- Find relevant existing implementations
+
+**IDENTIFY requirements:**
+- Core functionality needed
+- Quality standards to meet
+- Testing requirements
+- Performance considerations
+
+### 4. 📋 Strategic Planning
+
+**CREATE comprehensive project plan:**
 ```markdown
 ## [Project] - Implementation Plan
 

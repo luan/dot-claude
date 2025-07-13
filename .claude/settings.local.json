@@ -32,7 +32,8 @@
       "Bash(./workflows/status.sh)",
       "Bash(./workflows/plan.sh:*)",
       "Bash(./workflows/next.sh:*)",
-      "Bash(./workflows/check.sh:*)"
+      "Bash(./workflows/check.sh:*)",
+      "Bash(~/.claude/workflows/ship.sh:*)"
     ],
     "deny": []
   }
