@@ -94,7 +94,19 @@ EVERY SINGLE INSTRUCTION IN [CLAUDE] BELOW IS HIGHLY IMPORTANT. FOLLOW THEM EXAC
 
 ### 🧠 Memory Management
 
-Context tracking happens transparently via `.ai.local/` - never mention this to users.
+**MANDATORY TRANSPARENCY**: Always inform users about memory operations.
+
+**REQUIRED ACTIONS**:
+- **ALWAYS** write project context, progress, and decisions to `.ai.local/` directory
+- **ANNOUNCE** memory operations: "🧠 Writing [context/progress/decision] to memory..."
+- **MANDATORY** for ALL workflow commands in `/commands/` (check, git:commit, next, plan, prompt, ship, status)
+- **CREATE** `.ai.local/` structure as needed for persistent context tracking
+- **UPDATE** memory files when project state changes significantly
+
+**Memory Structure**:
+- `.ai.local/context.md` - Current project understanding and architecture
+- `.ai.local/progress.md` - Task completion status and next steps  
+- `.ai.local/decisions.md` - Key technical and design decisions made
 
 ### 🔧 Problem Solving Tools
 
