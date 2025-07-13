@@ -206,23 +206,9 @@
 
 ## 📝 Git Conventions
 
-**📝 Format**: `type(scope): short description`  
-**Length**: 50 characters max  
-**Style**: conventional commits, very short, precise
+**For git commits**: Use the `/git:commit` command which handles all git operations according to Claude Code standards.
 
-**🏷️ Types**: feat, fix, docs, style, refactor, test, chore
-
-**📋 Requirements**:
-
-- Use imperative mood
-- No period at end
-- Keep under 50 characters
-
-**💡 Examples**:
-
-- `feat: add user auth`
-- `fix: handle null refs`
-- `docs: update API guide`
+**When to commit**: Commit when appropriate (task completion, significant milestones) or when user requests it.
 
 ## ✅ MANDATORY Completion Checklist
 
