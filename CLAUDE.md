@@ -48,7 +48,7 @@ EVERY SINGLE INSTRUCTION IN [CLAUDE] BELOW IS HIGHLY IMPORTANT. FOLLOW THEM EXAC
 **Simple Changes** (quick fixes, small features):
 - Pattern: "fix this", "add small feature", "update X"
 - **AUTO-EXECUTE**: Automatically proceed with task implementation
-- **TIP**: "💡 For organized workflows, try `/next [task description]` next time!"
+- **TIP**: "💡 For organized workflows, try `/task [description]` next time!"
 
 **Complex Projects** (multi-session, architectural):
 - Pattern: "implement system", "build feature with X,Y,Z", "refactor entire X"
@@ -58,7 +58,7 @@ EVERY SINGLE INSTRUCTION IN [CLAUDE] BELOW IS HIGHLY IMPORTANT. FOLLOW THEM EXAC
 **Status Inquiries** (orientation, progress check):
 - Pattern: "what was I working on?", "where are we?", "what's next?"
 - **AUTO-STATUS**: Automatically check context and provide current status
-- **TIP**: "💡 For detailed status tracking, try `/status` next time!"
+- **TIP**: "💡 Try `/task` with no arguments to check status next time!"
 
 **Quality Validation** (testing, linting, readiness):
 - Pattern: "is this ready?", "check quality", "run tests"
@@ -68,7 +68,7 @@ EVERY SINGLE INSTRUCTION IN [CLAUDE] BELOW IS HIGHLY IMPORTANT. FOLLOW THEM EXAC
 **Shipping** (commit and finalize):
 - Pattern: "ready to commit", "ship this", "finalize changes"
 - **AUTO-SHIP**: Automatically validate, test, and commit changes
-- **TIP**: "💡 For structured shipping workflows, try `/ship` next time!"
+- **TIP**: "💡 For structured commit workflows, try `/commit` next time!"
 
 **Troubleshooting** (bugs, issues, problems):
 - Pattern: "debug this", "why is X failing?", "reproduce bug"
@@ -94,19 +94,31 @@ EVERY SINGLE INSTRUCTION IN [CLAUDE] BELOW IS HIGHLY IMPORTANT. FOLLOW THEM EXAC
 
 ### 🧠 Memory Management
 
-**MANDATORY TRANSPARENCY**: Always inform users about memory operations.
+**AUTONOMOUS & FLEXIBLE**: I have full autonomy over `.ai.local/` directory to organize project memory as needed.
 
-**REQUIRED ACTIONS**:
-- **ALWAYS** write project context, progress, and decisions to `.ai.local/` directory
-- **ANNOUNCE** memory operations: "🧠 Writing [context/progress/decision] to memory..."
-- **MANDATORY** for ALL workflow commands in `/commands/` (check, git:commit, next, plan, prompt, ship, status)
-- **CREATE** `.ai.local/` structure as needed for persistent context tracking
-- **UPDATE** memory files when project state changes significantly
+**MEMORY PRINCIPLES**:
+- **🧠 AUTONOMY**: I decide what to remember, when, and how to structure it
+- **📝 TRANSPARENCY**: I announce significant memory operations: "🧠 Writing [type] to memory..."
+- **🔄 EVOLUTION**: Memory structure adapts and evolves with project understanding
+- **🎯 CONTEXT-AWARE**: I organize memories by meaning and relevance, not rigid structures
+- **💡 INTELLIGENT**: I learn what's important to track for each unique project
 
-**Memory Structure**:
-- `.ai.local/context.md` - Current project understanding and architecture
-- `.ai.local/progress.md` - Task completion status and next steps  
-- `.ai.local/decisions.md` - Key technical and design decisions made
+**WHEN TO WRITE MEMORY**:
+- Starting new features or major tasks
+- Making important technical decisions
+- Discovering project patterns or conventions
+- Solving complex problems
+- Learning from mistakes or insights
+- Finding useful resources or documentation
+
+**FLEXIBLE ORGANIZATION**:
+I create appropriate structures based on project needs, such as:
+- Architecture decisions and rationale
+- Feature implementations and progress
+- Debugging contexts and solutions
+- Project-specific patterns
+- Research findings
+- Or any structure that best serves the project
 
 ### 🔧 Problem Solving Tools
 
@@ -211,7 +223,7 @@ EVERY SINGLE INSTRUCTION IN [CLAUDE] BELOW IS HIGHLY IMPORTANT. FOLLOW THEM EXAC
 
 ## 📝 Git & Completion
 
-**Git Commits**: Use `/git:commit` command for all git operations.
+**Git Commits**: Use `/commit` command for all git operations.
 
 ## ✅ MANDATORY Completion Checklist
 
