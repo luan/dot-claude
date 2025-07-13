@@ -1,90 +1,58 @@
 ---
 allowed-tools: all
-description: Get oriented - load project context and current progress
+description: Project orientation and progress overview
 ---
 
 # 📊 Status Command
 
-**Command**: `/status`
+Quick project orientation and progress overview.
 
-## Purpose
-Quick orientation - understand project state, current progress, and what to work on next.
+## Status Workflow
 
-## Instructions for Claude
+### 1. 🔍 Context Analysis
+Check `.ai.local/` for project memory and load context transparently
 
-When the user runs `/status`, you MUST follow these steps exactly:
-
-### 1. 🔍 Project Context Analysis
-
-**FIRST** check if `.ai.local/` exists and load context transparently:
-
-```bash
-# Check for memory structure
-ls -la .ai.local/ 2>/dev/null || echo "No previous context found"
-```
-
-### 2. 📋 Present Project Overview
-
-**If memory exists**, load and present context:
-- Project type, framework, architecture
-- Current task and progress
-- Recent activities and decisions
-- Known issues or blockers
-
-**If no memory**, analyze project and present:
-- Detected project type and structure
-- Key files and dependencies
-- Suggest setting up context for complex projects
+### 2. 📋 Project Overview
+**If memory exists**: Present project type, current task, recent activities, known issues
+**If no memory**: Analyze project structure, key files, suggest context setup for complex projects
 
 ### 3. 🎯 Actionable Summary
-
-**ALWAYS provide clear next steps:**
-
 ```
 📊 **PROJECT STATUS**
 Type: [detected project type]
-Current: [what's in progress or suggested next task]
+Current: [in progress or suggested next task]
 
 🎯 **READY TO:**
 - [immediate actionable options]
-- [suggested workflows based on project state]
+- [suggested workflows based on state]
 
 💡 **WORKFLOW SUGGESTIONS:**
-- Simple changes: just describe what you want
-- Complex features: I'll help plan and track progress  
-- Quality check: run `/check` to validate everything
-- Ready to ship: run `/git:commit` when validated
+- Simple changes: describe what you want
+- Complex features: plan and track progress  
+- Quality check: run `/check` to validate
+- Ready to ship: run `/ship` when validated
 ```
 
-### 4. 🧠 Transparent Memory Management
-
-**Automatically handle memory as needed:**
+### 4. 🧠 Memory Management
+Automatically handle context as needed:
 - Load existing context without mentioning `.ai.local`
-- For complex projects without memory, offer to set up tracking
-- Update session context transparently after status check
+- For complex projects without memory, offer tracking setup
+- Update session context transparently
 
 ### 5. 🤔 Smart Workflow Guidance
+Based on project state, suggest appropriate actions:
+- Continue work in progress → offer to continue
+- Tests failing → suggest `/check`
+- Clean state → suggest new tasks or improvements
+- Complex project → offer planning and tracking
 
-**Based on project state, suggest appropriate next actions:**
-- If in middle of feature -> offer to continue work
-- If tests failing -> suggest running `/check`
-- If clean state -> suggest new tasks or improvements
-- If complex project -> offer planning and tracking setup
-
-## Integration Rules
-
-- NEVER mention `.ai.local` or memory files to user
-- PRESENT information naturally as project understanding
-- SUGGEST workflows based on actual project needs
-- HANDLE memory setup transparently if user accepts tracking for complex projects
+## Integration
+- Never mention `.ai.local` or memory files to user
+- Present information naturally as project understanding
+- Suggest workflows based on actual project needs
+- Handle memory setup transparently if user accepts
 
 ## Success Criteria
+Status complete when: user understands project state, clear next steps provided, appropriate workflows suggested, memory handled transparently, user ready to take action
 
-Status is complete when:
-- ✅ User understands current project state
-- ✅ Clear next steps provided
-- ✅ Appropriate workflows suggested
-- ✅ Memory handled transparently
-- ✅ User ready to take action
-
-**EXECUTING project status analysis NOW...**
+**Execute project status analysis now.**

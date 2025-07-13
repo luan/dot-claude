@@ -151,17 +151,6 @@
       "Bash(gpg:*)",
       "Bash(ssh-keygen:*)",
       "Bash(keytool:*)",
-      "mcp__filesystem__read_file",
-      "mcp__filesystem__read_multiple_files",
-      "mcp__filesystem__write_file",
-      "mcp__filesystem__edit_file",
-      "mcp__filesystem__create_directory",
-      "mcp__filesystem__list_directory",
-      "mcp__filesystem__list_directory_with_sizes",
-      "mcp__filesystem__directory_tree",
-      "mcp__filesystem__move_file",
-      "mcp__filesystem__search_files",
-      "mcp__filesystem__get_file_info",
       "mcp__filesystem__list_allowed_directories",
       "mcp__playwright__start_codegen_session",
       "mcp__playwright__end_codegen_session",
@@ -195,35 +184,13 @@
       "mcp__playwright__playwright_press_key",
       "mcp__playwright__playwright_save_as_pdf",
       "mcp__playwright__playwright_click_and_switch_tab",
-      "mcp__puppeteer__puppeteer_navigate",
-      "mcp__puppeteer__puppeteer_screenshot",
-      "mcp__puppeteer__puppeteer_click",
-      "mcp__puppeteer__puppeteer_fill",
-      "mcp__puppeteer__puppeteer_select",
-      "mcp__puppeteer__puppeteer_hover",
-      "mcp__puppeteer__puppeteer_evaluate",
-      "mcp__browser-tools__getConsoleLogs",
-      "mcp__browser-tools__getConsoleErrors",
-      "mcp__browser-tools__getNetworkErrors",
-      "mcp__browser-tools__getNetworkLogs",
-      "mcp__browser-tools__takeScreenshot",
-      "mcp__browser-tools__getSelectedElement",
-      "mcp__browser-tools__wipeLogs",
-      "mcp__browser-tools__runAccessibilityAudit",
-      "mcp__browser-tools__runPerformanceAudit",
-      "mcp__browser-tools__runSEOAudit",
-      "mcp__browser-tools__runNextJSAudit",
-      "mcp__browser-tools__runDebuggerMode",
-      "mcp__browser-tools__runAuditMode",
-      "mcp__browser-tools__runBestPracticesAudit",
       "mcp__sequential-thinking__sequentialthinking",
       "mcp__magic__21st_magic_component_builder",
       "mcp__magic__logo_search",
       "mcp__magic__21st_magic_component_inspiration",
       "mcp__magic__21st_magic_component_refiner",
       "mcp__context7__resolve-library-id",
-      "mcp__context7__get-library-docs",
-      "mcp__fetch__imageFetch"
+      "mcp__context7__get-library-docs"
     ],
     "deny": []
   },
@@ -239,25 +206,6 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/smart-test.sh"
-          },
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/update_ai_local.sh"
-          },
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/smart_memory_capture.sh"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/ntfy-notifier.sh"
           }
         ]
       }
