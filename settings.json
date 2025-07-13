@@ -190,7 +190,8 @@
       "mcp__magic__21st_magic_component_inspiration",
       "mcp__magic__21st_magic_component_refiner",
       "mcp__context7__resolve-library-id",
-      "mcp__context7__get-library-docs"
+      "mcp__context7__get-library-docs",
+      "Bash(~/.claude/workflows/*)"
     ],
     "deny": []
   },
