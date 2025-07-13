@@ -396,6 +396,205 @@ get_project_command_config() {
 }
 
 # ============================================================================
+# DIRECTORY NAVIGATION SAFETY
+# ============================================================================
+
+# Enhanced directory navigation with safety and logging
+# These wrap the built-in pushd/popd/subshells with validation and context
+
+# Directory stack for manual management (alternative to pushd/popd)
+declare -a CLAUDE_DIR_STACK=()
+
+# Safe directory change with logging and validation
+safe_cd() {
+    local target_dir="$1"
+    local context="${2:-operation}"
+    
+    if [[ ! -d "$target_dir" ]]; then
+        log_error "Directory does not exist: $target_dir"
+        return 1
+    fi
+    
+    log_debug "🔄 Changing directory for $context: $(pwd) → $target_dir"
+    cd "$target_dir" || {
+        log_error "Failed to change directory to: $target_dir"
+        return 1
+    }
+    
+    log_debug "✅ Directory changed successfully to: $(pwd)"
+    return 0
+}
+
+# Enhanced pushd with logging
+safe_pushd() {
+    local target_dir="$1"
+    local context="${2:-operation}"
+    
+    if [[ ! -d "$target_dir" ]]; then
+        log_error "Directory does not exist: $target_dir"
+        return 1
+    fi
+    
+    log_debug "📁 Pushing directory for $context: $(pwd) → $target_dir"
+    pushd "$target_dir" >/dev/null || {
+        log_error "Failed to push directory: $target_dir"
+        return 1
+    }
+    
+    log_debug "✅ Pushed to: $(pwd)"
+    return 0
+}
+
+# Enhanced popd with logging
+safe_popd() {
+    local context="${1:-operation}"
+    
+    if [[ $(dirs -p | wc -l) -le 1 ]]; then
+        log_error "No directories in stack to pop"
+        return 1
+    fi
+    
+    local current_dir
+    current_dir=$(pwd)
+    
+    popd >/dev/null || {
+        log_error "Failed to pop directory"
+        return 1
+    }
+    
+    log_debug "📁 Popped directory after $context: $current_dir → $(pwd)"
+    return 0
+}
+
+# Execute command in different directory using subshell (safest approach)
+# This is preferred for most operations as it can't affect the parent shell
+with_directory() {
+    local target_dir="$1"
+    local context="${2:-command execution}"
+    shift 2
+    
+    if [[ ! -d "$target_dir" ]]; then
+        log_error "Directory does not exist: $target_dir"
+        return 1
+    fi
+    
+    log_debug "🔄 Executing in $target_dir for $context: $*"
+    
+    # Use subshell for complete isolation
+    (
+        cd "$target_dir" || {
+            log_error "Failed to change to directory: $target_dir"
+            exit 1
+        }
+        "$@"
+    )
+    
+    local exit_code=$?
+    log_debug "✅ Command completed with exit code: $exit_code"
+    return $exit_code
+}
+
+# Validate we're in expected directory
+ensure_directory() {
+    local expected_dir="$1"
+    local context="${2:-operation}"
+    
+    # Convert to absolute paths for comparison
+    local current_abs
+    current_abs=$(pwd)
+    local expected_abs
+    expected_abs=$(cd "$expected_dir" 2>/dev/null && pwd) || {
+        log_error "Expected directory does not exist: $expected_dir"
+        return 1
+    }
+    
+    if [[ "$current_abs" != "$expected_abs" ]]; then
+        log_error "Directory validation failed for $context"
+        log_error "Expected: $expected_abs"
+        log_error "Current:  $current_abs"
+        return 1
+    fi
+    
+    log_debug "✅ Directory validation passed for $context: $current_abs"
+    return 0
+}
+
+# Save current directory to stack (manual alternative to pushd)
+push_to_stack() {
+    local context="${1:-operation}"
+    local current_dir
+    current_dir=$(pwd)
+    
+    CLAUDE_DIR_STACK+=("$current_dir")
+    log_debug "📁 Saved directory to stack for $context: $current_dir (stack size: ${#CLAUDE_DIR_STACK[@]})"
+}
+
+# Restore directory from stack (manual alternative to popd)
+pop_from_stack() {
+    local context="${1:-operation}"
+    
+    if [[ ${#CLAUDE_DIR_STACK[@]} -eq 0 ]]; then
+        log_error "No directories in custom stack to restore"
+        return 1
+    fi
+    
+    local last_index=$((${#CLAUDE_DIR_STACK[@]} - 1))
+    local saved_dir="${CLAUDE_DIR_STACK[$last_index]}"
+    
+    # Remove from stack
+    unset 'CLAUDE_DIR_STACK[$last_index]'
+    
+    if [[ ! -d "$saved_dir" ]]; then
+        log_error "Saved directory no longer exists: $saved_dir"
+        return 1
+    fi
+    
+    log_debug "📁 Restoring directory from stack for $context: $(pwd) → $saved_dir"
+    cd "$saved_dir" || {
+        log_error "Failed to restore directory: $saved_dir"
+        return 1
+    }
+    
+    log_debug "✅ Restored to: $(pwd) (stack size: ${#CLAUDE_DIR_STACK[@]})"
+    return 0
+}
+
+# Set up automatic directory restoration on script exit
+setup_directory_cleanup() {
+    local original_dir
+    original_dir=$(pwd)
+    
+    # Only set up trap if not already set
+    if ! trap -p EXIT | grep -q "cd.*$original_dir"; then
+        trap 'cd "'"$original_dir"'" 2>/dev/null || true' EXIT
+        log_debug "🛡️ Set up directory cleanup to restore: $original_dir"
+    fi
+}
+
+# Clear directory stack (useful for cleanup)
+clear_directory_stack() {
+    CLAUDE_DIR_STACK=()
+    log_debug "🗑️ Cleared directory stack"
+}
+
+# Show current directory context (useful for debugging)
+show_directory_context() {
+    local context="${1:-debug}"
+    
+    echo "📍 Directory Context for $context:" >&2
+    echo "   Current: $(pwd)" >&2
+    echo "   Built-in stack size: $(dirs -p | wc -l)" >&2
+    echo "   Custom stack size: ${#CLAUDE_DIR_STACK[@]}" >&2
+    
+    if [[ ${#CLAUDE_DIR_STACK[@]} -gt 0 ]]; then
+        echo "   Custom stack contents:" >&2
+        for i in "${!CLAUDE_DIR_STACK[@]}"; do
+            echo "     [$i] ${CLAUDE_DIR_STACK[$i]}" >&2
+        done
+    fi
+}
+
+# ============================================================================
 # PROJECT TYPE DETECTION
 # ============================================================================
 
