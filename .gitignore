@@ -1,0 +1,73 @@
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Log files
+*.log
+*.out
+*.err
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# Cache directories
+.cache/
+cache/
+
+# Node.js (if applicable)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (if applicable)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+.venv
+
+# Lock files for IDE processes
+ide/*.lock
+
+# Shell snapshots (generated files)
+shell-snapshots/
+
+# Sensitive/personal data that shouldn't be committed
+settings.json
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+
+# Statsig tracking data (user analytics)
+statsig/
+
+# AI local context (template directory per RULES.yaml)
+.ai.local/
+
+# Claude Code session data
+todos/
+projects/
