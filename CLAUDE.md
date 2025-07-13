@@ -10,6 +10,23 @@
 
 **File Reading Protocol**: Always announce: "📋 Reading [filename] for project guidelines..."
 
+## 🏷️ MANDATORY Emoji Usage
+
+**YOU MUST** prefix actions with relevant emojis when using any CLAUDE.md feature:
+
+- **🧠 CRITICAL**: Always prefix memory/context actions (creating .ai.local, updating files)
+- **🚀 Required**: Prefix startup protocol steps  
+- **🔧 Required**: Prefix tool usage (ultrathink, agents, MCP tools)
+- **✅ Required**: Prefix validation checkpoints and testing
+- **🔍 Recommended**: Prefix research actions
+- **💬 Recommended**: Prefix communication formats
+
+**Examples**:
+- "🧠 Creating .ai.local directory structure..."
+- "🚀 Starting protocol - checking for project files..."  
+- "🔧 Using rg instead of grep for search..."
+- "✅ Running validation checkpoint before implementation..."
+
 ## 🔄 Workflow (STRICT)
 
 **MANDATORY Sequence**: research → plan → implement  

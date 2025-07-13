@@ -47,7 +47,8 @@
       "mcp__sequential-thinking__*",
       "mcp__magic__*",
       "mcp__context7__*",
-      "mcp__fetch__*"
+      "mcp__fetch__*",
+      "mcp__filesystem__*"
     ],
     "deny": []
   },
