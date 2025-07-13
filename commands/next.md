@@ -8,16 +8,24 @@ description: Execute production-quality implementation with strict standards
 You are tasked with implementing: $ARGUMENTS
 
 **MANDATORY SEQUENCE:**
-1. 🔍 **RESEARCH FIRST** - "Let me research the codebase and create a plan before implementing"
-2. 📋 **PLAN** - Present a detailed plan and verify approach
-3. ✅ **IMPLEMENT** - Execute with validation checkpoints
+1. 🧠 **MEMORY CHECK** - "📋 Checking .ai.local for project context and previous progress..."
+2. 🔍 **RESEARCH FIRST** - "Let me research the codebase and create a plan before implementing"
+3. 📋 **PLAN** - Present a detailed plan and verify approach
+4. ✅ **IMPLEMENT** - Execute with validation checkpoints
 
-**YOU MUST SAY:** "Let me research the codebase and create a plan before implementing."
+**🧠 MANDATORY MEMORY PROTOCOL:**
+- **ALWAYS** check if `.ai.local/` exists and load context
+- **FIRST** read `.ai.local/context/project-info.json` if available
+- **CHECK** `.ai.local/progress/current.md` for ongoing tasks
+- **REVIEW** `.ai.local/session/current-session.md` for recent activity
+- **ANNOUNCE**: "📋 Loading project knowledge from .ai.local..."
 
-For complex tasks, say: "Let me ultrathink about this architecture before proposing a solution."
+**YOU MUST SAY:** "📋 Checking .ai.local for project context... Let me research the codebase and create a plan before implementing."
+
+For complex tasks, say: "🤔 Let me ultrathink about this architecture before proposing a solution."
 
 **USE MULTIPLE AGENTS** when the task has independent parts:
-"I'll spawn agents to tackle different aspects of this problem"
+"👥 I'll spawn agents to tackle different aspects of this problem"
 
 Consult ~/.claude/CLAUDE.md IMMEDIATELY and follow it EXACTLY.
 

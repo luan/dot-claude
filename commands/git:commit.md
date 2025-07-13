@@ -18,9 +18,12 @@ git log --oneline -5   # See recent commit style
 ```
 
 ### 2. Analyze Changes
+- 🧠 **MEMORY-ENHANCED ANALYSIS** - Check `.ai.local/progress/file-changes.md` for context
 - Review ALL staged changes (both previously staged and newly added)
+- **LEVERAGE MEMORY** - Use `.ai.local/session/current-session.md` for recent activity context
 - Check for sensitive information (keys, secrets, passwords)
 - Understand the nature of changes (feature, fix, refactor, etc.)
+- **CONTEXT-AWARE** - Use memory to understand the broader task context
 - Draft concise commit message focusing on "why" not "what"
 
 ### 3. Create Commit (Run in Parallel)

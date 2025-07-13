@@ -46,9 +46,16 @@ When you run `/check`, you are REQUIRED to:
 ---
 
 🛑 **MANDATORY PRE-FLIGHT CHECK** 🛑
-1. Re-read ~/.claude/CLAUDE.md RIGHT NOW
-2. Check current TODO.md status
-3. Verify you're not declaring "done" prematurely
+1. 🧠 **MEMORY FIRST** - Check `.ai.local/progress/` for known issues and problem areas
+2. Re-read ~/.claude/CLAUDE.md RIGHT NOW
+3. Check current TODO.md status
+4. Verify you're not declaring "done" prematurely
+
+**🧠 MEMORY-ENHANCED CHECKING:**
+- **FIRST** check `.ai.local/progress/file-changes.md` for recently modified files
+- **FOCUS** on files with previous linting issues (if logged in memory)
+- **PRIORITIZE** problem areas identified in previous sessions
+- **ANNOUNCE**: "📋 Reviewing .ai.local for known problem areas..."
 
 Execute comprehensive quality checks with ZERO tolerance for excuses.
 
