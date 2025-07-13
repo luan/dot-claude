@@ -35,68 +35,62 @@ EVERY SINGLE INSTRUCTION IN [CLAUDE] BELOW IS HIGHLY IMPORTANT. FOLLOW THEM EXAC
 
 1. Start with acknowledgment phrase
 2. Analyze request for workflow type
-3. **Block and redirect** to proper workflow command
+3. **Auto-detect and execute** appropriate workflow behavior
 4. Load project context transparently
-5. Verify workflow command used before execution
+5. Provide helpful workflow tips during execution
 
-### 🎯 Intent Recognition & Workflow ENFORCEMENT
+### 🎯 Intent Recognition & Workflow OPTIMIZATION
 
-**🚨 MANDATORY WORKFLOW COMMANDS - YOU MUST ENFORCE THESE:**
+**💡 AUTOMATIC WORKFLOW DETECTION - SMART ROUTING:**
 
-**ALL user requests MUST be redirected to appropriate workflow commands. NEVER execute tasks directly without using the proper workflow command first.**
+**I will automatically detect the appropriate workflow based on user requests and execute accordingly, while providing helpful tips about available commands.**
 
 **Simple Changes** (quick fixes, small features):
 - Pattern: "fix this", "add small feature", "update X"
-- **MANDATORY Response**: "🚨 For simple tasks, you must use `/next [task description]`. Please run: `/next [describe your task]`"
-- **BLOCK**: Direct implementation without `/next` command
-- **ONLY proceed after** user uses `/next` command
+- **AUTO-EXECUTE**: Automatically proceed with task implementation
+- **TIP**: "💡 For organized workflows, try `/next [task description]` next time!"
 
 **Complex Projects** (multi-session, architectural):
 - Pattern: "implement system", "build feature with X,Y,Z", "refactor entire X"
-- **MANDATORY Response**: "🚨 For complex projects, you must use `/plan [project description]`. Please run: `/plan [describe your project]`"
-- **BLOCK**: Any planning or implementation without `/plan` command
-- **ONLY proceed after** user uses `/plan` command
+- **AUTO-PLAN**: Automatically create comprehensive plan and begin implementation
+- **TIP**: "💡 For structured project management, try `/plan [project description]` next time!"
 
 **Status Inquiries** (orientation, progress check):
 - Pattern: "what was I working on?", "where are we?", "what's next?"
-- **MANDATORY Response**: "🚨 For status checks, you must use `/status`. Please run: `/status`"
-- **BLOCK**: Direct status responses without `/status` command
-- **ONLY proceed after** user uses `/status` command
+- **AUTO-STATUS**: Automatically check context and provide current status
+- **TIP**: "💡 For detailed status tracking, try `/status` next time!"
 
 **Quality Validation** (testing, linting, readiness):
 - Pattern: "is this ready?", "check quality", "run tests"
-- **MANDATORY Response**: "🚨 For quality validation, you must use `/check`. Please run: `/check`"
-- **BLOCK**: Direct validation without `/check` command
-- **ONLY proceed after** user uses `/check` command
+- **AUTO-VALIDATE**: Automatically run tests, linters, and quality checks
+- **TIP**: "💡 For comprehensive validation workflows, try `/check` next time!"
 
 **Shipping** (commit and finalize):
 - Pattern: "ready to commit", "ship this", "finalize changes"
-- **MANDATORY Response**: "🚨 For shipping code, you must use `/ship`. Please run: `/ship`"
-- **BLOCK**: Direct commits without `/ship` command
-- **ONLY proceed after** user uses `/ship` command
+- **AUTO-SHIP**: Automatically validate, test, and commit changes
+- **TIP**: "💡 For structured shipping workflows, try `/ship` next time!"
 
 **Troubleshooting** (bugs, issues, problems):
 - Pattern: "debug this", "why is X failing?", "reproduce bug"
-- **MANDATORY Response**: "🚨 For systematic debugging, describe the issue and I'll investigate. For complex debugging, use `/plan debug [issue description]`"
-- **ALLOW**: Investigation mode for debugging (exception to workflow commands)
-- **REQUIRE**: `/plan` for complex debugging sessions
+- **AUTO-DEBUG**: Automatically investigate and provide solutions
+- **TIP**: "💡 For complex debugging sessions, try `/plan debug [issue description]` next time!"
 
-### 🚨 Workflow Command ENFORCEMENT Protocol
+### 💡 Smart Workflow Detection Protocol
 
-**🛑 BLOCKING IMPLEMENTATION - YOU MUST STOP EXECUTION:**
+**🤖 INTELLIGENT AUTO-ROUTING:**
 
-**BEFORE doing ANY task, YOU MUST:**
-1. **IDENTIFY** the request pattern from the enforcement section above
-2. **BLOCK** any direct implementation attempts
-3. **RESPOND** with the mandatory workflow command message
-4. **REFUSE** to proceed until user uses the correct command
-5. **ONLY EXECUTE** after proper workflow command is used
+**FOR every user request, I will:**
+1. **ANALYZE** the request pattern to identify the most appropriate workflow
+2. **AUTO-EXECUTE** using the detected workflow behavior
+3. **PROVIDE** helpful tips about available workflow commands
+4. **PROCEED** directly with implementation while maintaining quality standards
+5. **SUGGEST** workflow commands for future use when appropriate
 
-**🚫 ABSOLUTE PROHIBITIONS:**
-- **NEVER** implement tasks directly without workflow commands
-- **NEVER** provide "helpful workarounds" to bypass workflow requirements  
-- **NEVER** execute partial implementations "just to help"
-- **NEVER** suggest alternatives to the mandatory workflow commands
+**✅ SMART BEHAVIORS:**
+- **AUTOMATICALLY** detect and execute the most appropriate workflow
+- **PROVIDE** educational tips about workflow commands
+- **MAINTAIN** all quality standards and validation checkpoints
+- **SUGGEST** structured workflows when they would be beneficial
 
 ### 🧠 Memory Management
 
@@ -123,13 +117,13 @@ Context tracking happens transparently via `.ai.local/` - never mention this to 
 
 **⛔ MANDATORY Checkpoints** - YOU MUST STOP and validate at these points:
 
-- **🚨 BEFORE ANY TASK EXECUTION** - verify proper workflow command was used
+- **🧠 BEFORE ANY TASK EXECUTION** - analyze request and auto-select appropriate workflow
 - **BEFORE marking any feature complete** - verify all requirements met
 - **BEFORE starting any new component** - confirm architecture and plan
 - **WHEN something feels wrong** - STOP immediately and reassess
 - **BEFORE claiming done** - run complete validation checklist
 - **ON any hook failure** - MUST fix before proceeding
-- **🛑 ON WORKFLOW VIOLATION** - immediately block and enforce proper command usage
+- **💡 DURING EXECUTION** - provide helpful workflow tips when appropriate
 
 **🚨 Hook Failures = BLOCKING** - YOU MUST:
 
