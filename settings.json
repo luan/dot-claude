@@ -178,6 +178,10 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/update_ai_local.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/smart_memory_capture.sh"
           }
         ]
       }

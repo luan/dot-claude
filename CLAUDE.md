@@ -41,11 +41,13 @@
 2. Check if in project directory (git repo, package.json, Cargo.toml, pyproject.toml)
 3. If `.ai.local/` exists: announce "🧠 Checking .ai.local for previous context..." and load session/progress/architecture files
 4. If `.ai.local/` missing: **IMMEDIATELY** create directory structure with context/progress/research/session folders
-5. **ALWAYS** check for CLAUDE.md in project root
-6. **MANDATORY** announce: "📋 Reading CLAUDE.md for project guidelines..."
-7. Check for other rule files (.claude-rules, claude.config)
-8. **MUST** acknowledge any specific commands or workflows found
-9. **ALWAYS** update `.ai.local/session/last-session.md` with session start
+5. **MEMORY INTELLIGENCE**: Check `.ai.local/context/project-info.json` for project type and framework
+6. **CONTEXT LOADING**: Read `.ai.local/progress/current.md` for ongoing tasks and `.ai.local/session/current-session.md` for recent activity
+7. **ALWAYS** check for CLAUDE.md in project root
+8. **MANDATORY** announce: "📋 Reading CLAUDE.md for project guidelines..."
+9. Check for other rule files (.claude-rules, claude.config)
+10. **MUST** acknowledge any specific commands or workflows found
+11. **ALWAYS** update `.ai.local/session/current-session.md` with session start
 
 ### 🔧 Tools & Problem Solving (MANDATORY USAGE)
 
