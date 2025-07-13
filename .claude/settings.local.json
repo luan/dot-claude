@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(chmod:*)",
+      "mcp__fetch__imageFetch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "mcp__filesystem__create_directory",
+      "mcp__filesystem__list_allowed_directories",
+      "mcp__filesystem__write_file",
+      "Bash(cp:*)",
+      "Bash(claude doctor)",
+      "Bash(timeout:*)",
+      "Bash(bun uninstall:*)",
+      "Bash(npm install:*)",
+      "Bash(npx @anthropic-ai/claude-code:*)",
+      "Bash(ls:*)",
+      "Bash(claude hooks:*)",
+      "Bash(shellcheck:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)"
+    ],
+    "deny": []
+  }
+}
