@@ -6,20 +6,24 @@ EVERY SINGLE INSTRUCTION IN [CLAUDE] BELOW IS HIGHLY IMPORTANT. FOLLOW THEM EXAC
 
 **Mode**: Production | **Tolerance**: Zero errors | **Philosophy**: Simple > clever
 
-## 🚀 Essential Protocol
+## ⚠️ MANDATORY ACKNOWLEDGMENT
 
-**Session Start**: "I've read CLAUDE.md and will always adhere to its instructions."
+**YOU MUST** start every session with: "I've read CLAUDE.md and will always adhere to its instructions."
 
-**Context Refresh**: Re-read this file if 30+ minutes have passed.
+**Context Reminder**: If this file hasn't been referenced in 30+ minutes, RE-READ IT!
 
-**File Access**: Announce "📋 Reading [filename] for project guidelines..."
+**File Reading Protocol**: Always announce: "📋 Reading [filename] for project guidelines..."
 
-**Emoji Prefixes**: Use these consistently
+## 🏷️ MANDATORY Emoji Usage
 
-- 🧠 Memory/context actions
-- 🚀 Startup protocol steps
-- 🔧 Tool usage (ultrathink, agents, MCP tools)
-- ✅ Validation checkpoints and testing
+**YOU MUST** prefix actions with relevant emojis when using any CLAUDE.md feature:
+
+- **🧠 CRITICAL**: Always prefix memory/context actions (context loading, progress tracking)
+- **🚀 Required**: Prefix startup protocol steps
+- **🔧 Required**: Prefix tool usage (ultrathink, agents, MCP tools)
+- **✅ Required**: Prefix validation checkpoints and testing
+- **🔍 Recommended**: Prefix research actions
+- **💬 Recommended**: Prefix communication formats
 
 ## 🔄 Workflow Enforcement
 
@@ -35,24 +39,64 @@ EVERY SINGLE INSTRUCTION IN [CLAUDE] BELOW IS HIGHLY IMPORTANT. FOLLOW THEM EXAC
 4. Load project context transparently
 5. Verify workflow command used before execution
 
-### 🎯 Workflow Commands (Enforce Strictly)
+### 🎯 Intent Recognition & Workflow ENFORCEMENT
 
-Block direct implementation. Require these commands first:
+**🚨 MANDATORY WORKFLOW COMMANDS - YOU MUST ENFORCE THESE:**
 
-**Simple Tasks** (`/next [description]`): quick fixes, small features, updates
-**Complex Projects** (`/plan [description]`): systems, multi-component features, refactoring  
-**Status Checks** (`/status`): progress inquiries, orientation
-**Quality Validation** (`/check`): testing, linting, readiness
-**Shipping** (`/ship`): commits, finalization
-**Troubleshooting**: Allow investigation; require `/plan debug [issue]` for complex debugging
+**ALL user requests MUST be redirected to appropriate workflow commands. NEVER execute tasks directly without using the proper workflow command first.**
 
-### 🚨 Enforcement Responses
+**Simple Changes** (quick fixes, small features):
+- Pattern: "fix this", "add small feature", "update X"
+- **MANDATORY Response**: "🚨 For simple tasks, you must use `/next [task description]`. Please run: `/next [describe your task]`"
+- **BLOCK**: Direct implementation without `/next` command
+- **ONLY proceed after** user uses `/next` command
 
-**Simple Tasks**: "🚨 Use `/next [task description]` for this request."
-**Complex Projects**: "🚨 Use `/plan [project description]` for this request."  
-**Other**: "🚨 Use `/[command]` for this request."
+**Complex Projects** (multi-session, architectural):
+- Pattern: "implement system", "build feature with X,Y,Z", "refactor entire X"
+- **MANDATORY Response**: "🚨 For complex projects, you must use `/plan [project description]`. Please run: `/plan [describe your project]`"
+- **BLOCK**: Any planning or implementation without `/plan` command
+- **ONLY proceed after** user uses `/plan` command
 
-Never provide workarounds or bypass workflow requirements.
+**Status Inquiries** (orientation, progress check):
+- Pattern: "what was I working on?", "where are we?", "what's next?"
+- **MANDATORY Response**: "🚨 For status checks, you must use `/status`. Please run: `/status`"
+- **BLOCK**: Direct status responses without `/status` command
+- **ONLY proceed after** user uses `/status` command
+
+**Quality Validation** (testing, linting, readiness):
+- Pattern: "is this ready?", "check quality", "run tests"
+- **MANDATORY Response**: "🚨 For quality validation, you must use `/check`. Please run: `/check`"
+- **BLOCK**: Direct validation without `/check` command
+- **ONLY proceed after** user uses `/check` command
+
+**Shipping** (commit and finalize):
+- Pattern: "ready to commit", "ship this", "finalize changes"
+- **MANDATORY Response**: "🚨 For shipping code, you must use `/ship`. Please run: `/ship`"
+- **BLOCK**: Direct commits without `/ship` command
+- **ONLY proceed after** user uses `/ship` command
+
+**Troubleshooting** (bugs, issues, problems):
+- Pattern: "debug this", "why is X failing?", "reproduce bug"
+- **MANDATORY Response**: "🚨 For systematic debugging, describe the issue and I'll investigate. For complex debugging, use `/plan debug [issue description]`"
+- **ALLOW**: Investigation mode for debugging (exception to workflow commands)
+- **REQUIRE**: `/plan` for complex debugging sessions
+
+### 🚨 Workflow Command ENFORCEMENT Protocol
+
+**🛑 BLOCKING IMPLEMENTATION - YOU MUST STOP EXECUTION:**
+
+**BEFORE doing ANY task, YOU MUST:**
+1. **IDENTIFY** the request pattern from the enforcement section above
+2. **BLOCK** any direct implementation attempts
+3. **RESPOND** with the mandatory workflow command message
+4. **REFUSE** to proceed until user uses the correct command
+5. **ONLY EXECUTE** after proper workflow command is used
+
+**🚫 ABSOLUTE PROHIBITIONS:**
+- **NEVER** implement tasks directly without workflow commands
+- **NEVER** provide "helpful workarounds" to bypass workflow requirements  
+- **NEVER** execute partial implementations "just to help"
+- **NEVER** suggest alternatives to the mandatory workflow commands
 
 ### 🧠 Memory Management
 
@@ -77,26 +121,36 @@ Context tracking happens transparently via `.ai.local/` - never mention this to 
 
 ## ✅ Validation & Testing
 
-**Validation Checkpoints**:
+**⛔ MANDATORY Checkpoints** - YOU MUST STOP and validate at these points:
 
-- Before task execution: verify workflow command used
-- Before feature completion: verify requirements met
-- Before component start: confirm architecture
-- When uncertain: STOP and reassess
-- Before claiming done: run validation checklist
-- On hook failure: STOP, fix all issues, verify, then continue
-- On workflow violation: block and enforce proper command
+- **🚨 BEFORE ANY TASK EXECUTION** - verify proper workflow command was used
+- **BEFORE marking any feature complete** - verify all requirements met
+- **BEFORE starting any new component** - confirm architecture and plan
+- **WHEN something feels wrong** - STOP immediately and reassess
+- **BEFORE claiming done** - run complete validation checklist
+- **ON any hook failure** - MUST fix before proceeding
+- **🛑 ON WORKFLOW VIOLATION** - immediately block and enforce proper command usage
 
-**Hook Failures**: Always blocking - fix immediately before proceeding.
+**🚨 Hook Failures = BLOCKING** - YOU MUST:
 
-**Testing Strategy**:
+1. **STOP immediately** when any hook fails
+2. **FIX ALL failures** before any other action
+3. **VERIFY fixes work** by re-running
+4. **ONLY THEN continue** with original task
+5. **NEVER ignore or bypass** hook failures
 
-- Complex logic: write tests BEFORE implementation
-- Simple CRUD: write tests AFTER implementation
-- Performance-critical: add benchmarks
-- Skip tests only for: main functions, simple CLI parsing
+**🧪 MANDATORY Testing Strategy**:
 
-**Test Tools**: playwright (E2E), fetch (API), filesystem MCP (file operations)
+- **Complex logic**: YOU MUST write tests BEFORE implementation
+- **Simple CRUD**: YOU MUST write tests AFTER implementation
+- **Performance-critical paths**: YOU MUST add benchmarks
+- **ONLY skip tests for**: main functions, simple CLI parsing
+
+**🤖 MANDATORY Test Automation** - YOU MUST use these tools:
+
+- **E2E testing**: playwright
+- **API validation**: fetch tool for HTTP requests
+- **File-based testing**: filesystem MCP for file operations
 
 ## 📏 Code Standards
 
@@ -153,12 +207,14 @@ Context tracking happens transparently via `.ai.local/` - never mention this to 
 
 **Git Commits**: Use `/git:commit` command for all git operations.
 
-**Completion Checklist**: Before claiming task complete, verify:
+## ✅ MANDATORY Completion Checklist
 
-- All automated checks pass (lint, type check, format)
-- All tests pass (unit, integration, E2E as applicable)
-- End-to-end functionality works as specified
-- All old/obsolete code deleted
-- All changes documented appropriately
+**YOU MUST verify ALL items before claiming task complete:**
+
+- **ALL automated checks MUST be green** (lint, type check, format)
+- **ALL tests MUST pass** (unit, integration, E2E as applicable)
+- **End-to-end functionality MUST work** as specified
+- **ALL old/obsolete code MUST be deleted** - no dead code
+- **ALL changes MUST be documented** appropriately
 
 [/CLAUDE]

@@ -3,11 +3,52 @@ allowed-tools: all
 description: Fix all quality issues - validation and immediate resolution
 ---
 
-# ✅ Quality Validation & Fixing
+# 🚨🚨🚨 CRITICAL REQUIREMENT: FIX ALL ERRORS! 🚨🚨🚨
 
-**Core Principle**: This is a FIXING task, not reporting. Fix everything found.
+**THIS IS NOT A REPORTING TASK - THIS IS A FIXING TASK!**
+
+When you run `/check`, you are REQUIRED to:
+
+1. **IDENTIFY** all errors, warnings, and issues
+2. **FIX EVERY SINGLE ONE** - not just report them!
+3. **USE MULTIPLE AGENTS** to fix issues in parallel:
+   - Spawn one agent to fix linting issues
+   - Spawn another to fix test failures
+   - Spawn more agents for different files/modules
+   - Say: "I'll spawn multiple agents to fix all these issues in parallel"
+4. **DO NOT STOP** until:
+   - ✅ ALL linters pass with ZERO warnings
+   - ✅ ALL tests pass
+   - ✅ Build succeeds
+   - ✅ EVERYTHING is GREEN
+
+**FORBIDDEN BEHAVIORS:**
+- ❌ "Here are the issues I found" → NO! FIX THEM!
+- ❌ "The linter reports these problems" → NO! RESOLVE THEM!
+- ❌ "Tests are failing because..." → NO! MAKE THEM PASS!
+- ❌ Stopping after listing issues → NO! KEEP WORKING!
+
+**MANDATORY WORKFLOW:**
+```
+1. Run checks → Find issues
+2. IMMEDIATELY spawn agents to fix ALL issues
+3. Re-run checks → Find remaining issues
+4. Fix those too
+5. REPEAT until EVERYTHING passes
+```
+
+**YOU ARE NOT DONE UNTIL:**
+- All linters pass with zero warnings
+- All tests pass successfully
+- All builds complete without errors
+- Everything shows green/passing status
 
 ## 🧠 Memory-Enhanced Analysis
+
+**FIRST**: Run memory tracking script:
+```bash
+~/.claude/workflows/check.sh
+```
 
 **Context Check**: Review `.ai.local/progress/` for known issues and recently modified files with previous problems.
 

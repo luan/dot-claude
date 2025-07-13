@@ -5,21 +5,64 @@ description: Complete validation and commit workflow for shipping
 
 # 🚀 Ship Command
 
-Complete validation and commit workflow for shipping-ready code.
+**Command**: `/ship`
 
-## Shipping Workflow
+## Purpose
+
+Complete validation workflow - ensure code quality, run tests, and commit changes when everything is ready.
+
+## Instructions for Claude
+
+When the user runs `/ship`, you MUST follow these steps exactly:
 
 ### 1. 🔍 Pre-Ship Assessment
-- Check git status and recent changes
-- Determine scope: new features, fixes, refactoring, configuration
 
-### 2. ✅ Quality Validation
-**Critical**: ALL checks must pass before shipping
-- Run comprehensive validation (uses `/check` functionality)
-- Zero linter warnings, all tests pass, no build errors
-- Clean git status after validation
+**IMMEDIATELY** assess current state:
 
-### 3. 🧠 Context Tracking
+```bash
+git status
+git diff --name-only HEAD~1..HEAD
+```
+
+**Determine scope of changes:**
+
+- New features implemented
+- Bug fixes applied
+- Refactoring completed
+- Configuration changes
+
+**FIRST**: Run memory tracking script:
+```bash
+~/.claude/workflows/ship.sh
+```
+
+### 3. 🧠 Transparent Progress Tracking
+
+**If complex changes**, automatically save progress context:
+
+- Update progress state with completed work
+- Record decisions made during implementation
+- Note any important architectural changes
+- Track file changes and their purpose
+
+**Handle transparently** - user doesn't need to know about memory files.
+
+### 4. 🎯 Smart Commit Decision
+
+**Analyze readiness for commit:**
+
+**IF everything is clean:**
+
+- Automatically proceed to `/git:commit` workflow
+- Use enhanced context for better commit messages
+- Include scope and impact in commit description
+
+**IF issues found:**
+
+- **STOP immediately** and fix all issues
+- Use agent spawning for parallel issue resolution
+- Re-run validation after fixes
+- REPEAT until completely clean
 For complex changes, transparently save progress:
 - Update completion state and decisions made
 - Record architectural changes and file purposes
