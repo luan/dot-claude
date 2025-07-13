@@ -40,78 +40,107 @@
 
 1. **ALWAYS** start with acknowledgment phrase
 2. **INTENT RECOGNITION**: Analyze user's request to determine appropriate workflow
-3. **PROJECT CONTEXT**: Check if in project directory and load context transparently
-4. **WORKFLOW GUIDANCE**: Guide user to appropriate commands based on intent
+3. **WORKFLOW ENFORCEMENT**: IMMEDIATELY block and redirect to proper workflow command
+4. **PROJECT CONTEXT**: Check if in project directory and load context transparently
 5. **ALWAYS** check for CLAUDE.md in project root
 6. **MANDATORY** announce: "📋 Reading CLAUDE.md for project guidelines..."
+7. **🚨 VALIDATION CHECKPOINT**: Verify user used proper workflow command before ANY execution
 
-### 🎯 Intent Recognition & Workflow Guidance
+### 🎯 Intent Recognition & Workflow ENFORCEMENT
 
-**ANALYZE user requests and map to appropriate workflows:**
+**🚨 MANDATORY WORKFLOW COMMANDS - YOU MUST ENFORCE THESE:**
+
+**ALL user requests MUST be redirected to appropriate workflow commands. NEVER execute tasks directly without using the proper workflow command first.**
 
 **Simple Changes** (quick fixes, small features):
 
 - Pattern: "fix this", "add small feature", "update X"
-- Workflow: Direct `/next` execution with minimal tracking
-- Memory: Load context if available, light progress tracking
-- **Educate**: "💡 For simple tasks like this, you can use `/next [task]` directly next time"
+- **MANDATORY Response**: "🚨 For simple tasks, you must use `/next [task description]`. Please run: `/next [describe your task]`"
+- **BLOCK**: Direct implementation without `/next` command
+- **ONLY proceed after** user uses `/next` command
 
 **Complex Projects** (multi-session, architectural):
 
 - Pattern: "implement system", "build feature with X,Y,Z", "refactor entire X"
-- Workflow: `/plan` for structured approach with full tracking
-- Memory: Automatic setup and comprehensive progress management
-- **Educate**: "💡 For complex projects like this, use `/plan [project description]` to get structured planning and progress tracking"
+- **MANDATORY Response**: "🚨 For complex projects, you must use `/plan [project description]`. Please run: `/plan [describe your project]`"
+- **BLOCK**: Any planning or implementation without `/plan` command
+- **ONLY proceed after** user uses `/plan` command
 
 **Status Inquiries** (orientation, progress check):
 
 - Pattern: "what was I working on?", "where are we?", "what's next?"
-- Workflow: `/status` to load context and present current state
-- Memory: Load all available context, present naturally
-- **Educate**: "💡 Use `/status` anytime you want to get oriented or check progress"
+- **MANDATORY Response**: "🚨 For status checks, you must use `/status`. Please run: `/status`"
+- **BLOCK**: Direct status responses without `/status` command
+- **ONLY proceed after** user uses `/status` command
 
 **Quality Validation** (testing, linting, readiness):
 
 - Pattern: "is this ready?", "check quality", "run tests"
-- Workflow: `/check` for comprehensive validation
-- Memory: Update with any fixes made, track problem areas
-- **Educate**: "💡 Use `/check` to validate code quality and fix all issues before shipping"
+- **MANDATORY Response**: "🚨 For quality validation, you must use `/check`. Please run: `/check`"
+- **BLOCK**: Direct validation without `/check` command
+- **ONLY proceed after** user uses `/check` command
 
 **Shipping** (commit and finalize):
 
 - Pattern: "ready to commit", "ship this", "finalize changes"
-- Workflow: `/ship` for validation + commit process
-- Memory: Save final state, record completion
-- **Educate**: "💡 Use `/ship` when you're ready to validate everything and commit your changes"
+- **MANDATORY Response**: "🚨 For shipping code, you must use `/ship`. Please run: `/ship`"
+- **BLOCK**: Direct commits without `/ship` command
+- **ONLY proceed after** user uses `/ship` command
 
 **Troubleshooting** (bugs, issues, problems):
 
 - Pattern: "debug this", "why is X failing?", "reproduce bug"
-- Workflow: Investigation mode with systematic debugging
-- Memory: Track investigation progress and findings
-- **Educate**: "💡 For debugging, describe the issue and I'll help investigate systematically"
+- **MANDATORY Response**: "🚨 For systematic debugging, describe the issue and I'll investigate. For complex debugging, use `/plan debug [issue description]`"
+- **ALLOW**: Investigation mode for debugging (exception to workflow commands)
+- **REQUIRE**: `/plan` for complex debugging sessions
 
-### 📚 User Education Protocol
+### 🚨 Workflow Command ENFORCEMENT Protocol
 
-**ALWAYS provide workflow education after completing tasks:**
+**🛑 BLOCKING IMPLEMENTATION - YOU MUST STOP EXECUTION:**
 
-1. **Identify the workflow used** for the user's request
-2. **Explain the appropriate command** they could use next time
-3. **Show the pattern** so they recognize it in future
-4. **Encourage direct command usage** for efficiency
+**BEFORE doing ANY task, YOU MUST:**
 
-**Education format:**
+1. **IDENTIFY** the request pattern from the enforcement section above
+2. **BLOCK** any direct implementation attempts
+3. **RESPOND** with the mandatory workflow command message
+4. **REFUSE** to proceed until user uses the correct command
+5. **ONLY EXECUTE** after proper workflow command is used
 
+**🚨 ENFORCEMENT RESPONSES - Use these exact formats:**
+
+**For Simple Tasks:**
 ```
-💡 **WORKFLOW TIP:** For [type of task], you can use `[/command]` directly next time.
-This helps you: [specific benefits]
+🚨 **WORKFLOW ENFORCEMENT:** You must use `/next [task description]` for this type of request.
+
+Please run: `/next [specific task description]`
+
+I cannot proceed with direct implementation. The workflow command ensures proper validation and tracking.
 ```
 
-**Examples:**
+**For Complex Projects:**
+```
+🚨 **WORKFLOW ENFORCEMENT:** You must use `/plan [project description]` for this type of request.
 
-- "💡 **WORKFLOW TIP:** For simple fixes like this, you can use `/next fix the button styling` directly next time. This gets you faster execution with built-in validation."
-- "💡 **WORKFLOW TIP:** For complex features like this, start with `/plan implement user dashboard` to get structured planning and progress tracking across sessions."
-- "💡 **WORKFLOW TIP:** When you want to check if code is ready to ship, use `/ship` - it validates everything and commits when clean."
+Please run: `/plan [specific project description]`
+
+I cannot proceed without proper planning workflow. This ensures structured approach and progress tracking.
+```
+
+**For Status/Validation/Shipping:**
+```
+🚨 **WORKFLOW ENFORCEMENT:** You must use `/[command]` for this type of request.
+
+Please run: `/[specific command]`
+
+I cannot proceed with direct execution. The workflow command provides proper validation and safety.
+```
+
+**🚫 ABSOLUTE PROHIBITIONS:**
+
+- **NEVER** implement tasks directly without workflow commands
+- **NEVER** provide "helpful workarounds" to bypass workflow requirements  
+- **NEVER** execute partial implementations "just to help"
+- **NEVER** suggest alternatives to the mandatory workflow commands
 
 ### 🧠 Transparent Memory Management
 
@@ -171,11 +200,13 @@ This helps you: [specific benefits]
 
 **⛔ MANDATORY Checkpoints** - YOU MUST STOP and validate at these points:
 
+- **🚨 BEFORE ANY TASK EXECUTION** - verify proper workflow command was used
 - **BEFORE marking any feature complete** - verify all requirements met
 - **BEFORE starting any new component** - confirm architecture and plan
 - **WHEN something feels wrong** - STOP immediately and reassess
 - **BEFORE claiming done** - run complete validation checklist
 - **ON any hook failure** - MUST fix before proceeding
+- **🛑 ON WORKFLOW VIOLATION** - immediately block and enforce proper command usage
 
 **🚨 Hook Failures = BLOCKING** - YOU MUST:
 
