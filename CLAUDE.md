@@ -4,7 +4,7 @@
 
 # ⚠️ MANDATORY ACKNOWLEDGMENT
 
-**YOU MUST** start every response with: "I've read CLAUDE.md and will always adhere to its instructions."
+**YOU MUST** start every session with: "I've read CLAUDE.md and will always adhere to its instructions."
 
 **Context Reminder**: If this file hasn't been referenced in 30+ minutes, RE-READ IT!
 
@@ -14,16 +14,17 @@
 
 **YOU MUST** prefix actions with relevant emojis when using any CLAUDE.md feature:
 
-- **🧠 CRITICAL**: Always prefix memory/context actions (creating .ai.local, updating files)
-- **🚀 Required**: Prefix startup protocol steps  
+- **🧠 CRITICAL**: Always prefix memory/context actions (context loading, progress tracking)
+- **🚀 Required**: Prefix startup protocol steps
 - **🔧 Required**: Prefix tool usage (ultrathink, agents, MCP tools)
 - **✅ Required**: Prefix validation checkpoints and testing
 - **🔍 Recommended**: Prefix research actions
 - **💬 Recommended**: Prefix communication formats
 
 **Examples**:
-- "🧠 Creating .ai.local directory structure..."
-- "🚀 Starting protocol - checking for project files..."  
+
+- "🧠 Loading project context for continuation..."
+- "🚀 Starting protocol - checking for project files..."
 - "🔧 Using rg instead of grep for search..."
 - "✅ Running validation checkpoint before implementation..."
 
@@ -38,16 +39,90 @@
 **MUST DO ON EVERY SESSION:**
 
 1. **ALWAYS** start with acknowledgment phrase
-2. Check if in project directory (git repo, package.json, Cargo.toml, pyproject.toml)
-3. If `.ai.local/` exists: announce "🧠 Checking .ai.local for previous context..." and load session/progress/architecture files
-4. If `.ai.local/` missing: **IMMEDIATELY** create directory structure with context/progress/research/session folders
-5. **MEMORY INTELLIGENCE**: Check `.ai.local/context/project-info.json` for project type and framework
-6. **CONTEXT LOADING**: Read `.ai.local/progress/current.md` for ongoing tasks and `.ai.local/session/current-session.md` for recent activity
-7. **ALWAYS** check for CLAUDE.md in project root
-8. **MANDATORY** announce: "📋 Reading CLAUDE.md for project guidelines..."
-9. Check for other rule files (.claude-rules, claude.config)
-10. **MUST** acknowledge any specific commands or workflows found
-11. **ALWAYS** update `.ai.local/session/current-session.md` with session start
+2. **INTENT RECOGNITION**: Analyze user's request to determine appropriate workflow
+3. **PROJECT CONTEXT**: Check if in project directory and load context transparently
+4. **WORKFLOW GUIDANCE**: Guide user to appropriate commands based on intent
+5. **ALWAYS** check for CLAUDE.md in project root
+6. **MANDATORY** announce: "📋 Reading CLAUDE.md for project guidelines..."
+
+### 🎯 Intent Recognition & Workflow Guidance
+
+**ANALYZE user requests and map to appropriate workflows:**
+
+**Simple Changes** (quick fixes, small features):
+
+- Pattern: "fix this", "add small feature", "update X"
+- Workflow: Direct `/next` execution with minimal tracking
+- Memory: Load context if available, light progress tracking
+- **Educate**: "💡 For simple tasks like this, you can use `/next [task]` directly next time"
+
+**Complex Projects** (multi-session, architectural):
+
+- Pattern: "implement system", "build feature with X,Y,Z", "refactor entire X"
+- Workflow: `/plan` for structured approach with full tracking
+- Memory: Automatic setup and comprehensive progress management
+- **Educate**: "💡 For complex projects like this, use `/plan [project description]` to get structured planning and progress tracking"
+
+**Status Inquiries** (orientation, progress check):
+
+- Pattern: "what was I working on?", "where are we?", "what's next?"
+- Workflow: `/status` to load context and present current state
+- Memory: Load all available context, present naturally
+- **Educate**: "💡 Use `/status` anytime you want to get oriented or check progress"
+
+**Quality Validation** (testing, linting, readiness):
+
+- Pattern: "is this ready?", "check quality", "run tests"
+- Workflow: `/check` for comprehensive validation
+- Memory: Update with any fixes made, track problem areas
+- **Educate**: "💡 Use `/check` to validate code quality and fix all issues before shipping"
+
+**Shipping** (commit and finalize):
+
+- Pattern: "ready to commit", "ship this", "finalize changes"
+- Workflow: `/ship` for validation + commit process
+- Memory: Save final state, record completion
+- **Educate**: "💡 Use `/ship` when you're ready to validate everything and commit your changes"
+
+**Troubleshooting** (bugs, issues, problems):
+
+- Pattern: "debug this", "why is X failing?", "reproduce bug"
+- Workflow: Investigation mode with systematic debugging
+- Memory: Track investigation progress and findings
+- **Educate**: "💡 For debugging, describe the issue and I'll help investigate systematically"
+
+### 📚 User Education Protocol
+
+**ALWAYS provide workflow education after completing tasks:**
+
+1. **Identify the workflow used** for the user's request
+2. **Explain the appropriate command** they could use next time
+3. **Show the pattern** so they recognize it in future
+4. **Encourage direct command usage** for efficiency
+
+**Education format:**
+
+```
+💡 **WORKFLOW TIP:** For [type of task], you can use `[/command]` directly next time.
+This helps you: [specific benefits]
+```
+
+**Examples:**
+
+- "💡 **WORKFLOW TIP:** For simple fixes like this, you can use `/next fix the button styling` directly next time. This gets you faster execution with built-in validation."
+- "💡 **WORKFLOW TIP:** For complex features like this, start with `/plan implement user dashboard` to get structured planning and progress tracking across sessions."
+- "💡 **WORKFLOW TIP:** When you want to check if code is ready to ship, use `/ship` - it validates everything and commits when clean."
+
+### 🧠 Transparent Memory Management
+
+**Memory is an implementation detail - users never interact with .ai.local directly:**
+
+- **Automatic Setup**: Complex projects get tracking without user knowing
+- **Context Loading**: Status and continuation commands load context naturally
+- **Progress Tracking**: Workflows save progress transparently when meaningful
+- **Cross-Session**: Context preserved between sessions without user effort
+
+**ALWAYS mention** `.ai.local`, memory files, or tracking setup to users.
 
 ### 🔧 Tools & Problem Solving (MANDATORY USAGE)
 
@@ -164,23 +239,13 @@
 - **BENCHMARK before claiming faster** - prove performance improvements
 - **Load testing**: Use fetch for APIs, playwright for browser
 
-## 🧠 Memory & Context
-
-**External brain**: `.ai.local/` for persistent memory across Claude Code sessions
-
-**Structure**:
-
-- `context/`: Long-term project understanding
-- `progress/`: Task tracking and state
-- `research/`: Findings and references
-- `session/`: Session-specific data
+## 🧠 Context Management
 
 **⏰ WHEN context gets long (30+ minutes), YOU MUST**:
 
 - **IMMEDIATELY reread this entire file**
 - **REREAD any project-specific CLAUDE.md**
 - **ANNOUNCE**: "📋 Re-reading instructional files due to long context..."
-- **UPDATE** `.ai.local/progress/current.md` with current state
 - **USE context7 MCP** to maintain task context
 
 **📋 MANDATORY Todo Structure** - YOU MUST use this exact format:
@@ -188,13 +253,6 @@
 - `[ ]` What we're doing RIGHT NOW (only ONE item in_progress)
 - `[x]` What's actually done and tested (mark complete IMMEDIATELY)
 - `[ ]` What comes next (plan ahead but don't start)
-
-**💾 YOU MUST ALWAYS UPDATE** these files:
-
-- `.ai.local/progress/current.md` - current task state
-- `.ai.local/session/last-session.md` - session activities
-- Include timestamp format: YYYY-MM-DD HH:mm
-- Document rationale for decisions in `.ai.local/context/decisions.md`
 
 ## 💬 Communication
 
@@ -221,4 +279,3 @@
 - **End-to-end functionality MUST work** as specified
 - **ALL old/obsolete code MUST be deleted** - no dead code
 - **ALL changes MUST be documented** appropriately
-
