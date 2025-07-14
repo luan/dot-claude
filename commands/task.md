@@ -15,11 +15,24 @@ The model will analyze your request and automatically:
 - **Status check**: Show current progress when no task specified
 
 ### Memory Management
-🧠 The model will autonomously manage `.ai.local/` to:
-- Track project context and understanding
-- Record important decisions and patterns
-- Maintain progress across sessions
-- Organize information as needed
+🧠 The model will autonomously manage `.ai.local/` with comprehensive context:
+
+**Core Task Context:**
+- Task objectives, requirements, and acceptance criteria
+- Project context and current understanding
+- Implementation decisions and rationale
+- Progress tracking with detailed status updates
+- Validation checkpoints and quality gates
+
+**Enhanced Reboot Context:**
+- Codebase research findings and architecture insights
+- Technical patterns, conventions, and dependencies discovered
+- Specific implementation details (APIs, libraries, approaches)
+- Testing strategy and validation methods used
+- Debugging context and solutions to blockers
+- Code changes made with explanations
+- Integration points and system relationships
+- Future maintenance considerations and follow-up tasks
 
 ### Quality Standards
 - ✅ All code follows project conventions
