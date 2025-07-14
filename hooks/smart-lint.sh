@@ -421,10 +421,27 @@ lint_swift() {
     log_debug "Running Swift linters..."
     
     local swift_files
-    if ! swift_files=$(find_filtered_files "-name '*.swift'" "(build/|DerivedData/|\.git/|Pods/)" 100); then
-        log_debug "No Swift files found or all were skipped"
+    swift_files=$(find . -name "*.swift" -type f | grep -v -E "(build/|DerivedData/|\.git/|Pods/)" | head -100)
+    
+    if [[ -z "$swift_files" ]]; then
+        log_debug "No Swift files found"
         return 0
     fi
+    
+    # Filter files
+    local filtered_files=""
+    for file in $swift_files; do
+        if ! should_skip_file "$file"; then
+            filtered_files="$filtered_files$file "
+        fi
+    done
+    
+    if [[ -z "$filtered_files" ]]; then
+        log_debug "All Swift files were skipped"
+        return 0
+    fi
+    
+    swift_files="$filtered_files"
     
     # SwiftFormat - formatting
     if command_exists swiftformat; then
