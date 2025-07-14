@@ -43,35 +43,35 @@ add_error() {
 # CONFIGURATION LOADING
 # ============================================================================
 
-load_config() {
-    # Global defaults
+# Set configuration defaults
+set_test_defaults() {
+    # Core test settings
     export CLAUDE_HOOKS_TEST_ON_EDIT="${CLAUDE_HOOKS_TEST_ON_EDIT:-true}"
     export CLAUDE_HOOKS_TEST_MODES="${CLAUDE_HOOKS_TEST_MODES:-package}"
     export CLAUDE_HOOKS_ENABLE_RACE="${CLAUDE_HOOKS_ENABLE_RACE:-true}"
     export CLAUDE_HOOKS_FAIL_ON_MISSING_TESTS="${CLAUDE_HOOKS_FAIL_ON_MISSING_TESTS:-false}"
     export CLAUDE_HOOKS_TEST_VERBOSE="${CLAUDE_HOOKS_TEST_VERBOSE:-false}"
     
-    # Project command configuration
+    # Project command settings
     export CLAUDE_HOOKS_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_USE_PROJECT_COMMANDS:-true}"
     export CLAUDE_HOOKS_MAKE_TEST_TARGETS="${CLAUDE_HOOKS_MAKE_TEST_TARGETS:-test}"
     export CLAUDE_HOOKS_SCRIPT_TEST_NAMES="${CLAUDE_HOOKS_SCRIPT_TEST_NAMES:-test}"
     
-    # Per-language project command opt-out
-    export CLAUDE_HOOKS_GO_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_GO_USE_PROJECT_COMMANDS:-true}"
-    export CLAUDE_HOOKS_PYTHON_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_PYTHON_USE_PROJECT_COMMANDS:-true}"
-    export CLAUDE_HOOKS_JAVASCRIPT_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_JAVASCRIPT_USE_PROJECT_COMMANDS:-true}"
-    export CLAUDE_HOOKS_RUST_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_RUST_USE_PROJECT_COMMANDS:-true}"
-    export CLAUDE_HOOKS_NIX_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_NIX_USE_PROJECT_COMMANDS:-true}"
-    export CLAUDE_HOOKS_SHELL_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_SHELL_USE_PROJECT_COMMANDS:-true}"
-    export CLAUDE_HOOKS_TILT_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_TILT_USE_PROJECT_COMMANDS:-true}"
-    
-    # Load project config
+    # Per-language project command settings
+    local project_langs=("GO" "PYTHON" "JAVASCRIPT" "RUST" "NIX" "SHELL" "TILT" "SWIFT")
+    for lang in "${project_langs[@]}"; do
+        local var="CLAUDE_HOOKS_${lang}_USE_PROJECT_COMMANDS"
+        export "$var"="${!var:-true}"
+    done
+}
+
+load_config() {
+    set_test_defaults
     load_project_config
     
-    # Debug output to verify config loaded
     log_debug "After loading config, CLAUDE_HOOKS_GO_TEST_EXCLUDE_PATTERNS='${CLAUDE_HOOKS_GO_TEST_EXCLUDE_PATTERNS:-}'"
     
-    # Quick exit if disabled
+    # Early exit if testing disabled
     if [[ "$CLAUDE_HOOKS_TEST_ON_EDIT" != "true" ]]; then
         log_debug "Test on edit disabled, exiting"
         exit 0
@@ -188,32 +188,20 @@ should_skip_test_requirement() {
     
     # Files that typically don't have tests
     local skip_patterns=(
-        "main.go"           # Entry points
-        "doc.go"            # Package documentation
-        "*_generated.go"    # Generated code
-        "*_string.go"       # Stringer generated
-        "*.pb.go"           # Protocol buffer generated
-        "*.pb.gw.go"        # gRPC gateway generated
-        "bindata.go"        # Embedded assets
-        "migrations/*.go"   # Database migrations
+        "main.go" "doc.go" "*_generated.go" "*_string.go" 
+        "*.pb.go" "*.pb.gw.go" "bindata.go" "migrations/*.go"
     )
     
     # Check patterns
     for pattern in "${skip_patterns[@]}"; do
-        if [[ "$base" == "$pattern" ]]; then
-            return 0
-        fi
+        [[ "$base" == "$pattern" ]] && return 0
     done
     
     # Skip if in specific directories
-    if [[ "$dir" =~ /(vendor|testdata|examples|cmd/[^/]+|gen|generated|.gen)(/|$) ]]; then
-        return 0
-    fi
+    [[ "$dir" =~ /(vendor|testdata|examples|cmd/[^/]+|gen|generated|.gen)(/|$) ]] && return 0
     
-    # Skip if it's a test file itself (will be handled differently)
-    if [[ "$file" =~ _test\.(go|py|js|ts)$ ]]; then
-        return 0
-    fi
+    # Skip if it's a test file itself
+    [[ "$file" =~ _test\.(go|py|js|ts)$ ]] && return 0
     
     return 1
 }
@@ -224,16 +212,12 @@ should_skip_test_requirement() {
 
 format_test_output() {
     local output="$1"
-    # test_type parameter removed as it was unused
     
-    # If output is empty, say so
     if [[ -z "$output" ]]; then
         echo "(no output captured)"
-        return
+    else
+        echo "$output"
     fi
-    
-    # Show the full output - no truncation when tests fail
-    echo "$output"
 }
 
 # ============================================================================
@@ -256,6 +240,63 @@ if [[ -f "${SCRIPT_DIR}/test-tilt.sh" ]]; then
 fi
 
 
+# Common test runner logic
+run_test_with_runner() {
+    local runner="$1"
+    local file="$2"
+    local extra_args="${3:-}"
+    
+    local test_output
+    if [[ -n "$extra_args" ]]; then
+        if ! test_output=$($runner "$extra_args" "$file" 2>&1); then
+            format_test_output "$test_output" >&2
+            return 1
+        fi
+    else
+        if ! test_output=$($runner "$file" 2>&1); then
+            format_test_output "$test_output" >&2
+            return 1
+        fi
+    fi
+    return 0
+}
+
+# Check if tests are required for a file
+should_require_tests() {
+    local file="$1"
+    local language="$2"
+    
+    # Early exit if globally disabled
+    [[ "${CLAUDE_HOOKS_FAIL_ON_MISSING_TESTS:-false}" == "false" ]] && return 1
+    
+    local base
+    base=$(basename "$file")
+    local dir
+    dir=$(dirname "$file")
+    
+    case "$language" in
+        "python")
+            [[ "$base" =~ ^(__init__|__main__|setup|conf|config|settings)$ ]] && return 1
+            [[ "$dir" =~ /(migrations|scripts|docs|examples)(/|$) ]] && return 1
+            ;;
+        "javascript")
+            [[ "$base" =~ ^(index|main|app|config|setup|webpack\.config|rollup\.config|vite\.config)$ ]] && return 1
+            [[ "$dir" =~ /(dist|build|node_modules|coverage|docs|examples|scripts)(/|$) ]] && return 1
+            [[ "$file" =~ \.d\.ts$ ]] && return 1
+            ;;
+        "shell")
+            [[ "$base" =~ ^(install|setup|init|config|.*\.config)$ ]] && return 1
+            [[ "$dir" =~ /(scripts|bin|examples|docs|hooks)(/|$) ]] && return 1
+            ;;
+        "rust")
+            [[ "$base" =~ ^(main|build|lib)$ ]] && return 1
+            [[ "$dir" =~ /(target|examples|benches)(/|$) ]] && return 1
+            ;;
+    esac
+    
+    return 0
+}
+
 run_python_tests() {
     local file="$1"
     local dir
@@ -275,16 +316,12 @@ run_python_tests() {
         log_debug "🧪 Running test file directly: $file"
         local test_output
         if command -v pytest >/dev/null 2>&1; then
-            if ! test_output=$(
-                pytest -xvs "$file" 2>&1); then
-                # Output test failures directly without preamble
+            if ! test_output=$(pytest -xvs "$file" 2>&1); then
                 format_test_output "$test_output" >&2
                 return 1
             fi
         elif command -v python >/dev/null 2>&1; then
-            if ! test_output=$(
-                python -m unittest "$file" 2>&1); then
-                # Output test failures directly without preamble
+            if ! test_output=$(python -m unittest "$file" 2>&1); then
                 format_test_output "$test_output" >&2
                 return 1
             fi
@@ -294,19 +331,8 @@ run_python_tests() {
     fi
     
     # Check if we should require tests
-    local require_tests=true
-    # Python files that typically don't need tests
-    if [[ "$base" =~ ^(__init__|__main__|setup|setup.py|conf|config|settings)$ ]]; then
-        require_tests=false
-    fi
-    if [[ "$dir" =~ /(migrations|scripts|docs|examples)(/|$) ]]; then
-        require_tests=false
-    fi
-    
-    # Check if test finding should be relaxed
-    if [[ "${CLAUDE_HOOKS_FAIL_ON_MISSING_TESTS:-false}" == "false" ]]; then
-        require_tests=false
-    fi
+    local require_tests=false
+    should_require_tests "$file" "python" && require_tests=true
     
     # Find test file
     local test_file=""
@@ -339,20 +365,15 @@ run_python_tests() {
                     log_debug "🧪 Running focused tests for $base..."
                     tests_run=$((tests_run + 1))
                     
-                    local test_output
                     if command -v pytest >/dev/null 2>&1; then
-                        if ! test_output=$(
-                            pytest -xvs "$test_file" -k "$base" 2>&1); then
+                        if ! test_output=$(pytest -xvs -k "$base" "$test_file" 2>&1); then
                             failed=1
-                            # Output test failures directly
                             format_test_output "$test_output" >&2
                             add_error "Focused tests failed for $base"
                         fi
                     elif command -v python >/dev/null 2>&1; then
-                        if ! test_output=$(
-                            python -m unittest "$test_file" 2>&1); then
+                        if ! test_output=$(python -m unittest "$test_file" 2>&1); then
                             failed=1
-                            # Output test failures directly
                             format_test_output "$test_output" >&2
                             add_error "Focused tests failed for $base"
                         fi
@@ -370,11 +391,8 @@ run_python_tests() {
                 tests_run=$((tests_run + 1))
                 
                 if command -v pytest >/dev/null 2>&1; then
-                    local test_output
-                    if ! test_output=$(
-                        pytest -xvs "$dir" 2>&1); then
+                    if ! test_output=$(pytest -xvs "$dir" 2>&1); then
                         failed=1
-                        # Output test failures directly
                         format_test_output "$test_output" >&2
                         add_error "Package tests failed in $dir"
                     fi
@@ -417,16 +435,12 @@ run_javascript_tests() {
         
         local test_output
         if [[ -f "package.json" ]] && jq -e '.scripts.test' package.json >/dev/null 2>&1; then
-            if ! test_output=$(
-                npm test -- "$file" 2>&1); then
-                # Output test failures directly without preamble
+            if ! test_output=$(npm test -- "$file" 2>&1); then
                 format_test_output "$test_output" >&2
                 return 1
             fi
         elif command -v jest >/dev/null 2>&1; then
-            if ! test_output=$(
-                jest "$file" 2>&1); then
-                # Output test failures directly without preamble
+            if ! test_output=$(jest "$file" 2>&1); then
                 format_test_output "$test_output" >&2
                 return 1
             fi
@@ -436,35 +450,16 @@ run_javascript_tests() {
     fi
     
     # Check if we should require tests
-    local require_tests=true
-    # JS/TS files that typically don't need tests
-    if [[ "$base" =~ ^(index|main|app|config|setup|webpack\.config|rollup\.config|vite\.config)$ ]]; then
-        require_tests=false
-    fi
-    if [[ "$dir" =~ /(dist|build|node_modules|coverage|docs|examples|scripts)(/|$) ]]; then
-        require_tests=false
-    fi
-    # Skip declaration files
-    if [[ "$file" =~ \.d\.ts$ ]]; then
-        require_tests=false
-    fi
-    
-    # Check if test finding should be relaxed
-    if [[ "${CLAUDE_HOOKS_FAIL_ON_MISSING_TESTS:-false}" == "false" ]]; then
-        require_tests=false
-    fi
+    local require_tests=false
+    should_require_tests "$file" "javascript" && require_tests=true
     
     # Find test file
     local test_file=""
     local test_candidates=(
-        "${dir}/${base}.test.js"
-        "${dir}/${base}.spec.js"
-        "${dir}/${base}.test.ts"
-        "${dir}/${base}.spec.ts"
-        "${dir}/${base}.test.jsx"
-        "${dir}/${base}.test.tsx"
-        "${dir}/__tests__/${base}.test.js"
-        "${dir}/__tests__/${base}.spec.js"
+        "${dir}/${base}.test.js" "${dir}/${base}.spec.js"
+        "${dir}/${base}.test.ts" "${dir}/${base}.spec.ts"
+        "${dir}/${base}.test.jsx" "${dir}/${base}.test.tsx"
+        "${dir}/__tests__/${base}.test.js" "${dir}/__tests__/${base}.spec.js"
         "${dir}/__tests__/${base}.test.ts"
     )
     
@@ -493,10 +488,8 @@ run_javascript_tests() {
                         tests_run=$((tests_run + 1))
                         
                         local test_output
-                        if ! test_output=$(
-                            npm test -- "$test_file" 2>&1); then
+                        if ! test_output=$(npm test -- "$test_file" 2>&1); then
                             failed=1
-                            # Output test failures directly
                             format_test_output "$test_output" >&2
                             add_error "Focused tests failed for $base"
                         fi
@@ -513,10 +506,8 @@ run_javascript_tests() {
                     tests_run=$((tests_run + 1))
                     
                     local test_output
-                    if ! test_output=$(
-                        npm test 2>&1); then
+                    if ! test_output=$(npm test 2>&1); then
                         failed=1
-                        # Output test failures directly
                         format_test_output "$test_output" >&2
                         add_error "Package tests failed"
                     fi
@@ -524,13 +515,8 @@ run_javascript_tests() {
             esac
         done
     elif [[ "$require_tests" == "true" && -z "$test_file" ]]; then
-        if ! command -v pytest >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; then
-            echo -e "${RED}❌ pytest not found and no Python interpreter available${NC}" >&2
-            add_error "pytest not found and no Python interpreter available"
-        else
-            echo -e "${RED}❌ No test runner configured and no tests found${NC}" >&2
-            add_error "No test runner configured and no tests found"
-        fi
+        echo -e "${RED}❌ No test runner configured and no tests found${NC}" >&2
+        add_error "No test runner configured and no tests found"
         return 2
     fi
     
@@ -814,7 +800,7 @@ run_rust_tests() {
 # ============================================================================
 
 # Try to use project-specific test command (make target or script)
-try_project_test_command() {
+try_project_command() {
     local file_path="$1"
     local language="$2"
     
@@ -825,7 +811,8 @@ try_project_test_command() {
     fi
     
     # Check language-specific opt-out
-    local opt_out_var="CLAUDE_HOOKS_${language^^}_USE_PROJECT_COMMANDS"
+    local opt_out_var
+    opt_out_var="CLAUDE_HOOKS_$(echo "$language" | tr '[:lower:]' '[:upper:]')_USE_PROJECT_COMMANDS"
     if [[ "${!opt_out_var:-true}" != "true" ]]; then
         log_debug "Project commands disabled for $language"
         return 1
@@ -984,6 +971,11 @@ main() {
         language="shell"
     elif [[ "$FILE_PATH" =~ \.rs$ ]]; then
         language="rust"
+    elif [[ "$FILE_PATH" =~ \.swift$ ]]; then
+        # Swift tests must be run in Xcode - skip testing
+        log_debug "Swift testing skipped - must be run in Xcode"
+        echo -e "${YELLOW}⚠️  Swift tests must be run in Xcode${NC}" >&2
+        exit 0
     elif [[ "$FILE_PATH" =~ (Tiltfile|.*\.tiltfile|.*\.star|.*\.bzl)$ ]]; then
         language="tilt"
     elif type -t should_run_tilt_tests &>/dev/null && should_run_tilt_tests "$FILE_PATH"; then
@@ -997,14 +989,13 @@ main() {
     log_debug "Detected language: $language"
     
     # Try project command first
-    if try_project_test_command "$FILE_PATH" "$language"; then
+    if try_project_command "$FILE_PATH" "$language"; then
         log_debug "Used project command for $language testing"
-        # Note: try_project_test_command handles errors internally and returns 0 if it ran a command
+        # Note: try_project_command handles errors internally and returns 0 if it ran a command
     else
         # Fall back to language-specific test runners
         case "$language" in
             "go")
-                # Check if Go testing function is available
                 if type -t run_go_tests &>/dev/null; then
                     log_debug "Running Go tests"
                     run_go_tests "$FILE_PATH" || failed=1
@@ -1025,7 +1016,6 @@ main() {
                 run_rust_tests "$FILE_PATH" || failed=1
                 ;;
             "tilt")
-                # Check if Tilt testing function is available
                 if type -t run_tilt_tests &>/dev/null; then
                     run_tilt_tests "$FILE_PATH" || failed=1
                 else
