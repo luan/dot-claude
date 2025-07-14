@@ -1,24 +1,67 @@
-# Claude Code Workflow Documentation
+# Claude Code Framework
 
-This document explains the intelligent workflow system for Claude Code. The system recognizes your intent and guides you to the right approach automatically.
+An intelligent workflow and quality assurance framework for Claude AI that provides structured development workflows, autonomous memory management, and automated quality validation.
+
+## What is Claude Code?
+
+Claude Code is a configuration framework that enhances Claude AI's capabilities for software development. It provides:
+
+- **🤖 Intelligent Workflows**: Auto-detects user intent and executes appropriate development workflows
+- **🧠 Autonomous Memory**: Manages project context and progress across sessions transparently
+- **✅ Quality Assurance**: Automated linting, testing, and validation with blocking enforcement
+- **🔧 Multi-Language Support**: Works with Go, Python, JavaScript/TypeScript, Rust, Nix, Shell, and Tilt
+- **📝 Git Integration**: Automated commit workflows with meaningful messages
 
 ## Core Philosophy
 
-**Memory is invisible** - You focus on what you want to accomplish, not on managing context files. The system handles progress tracking transparently based on the complexity of your request.
+**Quality First** - All changes must pass automated validation before completion. Hook failures are blocking and must be fixed immediately.
 
-## Framework Overview
+**Memory is Invisible** - You focus on what you want to accomplish, not on managing context files. The system handles progress tracking transparently.
+
+**Simple > Clever** - Code should be straightforward, well-tested, and follow established patterns.
+
+## Installation & Setup
+
+The framework is installed in your `~/.claude/` directory with these key components:
+
+```
+~/.claude/
+├── CLAUDE.md              # Core behavioral instructions
+├── README.md              # This documentation
+├── settings.json          # Permissions and hook configurations
+├── commands/              # Workflow command definitions
+│   ├── check.md          # Quality validation workflow
+│   ├── commit.md         # Git commit workflow
+│   ├── plan.md           # Complex project planning
+│   └── task.md           # Simple task execution
+├── hooks/                # Quality assurance scripts
+│   ├── go.sh            # Go linting and testing
+│   ├── python.sh        # Python validation
+│   ├── javascript.sh    # JS/TS validation
+│   └── ...              # Other language hooks
+├── projects/             # Session persistence
+└── todos/               # Task management
+```
+
+## Framework Architecture
 
 ### Intelligent Auto-Detection
 
 Claude Code automatically detects the most appropriate workflow based on your request patterns. You don't need to memorize commands - the system analyzes your intent and executes the right workflow while providing helpful tips for future use.
 
-### Key Features
+### Quality Assurance System
 
-- **🤖 Smart Routing**: Automatically detects workflow type from natural language
-- **🧠 Autonomous Memory**: Manages project context without user intervention
-- **✅ Quality First**: Built-in validation checkpoints throughout workflows
-- **🚀 Progressive Enhancement**: Suggests structured commands as you work
-- **🔧 Tool Integration**: Seamlessly uses ultrathink, agents, and MCP tools
+**Automated Validation**: Every file edit triggers language-specific linting and testing
+**Blocking Enforcement**: All hook failures must be fixed before proceeding
+**Project-Aware**: Supports `.claude-hooks-config.sh` for project-specific settings
+**Multi-Language**: Go, Python, JavaScript/TypeScript, Rust, Nix, Shell, and Tilt support
+
+### Memory Management
+
+**Autonomous**: Manages `.ai.local/` directory for project context automatically
+**Session Persistence**: Maintains progress across multiple sessions
+**Privacy-First**: Automatically gitignores memory files
+**Intelligent**: Learns project patterns and conventions over time
 
 ### Workflow Principles
 
@@ -30,37 +73,24 @@ Claude Code automatically detects the most appropriate workflow based on your re
 
 ## Available Workflows
 
-### 🔍 Getting Oriented: `/status`
+### 🚀 Task Execution: `/task [description]`
 
-**When to use:** Start of session, checking progress, "what was I working on?"
-
-**What it does:**
-- Loads project context automatically
-- Shows current progress and next steps  
-- Presents clear actionable options
-- Suggests appropriate workflows for your situation
-
-**Example usage:**
-```
-/status
-```
-
-### 🚀 Simple Changes: `/next [task]`
-
-**When to use:** Quick fixes, small features, straightforward implementations
+**When to use:** Simple changes, bug fixes, small features
 
 **What it does:**
 - Research → Plan → Implement workflow
-- Minimal progress tracking
-- Focused execution with validation
-- Works great for single-session tasks
+- Automatic quality validation
+- Progress tracking for complex tasks
+- Handles both simple and multi-step work
 
 **Example usage:**
 ```
-/next fix the login button styling
-/next add validation to the email field
-/next update the API endpoint to handle errors
+/task fix the login button styling
+/task add validation to the email field
+/task update the API endpoint to handle errors
 ```
+
+**Auto-triggered by:** "fix this", "add feature", "update X", "change Y to Z"
 
 ### 📋 Complex Projects: `/plan [project]`
 
@@ -80,6 +110,8 @@ Claude Code automatically detects the most appropriate workflow based on your re
 /plan build a real-time notification system
 ```
 
+**Auto-triggered by:** "implement system", "build feature with X,Y,Z", "refactor entire X"
+
 ### ✅ Quality Validation: `/check`
 
 **When to use:** "Is this ready?", testing, quality verification
@@ -96,83 +128,83 @@ Claude Code automatically detects the most appropriate workflow based on your re
 /check
 ```
 
-### 🚀 Ready to Ship: `/ship`
+**Auto-triggered by:** "is this ready?", "run tests", "validate code"
 
-**When to use:** "Ready to commit", finalizing completed work
+### 📝 Git Workflow: `/commit`
+
+**When to use:** Ready to commit changes, finalizing work
 
 **What it does:**
-- Complete validation workflow (same as `/check`)
-- Automatic commit with meaningful messages
-- Progress tracking of completion
-- Confirms successful shipping
+- Automatic quality validation (runs `/check` first)
+- Analyzes changes and creates meaningful commit messages
+- Handles pre-commit hooks and validation
+- Follows project's commit message conventions
+- Confirms successful commit
 
 **Example usage:**
 ```
-/ship
+/commit
 ```
 
-### 📝 Manual Commit: `/git:commit`
+**Auto-triggered by:** "ready to commit", "ship this", "finalize changes"
 
-**When to use:** You want control over commit timing and message
+## Quality Assurance Hooks
 
-**What it does:**
-- Focused git workflow
-- Uses project context for better commit messages
-- Handles pre-commit hooks
-- Pure git operation without extra validation
+### Automated Validation
 
-**Example usage:**
+Every file edit triggers language-specific quality checks:
+
+**Go Projects**: `go fmt`, `go vet`, `golangci-lint`, `go test`
+**Python Projects**: `black`, `ruff`, `mypy`, `pytest`
+**JavaScript/TypeScript**: `eslint`, `prettier`, `tsc`, `npm test`
+**Rust Projects**: `cargo fmt`, `cargo clippy`, `cargo test`
+**Shell Scripts**: `shellcheck`, `shfmt`
+
+### Hook Configuration
+
+Projects can customize validation with `.claude-hooks-config.sh`:
+
+```bash
+# Project-specific hook configuration
+GO_LINT_ENABLED=true
+PYTHON_MYPY_ENABLED=false
+JAVASCRIPT_ESLINT_CONFIG=".eslintrc.json"
 ```
-/git:commit
-```
 
-## How Intent Recognition Works
+### Blocking Enforcement
+
+**🚨 Hook failures are BLOCKING** - you must:
+1. Stop immediately when any hook fails
+2. Fix ALL failures before continuing
+3. Verify fixes work by re-running
+4. Never ignore or bypass failures
+
+## Intent Recognition System
 
 ### Automatic Workflow Detection
 
 The system uses pattern matching to identify your intent and automatically execute the appropriate workflow:
 
 ```
-User Request → Pattern Analysis → Auto-Execute Workflow → Provide Tips
+User Request → Pattern Analysis → Auto-Execute Workflow → Provide Educational Tips
 ```
 
-### Pattern Recognition
+### Pattern Recognition Examples
 
-### Simple Changes
-- **Patterns:** "fix this", "add small feature", "update X", "change Y to Z"
-- **Behavior:** Auto-executes task implementation
-- **Response:** "Let me research the codebase and create a plan before implementing."
-- **Tip:** "💡 For organized workflows, try `/next [description]` next time!"
+**Simple Tasks** → Auto-executes `/task`
+- "fix this", "add validation", "update styling", "change X to Y"
 
-### Complex Projects  
-- **Patterns:** "implement system", "build feature with X,Y,Z", "refactor entire X", "create new architecture"
-- **Behavior:** Auto-creates comprehensive plan and begins implementation
-- **Response:** Analyzes scope, creates phased plan, sets up tracking
-- **Tip:** "💡 For structured project management, try `/plan [project description]` next time!"
+**Complex Projects** → Auto-suggests `/plan`
+- "implement system", "build feature with X,Y,Z", "refactor entire X"
 
-### Status Inquiries
-- **Patterns:** "what was I working on?", "where are we?", "what's next?", "show progress"
-- **Behavior:** Auto-checks context and provides current status
-- **Response:** Loads memory, shows progress, suggests next steps
-- **Tip:** "💡 Try `/status` to check status next time!"
+**Quality Checks** → Auto-executes `/check`
+- "is this ready?", "run tests", "validate code", "check quality"
 
-### Quality Validation
-- **Patterns:** "is this ready?", "check quality", "run tests", "validate code"  
-- **Behavior:** Auto-runs tests, linters, and quality checks
-- **Response:** Executes all checks, fixes issues found
-- **Tip:** "💡 For comprehensive validation workflows, try `/check` next time!"
+**Git Operations** → Auto-executes `/commit`
+- "ready to commit", "ship this", "finalize changes"
 
-### Shipping
-- **Patterns:** "ready to commit", "ship this", "finalize changes", "complete the feature"
-- **Behavior:** Auto-validates, tests, and commits changes
-- **Response:** Full validation → fix issues → commit with message
-- **Tip:** "💡 For structured commit workflows, try `/ship` next time!"
-
-### Troubleshooting
-- **Patterns:** "debug this", "why is X failing?", "reproduce bug", "investigate error"
-- **Behavior:** Auto-investigates and provides solutions
-- **Response:** Systematic debugging with root cause analysis
-- **Tip:** "💡 For complex debugging sessions, try `/plan debug [issue description]` next time!"
+**Status Inquiries** → Auto-loads context
+- "what was I working on?", "where are we?", "what's next?"
 
 ## Natural Workflow Progressions
 
@@ -284,54 +316,122 @@ The system creates appropriate structures based on project needs:
 
 | Command | Purpose | Best For | Auto-Triggered By |
 |---------|---------|----------|-------------------|
-| `/status` | Get oriented, check progress | Starting sessions, checking status | "what was I working on?", "where are we?" |
-| `/next [task]` | Execute specific task | Simple changes, focused work | "fix this", "add feature", "update X" |
+| `/task [description]` | Execute specific task | Simple changes, bug fixes, features | "fix this", "add feature", "update X" |
 | `/plan [project]` | Structure complex work | Multi-session projects, major features | "implement system", "build X with Y,Z" |
-| `/check` | Validate quality | Before shipping, catching issues | "is this ready?", "run tests" |
-| `/ship` | Validate and commit | Finalizing completed work | "ready to commit", "ship this" |
-| `/git:commit` | Manual commit control | When you want commit control | Direct command only |
+| `/check` | Validate quality | Before committing, catching issues | "is this ready?", "run tests" |
+| `/commit` | Validate and commit | Finalizing completed work | "ready to commit", "ship this" |
 
 ## Tool Ecosystem
 
-### Core Tools
-- **File Operations**: Read, Write, Edit, MultiEdit
-- **Search**: Grep (rg), Glob (fd), Task (complex searches)
-- **Code Navigation**: LS, NotebookRead/Edit
-- **Version Control**: Bash (git commands), TodoWrite
-- **Web Tools**: WebFetch, WebSearch, playwright
+### Core Development Tools
+- **File Operations**: Read, Write, Edit, MultiEdit for code changes
+- **Search**: Grep (rg), Glob (fd), Task for complex searches
+- **Code Navigation**: LS, NotebookRead/Edit for project exploration
+- **Version Control**: Bash (git commands), TodoWrite for task management
+- **Web Tools**: WebFetch, WebSearch, playwright for web interactions
 
-### MCP Servers
-- **sequential_thinking**: For complex problem solving (ultrathink)
-- **context7**: Library documentation lookup
+### MCP Server Integration
+- **sequential_thinking**: Complex problem solving with ultrathink
+- **context7**: Library documentation and API reference lookup
 - **magic**: UI component generation and refinement
-- **playwright**: Browser automation and testing
+- **playwright**: Browser automation and end-to-end testing
 
-### Preferred Command Line Tools
-- Use `rg` instead of grep
-- Use `fd` instead of find  
-- Use `eza` instead of ls
-- Use `bat` for syntax highlighting
+### Preferred CLI Tools
+- `rg` (ripgrep) instead of grep - faster search
+- `fd` instead of find - better file discovery
+- `eza` instead of ls - enhanced directory listing
+- `bat` instead of cat - syntax highlighting
+- `jq` for JSON processing
 
-## Code Standards Summary
+### Language-Specific Tools
+- **Go**: `go fmt`, `go vet`, `golangci-lint`, `go test`
+- **Python**: `black`, `ruff`, `mypy`, `pytest`
+- **JavaScript/TypeScript**: `eslint`, `prettier`, `tsc`, `npm test`
+- **Rust**: `cargo fmt`, `cargo clippy`, `cargo test`
+- **Shell**: `shellcheck`, `shfmt`
 
-### 🚫 Forbidden
-- Generic types without constraints (`any`, `object`)
-- sleep() or busy waiting
-- Mixing code patterns in same file
-- Migration layers (clean refactor instead)
-- Versioned names (`handleSubmitV2`)
-- Complex error hierarchies
-- TODOs in final code
+## Code Standards & Best Practices
 
-### ✅ Required
-- Delete old code when replacing
-- Meaningful, descriptive names
-- Early returns to reduce nesting
-- Simple errors with clear messages
-- Tests for all business logic
-- Follow language idioms
-- Validate all inputs
-- Use secure randomness
-- Prepared statements for SQL
+### 🚫 Forbidden Practices
+- Generic types without constraints (`any`, `object`, `unknown`)
+- Sleep() or busy waiting (use proper async patterns)
+- Mixing old/new code patterns in same file
+- Migration/compatibility layers (clean refactor instead)
+- Versioned names (`handleSubmitV2`) - replace old code
+- Complex error hierarchies (keep errors simple and flat)
+- TODOs in final code (complete or remove before commit)
 
-## The system is designed to be invisible - focus on your work, not on managing the tools.
+### ✅ Required Practices
+- Delete old code when replacing with new implementation
+- Use meaningful, descriptive names for variables, functions, classes
+- Use early returns to reduce nesting and improve readability
+- Keep errors simple with clear messages and relevant context
+- Write appropriate tests for all business logic
+- Follow language idioms and conventions
+- Validate all inputs (never trust user data)
+- Use secure randomness (crypto.randomBytes(), not Math.random())
+- Use prepared statements for database queries
+
+### 🔒 Security Requirements
+- Validate all inputs at boundaries
+- Use secure randomness for cryptographic operations
+- Never concatenate SQL strings - use prepared statements
+- Never commit secrets or keys to repository
+- Never introduce code that logs or exposes sensitive data
+
+### ⚡ Performance Guidelines
+- Profile before optimizing
+- No premature optimization (get it working correctly first)
+- Benchmark before claiming performance improvements
+- Use appropriate load testing for performance-critical code
+
+### 🧪 Testing Strategy
+- **Complex logic**: Write tests BEFORE implementation
+- **Simple CRUD**: Write tests AFTER implementation
+- **Performance-critical paths**: Add benchmarks
+- **Skip tests only for**: main functions, simple CLI parsing
+
+## Getting Started
+
+### First Session
+1. Claude automatically acknowledges CLAUDE.md instructions
+2. Describe what you want to accomplish naturally
+3. System auto-detects appropriate workflow and provides tips
+4. Focus on your work - the system handles quality and progress
+
+### Development Flow
+1. **Research** → **Plan** → **Implement** (never skip to implementation)
+2. Automated quality validation after every change
+3. Fix any hook failures immediately (blocking)
+4. Use `/check` frequently to catch issues early
+5. Commit with `/commit` when ready
+
+### Quality Checkpoints
+**MANDATORY validation points where you must stop and verify:**
+- Before marking any feature complete
+- Before starting new components
+- When something feels wrong
+- Before claiming done
+- On any hook failure (MUST fix immediately)
+
+## Project Structure
+
+The framework integrates with your existing projects and adds:
+
+```
+your-project/
+├── .ai.local/              # Autonomous memory (gitignored)
+│   ├── context.md         # Project understanding
+│   ├── progress.md        # Current progress
+│   └── decisions.md       # Architecture decisions
+├── .claude-hooks-config.sh # Project-specific hook config
+└── ... (your existing code)
+```
+
+## Philosophy
+
+**The system is designed to be invisible** - focus on your work, not on managing the tools. Claude Code handles quality, memory, and progress automatically while you concentrate on solving problems and building features.
+
+**Quality is non-negotiable** - every change must pass validation. This prevents technical debt and ensures maintainable code.
+
+**Simple is better than clever** - code should be straightforward, well-tested, and follow established patterns rather than being overly complex or "smart".
