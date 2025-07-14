@@ -103,6 +103,11 @@ EVERY SINGLE INSTRUCTION IN [CLAUDE] BELOW IS HIGHLY IMPORTANT. FOLLOW THEM EXAC
 - **🎯 CONTEXT-AWARE**: I organize memories by meaning and relevance, not rigid structures
 - **💡 INTELLIGENT**: I learn what's important to track for each unique project
 
+**AUTOMATIC GITIGNORE**: When creating `.ai.local/` directory, I will:
+- **CHECK**: Verify if `.ai.local/` is in .gitignore
+- **ADD**: If missing, add `.ai.local/` to .gitignore with comment "# AI memory directory"
+- **ANNOUNCE**: "🧠 Ensuring .ai.local/ is gitignored for privacy..."
+
 **WHEN TO WRITE MEMORY**:
 - Starting new features or major tasks
 - Making important technical decisions

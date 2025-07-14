@@ -23,12 +23,23 @@ The model will:
 5. Set up appropriate memory structures
 
 ### Memory Management
-🧠 Autonomously creates planning artifacts in `.ai.local/`:
-- Project objectives and constraints
-- Architectural decisions and rationale
-- Phase breakdowns and dependencies
-- Risk assessments and mitigations
-- Progress tracking structures
+🧠 Autonomously creates comprehensive planning artifacts in `.ai.local/`:
+
+**Core Planning Context:**
+- Project objectives, constraints, and success criteria
+- Architectural decisions and detailed rationale
+- Phase breakdowns with dependencies and timelines
+- Risk assessments and mitigation strategies
+- Progress tracking with validation checkpoints
+
+**Enhanced Reboot Context:**
+- Technical research findings and codebase analysis
+- Code patterns, conventions, and tech stack understanding
+- Implementation approach with specific APIs/libraries
+- Testing strategy and validation requirements
+- Blockers encountered and solutions implemented
+- Future considerations and follow-up tasks
+- Cross-system relationships and dependencies
 
 ### When to Use
 - Building new systems or major features
