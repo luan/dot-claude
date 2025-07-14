@@ -43,47 +43,52 @@ log_debug "smart-lint.sh started"
 # PROJECT DETECTION
 # ============================================================================
 
-# Add Tilt project detection to the common detect_project_type function
-detect_project_type_with_tilt() {
-    local project_type="unknown"
+# Enhanced project type detection with Tilt support
+detect_project_type() {
     local types=()
+    local project_type="unknown"
     
-    # Go project
+    # Check for Go projects
     if [[ -f "go.mod" ]] || [[ -f "go.sum" ]] || [[ -n "$(find . -maxdepth 3 -name "*.go" -type f -print -quit 2>/dev/null)" ]]; then
         types+=("go")
     fi
     
-    # Python project
+    # Check for Python projects
     if [[ -f "pyproject.toml" ]] || [[ -f "setup.py" ]] || [[ -f "requirements.txt" ]] || [[ -n "$(find . -maxdepth 3 -name "*.py" -type f -print -quit 2>/dev/null)" ]]; then
         types+=("python")
     fi
     
-    # JavaScript/TypeScript project
+    # Check for JavaScript/TypeScript projects
     if [[ -f "package.json" ]] || [[ -f "tsconfig.json" ]] || [[ -n "$(find . -maxdepth 3 \( -name "*.js" -o -name "*.ts" -o -name "*.jsx" -o -name "*.tsx" \) -type f -print -quit 2>/dev/null)" ]]; then
         types+=("javascript")
     fi
     
-    # Rust project
+    # Check for Rust projects
     if [[ -f "Cargo.toml" ]] || [[ -n "$(find . -maxdepth 3 -name "*.rs" -type f -print -quit 2>/dev/null)" ]]; then
         types+=("rust")
     fi
     
-    # Nix project
+    # Check for Nix projects
     if [[ -f "flake.nix" ]] || [[ -f "default.nix" ]] || [[ -f "shell.nix" ]]; then
         types+=("nix")
     fi
     
-    # Shell project
+    # Check for shell projects
     if [[ -n "$(find . -maxdepth 3 -name "*.sh" -type f -print -quit 2>/dev/null)" ]] || [[ -n "$(find . -maxdepth 3 -name "*.bash" -type f -print -quit 2>/dev/null)" ]]; then
         types+=("shell")
     fi
     
-    # Tilt project
+    # Check for Tilt projects
     if [[ -f "Tiltfile" ]] || [[ -n "$(find . -maxdepth 3 -name "Tiltfile" -type f -print -quit 2>/dev/null)" ]] || [[ -n "$(find . -maxdepth 3 -name "*.tiltfile" -type f -print -quit 2>/dev/null)" ]]; then
         types+=("tilt")
     fi
     
-    # Return primary type or "mixed" if multiple
+    # Check for Swift projects
+    if [[ -f "Package.swift" ]] || [[ -n "$(find . -maxdepth 3 -name "*.xcodeproj" -type d -print -quit 2>/dev/null)" ]] || [[ -n "$(find . -maxdepth 3 -name "*.xcworkspace" -type d -print -quit 2>/dev/null)" ]] || [[ -n "$(find . -maxdepth 3 -name "*.swift" -type f -print -quit 2>/dev/null)" ]]; then
+        types+=("swift")
+    fi
+    
+    # Return result
     if [[ ${#types[@]} -eq 1 ]]; then
         project_type="${types[0]}"
     elif [[ ${#types[@]} -gt 1 ]]; then
@@ -94,37 +99,21 @@ detect_project_type_with_tilt() {
     echo "$project_type"
 }
 
-# Get list of modified files (if available from git)
-# Note: This function is currently unused but kept for future use
-# shellcheck disable=SC2317
-get_modified_files() {
-    if [[ -d .git ]] && command_exists git; then
-        # Get files modified in the last commit or currently staged/modified
-        git diff --name-only HEAD 2>/dev/null || true
-        git diff --cached --name-only 2>/dev/null || true
-    fi
-}
 
 # ============================================================================
 # ERROR TRACKING (extends common-helpers.sh)
 # ============================================================================
 
-# Use the CLAUDE_HOOKS_ERRORS array from common-helpers.sh but with a different name for summary
-declare -a CLAUDE_HOOKS_SUMMARY=()
-
-# Override add_error to also add to summary and print immediately
+# Enhanced error handling with immediate feedback
 add_error() {
     local message="$1"
     ((CLAUDE_HOOKS_ERROR_COUNT += 1))
     CLAUDE_HOOKS_ERRORS+=("${RED}❌${NC} $message")
-    CLAUDE_HOOKS_SUMMARY+=("${RED}❌${NC} $message")
-    # Print error immediately to stderr so tests can capture it
     echo -e "${RED}❌${NC} $message" >&2
 }
 
-print_summary() {
+print_error_summary() {
     if [[ $CLAUDE_HOOKS_ERROR_COUNT -gt 0 ]]; then
-        # Simple one-line summary when there are errors
         echo -e "\n${RED}❌ Found $CLAUDE_HOOKS_ERROR_COUNT blocking issue(s) - fix all above${NC}" >&2
     fi
 }
@@ -133,35 +122,37 @@ print_summary() {
 # CONFIGURATION LOADING
 # ============================================================================
 
-load_config() {
-    # Default configuration
+# Configuration defaults
+set_defaults() {
+    # Core settings
     export CLAUDE_HOOKS_ENABLED="${CLAUDE_HOOKS_ENABLED:-true}"
     export CLAUDE_HOOKS_FAIL_FAST="${CLAUDE_HOOKS_FAIL_FAST:-false}"
     export CLAUDE_HOOKS_SHOW_TIMING="${CLAUDE_HOOKS_SHOW_TIMING:-false}"
     
-    # Language enables
-    export CLAUDE_HOOKS_GO_ENABLED="${CLAUDE_HOOKS_GO_ENABLED:-true}"
-    export CLAUDE_HOOKS_PYTHON_ENABLED="${CLAUDE_HOOKS_PYTHON_ENABLED:-true}"
-    export CLAUDE_HOOKS_JS_ENABLED="${CLAUDE_HOOKS_JS_ENABLED:-true}"
-    export CLAUDE_HOOKS_RUST_ENABLED="${CLAUDE_HOOKS_RUST_ENABLED:-true}"
-    export CLAUDE_HOOKS_NIX_ENABLED="${CLAUDE_HOOKS_NIX_ENABLED:-true}"
-    export CLAUDE_HOOKS_TILT_ENABLED="${CLAUDE_HOOKS_TILT_ENABLED:-true}"
+    # Language toggles
+    local languages=("GO" "PYTHON" "JS" "RUST" "NIX" "TILT" "SHELL" "SWIFT")
+    for lang in "${languages[@]}"; do
+        local var="CLAUDE_HOOKS_${lang}_ENABLED"
+        export "$var"="${!var:-true}"
+    done
     
-    # Project command configuration
+    # Project command settings
     export CLAUDE_HOOKS_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_USE_PROJECT_COMMANDS:-true}"
     export CLAUDE_HOOKS_MAKE_LINT_TARGETS="${CLAUDE_HOOKS_MAKE_LINT_TARGETS:-lint}"
     export CLAUDE_HOOKS_SCRIPT_LINT_NAMES="${CLAUDE_HOOKS_SCRIPT_LINT_NAMES:-lint}"
     
-    # Per-language project command opt-out
-    export CLAUDE_HOOKS_GO_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_GO_USE_PROJECT_COMMANDS:-true}"
-    export CLAUDE_HOOKS_PYTHON_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_PYTHON_USE_PROJECT_COMMANDS:-true}"
-    export CLAUDE_HOOKS_JAVASCRIPT_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_JAVASCRIPT_USE_PROJECT_COMMANDS:-true}"
-    export CLAUDE_HOOKS_RUST_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_RUST_USE_PROJECT_COMMANDS:-true}"
-    export CLAUDE_HOOKS_NIX_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_NIX_USE_PROJECT_COMMANDS:-true}"
-    export CLAUDE_HOOKS_SHELL_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_SHELL_USE_PROJECT_COMMANDS:-true}"
-    export CLAUDE_HOOKS_TILT_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_TILT_USE_PROJECT_COMMANDS:-true}"
+    # Per-language project command settings
+    local project_langs=("GO" "PYTHON" "JAVASCRIPT" "RUST" "NIX" "SHELL" "TILT" "SWIFT")
+    for lang in "${project_langs[@]}"; do
+        local var="CLAUDE_HOOKS_${lang}_USE_PROJECT_COMMANDS"
+        export "$var"="${!var:-true}"
+    done
+}
+
+load_config() {
+    set_defaults
     
-    # Project-specific overrides
+    # Load project-specific overrides
     if [[ -f ".claude-hooks-config.sh" ]]; then
         # shellcheck disable=SC1091
         source ".claude-hooks-config.sh" || {
@@ -170,13 +161,11 @@ load_config() {
         }
     fi
     
-    # Quick exit if hooks are disabled
+    # Early exit if hooks disabled
     if [[ "$CLAUDE_HOOKS_ENABLED" != "true" ]]; then
         log_info "Claude hooks are disabled"
         log_debug "Exiting because CLAUDE_HOOKS_ENABLED=$CLAUDE_HOOKS_ENABLED"
-        if [[ "${CLAUDE_HOOKS_DEBUG:-0}" == "1" ]]; then
-            exit 2  # Exit 2 in debug mode to show output
-        fi
+        [[ "${CLAUDE_HOOKS_DEBUG:-0}" == "1" ]] && exit 2
         exit 0
     fi
 }
@@ -200,6 +189,66 @@ if [[ -f "${SCRIPT_DIR}/lint-tilt.sh" ]]; then
     source "${SCRIPT_DIR}/lint-tilt.sh"
 fi
 
+# Common file finding and filtering logic
+find_filtered_files() {
+    local pattern="$1"
+    local exclude_pattern="$2"
+    local max_files="${3:-100}"
+    
+    local files
+    files=$(find . -type f "$pattern" | grep -v -E "$exclude_pattern" | head -"$max_files")
+    
+    if [[ -z "$files" ]]; then
+        return 1
+    fi
+    
+    local filtered_files=""
+    for file in $files; do
+        if ! should_skip_file "$file"; then
+            filtered_files="$filtered_files$file "
+        fi
+    done
+    
+    if [[ -z "$filtered_files" ]]; then
+        return 1
+    fi
+    
+    echo "$filtered_files"
+    return 0
+}
+
+# Format files with error handling
+format_files() {
+    local formatter="$1"
+    local files="$2"
+    shift 2
+    
+    if command_exists "$formatter"; then
+        if ! echo "$files" | xargs "$formatter" --check "$@" >/dev/null 2>&1; then
+            local format_output
+            if ! format_output=$(echo "$files" | xargs "$formatter" "$@" 2>&1); then
+                add_error "$formatter formatting failed"
+                echo "$format_output" >&2
+            fi
+        fi
+    fi
+}
+
+# Lint files with error handling
+lint_files() {
+    local linter="$1"
+    local files="$2"
+    shift 2
+    
+    if command_exists "$linter"; then
+        local linter_output
+        if ! linter_output=$(echo "$files" | xargs "$linter" "$@" 2>&1); then
+            add_error "$linter found issues"
+            echo "$linter_output" >&2
+        fi
+    fi
+}
+
 lint_python() {
     if [[ "${CLAUDE_HOOKS_PYTHON_ENABLED:-true}" != "true" ]]; then
         log_debug "Python linting disabled"
@@ -208,54 +257,17 @@ lint_python() {
     
     log_debug "Running Python linters..."
     
-    # Find Python files
     local py_files
-    py_files=$(find . -name "*.py" -type f | grep -v -E "(venv/|\.venv/|__pycache__|\.git/)" | head -100)
-    
-    if [[ -z "$py_files" ]]; then
-        log_debug "No Python files found"
+    if ! py_files=$(find_filtered_files "-name '*.py'" "(venv/|\.venv/|__pycache__|\.git/)" 100); then
+        log_debug "No Python files found or all were skipped"
         return 0
     fi
     
-    # Filter out files that should be skipped
-    local filtered_files=""
-    for file in $py_files; do
-        if ! should_skip_file "$file"; then
-            filtered_files="$filtered_files$file "
-        fi
-    done
-    
-    if [[ -z "$filtered_files" ]]; then
-        log_debug "All Python files were skipped by .claude-hooks-ignore"
-        return 0
-    fi
-    
-    # Black formatting
-    if command_exists black; then
-        # Check if files need formatting
-        if ! echo "$filtered_files" | xargs black --check >/dev/null 2>&1; then
-            # Apply formatting and capture any errors
-            local format_output
-            if ! format_output=$(echo "$filtered_files" | xargs black 2>&1); then
-                add_error "Python formatting failed"
-                echo "$format_output" >&2
-            fi
-        fi
-    fi
-    
-    # Linting
-    if command_exists ruff; then
-        local ruff_output
-        if ! ruff_output=$(echo "$filtered_files" | xargs ruff check --fix 2>&1); then
-            add_error "Ruff found issues"
-            echo "$ruff_output" >&2
-        fi
-    elif command_exists flake8; then
-        local flake8_output
-        if ! flake8_output=$(echo "$filtered_files" | xargs flake8 2>&1); then
-            add_error "Flake8 found issues"
-            echo "$flake8_output" >&2
-        fi
+    # Format and lint
+    format_files "black" "$py_files"
+    lint_files "ruff" "$py_files" "check" "--fix"
+    if ! command_exists ruff; then
+        lint_files "flake8" "$py_files"
     fi
     
     return 0
@@ -269,16 +281,13 @@ lint_javascript() {
     
     log_debug "Running JavaScript/TypeScript linters..."
     
-    # Find JS/TS files
     local js_files
-    js_files=$(find . \( -name "*.js" -o -name "*.ts" -o -name "*.jsx" -o -name "*.tsx" \) -type f | grep -v -E "(node_modules/|dist/|build/|\.git/)" | head -100)
-    
-    if [[ -z "$js_files" ]]; then
+    if ! js_files=$(find . \( -name "*.js" -o -name "*.ts" -o -name "*.jsx" -o -name "*.tsx" \) -type f | grep -v -E "(node_modules/|dist/|build/|\.git/)" | head -100); then
         log_debug "No JavaScript/TypeScript files found"
         return 0
     fi
     
-    # Filter out files that should be skipped
+    # Filter files
     local filtered_files=""
     for file in $js_files; do
         if ! should_skip_file "$file"; then
@@ -287,37 +296,25 @@ lint_javascript() {
     done
     
     if [[ -z "$filtered_files" ]]; then
-        log_debug "All JavaScript/TypeScript files were skipped by .claude-hooks-ignore"
+        log_debug "All JavaScript/TypeScript files were skipped"
         return 0
     fi
     
-    # Check for ESLint
-    if [[ -f "package.json" ]] && grep -q "eslint" package.json 2>/dev/null; then
-        if command_exists npm; then
-            local eslint_output
-            if ! eslint_output=$(npm run lint --if-present 2>&1); then
-                add_error "ESLint found issues"
-                echo "$eslint_output" >&2
-            fi
+    # ESLint via npm
+    if [[ -f "package.json" ]] && grep -q "eslint" package.json 2>/dev/null && command_exists npm; then
+        local eslint_output
+        if ! eslint_output=$(npm run lint --if-present 2>&1); then
+            add_error "ESLint found issues"
+            echo "$eslint_output" >&2
         fi
     fi
     
-    # Prettier
+    # Prettier formatting
     if [[ -f ".prettierrc" ]] || [[ -f "prettier.config.js" ]] || [[ -f ".prettierrc.json" ]]; then
         if command_exists prettier; then
-            # Check if files need formatting
-            if ! echo "$filtered_files" | xargs prettier --check >/dev/null 2>&1; then
-                # Apply formatting and capture any errors
-                local format_output
-                if ! format_output=$(echo "$filtered_files" | xargs prettier --write 2>&1); then
-                    add_error "Prettier formatting failed"
-                    echo "$format_output" >&2
-                fi
-            fi
+            format_files "prettier" "$filtered_files" "--write"
         elif command_exists npx; then
-            # Check if files need formatting
             if ! echo "$filtered_files" | xargs npx prettier --check >/dev/null 2>&1; then
-                # Apply formatting and capture any errors
                 local format_output
                 if ! format_output=$(echo "$filtered_files" | xargs npx prettier --write 2>&1); then
                     add_error "Prettier formatting failed"
@@ -338,31 +335,14 @@ lint_rust() {
     
     log_debug "Running Rust linters..."
     
-    # Find Rust files
-    local rust_files
-    rust_files=$(find . -name "*.rs" -type f | grep -v -E "(target/|\.git/)" | head -100)
-    
-    if [[ -z "$rust_files" ]]; then
-        log_debug "No Rust files found"
-        return 0
-    fi
-    
-    # Filter out files that should be skipped
-    local filtered_files=""
-    for file in $rust_files; do
-        if ! should_skip_file "$file"; then
-            filtered_files="$filtered_files$file "
-        fi
-    done
-    
-    if [[ -z "$filtered_files" ]]; then
-        log_debug "All Rust files were skipped by .claude-hooks-ignore"
+    if ! find_filtered_files "-name '*.rs'" "(target/|\.git/)" 100 >/dev/null; then
+        log_debug "No Rust files found or all were skipped"
         return 0
     fi
     
     if command_exists cargo; then
-        if ! cargo fmt -- --check 2>&1; then
-            # Apply formatting and capture any errors
+        # Format check and fix
+        if ! cargo fmt -- --check >/dev/null 2>&1; then
             local format_output
             if ! format_output=$(cargo fmt 2>&1); then
                 add_error "Rust formatting failed"
@@ -370,6 +350,7 @@ lint_rust() {
             fi
         fi
         
+        # Clippy linting
         local clippy_output
         if ! clippy_output=$(cargo clippy --quiet -- -D warnings 2>&1); then
             add_error "Clippy found issues"
@@ -390,48 +371,17 @@ lint_nix() {
     
     log_debug "Running Nix linters..."
     
-    # Find all .nix files
     local nix_files
-    nix_files=$(find . -name "*.nix" -type f | grep -v -E "(result/|/nix/store/)" | head -20)
-    
-    if [[ -z "$nix_files" ]]; then
-        log_debug "No Nix files found"
+    if ! nix_files=$(find_filtered_files "-name '*.nix'" "(result/|/nix/store/)" 20); then
+        log_debug "No Nix files found or all were skipped"
         return 0
     fi
     
-    # Filter out files that should be skipped
-    local filtered_files=""
-    for file in $nix_files; do
-        if ! should_skip_file "$file"; then
-            filtered_files="$filtered_files$file "
-        fi
-    done
-    
-    nix_files="$filtered_files"
-    if [[ -z "$nix_files" ]]; then
-        log_debug "All Nix files were skipped by .claude-hooks-ignore"
-        return 0
-    fi
-    
-    # Check formatting with nixpkgs-fmt or alejandra
+    # Format with nixpkgs-fmt or alejandra
     if command_exists nixpkgs-fmt; then
-        if ! echo "$nix_files" | xargs nixpkgs-fmt --check 2>&1; then
-            # Apply formatting and capture any errors
-            local format_output
-            if ! format_output=$(echo "$nix_files" | xargs nixpkgs-fmt 2>&1); then
-                add_error "Nix formatting failed"
-                echo "$format_output" >&2
-            fi
-        fi
+        format_files "nixpkgs-fmt" "$nix_files"
     elif command_exists alejandra; then
-        if ! echo "$nix_files" | xargs alejandra --check 2>&1; then
-            # Apply formatting and capture any errors
-            local format_output
-            if ! format_output=$(echo "$nix_files" | xargs alejandra 2>&1); then
-                add_error "Nix formatting failed"
-                echo "$format_output" >&2
-            fi
-        fi
+        format_files "alejandra" "$nix_files"
     fi
     
     # Static analysis with statix
@@ -450,6 +400,49 @@ lint_nix() {
 # SHELL SCRIPT LINTING
 # ============================================================================
 
+# Find shell scripts by extension and shebang
+find_shell_scripts() {
+    local shell_files
+    shell_files=$(find . -type f \( -name "*.sh" -o -name "*.bash" -o -name "*.zsh" \) | grep -v -E "(\.git/|node_modules/|venv/)" | head -50)
+    
+    local shebang_files
+    shebang_files=$(grep -r -l "^#!.*\(bash\|sh\|zsh\)" . --include="*" 2>/dev/null | grep -v -E "(\.git/|node_modules/|venv/)" | head -50)
+    
+    # Combine and deduplicate
+    echo -e "$shell_files\n$shebang_files" | sort -u | grep -v "^$"
+}
+
+lint_swift() {
+    if [[ "${CLAUDE_HOOKS_SWIFT_ENABLED:-true}" != "true" ]]; then
+        log_debug "Swift linting disabled"
+        return 0
+    fi
+    
+    log_debug "Running Swift linters..."
+    
+    local swift_files
+    if ! swift_files=$(find_filtered_files "-name '*.swift'" "(build/|DerivedData/|\.git/|Pods/)" 100); then
+        log_debug "No Swift files found or all were skipped"
+        return 0
+    fi
+    
+    # SwiftFormat - formatting
+    if command_exists swiftformat; then
+        format_files "swiftformat" "$swift_files"
+    fi
+    
+    # SwiftLint - linting
+    if command_exists swiftlint; then
+        local swiftlint_output
+        if ! swiftlint_output=$(swiftlint --quiet 2>&1); then
+            add_error "SwiftLint found issues"
+            echo "$swiftlint_output" >&2
+        fi
+    fi
+    
+    return 0
+}
+
 lint_shell() {
     if [[ "${CLAUDE_HOOKS_SHELL_ENABLED:-true}" != "true" ]]; then
         log_debug "Shell linting disabled"
@@ -458,23 +451,15 @@ lint_shell() {
     
     log_debug "Running Shell linters..."
     
-    # Find all shell scripts
     local shell_files
-    shell_files=$(find . -type f \( -name "*.sh" -o -name "*.bash" -o -name "*.zsh" \) | grep -v -E "(\.git/|node_modules/|venv/)" | head -50)
-    
-    # Also find files with bash/sh/zsh shebang
-    local shebang_files
-    shebang_files=$(grep -r -l "^#!.*\(bash\|sh\|zsh\)" . --include="*" | grep -v -E "(\.git/|node_modules/|venv/)" | head -50)
-    
-    # Combine and deduplicate
-    shell_files=$(echo -e "$shell_files\n$shebang_files" | sort -u | grep -v "^$")
+    shell_files=$(find_shell_scripts)
     
     if [[ -z "$shell_files" ]]; then
         log_debug "No shell scripts found"
         return 0
     fi
     
-    # Filter out files that should be skipped
+    # Filter files
     local filtered_files=""
     for file in $shell_files; do
         if ! should_skip_file "$file"; then
@@ -483,38 +468,33 @@ lint_shell() {
     done
     
     if [[ -z "$filtered_files" ]]; then
-        log_debug "All shell scripts were skipped by .claude-hooks-ignore"
+        log_debug "All shell scripts were skipped"
         return 0
     fi
-    
-    shell_files="$filtered_files"
     
     # Shellcheck
     if command_exists shellcheck; then
         log_debug "Running shellcheck..."
         local shellcheck_errors=false
         
-        for file in $shell_files; do
+        for file in $filtered_files; do
             if ! shellcheck -x "$file" 2>&1; then
                 shellcheck_errors=true
                 add_error "shellcheck violations in $file"
             fi
         done
         
-        if [[ "$shellcheck_errors" == "false" ]]; then
-            log_success "shellcheck passed"
-        fi
+        [[ "$shellcheck_errors" == "false" ]] && log_success "shellcheck passed"
     else
         log_debug "shellcheck not found - skipping shell script validation"
     fi
     
-    # Bash formatting with shfmt (if available)
+    # Format check with shfmt
     if command_exists shfmt; then
         log_debug "Running shfmt..."
         local format_errors=false
         
-        for file in $shell_files; do
-            # Check if file needs formatting
+        for file in $filtered_files; do
             if ! shfmt -d "$file" >/dev/null 2>&1; then
                 format_errors=true
                 echo -e "${RED}❌ Formatting issues in: $file${NC}" >&2
@@ -523,9 +503,7 @@ lint_shell() {
             fi
         done
         
-        if [[ "$format_errors" == "false" ]]; then
-            log_success "shfmt passed"
-        fi
+        [[ "$format_errors" == "false" ]] && log_success "shfmt passed"
     else
         log_debug "shfmt not found - skipping shell formatting check"
     fi
@@ -585,9 +563,7 @@ if [ ! -t 0 ]; then
         else
             # Not an edit operation - exit silently
             log_debug "Not an edit operation (Event: $EVENT, Tool: $TOOL_NAME), exiting silently"
-            if [[ "${CLAUDE_HOOKS_DEBUG:-0}" == "1" ]]; then
-                exit 2  # Exit 2 in debug mode to show output
-            fi
+            [[ "${CLAUDE_HOOKS_DEBUG:-0}" == "1" ]] && exit 2
             exit 0
         fi
     else
@@ -606,7 +582,7 @@ fi
 # ============================================================================
 
 # Try to use project-specific lint command (make target or script)
-try_project_lint_command() {
+try_project_command() {
     local file_path="$1"
     local language="$2"
     
@@ -617,7 +593,8 @@ try_project_lint_command() {
     fi
     
     # Check language-specific opt-out
-    local opt_out_var="CLAUDE_HOOKS_${language^^}_USE_PROJECT_COMMANDS"
+    local opt_out_var
+    opt_out_var="CLAUDE_HOOKS_$(echo "$language" | tr '[:lower:]' '[:upper:]')_USE_PROJECT_COMMANDS"
     if [[ "${!opt_out_var:-true}" != "true" ]]; then
         log_debug "Project commands disabled for $language"
         return 1
@@ -746,11 +723,11 @@ try_project_lint_command() {
 # This script only works as a Claude Code hook - no CLI mode support
 
 # Print header only in debug mode
-if [[ "${CLAUDE_HOOKS_DEBUG:-0}" == "1" ]]; then
+[[ "${CLAUDE_HOOKS_DEBUG:-0}" == "1" ]] && {
     echo "" >&2
     echo "🔍 Style Check - Validating code formatting..." >&2
     echo "────────────────────────────────────────────" >&2
-fi
+}
 
 # Load configuration
 load_config
@@ -759,7 +736,7 @@ load_config
 START_TIME=$(time_start)
 
 # Detect project type
-PROJECT_TYPE=$(detect_project_type_with_tilt)
+PROJECT_TYPE=$(detect_project_type)
 
 # Main execution
 main() {
@@ -770,7 +747,7 @@ main() {
         
         for type in "${TYPE_ARRAY[@]}"; do
             # Try project command first
-            if try_project_lint_command "$FILE_PATH" "$type"; then
+            if try_project_command "$FILE_PATH" "$type"; then
                 log_debug "Used project command for $type linting"
             else
                 # Fall back to language-specific linters
@@ -781,6 +758,7 @@ main() {
                     "rust") lint_rust ;;
                     "nix") lint_nix ;;
                     "shell") lint_shell ;;
+                    "swift") lint_swift ;;
                     "tilt") 
                         if type -t lint_tilt &>/dev/null; then
                             lint_tilt
@@ -799,7 +777,7 @@ main() {
     else
         # Single project type
         # Try project command first
-        if [[ "$PROJECT_TYPE" != "unknown" ]] && try_project_lint_command "$FILE_PATH" "$PROJECT_TYPE"; then
+        if [[ "$PROJECT_TYPE" != "unknown" ]] && try_project_command "$FILE_PATH" "$PROJECT_TYPE"; then
             log_debug "Used project command for $PROJECT_TYPE linting"
         else
             # Fall back to language-specific linters
@@ -810,6 +788,7 @@ main() {
                 "rust") lint_rust ;;
                 "nix") lint_nix ;;
                 "shell") lint_shell ;;
+                "swift") lint_swift ;;
                 "tilt") 
                     if type -t lint_tilt &>/dev/null; then
                         lint_tilt
@@ -828,7 +807,7 @@ main() {
     time_end "$START_TIME"
     
     # Print summary
-    print_summary
+    print_error_summary
     
     # Return exit code - any issues mean failure
     if [[ $CLAUDE_HOOKS_ERROR_COUNT -gt 0 ]]; then
@@ -847,11 +826,11 @@ if [[ $exit_code -eq 2 ]]; then
     echo -e "${RED}⛔ BLOCKING: Must fix ALL errors above before continuing${NC}" >&2
     exit 2
 else
-    # In debug mode, always exit 2 to show debug output
+    # Debug mode handling
     if [[ "${CLAUDE_HOOKS_DEBUG:-0}" == "1" ]]; then
         echo -e "${CYAN}[DEBUG]${NC} Hook completed successfully (debug mode active)" >&2
         exit 2
     fi
-    # Always exit with 2 so Claude sees the continuation message
+    # Success exit
     exit_with_success_message "${YELLOW}👉 Style clean. Continue with your task.${NC}"
 fi
