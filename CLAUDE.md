@@ -1,211 +1,99 @@
-# Claude Code Rules
+# Development Partnership
 
-FOLLOW ALL INSTRUCTIONS EXACTLY.
+We build production code together. I handle implementation details while you guide architecture and catch complexity early.
 
-**Mode**: Production | **Tolerance**: Zero errors | **Philosophy**: Simple > clever
+<!-- Test edit to trigger hooks -->
 
-## Session Protocol
+**Available MCP Servers** | sequential_thinking | context7 | magic
 
-Start every session with: "I've read CLAUDE.md and will always adhere to its instructions."
+## Core Workflow: Research → Plan → Implement → Validate
 
-If this file hasn't been referenced in 30+ minutes, re-read it.
+**Start every feature with:** "Let me research the codebase and create a plan before implementing."
+**Complex Problems**: Use sequential thinking for challenging tasks
 
-When reading project files, announce: "Reading [filename] for project guidelines..."
+1. **Research** - Understand existing patterns and architecture
+2. **Plan** - Propose approach and verify with you
+3. **Implement** - Build with tests and error handling
+4. **Validate** - ALWAYS run formatters, linters, and tests after implementation
 
-## Workflow Enforcement
+## Code Organization
 
-**Required Sequence**: research → plan → implement (Never skip to implementation)
+**Keep functions small and focused:**
 
-**Response**: "Let me research the codebase and create a plan before implementing."
+- If you need comments to explain sections, split into functions
+- Group related functionality into clear packages
+- Prefer many small files over few large ones
 
-### Intent Recognition & Auto-Execution
+## Architecture Principles
 
-Automatically detect appropriate workflow based on user requests:
+**This is always a feature branch:**
 
-**Simple Changes** ("fix this", "add feature", "update X"):
+- Delete old code completely - no deprecation needed
+- No versioned names (processV2, handleNew, ClientOld)
+- No migration code unless explicitly requested
+- No "removed code" comments - just delete it
 
-- Auto-execute task implementation
-- Suggest: "Try `/task [description]` for organized workflows"
+**Prefer explicit over implicit:**
 
-**Complex Projects** ("implement system", "build feature with X,Y,Z"):
+- Clear function names over clever abstractions
+- Obvious data flow over hidden magic
+- Direct dependencies over service locators
 
-- Auto-create comprehensive plan and begin implementation
-- Suggest: "Try `/plan [project description]` for structured management"
+## Maximize Efficiency
 
-**Status Inquiries** ("what was I working on?", "where are we?"):
+**Parallel operations:** Run multiple searches, reads, and greps in single messages
+**Multiple agents:** Split complex tasks - one for tests, one for implementation
+**Batch similar work:** Group related file edits together
 
-- Auto-check context and provide current status
-- Suggest: "Try `/task` with no arguments to check status"
+## Problem Solving
 
-**Quality Validation** ("is this ready?", "check quality", "run tests"):
+**When stuck:** Stop. The simple solution is usually correct.
+**When uncertain:** "Let me ultrathink about this architecture."
+**When choosing:** "I see approach A (simple) vs B (flexible). Which do you prefer?"
 
-- Auto-run tests, linters, and quality checks
-- Suggest: "Try `/check` for comprehensive validation"
+Your redirects prevent over-engineering. When uncertain about implementation, stop and ask for guidance.
 
-**Shipping** ("ready to commit", "ship this", "finalize changes"):
+## Testing Strategy
 
-- Auto-validate, test, and commit changes
-- Suggest: "Try `/commit` for structured commit workflows"
+**Match testing approach to code complexity:**
 
-**Troubleshooting** ("debug this", "why is X failing?"):
+- Complex business logic: Write tests first (TDD)
+- Simple CRUD operations: Write code first, then tests
+- Hot paths: Add benchmarks after implementation
 
-- Auto-investigate and provide solutions
-- Suggest: "Try `/plan debug [issue description]` for complex debugging"
+**Always keep security in mind:** Validate all inputs, use crypto/rand for randomness, use prepared SQL statements.
 
-### Execution Protocol
+**Performance rule:** Measure before optimizing. No guessing.
 
-1. Analyze request pattern
-2. Auto-execute detected workflow
-3. Provide educational tips about workflow commands
-4. Maintain quality standards and validation checkpoints
-5. Suggest structured workflows when beneficial
+## Progress Tracking
 
-### Memory Management
+- **TodoWrite** for task management
+- **Clear naming** in all code
 
-**AUTONOMOUS**: Full autonomy over `.ai.local/` directory for project memory.
+Focus on maintainable solutions over clever abstractions.
 
-**PRINCIPLES**:
+## Neovim Integration
 
-- Decide what to remember, when, and how to structure it
-- Announce significant operations: "Writing [type] to memory..."
-- Organize by meaning and relevance, not rigid structures
-- Learn what's important for each unique project
+**Socket Control**:  Neovim runs with socket server for remote control
 
-**AUTOMATIC GITIGNORE**: When creating `.ai.local/`:
+**Socket Discovery Protocol**:
 
-- Check if `.ai.local/` is in .gitignore
-- Add if missing with comment "# AI memory directory"
-- Announce: "Ensuring .ai.local/ is gitignored for privacy..."
+- When receiving a message like NVIM_SOCKET=<socket>:
+  - CONFIRM: `✳️ Neovim socket discovered and ready for use`
+  - REMEMBER the socket path for all future commands, it IS NOT an environment variable
 
-**WRITE MEMORY WHEN**:
+**Example commands** (replace `<socket>` with actual socket path):
 
-- Starting new features or major tasks
-- Making important technical decisions
-- Discovering project patterns
-- Solving complex problems
-- Learning from mistakes or insights
-- Finding useful resources
+- Get diagnostics: `nvim --server <socket> --remote-expr "luaeval('vim.fn.json_encode(vim.diagnostic.get())')"`
+- Open file: `nvim --server <socket> --remote-tab-silent <file>`
 
-**FLEXIBLE ORGANIZATION**:
-Create structures based on project needs:
+**When to Use**:
 
-- Architecture decisions and rationale
-- Feature implementations and progress
-- Debugging contexts and solutions
-- Project-specific patterns
-- Research findings
+- When searching for context START with open windows -> buffers -> filesystem
+- Getting real-time diagnostics and LSP info
+- Navigating to specific lines/errors
 
-### Problem Solving Tools
+## Swift rules
 
-**Complex Problems**: Use ultrathink: "I need to ultrathink through this challenge"
-**Parallel Work**: Spawn agents: "I'll spawn agents to tackle different aspects"
-**When Stuck**: STOP → delegate/ultrathink → simplify → ask for guidance
-
-**Available MCP Servers**: sequential_thinking, context7, magic
-
-## Research & Tools
-
-**First Action**: Look for CLAUDE.md and project-specific rules
-
-**Tool Preferences**:
-
-- Use `rg` (not grep), `fd` (not find), `eza` (not ls), `bat` (when helpful)
-- Web tools: playwright (browser automation), browser_tools (quick interactions), fetch (API testing)
-
-## Validation & Testing
-
-**MANDATORY Checkpoints** - STOP and validate at these points:
-
-- Before any task execution - analyze request and auto-select appropriate workflow
-- Before marking any feature complete - verify all requirements met
-- Before starting any new component - confirm architecture and plan
-- When something feels wrong - STOP immediately and reassess
-- Before claiming done - run complete validation checklist
-- On any hook failure - MUST fix before proceeding
-- During execution - provide helpful workflow tips when appropriate
-
-**Hook Failures = BLOCKING** - YOU MUST:
-
-1. STOP immediately when any hook fails
-2. FIX ALL failures before any other action
-3. VERIFY fixes work by re-running
-4. ONLY THEN continue with original task
-5. NEVER ignore or bypass hook failures
-
-**Testing Strategy**:
-
-- Complex logic: Write tests BEFORE implementation
-- Simple CRUD: Write tests AFTER implementation
-- Performance-critical paths: Add benchmarks
-- Skip tests only for: main functions, simple CLI parsing
-
-**Test Automation Tools**:
-
-- E2E testing: playwright
-- API validation: fetch tool for HTTP requests
-- File-based testing: filesystem MCP for file operations
-
-## Code Standards
-
-### Forbidden Practices
-
-- Generic types (`any`, `object`, `unknown`) without constraints
-- sleep() or busy waiting (use proper async patterns)
-- Mixing old/new code patterns in same file
-- Migration/compatibility layers (clean refactor instead)
-- Versioned names (`handleSubmitV2`) - replace old code
-- Complex error hierarchies (keep errors simple and flat)
-- TODOs in final code (complete or remove before commit)
-
-### Required Practices
-
-- Delete old code when replacing with new implementation
-- Use meaningful, descriptive names for variables, functions, classes
-- Use early returns to reduce nesting and improve readability
-- Keep errors simple with clear messages and relevant context
-- Write appropriate tests for all business logic
-- Follow language idioms and conventions
-
-### Security Requirements
-
-- Validate all inputs (never trust user data)
-- Use secure randomness (crypto.randomBytes(), not Math.random())
-- Use prepared statements for database queries (never concatenate SQL strings)
-
-### Performance Rules
-
-- Profile before optimizing
-- No premature optimization (get it working correctly first)
-- Benchmark before claiming performance improvements
-- Use appropriate load testing tools
-
-## Context Management
-
-**Long Context (30+ minutes)**: Re-read this file and announce "Re-reading instructional files due to long context..."
-
-**Todo Structure**:
-
-- `[ ]` Current task (only ONE in_progress)
-- `[x]` Completed and tested (mark immediately)
-- `[ ]` Next planned tasks
-
-## Communication Formats
-
-**File Access**: "Reading [filename] for [purpose]..."
-**Progress**: "✓/✗ Status (details)"
-**Suggestions**: "Current approach works, but I notice [observation]. Would you like me to [improvement]?"
-**Choices**: "I see two approaches: [A] vs [B]. Which do you prefer?"
-
-## Git & Completion
-
-**Git Commits**: Use `/commit` command for all git operations.
-
-## Completion Checklist
-
-Verify ALL items before claiming task complete:
-
-- ALL automated checks MUST be green (lint, type check, format)
-- ALL tests MUST pass (unit, integration, E2E as applicable)
-- End-to-end functionality MUST work as specified
-- ALL old/obsolete code MUST be deleted - no dead code
-- ALL changes MUST be documented appropriately
+- When running xcodebuild, ALWAYS use xcbeautify
+- Avoid compiling swift without xcodebuild, it's a waste of time
