@@ -70,4 +70,6 @@ statsig/
 # Claude Code session data
 todos/
 projects/
+.claude/settings.local.jsoncommands/p
+commands/p
 .claude/settings.local.json

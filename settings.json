@@ -1,4 +1,7 @@
 {
+  "env": {
+    "BASH_DEFAULT_TIMEOUT_MS": "300000"
+  },
   "includeCoAuthoredBy": false,
   "permissions": {
     "allow": [
@@ -145,6 +148,8 @@
       "Bash(which:*)",
       "Bash(whoami:*)",
       "Bash(xargs:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(xcbeautify:*)",
       "Bash(yarn:*)",
       "Bash(yq:*)",
       "Bash(zip:*)",
@@ -217,6 +222,6 @@
         ]
       }
     ]
-  },
-  "model": "sonnet"
+  }
 }
+
