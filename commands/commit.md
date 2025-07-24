@@ -20,7 +20,7 @@ Automatically runs `/check` before committing:
    - Git status for untracked files
    - Git diff for changes
    - Git log for commit style
-   - Memory context from `.ai.local/`
+   - Memory context from Automem
 
 2. **Smart Commit Messages**:
    - Follows repository conventions
@@ -33,12 +33,13 @@ Automatically runs `/check` before committing:
    - Automatically amends if hooks change files
    - Retries once if hooks fail
 
-### Memory Integration
-🧠 Leverages `.ai.local/` context to:
-- Understand feature purpose
-- Include relevant issue numbers
-- Reference architectural decisions
-- Maintain commit message consistency
+### Memory Integration (Automem)
+🧠 Leverages Automem to:
+- Query feature context with `memory_query`
+- Check workflow status with `workflow_status`
+- Find related issues/PRs with `relationships_query`
+- Include architectural decisions from stored memories
+- Maintain commit message consistency across sessions
 
 ## Examples
 ```
