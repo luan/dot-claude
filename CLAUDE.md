@@ -1,18 +1,30 @@
 # Development Partnership
 
-We build production code together. I handle implementation details while you guide architecture and catch complexity early.
+We build production code together. I handle implementation details while you
+guide architecture and catch complexity early.
 
-**Available MCP Servers** | sequential_thinking | context7 | magic | automem | XcodeBuildMCP | linear
+**Available MCP Servers** | sequential_thinking | context7 | magic | automem |
+XcodeBuildMCP | linear
 
 ## Core Workflow: Research → Plan → Implement → Validate
 
-**Start every feature with:** "Let me research the codebase and create a plan before implementing."
-**Complex Problems**: Use sequential thinking for challenging tasks
+**Start every feature with:**
 
-1. **Research** - Understand existing patterns and architecture
-2. **Plan** - Propose approach and verify with you
-3. **Implement** - Build with tests and error handling
-4. **Validate** - ALWAYS run formatters, linters, and tests after implementation
+- "Let me research the codebase and create a plan before implementing"
+- `memory_search` for existing context and `workflow_create` for new features
+- `quick_note` to capture initial findings
+
+**Complex Problems**: Use sequential thinking for challenging tasks
+**ALWAYS**: Store architectural decisions with `memory_store` category "context"
+
+1. **Research** - Understand existing patterns and architecture +
+   `memory_store` findings
+2. **Plan** - Propose approach and verify with you + `workflow_create` for
+   multi-session work
+3. **Implement** - Build with tests and error handling + `quick_note` for
+   complex decisions
+4. **Validate** - ALWAYS run formatters, linters, and tests + `memory_store`
+   results with category "result"
 
 ## Code Organization
 
@@ -49,7 +61,8 @@ We build production code together. I handle implementation details while you gui
 **When uncertain:** "Let me ultrathink about this architecture."
 **When choosing:** "I see approach A (simple) vs B (flexible). Which do you prefer?"
 
-Your redirects prevent over-engineering. When uncertain about implementation, stop and ask for guidance.
+Your redirects prevent over-engineering. When uncertain about implementation,
+stop and ask for guidance.
 
 ## Testing Strategy
 
@@ -59,31 +72,56 @@ Your redirects prevent over-engineering. When uncertain about implementation, st
 - Simple CRUD operations: Write code first, then tests
 - Hot paths: Add benchmarks after implementation
 
-**Always keep security in mind:** Validate all inputs, use crypto/rand for randomness, use prepared SQL statements.
+**Always keep security in mind:** Validate all inputs, use crypto/rand for  
+randomness, use prepared SQL statements.
 
 **Performance rule:** Measure before optimizing. No guessing.
 
 ## Progress Tracking
 
-- **TodoWrite** for task management
-- **Clear naming** in all code
+**Primary task management:** Use automem board over TodoWrite
+
+- `board_create` for new tasks with clear categories
+- `board_move` to track progress through workflow phases
+- `memory_store` with category "action" for implementation decisions
+
+**TodoWrite only for:** Temporary session-specific tasks that don't need
+persistence
+
+**Clear naming** in all code
 
 Focus on maintainable solutions over clever abstractions.
+
+## Session Management
+
+**At session start:**
+
+- `workflow_status` to check active work
+- `memory_search` for project context
+- `board_status` for pending tasks
+
+**During work:**
+
+- `relationships_store` to link related concepts
+- `quick_task` for immediate todos
 
 ## Memory & Context Management (Automem)
 
 **Store project context as you work:**
+
 - Architecture decisions → `memory_store` with category "context"
-- Implementation details → `memory_store` with category "action" 
+- Implementation details → `memory_store` with category "action"
 - Blockers/solutions → `memory_store` with category "error/result"
 - Task tracking → `board_create` for active work
 
 **Workflow for complex projects:**
+
 - Use `workflow_create` for multi-phase features
 - Track progress with `workflow_complete`
 - Query context with `memory_search` using hybrid algorithm
 
 **Quick actions for efficiency:**
+
 - `quick_note` for rapid context capture
 - `quick_task` for immediate todo items
 - `quick_find` for searching across all memories
@@ -91,16 +129,20 @@ Focus on maintainable solutions over clever abstractions.
 ## Automem Usage Patterns
 
 **Context Capture:**
-- Use specific categories: observation (research), action (implementation), result (outcomes)
+
+- Use specific categories: observation (research), action (implementation),
+  result (outcomes)
 - Create relationships between features, files, and decisions
 - Tag memories with project/feature names for easy retrieval
 
 **Workflow Management:**
+
 - Create workflows for features spanning multiple sessions
 - Complete phases as you progress
 - Query workflow status at session start
 
 **Search Strategies:**
+
 - Use hybrid search (default) for best results
 - Query by feature name, file path, or concept
 - Traverse relationships to understand system connections
@@ -111,7 +153,7 @@ Focus on maintainable solutions over clever abstractions.
 
 **Socket Discovery Protocol**:
 
-- When receiving a message like NVIM_SOCKET=<socket>:
+- When receiving a message like NVIM_SOCKET=\<socket\>:
   - CONFIRM: `✳️ Neovim socket discovered and ready for use`
   - REMEMBER the socket path for all future commands, it IS NOT an environment variable
 
