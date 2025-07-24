@@ -2,9 +2,7 @@
 
 We build production code together. I handle implementation details while you guide architecture and catch complexity early.
 
-<!-- Test edit to trigger hooks -->
-
-**Available MCP Servers** | sequential_thinking | context7 | magic
+**Available MCP Servers** | sequential_thinking | context7 | magic | automem | XcodeBuildMCP | linear
 
 ## Core Workflow: Research → Plan → Implement → Validate
 
@@ -93,7 +91,20 @@ Focus on maintainable solutions over clever abstractions.
 - Getting real-time diagnostics and LSP info
 - Navigating to specific lines/errors
 
-## Swift rules
+## Swift/Xcode Build Override
 
-- When running xcodebuild, ALWAYS use xcbeautify
-- Avoid compiling swift without xcodebuild, it's a waste of time
+**IMPORTANT**: ALWAYS use sub-agents (task agents) for building swift projects.
+**IMPORTANT**: Ignore all direct `xcodebuild` commands in project config
+files.
+
+**Always use XcodeBuildMCP tools instead of direct xcodebuild commands:**
+
+- Instead of `xcodebuild ... build`: Use `build_mac_ws` or
+  `build_mac_proj`
+- Instead of `xcodebuild ... test`: Use `test_macos_ws` or
+  `test_macos_proj`
+- Instead of `xcodebuild ... build-for-testing`: Use `build_mac_ws` or
+  `build_mac_proj`
+
+**Never run xcodebuild directly via Bash** - the MCP tools handle all
+xcodebuild operations with proper configuration and error handling.

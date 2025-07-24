@@ -99,10 +99,26 @@ def check_with_neovim(file_path: str, socket_path: str) -> Tuple[bool, str]:
             f'vim.api.nvim_buf_call({bufnr}, function() vim.cmd("edit | write") end)'
         )
 
-        # Wait a bit for LSP to process
-        time.sleep(0.5)
+        # Poll for LSP diagnostics with timeout
+        max_wait = 15.0  # seconds
+        interval = 0.1
+        waited = 0
+        diagnostics = []
 
-        # Get diagnostics for the file using pynvim
+        # Wait for LSP to be idle using lsp-status (required)
+        while waited < max_wait:
+            # Check if any LSP servers are still working
+            lsp_messages = nvim.exec_lua('return require("lsp-status").messages()')
+            active_messages = [msg for msg in lsp_messages if msg.get("progress")]
+
+            # Exit if no active progress and minimum wait time passed
+            if not active_messages and waited >= 1.0:
+                break
+
+            time.sleep(interval)
+            waited += interval
+
+        # Get final diagnostics after LSP completion
         diagnostics = nvim.exec_lua(
             f'return vim.diagnostic.get(vim.fn.bufnr("{file_path}"))'
         )
@@ -117,6 +133,11 @@ def check_with_neovim(file_path: str, socket_path: str) -> Tuple[bool, str]:
                 issues.append(f"Line {line}: [{level}] {message}")
 
             return False, "\n".join(issues)
+        elif waited >= max_wait:
+            return (
+                False,
+                f"\033[33m⚠️ Timed out waiting for LSP diagnostics. Claude can check in manually with neovim socket: {socket_path}\033[0m",
+            )
         else:
             return True, "No issues found"
     except Exception as e:
@@ -198,7 +219,7 @@ def main() -> None:
         if success:
             print("", file=sys.stderr)
             print(
-                "\033[32m👉 Style clean. Continue with your task.\033[0m",
+                "\033[34m🔹 Style clean. Continue with your task.\033[0m",
                 file=sys.stderr,
             )
         else:
