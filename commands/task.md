@@ -14,25 +14,33 @@ The model will analyze your request and automatically:
 - **Complex tasks**: Create a plan first, then execute
 - **Status check**: Show current progress when no task specified
 
-### Memory Management
-🧠 The model will autonomously manage `.ai.local/` with comprehensive context:
+### Memory Management (Automem)
+🧠 The model will autonomously manage context using Automem:
 
-**Core Task Context:**
-- Task objectives, requirements, and acceptance criteria
-- Project context and current understanding
-- Implementation decisions and rationale
-- Progress tracking with detailed status updates
-- Validation checkpoints and quality gates
+**Task Context Storage:**
+- `memory_store` for implementation details and decisions
+- `quick_task` for immediate todo items
+- `quick_note` for rapid context capture
+- `relationships_store` to link files, features, and decisions
 
-**Enhanced Reboot Context:**
-- Codebase research findings and architecture insights
-- Technical patterns, conventions, and dependencies discovered
-- Specific implementation details (APIs, libraries, approaches)
-- Testing strategy and validation methods used
-- Debugging context and solutions to blockers
-- Code changes made with explanations
-- Integration points and system relationships
-- Future maintenance considerations and follow-up tasks
+**Progress Tracking:**
+- `board_create` for task breakdown
+- `board_move` to update task status
+- `board_status` to visualize progress
+- `memory_store` with category "result" for outcomes
+
+**Context Retrieval:**
+- `quick_find` for rapid searches
+- `memory_query` for detailed context
+- `relationships_query` to understand connections
+- `workflow_status` if part of larger project
+
+**Categories Used:**
+- "observation" - Research findings and analysis
+- "action" - Implementation steps taken
+- "result" - Outcomes and validations
+- "error" - Issues encountered
+- "context" - Architectural decisions
 
 ### Quality Standards
 - ✅ All code follows project conventions

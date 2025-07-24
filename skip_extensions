@@ -1,0 +1,64 @@
+# File extensions to skip during linting
+# Lines starting with # are ignored
+
+# Images
+.png
+.jpg
+.jpeg
+.gif
+.bmp
+.svg
+.ico
+.webp
+
+# Documents
+.pdf
+.doc
+.docx
+.xls
+.xlsx
+.ppt
+.pptx
+
+# Archives
+.zip
+.tar
+.gz
+.bz2
+.7z
+.rar
+
+# Binary/Compiled
+.exe
+.dll
+.so
+.dylib
+.a
+.o
+.pyc
+.class
+.jar
+
+# Media
+.mp3
+.mp4
+.avi
+.mov
+.wav
+.flac
+
+# Data
+.db
+.sqlite
+.sqlite3
+.pkl
+.pickle
+.npy
+.npz
+
+# Other
+.lock
+.log
+.tmp
+.swp
+.DS_Store

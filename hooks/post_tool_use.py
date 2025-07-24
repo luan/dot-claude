@@ -18,6 +18,43 @@ from typing import Optional, Tuple
 from pynvim import attach
 
 
+def load_config_set(config_file: str) -> set:
+    """Load configuration from a file, skipping comments and empty lines."""
+    config_path = Path.home() / ".claude" / config_file
+    items = set()
+
+    try:
+        if config_path.exists():
+            for line in config_path.read_text().splitlines():
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    items.add(line.lower())  # Normalize to lowercase
+    except Exception:
+        pass  # Silently fail and use defaults
+
+    return items
+
+
+def print_success(message: str) -> None:
+    """Print success message with formatting."""
+    print("", file=sys.stderr)
+    print(f"\033[34m🔹 {message}\033[0m", file=sys.stderr)
+
+
+def print_error(message: str, details: str = "") -> None:
+    """Print error message with formatting."""
+    print("", file=sys.stderr)
+    print(f"\033[31m⛔ {message}\033[0m", file=sys.stderr)
+    if details:
+        print(details, file=sys.stderr)
+
+
+def print_warning(message: str) -> None:
+    """Print warning message with formatting."""
+    print("", file=sys.stderr)
+    print(f"\033[33m⚠️  {message}\033[0m", file=sys.stderr)
+
+
 def find_nvim_socket() -> Optional[str]:
     """Find an active Neovim socket for the current project."""
     try:
@@ -136,7 +173,7 @@ def check_with_neovim(file_path: str, socket_path: str) -> Tuple[bool, str]:
         elif waited >= max_wait:
             return (
                 False,
-                f"\033[33m⚠️ Timed out waiting for LSP diagnostics. Claude can check in manually with neovim socket: {socket_path}\033[0m",
+                f"Timed out waiting for LSP diagnostics. Claude can check in manually with neovim socket: {socket_path}",
             )
         else:
             return True, "No issues found"
@@ -149,34 +186,43 @@ def should_lint_file(file_path: Path) -> bool:
     if not file_path.exists():
         return False
 
-    # Skip common directories and non-text files
-    skip_dirs = {
-        "venv",
-        ".venv",
-        "__pycache__",
-        ".git",
-        "node_modules",
-        ".build",
-        "build",
-    }
+    # Load skip configurations from external files
+    skip_dirs = load_config_set("skip_dirs")
+    skip_extensions = load_config_set("skip_extensions")
+
+    # Fall back to defaults if config files are empty
+    if not skip_dirs:
+        skip_dirs = {
+            "venv",
+            ".venv",
+            "__pycache__",
+            ".git",
+            "node_modules",
+            ".build",
+            "build",
+        }
+
+    if not skip_extensions:
+        skip_extensions = {
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".gif",
+            ".pdf",
+            ".zip",
+            ".tar",
+            ".gz",
+            ".exe",
+            ".so",
+            ".dylib",
+        }
+
+    # Check if any part of the path contains a skip directory
     for part in file_path.parts:
-        if part in skip_dirs:
+        if part.lower() in skip_dirs:
             return False
 
-    # Skip binary files and common non-lintable extensions
-    skip_extensions = {
-        ".png",
-        ".jpg",
-        ".jpeg",
-        ".gif",
-        ".pdf",
-        ".zip",
-        ".tar",
-        ".gz",
-        ".exe",
-        ".so",
-        ".dylib",
-    }
+    # Check file extension
     if file_path.suffix.lower() in skip_extensions:
         return False
 
@@ -217,24 +263,22 @@ def main() -> None:
         success, message = check_with_neovim(file_path_str, socket_path)
 
         if success:
-            print("", file=sys.stderr)
-            print(
-                "\033[34m🔹 Style clean. Continue with your task.\033[0m",
-                file=sys.stderr,
-            )
+            print_success("Style clean. Continue with your task.")
         else:
-            print("", file=sys.stderr)
-            print(
-                "\033[31m⛔ BLOCKING: Must fix ALL errors above before continuing\033[0m",
-                file=sys.stderr,
+            print_error(
+                "BLOCKING: Must fix ALL errors above before continuing", message
             )
-            print(f"{message}", file=sys.stderr)
 
         sys.exit(2)
 
     except json.JSONDecodeError:
+        # Silently exit on JSON decode errors
         sys.exit(2)
-    except Exception:
+    except Exception as e:
+        # Log unexpected errors for debugging
+        print_error(
+            f"Unexpected error in post_tool_use hook: {type(e).__name__}", str(e)
+        )
         sys.exit(2)
 
 

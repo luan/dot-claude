@@ -22,24 +22,30 @@ The model will:
 4. Break work into session-sized chunks
 5. Set up appropriate memory structures
 
-### Memory Management
-🧠 Autonomously creates comprehensive planning artifacts in `.ai.local/`:
+### Memory Management (Automem)
+🧠 Autonomously creates comprehensive planning context using Automem:
 
-**Core Planning Context:**
-- Project objectives, constraints, and success criteria
-- Architectural decisions and detailed rationale
-- Phase breakdowns with dependencies and timelines
-- Risk assessments and mitigation strategies
-- Progress tracking with validation checkpoints
+**Workflow Creation:**
+- `workflow_create` for multi-phase project tracking
+- Phase breakdowns with dependencies stored as workflow steps
+- `workflow_complete` to mark phase completion
+- `workflow_status` to check progress across sessions
 
-**Enhanced Reboot Context:**
-- Technical research findings and codebase analysis
-- Code patterns, conventions, and tech stack understanding
-- Implementation approach with specific APIs/libraries
-- Testing strategy and validation requirements
-- Blockers encountered and solutions implemented
-- Future considerations and follow-up tasks
-- Cross-system relationships and dependencies
+**Context Storage:**
+- `memory_store` with category "context" for architectural decisions
+- `memory_store` with category "observation" for research findings
+- `memory_store` with category "action" for implementation plans
+- `relationships_store` to link components and decisions
+
+**Task Management:**
+- `board_create` for breaking down work into tasks
+- `board_move` to track task progress through categories
+- `board_status` for visual progress tracking
+
+**Retrieval & Analysis:**
+- `memory_search` to find relevant context
+- `relationships_traverse` to understand system connections
+- `analysis_analyze` for pattern detection
 
 ### When to Use
 - Building new systems or major features

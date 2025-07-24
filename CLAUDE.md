@@ -70,6 +70,41 @@ Your redirects prevent over-engineering. When uncertain about implementation, st
 
 Focus on maintainable solutions over clever abstractions.
 
+## Memory & Context Management (Automem)
+
+**Store project context as you work:**
+- Architecture decisions → `memory_store` with category "context"
+- Implementation details → `memory_store` with category "action" 
+- Blockers/solutions → `memory_store` with category "error/result"
+- Task tracking → `board_create` for active work
+
+**Workflow for complex projects:**
+- Use `workflow_create` for multi-phase features
+- Track progress with `workflow_complete`
+- Query context with `memory_search` using hybrid algorithm
+
+**Quick actions for efficiency:**
+- `quick_note` for rapid context capture
+- `quick_task` for immediate todo items
+- `quick_find` for searching across all memories
+
+## Automem Usage Patterns
+
+**Context Capture:**
+- Use specific categories: observation (research), action (implementation), result (outcomes)
+- Create relationships between features, files, and decisions
+- Tag memories with project/feature names for easy retrieval
+
+**Workflow Management:**
+- Create workflows for features spanning multiple sessions
+- Complete phases as you progress
+- Query workflow status at session start
+
+**Search Strategies:**
+- Use hybrid search (default) for best results
+- Query by feature name, file path, or concept
+- Traverse relationships to understand system connections
+
 ## Neovim Integration
 
 **Socket Control**:  Neovim runs with socket server for remote control
