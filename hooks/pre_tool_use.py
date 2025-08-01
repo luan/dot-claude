@@ -30,6 +30,17 @@ def deny(reason):
     }
 
 
+def ask(reason):
+    """Request permission for the tool call with a reason."""
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "ask",
+            "permissionDecisionReason": reason,
+        }
+    }
+
+
 def respond(response):
     """Send response and exit."""
     print(json.dumps(response))
@@ -107,38 +118,112 @@ def is_safe_pipe_command(command):
     # Load safe commands from file
     safe_commands = load_safe_commands()
 
-    # Split by pipes and check each command
-    pipe_segments = command.split("|")
+    # Known dangerous commands that should always be blocked
+    dangerous_commands = {
+        "rm",
+        "rmdir",
+        "dd",
+        "mkfs",
+        "fdisk",
+        "parted",
+        "shred",
+        "wipe",
+        "secure-delete",
+        "srm",
+        "shutdown",
+        "reboot",
+        "halt",
+        "poweroff",
+        "systemctl",
+        "service",
+        "init",
+        "eval",
+        "exec",  # code execution
+    }
+
+    # Split by pipes, but respect quoted strings
+    pipe_segments = []
+    current_segment = ""
+    in_single_quote = False
+    in_double_quote = False
+    i = 0
+
+    while i < len(command):
+        char = command[i]
+
+        if char == "'" and not in_double_quote:
+            in_single_quote = not in_single_quote
+            current_segment += char
+        elif char == '"' and not in_single_quote:
+            in_double_quote = not in_double_quote
+            current_segment += char
+        elif char == "|" and not in_single_quote and not in_double_quote:
+            # This is a pipe separator, not inside quotes
+            pipe_segments.append(current_segment)
+            current_segment = ""
+        else:
+            current_segment += char
+
+        i += 1
+
+    # Don't forget the last segment
+    if current_segment:
+        pipe_segments.append(current_segment)
 
     for segment in pipe_segments:
         segment = segment.strip()
         if not segment:
             continue
 
-        # Extract the base command (first word)
-        parts = segment.split()
-        if not parts:
+        # Extract the command - more robust parsing
+        # Handle cases like: grep -E "pattern", git --no-pager log, etc.
+        words = segment.split()
+        if not words:
             continue
 
-        base_command = parts[0]
+        # Start with the first word
+        idx = 0
+        cmd = None
 
-        # Remove common prefixes
-        if base_command in ["sudo", "time", "nice", "nohup"]:
-            if len(parts) > 1:
-                base_command = parts[1]
-            else:
-                return False  # Incomplete command
+        # Skip environment variables (VAR=value)
+        while idx < len(words) and "=" in words[idx] and not words[idx].startswith("-"):
+            idx += 1
 
-        # Check if it's in our safe list
-        if base_command not in safe_commands:
-            # Also check for absolute paths to safe commands
-            if "/" in base_command:
-                command_name = base_command.split("/")[-1]
-                if command_name not in safe_commands:
-                    return False
-            else:
-                return False
+        if idx >= len(words):
+            continue
 
+        # Get the base command
+        potential_cmd = words[idx]
+
+        # If it starts with -, it's likely a flag for a previous command, skip this segment
+        if potential_cmd.startswith("-"):
+            continue
+
+        # Extract command name from path if needed
+        if "/" in potential_cmd:
+            cmd = potential_cmd.split("/")[-1]
+        else:
+            cmd = potential_cmd
+
+        # Remove file extensions
+        for ext in [".sh", ".py", ".rb", ".pl", ".js", ".ts"]:
+            if cmd.endswith(ext):
+                cmd = cmd[: -len(ext)]
+                break
+
+        # Check if it's a dangerous command first
+        if cmd in dangerous_commands:
+            return False
+
+        # Check if it's in the safe list
+        if cmd not in safe_commands:
+            # Special handling for common shell constructs
+            if cmd in ["[", "[[", "test", "(", "{", ";"]:
+                continue
+            # If not safe, deny
+            return False
+
+    # All commands in the pipeline are safe
     return True
 
 
@@ -200,8 +285,8 @@ def main():
             # Check for unsafe piped commands
             if "|" in command and not is_safe_pipe_command(command):
                 respond(
-                    deny(
-                        "Unsafe pipe command detected. Only allowlisted commands can be piped together."
+                    ask(
+                        "This command contains piped commands that are not in the safe allowlist. Would you like to proceed?"
                     )
                 )
 
