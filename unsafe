@@ -1,0 +1,4 @@
+# Unsafe commands list
+# Format: command # message
+swift # use XcodeBuildMCP instead
+xcodebuild # use XcodeBuildMCP instead

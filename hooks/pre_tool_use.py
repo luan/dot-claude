@@ -141,6 +141,12 @@ def is_safe_pipe_command(command):
         "exec",  # code execution
     }
 
+    # Unsafe command list - commands that require explicit permission with custom messages
+    unsafe_commands = {
+        "swift": "use XcodeBuildMCP instead",
+        "xcodebuild": "use XcodeBuildMCP instead",
+    }
+
     # Split by pipes, but respect quoted strings
     pipe_segments = []
     current_segment = ""
@@ -215,6 +221,10 @@ def is_safe_pipe_command(command):
         if cmd in dangerous_commands:
             return False
 
+        # Check if it's an unsafe command
+        if cmd in unsafe_commands:
+            return False
+
         # Check if it's in the safe list
         if cmd not in safe_commands:
             # Special handling for common shell constructs
@@ -258,6 +268,65 @@ def is_env_file_access(tool_name, tool_input):
     return False
 
 
+def load_unsafe_commands():
+    """Load unsafe commands from ~/.claude/unsafe file."""
+    unsafe_file = Path.home() / ".claude" / "unsafe"
+    unsafe_commands = {}
+
+    try:
+        if unsafe_file.exists():
+            for line in unsafe_file.read_text().splitlines():
+                line = line.strip()
+                # Skip empty lines and comments that don't contain commands
+                if line and not line.startswith("#"):
+                    # Split by # to get command and message
+                    if "#" in line:
+                        parts = line.split("#", 1)
+                        command = parts[0].strip()
+                        message = (
+                            parts[1].strip()
+                            if len(parts) > 1
+                            else "Command is restricted"
+                        )
+                        if command:  # Only add if command is not empty
+                            unsafe_commands[command] = message
+    except Exception:
+        # If we can't read the file, return empty dict
+        pass
+
+    return unsafe_commands
+
+
+def check_unsafe_command(command):
+    """
+    Check if command contains any unsafe commands and return the reason if found.
+    Returns (is_unsafe, reason) tuple.
+    """
+    # Load unsafe commands from file
+    unsafe_commands = load_unsafe_commands()
+
+    # Extract the base command
+    words = command.split()
+    if not words:
+        return False, None
+
+    # Get the first non-flag word as the command
+    for word in words:
+        if not word.startswith("-"):
+            # Extract command name from path if needed
+            if "/" in word:
+                cmd = word.split("/")[-1]
+            else:
+                cmd = word
+
+            # Check if it's an unsafe command
+            if cmd in unsafe_commands:
+                return True, f"Command execution denied, reason: {unsafe_commands[cmd]}"
+            break
+
+    return False, None
+
+
 def main():
     try:
         # Read JSON input from stdin
@@ -281,6 +350,11 @@ def main():
             # Block rm -rf commands with comprehensive pattern matching
             if is_dangerous_rm_command(command):
                 respond(deny("Dangerous rm command detected and prevented"))
+
+            # Check for unsafe commands
+            is_unsafe, reason = check_unsafe_command(command)
+            if is_unsafe:
+                respond(deny(reason))
 
             # Check for unsafe piped commands
             if "|" in command and not is_safe_pipe_command(command):
