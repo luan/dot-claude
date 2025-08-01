@@ -1,54 +1,32 @@
-# /commit - Validate & Commit Changes
+# /commit - Commit Changes
 
-Ensure code quality and commit changes with intelligent context.
+Commit changes using the specialized commit-message-writer agent.
 
 ## Usage
+
 - `/commit` - Auto-generate commit message from changes
 - `/commit [message]` - Use custom commit message
 
 ## Behavior
 
-### Validation First
-Automatically runs `/check` before committing:
-- Fixes all quality issues
-- Ensures tests pass
-- Verifies build succeeds
-- Only commits when everything is green
+Uses the `commit-message-writer` agent to:
 
-### Commit Process
-1. **Parallel Analysis**:
-   - Git status for untracked files
-   - Git diff for changes
-   - Git log for commit style
-   - Memory context from Automem
+1. Analyze git status and diffs in parallel
+2. Generate conventional commit messages
+3. Handle pre-commit hooks gracefully
 
-2. **Smart Commit Messages**:
-   - Follows repository conventions
-   - Includes context from memory
-   - Focuses on "why" not "what"
-   - Uses HEREDOC format for proper formatting
-
-3. **Pre-commit Handling**:
-   - Handles hook modifications gracefully
-   - Automatically amends if hooks change files
-   - Retries once if hooks fail
-
-### Memory Integration (Automem)
-🧠 Leverages Automem to:
-- Query feature context with `memory_query`
-- Check workflow status with `workflow_status`
-- Find related issues/PRs with `relationships_query`
-- Include architectural decisions from stored memories
-- Maintain commit message consistency across sessions
+The agent follows the Conventional Commits specification and focuses on explaining WHY changes were made rather than just WHAT changed.
 
 ## Examples
+
 ```
-/commit  # Validate and commit with auto-generated message
+/commit  # Commit with auto-generated message
 /commit "feat: add user authentication with JWT"
 ```
 
-## Philosophy
-- Quality before speed
-- Context-aware commits
-- Respect project conventions
-- Never commit broken code
+## Implementation
+
+When this command is invoked:
+
+1. If a custom message is provided, use it directly
+2. Otherwise, launch the commit-message-writer agent to analyze changes and create an appropriate commit message
