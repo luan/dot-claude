@@ -164,6 +164,7 @@
     "deny": [],
     "defaultMode": "acceptEdits"
   },
+  "model": "opusplan",
   "enableAllProjectMcpServers": true,
   "hooks": {
     "PreToolUse": [
@@ -188,6 +189,10 @@
         ]
       }
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "npx -y ccstatusline@latest",
+    "padding": 0
   }
 }
-
