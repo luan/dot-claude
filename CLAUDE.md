@@ -1,22 +1,21 @@
 # Development Partnership
 
-We build production code together. I handle implementation details while you
-guide architecture and catch complexity early.
+We build production code together. I handle implementation details while you guide architecture and catch complexity early.
 
-**Available MCP Servers** | sequential_thinking | context7 | magic | XcodeBuildMCP | linear
+## Using tools
 
-## Core Workflow: Research → Plan → Implement → Validate
+When editing, search, or reading code, check if using the serena MCP tools is appropriate before using general ones.
 
-**Start every feature with:**
+## Core Workflow: Research → Plan → Tests ->Implement → Validate
 
-- "Let me research the codebase and create a plan before implementing"
-
+**Start every feature with:** "Let me research the codebase and create a plan before implementing."
 **Complex Problems**: Use sequential thinking for challenging tasks
 
 1. **Research** - Understand existing patterns and architecture
 2. **Plan** - Propose approach and verify with you
-3. **Implement** - Build with tests and error handling
-4. **Validate** - ALWAYS run formatters, linters, and tests
+3. **Tests** - Guide implementation with tests. TDD as much as possible.
+4. **Implement** - Build with tests and error handling
+5. **Validate** - ALWAYS run formatters, linters, and tests after implementation
 
 ## Code Organization
 
@@ -43,40 +42,32 @@ guide architecture and catch complexity early.
 
 ## Maximize Efficiency
 
-**Parallel operations:** Run multiple searches, reads, and greps in single messages
-**Multiple agents:** Split complex tasks - one for tests, one for implementation
-**Batch similar work:** Group related file edits together
+- **Parallel operations:** Run multiple searches, reads, and greps in single messages
+- **Multiple agents:** Aggressively split complex tasks - one for tests, one for implementation
+- **Use your sub-agents:** Aggressively delegate tasks to sub-agents available in the system
+- **Use MCP tools**: Aggressively use MCP tools like serena, context7 and others
+- **Batch similar work:** Group related file edits together
 
 ## Problem Solving
 
-**When stuck:** Stop. The simple solution is usually correct.
-**When uncertain:** "Let me ultrathink about this architecture."
-**When choosing:** "I see approach A (simple) vs B (flexible). Which do you prefer?"
+- **When stuck:** Stop. The simple solution is usually correct.
+- **When uncertain:** "Let me ultrathink about this architecture."
+- **When choosing:** "I see approach A (simple) vs B (flexible). Which do you prefer?"
 
 Your redirects prevent over-engineering. When uncertain about implementation,
 stop and ask for guidance.
 
 ## Testing Strategy
 
-**Match testing approach to code complexity:**
-
-- Complex business logic: Write tests first (TDD)
-- Simple CRUD operations: Write code first, then tests
-- Hot paths: Add benchmarks after implementation
-
-**Always keep security in mind:** Validate all inputs, use crypto/rand for  
-randomness, use prepared SQL statements.
-
-**Performance rule:** Measure before optimizing. No guessing.
+- **TDD**: Let tests guide your design during implementation.
+- **When no tests exist**: Ask if we're working on a throwaway prototype before giving up on tests.
 
 ## Progress Tracking
 
-**Primary task management:** Use TodoWrite for tracking tasks
-
-**Clear naming** in all code
+- **TodoWrite** for task management
+- **Clear naming** in all code
 
 Focus on maintainable solutions over clever abstractions.
-
 
 ## Neovim Integration
 
@@ -92,27 +83,3 @@ Focus on maintainable solutions over clever abstractions.
 
 - Get diagnostics: `nvim --server <socket> --remote-expr "luaeval('vim.fn.json_encode(vim.diagnostic.get())')"`
 - Open file: `nvim --server <socket> --remote-tab-silent <file>`
-
-**When to Use**:
-
-- When searching for context START with open windows -> buffers -> filesystem
-- Getting real-time diagnostics and LSP info
-- Navigating to specific lines/errors
-
-## Swift/Xcode Build Override
-
-**IMPORTANT**: ALWAYS use sub-agents (task agents) for building swift projects.
-**IMPORTANT**: Ignore all direct `xcodebuild` commands in project config
-files.
-
-**Always use XcodeBuildMCP tools instead of direct xcodebuild commands:**
-
-- Instead of `xcodebuild ... build`: Use `build_mac_ws` or
-  `build_mac_proj`
-- Instead of `xcodebuild ... test`: Use `test_macos_ws` or
-  `test_macos_proj`
-- Instead of `xcodebuild ... build-for-testing`: Use `build_mac_ws` or
-  `build_mac_proj`
-
-**Never run xcodebuild directly via Bash** - the MCP tools handle all
-xcodebuild operations with proper configuration and error handling.
