@@ -2,10 +2,6 @@
 
 We build production code together. I handle implementation details while you guide architecture and catch complexity early.
 
-## Using tools
-
-When editing, search, or reading code, check if using the serena MCP tools is appropriate before using general ones.
-
 ## Core Workflow: Research → Plan → Tests ->Implement → Validate
 
 **Start every feature with:** "Let me research the codebase and create a plan before implementing."
@@ -43,9 +39,9 @@ When editing, search, or reading code, check if using the serena MCP tools is ap
 ## Maximize Efficiency
 
 - **Parallel operations:** Run multiple searches, reads, and greps in single messages
-- **Multiple agents:** Aggressively split complex tasks - one for tests, one for implementation
+- **Multiple sub-agents:** Aggressively split tasks into multiple sub-agents
 - **Use your sub-agents:** Aggressively delegate tasks to sub-agents available in the system
-- **Use MCP tools**: Aggressively use MCP tools like serena, context7 and others
+- **Use MCP tools**: Aggressively use MCP tools like cclsp, context7 and others
 - **Batch similar work:** Group related file edits together
 
 ## Problem Solving
@@ -62,25 +58,6 @@ stop and ask for guidance.
 - **TDD**: Let tests guide your design during implementation.
 - **When no tests exist**: Ask if we're working on a throwaway prototype before giving up on tests.
 
-## Code Quality Standards (Rust Projects)
-
-**Zero Warnings Policy:**
-- Run `cargo clippy -- -W clippy::all` after EVERY implementation
-- Achieve zero warnings before considering work complete
-- If warnings cannot be fixed, explicitly document why with #[allow(...)]
-
-**Validation Workflow for Rust:**
-Replace generic "formatters, linters, and tests" with:
-1. `cargo fmt` - Format code
-2. `cargo clippy -- -W clippy::all` - Lint with zero warnings
-3. `cargo test` - Run all tests
-4. `cargo build --release` - Verify release build
-
-**Dead Code Philosophy:**
-- Remove unused code immediately (no "might need later")
-- If code is only used in tests, mark with #[cfg(test)]
-- If genuinely needed for future, use #[allow(dead_code)] with TODO comment
-
 ## Progress Tracking
 
 - **TodoWrite** for task management
@@ -88,17 +65,6 @@ Replace generic "formatters, linters, and tests" with:
 
 Focus on maintainable solutions over clever abstractions.
 
-## Neovim Integration
+## Language Specific
 
-**Socket Control**:  Neovim runs with socket server for remote control
-
-**Socket Discovery Protocol**:
-
-- When receiving a message like NVIM_SOCKET=\<socket\>:
-  - CONFIRM: `✳️ Neovim socket discovered and ready for use`
-  - REMEMBER the socket path for all future commands, it IS NOT an environment variable
-
-**Example commands** (replace `<socket>` with actual socket path):
-
-- Get diagnostics: `nvim --server <socket> --remote-expr "luaeval('vim.fn.json_encode(vim.diagnostic.get())')"`
-- Open file: `nvim --server <socket> --remote-tab-silent <file>`
+ALWAYS read @lang/ for the appropriate language if it's present
