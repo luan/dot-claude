@@ -74,3 +74,5 @@ projects/
 commands/p
 .claude/settings.local.json
 local
+local/package-lock.json
+local

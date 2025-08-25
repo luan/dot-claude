@@ -162,22 +162,11 @@
       "mcp__automem"
     ],
     "deny": [],
-    "defaultMode": "acceptEdits"
+    "defaultMode": "plan"
   },
   "model": "opusplan",
   "enableAllProjectMcpServers": true,
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run ~/.claude/hooks/pre_tool_use.py"
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "",

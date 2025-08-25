@@ -38,6 +38,7 @@ jq
 yq
 
 # System info
+system_profiler
 ps
 top
 htop
@@ -53,12 +54,16 @@ lscpu
 lsblk
 
 # Development tools
+cmake
+make
+ninja
 git
 gh
 docker
 npm
 yarn
 pnpm
+nc
 cargo
 python
 node
@@ -85,6 +90,7 @@ ss
 lsof
 
 # Other safe tools
+cd
 which
 type
 command
@@ -101,3 +107,5 @@ xargs
 uvx
 chatgpt
 gemini
+timeout
+pkill
