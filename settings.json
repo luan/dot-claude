@@ -170,5 +170,18 @@
     "type": "command",
     "command": "npx -y ccstatusline@latest",
     "padding": 0
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hoooks/you_are_not_right.sh"
+          }
+        ]
+      }
+    ]
   }
 }
