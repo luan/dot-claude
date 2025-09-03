@@ -173,18 +173,18 @@
   "hooks": {
     "UserPromptSubmit": [
       {
-        "matcher": "Edit|MultiEdit/Write",
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hoooks/you_are_not_right.sh"
+            "command": "~/.claude/hooks/you_are_not_right.sh"
           }
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "",
+        "matcher": "Edit|MultiEdit|Write",
         "hooks": [
           {
             "type": "command",

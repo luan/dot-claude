@@ -74,6 +74,46 @@ def should_skip_file(file_path: Path) -> bool:
     return False
 
 
+def find_config_file(file_path: Path, config_name: str) -> Path | None:
+    """Find a config file by searching from the file's directory up to the repository root."""
+    current_dir = file_path.parent if file_path.is_file() else file_path
+
+    # First try to find git repository root
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=current_dir,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0:
+            repo_root = Path(result.stdout.strip())
+            # Check if config exists in repo root
+            config_path = repo_root / config_name
+            if config_path.exists():
+                return config_path.resolve()
+            # If not in root, search from current dir up to repo root
+            search_dir = current_dir
+            while search_dir != repo_root and search_dir != search_dir.parent:
+                config_path = search_dir / config_name
+                if config_path.exists():
+                    return config_path.resolve()
+                search_dir = search_dir.parent
+            return None
+    except (subprocess.TimeoutExpired, Exception):
+        pass
+
+    # Fallback: search up directory tree without git
+    while current_dir != current_dir.parent:
+        config_path = current_dir / config_name
+        if config_path.exists():
+            return config_path.resolve()
+        current_dir = current_dir.parent
+
+    return None
+
+
 def run_command(
     command: List[str], file_path: Path, timeout: int = 60
 ) -> Tuple[bool, str]:
@@ -133,10 +173,31 @@ def format_swift_file(file_path: Path) -> bool:
 
     # SwiftLint with fix
     if command_exists("swiftlint"):
+        # Find SwiftLint config file
+        swiftlint_config = find_config_file(file_path, ".swiftlint.yml")
+
         print_info(f"Running SwiftLint on {file_path.name}")
-        success, output = run_command(
-            ["swiftlint", "lint", "--fix", "--quiet", str(file_path)], file_path
-        )
+
+        # Build SwiftLint command with optional config
+        fix_command = ["swiftlint", "lint", "--fix", "--quiet"]
+        if swiftlint_config:
+            fix_command.extend(["--config", str(swiftlint_config)])
+        fix_command.append(str(file_path))
+
+        success, output = run_command(fix_command, file_path)
+        if not success:
+            print_error(f"SwiftLint (fix) could not fix issues in {file_path.name}")
+            if output.strip():
+                print(output, file=sys.stderr)
+            has_errors = True
+
+        # Build SwiftLint lint command with optional config
+        lint_command = ["swiftlint", "lint", "--strict", "--quiet"]
+        if swiftlint_config:
+            lint_command.extend(["--config", str(swiftlint_config)])
+        lint_command.append(str(file_path))
+
+        success, output = run_command(lint_command, file_path)
         if not success:
             print_error(f"SwiftLint found issues in {file_path.name}")
             if output.strip():
@@ -284,6 +345,11 @@ def format_shell_file(file_path: Path) -> bool:
     """Format and lint shell file."""
     has_errors = False
 
+    # Skip Fish shell files - they have different syntax than bash/sh
+    if file_path.suffix.lower() == ".fish":
+        print_info(f"Skipping shellcheck for Fish shell file {file_path.name}")
+        return True
+
     # Format with shfmt
     if command_exists("shfmt"):
         print_info(f"Running shfmt on {file_path.name}")
@@ -294,8 +360,8 @@ def format_shell_file(file_path: Path) -> bool:
                 print(output, file=sys.stderr)
             has_errors = True
 
-    # Lint with shellcheck (no autofix available)
-    if command_exists("shellcheck"):
+    # Lint with shellcheck (no autofix available) - skip for Fish shell
+    if command_exists("shellcheck") and file_path.suffix.lower() != ".fish":
         print_info(f"Running shellcheck on {file_path.name}")
         success, output = run_command(["shellcheck", str(file_path)], file_path)
         if not success:
@@ -542,4 +608,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

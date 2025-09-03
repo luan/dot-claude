@@ -1,6 +1,6 @@
-# Claude Code Framework
+# Claude Code Configuration Framework
 
-An intelligent workflow and quality assurance framework for Claude AI that provides structured development workflows, autonomous memory management, and automated quality validation.
+A comprehensive configuration framework for Claude Code that provides structured development workflows, intelligent memory management, and automated quality validation for software engineering projects.
 
 ## What is Claude Code?
 
@@ -22,7 +22,7 @@ Claude Code is a configuration framework that enhances Claude AI's capabilities 
 
 ## Installation & Setup
 
-The framework is installed in your `~/.claude/` directory with these key components:
+This framework should be placed in your `~/.claude/` directory. The framework structure includes:
 
 ```
 ~/.claude/
@@ -32,16 +32,23 @@ The framework is installed in your `~/.claude/` directory with these key compone
 ├── commands/              # Workflow command definitions
 │   ├── check.md          # Quality validation workflow
 │   ├── commit.md         # Git commit workflow
-│   ├── plan.md           # Complex project planning
-│   └── task.md           # Simple task execution
+│   └── ...              # Other command definitions
 ├── hooks/                # Quality assurance scripts
-│   ├── go.sh            # Go linting and testing
-│   ├── python.sh        # Python validation
-│   ├── javascript.sh    # JS/TS validation
-│   └── ...              # Other language hooks
-├── projects/             # Session persistence
-└── todos/               # Task management
+│   ├── post_tool_use_format.py  # Auto-formatting hook
+│   ├── you_are_not_right.sh     # Behavioral correction hook
+│   └── ...                      # Other hook scripts
+├── agents/               # Specialized agent definitions
+├── lang/                # Language-specific configurations  
+├── projects/            # Session persistence (auto-created)
+└── todos/              # Task management (auto-created)
 ```
+
+To set up:
+
+1. Clone or copy this repository to your `~/.claude/` directory
+2. Ensure hook scripts are executable: `chmod +x hooks/*.sh hooks/*.py`
+3. Customize `CLAUDE.md` and `settings.json` for your preferences
+4. Install language tools (golangci-lint, black, prettier, etc.) for full functionality
 
 ## Framework Architecture
 
@@ -272,7 +279,7 @@ The system creates appropriate structures based on project needs:
 ## Best Practices
 
 ### Starting a Session
-1. Begin with acknowledgment: "I've read CLAUDE.md and will always adhere to its instructions."
+1. Claude automatically reads CLAUDE.md and adheres to its instructions
 2. Run `/status` to get oriented (or just describe what you want)
 3. Let the system auto-detect and execute the appropriate workflow
 4. Focus on describing what you want to accomplish
@@ -394,7 +401,7 @@ The system creates appropriate structures based on project needs:
 ## Getting Started
 
 ### First Session
-1. Claude automatically acknowledges CLAUDE.md instructions
+1. Claude automatically reads and follows CLAUDE.md instructions
 2. Describe what you want to accomplish naturally
 3. System auto-detects appropriate workflow and provides tips
 4. Focus on your work - the system handles quality and progress
