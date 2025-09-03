@@ -67,12 +67,12 @@ statsig/
 # AI local context (template directory per RULES.yaml)
 .ai.local/
 
-# Claude Code session data
+# Claude Code session data and personal settings
 todos/
 projects/
-.claude/settings.local.jsoncommands/p
-commands/p
 .claude/settings.local.json
-local
+local/
 local/package-lock.json
-local
+
+# Personal command configurations
+commands/p/
