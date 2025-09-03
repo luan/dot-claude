@@ -1,7 +1,0 @@
-# Ignore shell snapshots directory - contains zsh-specific syntax
-shell-snapshots/**
-./shell-snapshots/**
-**/shell-snapshots/**
-shell-snapshots/
-./shell-snapshots/
-**/shell-snapshots/
