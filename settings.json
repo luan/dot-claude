@@ -5,6 +5,10 @@
   "includeCoAuthoredBy": false,
   "permissions": {
     "allow": [
+      "Read(**)",
+      "Glob(**)",
+      "Grep(**)",
+      "LS(**)",
       "Bash(alias:*)",
       "Bash(awk:*)",
       "Bash(basename:*)",
@@ -165,11 +169,6 @@
   },
   "model": "opusplan",
   "enableAllProjectMcpServers": true,
-  "statusLine": {
-    "type": "command",
-    "command": "npx -y ccstatusline@latest",
-    "padding": 0
-  },
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -193,5 +192,10 @@
         ]
       }
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "npx -y ccstatusline@latest",
+    "padding": 0
   }
 }
