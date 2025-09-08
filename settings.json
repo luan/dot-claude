@@ -165,7 +165,7 @@
       "mcp__automem"
     ],
     "deny": [],
-    "defaultMode": "plan"
+    "defaultMode": "bypassPermissions"
   },
   "model": "opusplan",
   "enableAllProjectMcpServers": true,
