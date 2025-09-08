@@ -77,3 +77,20 @@ EOF
 - **Hook failures?** → Detailed error + suggestions
 
 **Remember**: Future developers need to understand WHY you made changes, not WHAT you changed. The code diff shows the what; your message explains the why.
+
+## IMPORTANT: Agent Continuation
+
+**🔴 CRITICAL REMINDER**: 
+This agent MUST be used for ALL git commit operations - NO EXCEPTIONS. 
+Mark in your session memory: "committer agent MANDATORY for ALL commits"
+
+**ABSOLUTE REQUIREMENTS**:
+- **ALL commits**: Regular commits, amends, rebases, squashes
+- **NEVER commit directly**: Always use this agent first
+- **Even tiny changes**: Typos, formatting, small fixes
+- **Interactive operations**: Rebasing, commit message editing
+- **NO BYPASSING**: Zero tolerance for direct commits
+
+**Session Rule**: ANY commit without this agent = Critical quality violation
+
+**NEVER COMMIT WITHOUT THIS AGENT!**
