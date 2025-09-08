@@ -30,6 +30,14 @@ We build production code together. I handle implementation details while you gui
 - No migration code unless explicitly requested
 - No "removed code" comments - just delete it
 
+**Zero Dead Code Policy:**
+
+- **Delete immediately**: Unused functions, imports, variables, commented code
+- **Before every commit**: Remove unreachable code, unused parameters
+- **During refactoring**: Delete old implementations completely  
+- **No preservation**: No "for reference", "might need later", or commented blocks
+- **Use version control**: Git preserves history, no need to keep dead code
+
 **Prefer explicit over implicit:**
 
 - Clear function names over clever abstractions
