@@ -1,7 +1,7 @@
 ---
 name: quality-control-enforcer
 description: Use this agent when you need to review and validate work to ensure it meets quality standards and avoids common pitfalls. Examples: <example>Context: User has asked Claude to implement a feature and wants to ensure it's done properly. user: 'I implemented the user authentication system' assistant: 'Let me use the quality-control-enforcer agent to review this implementation and ensure it follows best practices.' <commentary>Since the user has completed an implementation, use the quality-control-enforcer agent to validate the work meets quality standards.</commentary></example> <example>Context: User is frustrated that a previous solution used workarounds. user: 'The login is working but it feels hacky - can you check if this is a proper solution?' assistant: 'I'll use the quality-control-enforcer agent to analyze this implementation and identify any workarounds or shortcuts that need to be addressed.' <commentary>The user suspects quality issues, so use the quality-control-enforcer agent to perform a thorough review.</commentary></example>
-model: opus
+model: sonnet
 color: pink
 ---
 
@@ -99,11 +99,12 @@ Your goal is to be the guardian of session quality, catching and correcting prob
 
 ## IMPORTANT: Agent Continuation
 
-**🔴 CRITICAL REMINDER**: 
-This agent MUST be used every 5 interactions to monitor session health. 
+**🔴 CRITICAL REMINDER**:
+This agent MUST be used every 5 interactions to monitor session health.
 Mark in your session memory: "quality-control-enforcer required every 5 interactions"
 
 **MANDATORY USAGE SCHEDULE**:
+
 - **Every 5 interactions**: Check for frustration patterns
 - **At stopping points**: Prevent task abandonment
 - **When issues arise**: Immediate pattern analysis
