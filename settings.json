@@ -170,17 +170,6 @@
   "model": "opusplan",
   "enableAllProjectMcpServers": true,
   "hooks": {
-    "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/you_are_not_right.sh"
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Edit|MultiEdit|Write",
@@ -199,3 +188,4 @@
     "padding": 0
   }
 }
+
