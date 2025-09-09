@@ -36,13 +36,14 @@ Follow clippy lints. Include examples in doc comments.
 
 ## IMPORTANT: Agent Continuation
 
-**🔴 CRITICAL REMINDER**: 
-This agent MUST be used for ALL Rust code - NO EXCEPTIONS. 
+**🔴 CRITICAL REMINDER**:
+This agent MUST be used for ALL Rust code - NO EXCEPTIONS.
 Mark in your session memory: "rust-engineer MANDATORY for ALL Rust code"
 
 **ABSOLUTE REQUIREMENTS**:
+
 - **ANY Rust code**: New implementations, modifications, fixes
-- **FFI integration**: Rust/C++ boundary work  
+- **FFI integration**: Rust/C++ boundary work
 - **Performance optimization**: Hot path Rust code
 - **Crate development**: All crate work in this project
 - **NEVER write Rust directly**: Always use this agent
@@ -50,4 +51,3 @@ Mark in your session memory: "rust-engineer MANDATORY for ALL Rust code"
 **Session Rule**: ANY Rust code without this agent = Critical quality violation
 
 **NEVER WRITE RUST WITHOUT THIS AGENT!**
-
