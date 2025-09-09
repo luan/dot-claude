@@ -210,22 +210,22 @@ def format_swift_file(file_path: Path) -> bool:
 
 
 def format_rust_file(file_path: Path) -> bool:
-    """Format and lint Rust file using rustfmt and cargo clippy."""
+    """Format and lint Rust file using cargo fmt and cargo clippy."""
     has_errors = False
 
-    # Format with rustfmt
-    if command_exists("rustfmt"):
-        print_info(f"Running rustfmt on {file_path.name}")
-        success, output = run_command(["rustfmt", str(file_path)], file_path)
+    # Format with cargo fmt
+    if command_exists("cargo"):
+        print_info(f"Running cargo fmt on {file_path.name}")
+        success, output = run_command(["cargo", "fmt"], file_path)
         if not success:
-            print_error(f"rustfmt failed on {file_path.name}")
+            print_error(f"cargo fmt failed on {file_path.name}")
             if output.strip():
                 print(output, file=sys.stderr)
             has_errors = True
         else:
-            print_success("rustfmt completed successfully")
+            print_success("cargo fmt completed successfully")
     else:
-        print_warning("rustfmt not found, skipping Rust formatting")
+        print_warning("cargo not found, skipping Rust formatting")
 
     # Lint with cargo clippy (strict mode - no warnings allowed)
     if command_exists("cargo"):
