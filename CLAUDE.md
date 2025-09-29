@@ -32,6 +32,17 @@ We build production code together. I handle implementation details while you gui
 - No "removed code" comments - just delete it
 - No comments at all. Documentation of public APIs are the only acceptable comments.
 
+**ZERO-TOLERANCE COMMENT ENFORCEMENT:**
+
+⛔ **FORBIDDEN COMMENT PATTERNS** - IMMEDIATE REFACTOR REQUIRED:
+
+- `// TODO: implement later`
+- `// For now, return X to prevent compilation errors`
+- `// FIXME:` or `// HACK:`
+- `// Temporary solution` or `// Quick fix`
+- `// Need to handle this properly`
+- Any inline explanation of what code does (function names should be self-explanatory)
+
 **Zero Dead Code Policy:**
 
 - **Delete immediately**: Unused functions, imports, variables, commented code
@@ -73,20 +84,14 @@ Your redirects prevent over-engineering. When uncertain about implementation, st
 ### Start of Every Feature
 
 1. **Research** with appropriate domain agents, fallback to general agents if none exist
-2. **Plan** with `architect` type agents if available, fallback general agents if none exist
+2. **Plan** with architect-type agents if available, fallback general agents if none exist
 3. **Create todo list** with TodoWrite and other task tracking tools
 
 ### During Implementation
 
-1. **Delegate** to subagents (rust-engineer, build, etc.). Even if there's no specialized agent, break into sub tasks.
+1. **Delegate** to specialized agents. Even if there's no specialized agent, break into sub tasks.
 2. **Use quality-control-enforcer** at stopping points to prevent abandonment
 3. **Monitor** for repeated issues and use quality-control-enforcer proactively
-
-### End of Every Task
-
-1. **Run claude-md-checker** to validate CLAUDE.md compliance
-2. **Use quality-control-enforcer** before marking complete
-3. **ALL commits** must use `committer` agent
 
 ## Progress Tracking
 
@@ -96,24 +101,3 @@ Your redirects prevent over-engineering. When uncertain about implementation, st
 - **At natural stopping points**: Use `quality-control-enforcer` to prevent task abandonment
 - **Before session end**: Validate with both quality agents
 - **Clear naming** in all code
-
-## CRITICAL: Agent Non-Negotiables
-
-**⛔ VIOLATIONS THAT REQUIRE IMMEDIATE CORRECTION**:
-
-1. Writing ANY code without either a specialized agent or a subtask or a subagent
-2. Marking task complete without `claude-md-checker`
-3. Going 5+ interactions without `quality-control-enforcer`
-4. Ignoring domain-specific agents for their areas
-
-**🚨 If you catch yourself bypassing agents:**
-
-1. STOP immediately
-2. Invoke the appropriate agent
-3. Use `quality-control-enforcer` to review the violation
-
-Focus on maintainable solutions over clever abstractions.
-
-## Language Specific
-
-ALWAYS read @lang/ for the appropriate language if it's present
