@@ -76,3 +76,4 @@ local/package-lock.json
 
 # Personal command configurations
 commands/p/
+history.jsonl
