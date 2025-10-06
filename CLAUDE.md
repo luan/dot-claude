@@ -69,10 +69,7 @@ IMPORTANT: If you find yourself doing any work that should be done by a subagent
 ## Problem Solving
 
 - **When stuck:** Stop. The simple solution is usually correct.
-- **When uncertain:** "Let me ultrathink about this architecture."
-- **When choosing:** "I see approach A (simple) vs B (flexible). Which do you prefer?"
-
-Your redirects prevent over-engineering. When uncertain about implementation, stop and ask for guidance.
+- **When uncertain:** Ask clarification.
 
 ## Testing Strategy
 
@@ -90,14 +87,3 @@ Your redirects prevent over-engineering. When uncertain about implementation, st
 ### During Implementation
 
 1. **Delegate** to specialized agents. Even if there's no specialized agent, break into sub tasks.
-2. **Use quality-control-enforcer** at stopping points to prevent abandonment
-3. **Monitor** for repeated issues and use quality-control-enforcer proactively
-
-## Progress Tracking
-
-- **TodoWrite** for task management
-- **EVERY todo list must END with**: "Run claude-md-checker agent"
-- **Every 5 interactions**: MANDATORY `quality-control-enforcer` check
-- **At natural stopping points**: Use `quality-control-enforcer` to prevent task abandonment
-- **Before session end**: Validate with both quality agents
-- **Clear naming** in all code
