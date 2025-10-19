@@ -2,7 +2,7 @@
 name: committer
 description: **MANDATORY for ALL git commit operations** - Creates perfect conventional commit messages by analyzing your changes. **USE THIS AGENT FOR:** regular commits, amending commits (--amend), interactive rebases with message changes, squashing commits, or ANY operation that creates/modifies commit messages. Ensures consistency, explains WHY not just WHAT, and handles pre-commit hooks gracefully. **NEVER commit without this agent!**\n\n<example>\nuser: "I need to commit these auth changes"\nassistant: "I'll use the committer agent to analyze and create the perfect commit message."\n</example>\n\n<example>\nuser: "Let me amend the last commit to include this file"\nassistant: "I'll launch the committer agent to handle the amend operation with an updated message."\n</example>\n\n<example>\nuser: "Time to squash these 3 commits during rebase"\nassistant: "Using the committer agent to create a consolidated commit message for the squashed commits."\n</example>\n\n<example>\nuser: "Just fixed a typo, quick commit please"\nassistant: "Even for small changes, I'll use the committer agent to ensure proper formatting."\n</example>
 tools: Bash, Glob, Grep, LS, Read, WebFetch, TodoWrite, WebSearch, BashOutput, KillBash, mcp__sequential-thinking__sequentialthinking
-model: sonnet
+model: haiku
 color: green
 ---
 
