@@ -1,17 +1,7 @@
-# Development Partnership
+## Plan Mode
 
-We build production code together. I handle implementation details while you guide architecture and catch complexity early.
-
-## Core Workflow: Research → Plan → Tests ->Implement → Validate
-
-**Start every feature with:** "Let me research the codebase and create a plan before implementing."
-**Complex Problems**: Use sequential thinking for challenging tasks
-
-1. **Research** - Understand existing patterns and architecture
-2. **Plan** - Propose approach and verify with you
-3. **Tests** - Guide implementation with tests. TDD as much as possible.
-4. **Implement** - Build with tests and error handling
-5. **Validate** - ALWAYS run formatters, linters, and tests after implementation
+- Make the plan extremely concise. Sacrifice grammar for the sake of concision.
+- At the end of each plan, give me a list of unresolved questions to answer, if any.
 
 ## Code Organization
 
@@ -23,39 +13,11 @@ We build production code together. I handle implementation details while you gui
 
 ## Architecture Principles
 
-**This is always a feature branch:**
-
 - Delete old code completely - no deprecation needed
 - No semantic prefix or suffix (OptimizedProcessor, FastHandler, ClientImpl)
 - No versioned names (processV2, handleNew, ClientOld)
 - No migration code unless explicitly requested
 - No "removed code" comments - just delete it
-- No comments at all. Documentation of public APIs are the only acceptable comments.
-
-**ZERO-TOLERANCE COMMENT ENFORCEMENT:**
-
-⛔ **FORBIDDEN COMMENT PATTERNS** - IMMEDIATE REFACTOR REQUIRED:
-
-- `// TODO: implement later`
-- `// For now, return X to prevent compilation errors`
-- `// FIXME:` or `// HACK:`
-- `// Temporary solution` or `// Quick fix`
-- `// Need to handle this properly`
-- Any inline explanation of what code does (function names should be self-explanatory)
-
-**Zero Dead Code Policy:**
-
-- **Delete immediately**: Unused functions, imports, variables, commented code
-- **Before every commit**: Remove unreachable code, unused parameters
-- **During refactoring**: Delete old implementations completely
-- **No preservation**: No "for reference", "might need later", or commented blocks
-- **Use version control**: Git preserves history, no need to keep dead code
-
-**Prefer explicit over implicit:**
-
-- Clear function names over clever abstractions
-- Obvious data flow over hidden magic
-- Direct dependencies over service locators
 
 ## Maximize Efficiency
 
@@ -63,8 +25,6 @@ We build production code together. I handle implementation details while you gui
 - **Multiple subagents / subtasks / tasks / agents:** Aggressively split tasks into multiple sub-agents or equivalent
 - **Use your sub-agents:** Aggressively delegate tasks to sub-agents available in the system
 - **Batch similar work:** Group related file edits together
-
-IMPORTANT: If you find yourself doing any work that should be done by a subagent, STOP and create a subtask or subagent. CAUTION: You might BE the subagent, don't over correct.
 
 ## Problem Solving
 
@@ -75,15 +35,3 @@ IMPORTANT: If you find yourself doing any work that should be done by a subagent
 
 - **TDD**: Let tests guide your design during implementation.
 - **When no tests exist**: Ask if we're working on a throwaway prototype before giving up on tests.
-
-## Agent-Based Workflow
-
-### Start of Every Feature
-
-1. **Research** with appropriate domain agents, fallback to general agents if none exist
-2. **Plan** with architect-type agents if available, fallback general agents if none exist
-3. **Create todo list** with TodoWrite and other task tracking tools
-
-### During Implementation
-
-1. **Delegate** to specialized agents. Even if there's no specialized agent, break into sub tasks.

@@ -79,3 +79,9 @@ commands/p/
 history.jsonl
 file-history
 debug
+image-cache/cb77e1b3-3ae0-48f3-a749-813ea26d94f5
+paste-cache
+plans
+telemetry
+plugins
+stats-cache.json
