@@ -18,6 +18,8 @@
 - No versioned names (processV2, handleNew, ClientOld)
 - No migration code unless explicitly requested
 - No "removed code" comments - just delete it
+- Don't add unnecessary comments. Only add doc comments if it's the style of the existing project.
+- Comments that explain something subtle or surprising are OK.
 
 ## Maximize Efficiency
 
