@@ -254,7 +254,7 @@
     "ask": [
       "Bash(git push:*)"
     ],
-    "defaultMode": "plan"
+    "defaultMode": "bypassPermissions"
   },
   "enableAllProjectMcpServers": true,
   "statusLine": {
@@ -271,7 +271,14 @@
     "ralph-wiggum@claude-plugins-official": true,
     "gopls-lsp@claude-plugins-official": true,
     "Notion@claude-plugins-official": false,
-    "sentry@claude-plugins-official": false
+    "sentry@claude-plugins-official": false,
+    "ralph-loop@claude-plugins-official": false,
+    "pyright-lsp@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
   "promptSuggestionEnabled": false
