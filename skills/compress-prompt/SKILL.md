@@ -23,15 +23,13 @@ Reduce tokens in AI-targeted text. **Always use subagents** - never compress on 
 Compress this text for AI consumption. Apply these rules:
 
 COMPRESSION RULES:
-- Strip markdown formatting (bold, headers, rules)
-- Drop articles ("the file" → "file")
-- Drop filler ("In order to", "Make sure to" → delete)
+- Drop articles when obvious ("the file" → "file")
+- Drop filler phrases ("In order to" → delete, "Make sure to" → delete)
 - Imperative voice ("You should run" → "Run")
-- Use symbols ("results in" → "→")
-- Condense lists ("- a\n- b" → "a, b" or "a/b")
-- Merge similar examples (4 examples → 1 + "etc")
-- Tables → inline ("key:val, key:val")
-- Headers → context ("## Step 1: Foo" → "1. Foo:")
+- Use symbols where clear ("results in" → "→", "and" → "+")
+- Condense repetitive lists (keep structure, merge similar items)
+- Merge redundant examples (4 similar examples → 1 representative + "etc")
+- Keep headers but simplify ("## Step 1: Setup" → "## Setup")
 
 PRESERVE EXACTLY:
 - Commands: syntax, flags, args
