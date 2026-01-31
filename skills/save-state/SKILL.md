@@ -18,7 +18,7 @@ Save work context for later resumption.
 3. Get summary (arg or ask)
 4. Get next steps (ask or from active state)
 5. Get blockers (ask or "None")
-6. Write `~/.claude/.agents/sessions/{branch}.md`:
+6. Write `~/.claude/.agents/sessions/{branch}.md` (**use compress-prompt** - AI consumption):
 
 ```markdown
 # Session: {branch}

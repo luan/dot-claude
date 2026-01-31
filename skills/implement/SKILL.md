@@ -19,7 +19,7 @@ Execute plan from `/explore`, track in active state file.
 4. Parse Next Steps: `- [ ]` lines, detect phases (`**Phase N:**`)
 5. Multi-phase → load Phase 1 only
 
-Create/update active state:
+Create/update active state (**use compress-prompt** - AI consumption):
 ```markdown
 # Implementation: {topic}
 Source: {plan path}

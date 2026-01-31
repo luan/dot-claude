@@ -33,6 +33,8 @@ Tasks:
 
 Output to: .agents/plans/{timestamp}-{slug}.md
 
+**Use compress-prompt techniques** - this file is for AI consumption.
+
 Format:
 # Exploration: {topic}
 Created: {ISO}
