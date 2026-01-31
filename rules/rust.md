@@ -1,4 +1,12 @@
-## Code Quality Standards (Rust Projects)
+---
+paths:
+  - "**/*.rs"
+---
+
+**Toolchain:**
+
+- Use the latest nightly Rust toolchain unless specific versions are required
+- Use the latest rust edition available (e.g., 2024). Do not assume you know what the latest edition is, if the project already has one configured it is probably for a good reason.
 
 **Zero Warnings Policy:**
 
@@ -18,4 +26,3 @@ Replace generic "formatters, linters, and tests" with:
 
 - Remove unused code immediately (no "might need later")
 - If code is only used in tests, mark with #[cfg(test)]
-- If genuinely needed for future, use #[allow(dead_code)] with TODO comment
