@@ -14,7 +14,10 @@ Subagent explores codebase → proposes approaches → writes plan.
 2. Generate `YYYYMMDD-HHMMSS` + slug
 3. Spawn Task: subagent_type="Explore", prompt below
 4. Display plan path + summary + recommendation
-5. If Open Questions exist → use `AskUserQuestion` to resolve them
+5. If Open Questions exist:
+   - Use `AskUserQuestion` to get answers
+   - Spawn **continuation subagent** with answers + plan file context (see Continuation Prompt)
+   - Repeat until no Open Questions
 6. Use `AskUserQuestion`: "Ready to implement?" (options: Yes, No - I'll review first)
 
 ## Agent Prompt
@@ -62,3 +65,22 @@ Pros: / Cons: / Complexity: simple|moderate|complex / Files:
 ```
 
 Return: file path + 2-3 sentence summary.
+
+## Continuation Prompt
+
+When Open Questions are answered, spawn subagent:
+
+```
+Continue exploration: {plan_file_path}
+
+User answered Open Questions:
+{answers}
+
+Tasks:
+1. Read the plan file
+2. Update based on user answers
+3. Resolve answered questions, may create new ones
+4. Update Next Steps if needed
+
+Return: updated file path + summary of changes + any remaining Open Questions.
+```
