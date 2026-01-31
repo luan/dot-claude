@@ -37,16 +37,36 @@ Status: in_progress
 None
 ```
 
-6. Execute tasks:
-   - TaskUpdate in_progress
-   - Execute via superpowers:executing-plans patterns
-   - Success → mark `[x]` with timestamp
-   - Failure → stop, update Blockers, report
-   - Auto-continue unless failure
+6. Spawn Task: subagent_type="general-purpose", prompt below
+   - Subagent writes to active-{branch}.md directly
+   - Subagent retries on failure before returning error
+   - Runs async (main waits for completion)
 
 7. Completion:
    - Multi-phase → "Phase N done. /next-phase for next."
    - Final → archive to `.agents/archive/{ts}-implemented-{slug}.md`, prompt commit
+
+## Execution Prompt
+
+```
+Implement tasks from: {active_state_path}
+Source plan: {plan_path}
+Branch: {branch}
+
+Tasks:
+{task_list}
+
+Instructions:
+1. Execute tasks sequentially
+2. Update {active_state_path} directly:
+   - Mark task `[x]` with timestamp on success
+   - Update Files Changed section
+   - On failure: update Blockers, stop
+3. Retry failures once before reporting
+4. Auto-continue unless blocker
+
+Return: completion status + files changed + any blockers.
+```
 
 ## Errors
 
