@@ -1,7 +1,7 @@
 ---
 name: resume-state
-description: Load session context - auto on start if <30 min
-argument-hint: [branch] (default: current)
+description: "Load session context - auto on start if <30 min"
+argument-hint: "[branch] (default: current)"
 ---
 
 # Resume State

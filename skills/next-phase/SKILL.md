@@ -1,7 +1,7 @@
 ---
 name: next-phase
 description: Continue multi-phase implementation from active state
-argument-hint: (none - uses current branch)
+argument-hint: "(none - uses current branch)"
 ---
 
 # Next Phase
