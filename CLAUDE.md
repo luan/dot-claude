@@ -37,3 +37,23 @@
 
 - **TDD**: Let tests guide your design during implementation.
 - **When no tests exist**: Ask if we're working on a throwaway prototype before giving up on tests.
+
+## Agent Workflow (.agents/)
+
+State tracking for exploration → implementation flows.
+
+**Global** (`~/.claude/.agents/`):
+- `sessions/{branch}.md` - session context, auto-loaded if <30 min
+- `archive/` - historical sessions
+
+**Per-project** (`.agents/`):
+- `plans/{ts}-{slug}.md` - exploration outputs
+- `active-{branch}.md` - implementation progress
+- `archive/` - completed work
+
+**Skills:**
+- `/explore <prompt>` - subagent explores, writes plan
+- `/implement [plan]` - execute plan, track state
+- `/next-phase` - continue multi-phase work
+- `/save-state [summary]` - save session
+- `/resume-state` - load session (auto on start)
