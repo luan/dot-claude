@@ -14,7 +14,7 @@ Execute plan from `/explore`, track in active state file.
 2. `git branch --show-current` → sanitize
 3. Check `.agents/active-{branch}.md`:
    - exists + same source → resume
-   - exists + different source → warn, ask continue/abort
+   - exists + different source → use `AskUserQuestion`: "Active state exists for different plan. Continue with new plan or abort?" (options: Continue, Abort)
    - not exists → create
 4. Parse Next Steps: `- [ ]` lines, detect phases (`**Phase N:**`)
 5. Multi-phase → load Phase 1 only

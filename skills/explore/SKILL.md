@@ -14,7 +14,8 @@ Subagent explores codebase → proposes approaches → writes plan.
 2. Generate `YYYYMMDD-HHMMSS` + slug
 3. Spawn Task: subagent_type="Explore", prompt below
 4. Display plan path + summary + recommendation
-5. Ask "Ready to implement?"
+5. If Open Questions exist → use `AskUserQuestion` to resolve them
+6. Use `AskUserQuestion`: "Ready to implement?" (options: Yes, No - I'll review first)
 
 ## Agent Prompt
 

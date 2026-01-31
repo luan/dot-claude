@@ -33,6 +33,12 @@
 - **When stuck:** Stop. The simple solution is usually correct.
 - **When uncertain:** Ask clarification.
 
+## Asking Questions
+
+- **Use `AskUserQuestion` tool** when asking the user questions - faster than text output
+- Prefer multiple choice when options are clear
+- Use for: clarifications, design decisions, continue/abort, ready to proceed
+
 ## Testing Strategy
 
 - **TDD**: Let tests guide your design during implementation.
