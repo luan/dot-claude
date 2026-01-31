@@ -87,3 +87,4 @@ plugins
 stats-cache.json
 tasks
 chrome
+.agents/
