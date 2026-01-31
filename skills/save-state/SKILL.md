@@ -1,7 +1,7 @@
 ---
 name: save-state
-description: Save session context to ~/.claude/.agents/sessions/{branch}.md
-argument-hint: [summary]
+description: "Save session context to ~/.claude/.agents/sessions/{branch}.md"
+argument-hint: "[summary]"
 ---
 
 # Save State

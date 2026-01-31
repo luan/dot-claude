@@ -1,7 +1,7 @@
 ---
 name: implement
-description: Execute exploration plan - tracks progress in .agents/active-{branch}.md
-argument-hint: [plan-file] (default: most recent)
+description: "Execute exploration plan - tracks progress in .agents/active-{branch}.md"
+argument-hint: "[plan-file] (default: most recent)"
 ---
 
 # Implement
