@@ -49,15 +49,18 @@
 State tracking for exploration → implementation flows.
 
 **Global** (`~/.claude/.agents/`):
+
 - `sessions/{branch}.md` - session context, auto-loaded if <30 min
 - `archive/` - historical sessions
 
 **Per-project** (`.agents/`):
+
 - `plans/{ts}-{slug}.md` - exploration outputs
 - `active-{branch}.md` - implementation progress
 - `archive/` - completed work
 
 **Skills:**
+
 - `/explore <prompt>` - subagent explores, writes plan
 - `/implement [plan]` - execute plan, track state
 - `/next-phase` - continue multi-phase work
