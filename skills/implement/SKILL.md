@@ -1,75 +1,37 @@
 ---
 name: implement
-description: "Execute exploration plan - tracks progress in .agents/active-{branch}.md"
+description: "Use when: 'Implement the following plan', 'To continue: use Skill tool to invoke implement', executing a plan from .agents/plans/, or user wants to build/code an explored plan"
 argument-hint: "[plan-file] (default: most recent)"
 ---
 
 # Implement
 
-Execute plan from `/explore`, track in active state file.
+Current branch: !`git branch --show-current | tr '/' '-'`
+
+Execute plan from `explore`.
 
 ## Steps
 
-1. Find plan: arg → `.agents/plans/{arg}` or most recent by timestamp
-2. `git branch --show-current` → sanitize
-3. Check `.agents/active-{branch}.md`:
-   - exists + same source → resume
-   - exists + different source → use `AskUserQuestion`: "Active state exists for different plan. Continue with new plan or abort?" (options: Continue, Abort)
-   - not exists → create
-4. Parse Next Steps: `- [ ]` lines, detect phases (`**Phase N:**`)
-5. Multi-phase → load Phase 1 only
+1. Find plan: arg → `.agents/plans/{arg}` or most recent
+2. Create/resume `.agents/active-{branch}.md` (source, branch, status, tasks)
+3. Execute tasks using **subagent-driven-development** pattern:
+   - Fresh subagent per task via Task tool
+   - Two-stage review: spec compliance → code quality
+   - Use **verification-before-completion** before marking task done
+   - If task fails → **use Skill tool** to invoke `debugging`
+4. Multi-phase → **use Skill tool** to invoke `next-phase`
+5. Final → **use Skill tool** to invoke `finishing-branch`
 
-Create/update active state (**use compress-prompt** - AI consumption):
-```markdown
-# Implementation: {topic}
-Source: {plan path}
-Started: {ISO}
-Branch: {branch}
-Status: in_progress
+## Subagent Pattern
 
-## Tasks
-- [ ] ...
+Use prompts from **subagent-driven-development** skill:
+- `implementer-prompt.md` - dispatch per task
+- `spec-reviewer-prompt.md` - verify spec compliance first
+- `code-quality-reviewer-prompt.md` - verify quality second
 
-## Files Changed
-(updated during work)
-
-## Blockers
-None
-```
-
-6. Spawn Task: subagent_type="general-purpose", prompt below
-   - Subagent writes to active-{branch}.md directly
-   - Subagent retries on failure before returning error
-   - Runs async (main waits for completion)
-
-7. Completion:
-   - Multi-phase → "Phase N done. /next-phase for next."
-   - Final → archive to `.agents/archive/{ts}-implemented-{slug}.md`, prompt commit
-
-## Execution Prompt
-
-```
-Implement tasks from: {active_state_path}
-Source plan: {plan_path}
-Branch: {branch}
-
-Tasks:
-{task_list}
-
-Instructions:
-1. Execute tasks sequentially
-2. Update {active_state_path} directly:
-   - Mark task `[x]` with timestamp on success
-   - Update Files Changed section
-   - On failure: update Blockers, stop
-3. Retry failures once before reporting
-4. Auto-continue unless blocker
-
-Return: completion status + files changed + any blockers.
-```
+Key: provide full task text + context to subagent, don't make them read files.
 
 ## Errors
 
-- No plan: "Run /explore first"
-- Parse fail: "Check Next Steps format"
+- No plan: "Run explore first"
 - Task fail: preserve state, report
