@@ -6,15 +6,17 @@ argument-hint: "[branch] (default: current)"
 
 # Resume State
 
+Current branch: !`git branch --show-current | tr '/' '-'`
+
 Load saved session context.
 
 ## Auto-Resume
 
 On session start:
-1. `git branch --show-current` → sanitize
-2. Check `~/.claude/.agents/sessions/{branch}.md`
-3. If exists + Updated <30 min → inject
-4. Else → proceed without (manual /resume available)
+
+1. Check `~/.claude/.agents/sessions/{branch}.md`
+2. If exists + Updated <30 min → inject
+3. Else → proceed without (manual /resume available)
 
 ## Manual
 

@@ -6,38 +6,44 @@ argument-hint: "[summary]"
 
 # Save State
 
+Current branch: !`git branch --show-current | tr '/' '-'`
+Current path: !`pwd`
+Status lines: !`git status --porcelain | wc -l`
+Recent commits: !`git log main..HEAD --oneline -10`
+Modified files: !`git diff --name-only HEAD~5..HEAD`
+
 Save work context for later resumption.
 
 ## Steps
 
-1. `git branch --show-current` + `pwd`
-2. Gather git:
-   - `git status --porcelain | wc -l`
-   - `git log main..HEAD --oneline -10`
-   - `git diff --name-only HEAD~5..HEAD`
-3. Get summary (arg or ask)
-4. Get next steps (ask or from active state)
-5. Get blockers (ask or "None")
-6. Write `~/.claude/.agents/sessions/{branch}.md` (**use compress-prompt** - AI consumption):
+1. Get summary (arg or ask)
+2. Get next steps (ask or from active state)
+3. Get blockers (ask or "None")
+4. Write `~/.claude/.agents/sessions/{branch}.md` (**use compress-prompt** - AI consumption):
 
 ```markdown
 # Session: {branch}
-Updated: {ISO}
-Project: {path}
+
+Updated: !`date '+%Y-%m-%d %H:%M:%S'`
+Project: !`basename $(git rev-parse --show-toplevel)`
 
 ## Summary
+
 {summary}
 
 ## Git State
+
 Branch: {branch}
 Uncommitted: {n} files
 Commits: {list}
 Modified: {list}
 
 ## Next Steps
+
 - ...
 
 ## Blockers
+
 {or None}
 ```
 

@@ -1,6 +1,8 @@
 ---
 name: compress-prompt
 description: Use when compressing text for AI consumption - skill files, system prompts, agent instructions. Not for human docs.
+context: fork
+agent: general-purpose
 ---
 
 # Compress Prompt

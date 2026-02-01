@@ -56,7 +56,7 @@ If hooks fail: show error, suggest fix, let user decide.
 ## Edge cases
 
 - Nothing staged: ask "Stage all changes?" (all vs tracked vs select)
-- Multiple unrelated changes: recommend splitting
+- Multiple unrelated changes: use **git-surgeon** skill to split
 - Clean tree: "No changes to commit"
 
 ## Good vs bad

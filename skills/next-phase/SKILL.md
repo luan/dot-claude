@@ -1,59 +1,20 @@
 ---
 name: next-phase
-description: Continue multi-phase implementation from active state
+description: "Use when continuing to the next phase of a multi-phase implementation"
 argument-hint: "(none - uses current branch)"
 ---
 
 # Next Phase
 
-Continue multi-phase work.
+Current branch: !`git branch --show-current | tr '/' '-'`
+Continue from `implement`.
 
 ## Steps
 
-1. `git branch --show-current` → sanitize
-2. Read `.agents/active-{branch}.md` or error "Run /implement first"
-3. Verify branch matches (warn if different, continue)
-4. Find first incomplete phase (`[ ]` tasks under `**Phase N:**`)
-   - All done → "All phases complete! /commit"
-5. Load source plan, find phase's tasks
-6. Spawn Task: subagent_type="general-purpose", prompt below
-   - Subagent writes to active-{branch}.md directly
-   - Subagent retries on failure before returning error
-   - Runs async (main waits for completion)
-7. Update state: mark phase `[x]` with timestamp
-   - More phases → "Phase N done. /next-phase"
-   - Final → archive, prompt commit
-
-## Execution Prompt
-
-```
-Continue phase from: {active_state_path}
-Source plan: {plan_path}
-Branch: {branch}
-Phase: {phase_number}
-
-Tasks:
-{phase_tasks}
-
-Instructions:
-1. Execute tasks sequentially
-2. Update {active_state_path} directly:
-   - Mark task `[x]` with timestamp on success
-   - Update Files Changed section
-   - On failure: update Blockers, stop
-3. Retry failures once before reporting
-4. Auto-continue unless blocker
-
-Return: completion status + files changed + any blockers.
-```
-
-## Phase Format
-
-```markdown
-## Tasks
-**Phase 1: Setup** (completed 2026-01-31T12:00:00)
-- [x] Task (timestamp)
-
-**Phase 2: Implementation**
-- [ ] Task
-```
+1. Read `.agents/active-{branch}.md` or error "Run implement first"
+2. Find next incomplete phase (`[ ]` tasks under `**Phase N:**`)
+   - All done → present completion options to user
+3. Execute phase tasks using subagent-driven pattern (see `implement` skill)
+   - If task fails → **use Skill tool** to invoke `debugging`
+4. Mark phase complete, update state
+5. More phases → **use Skill tool** to invoke `next-phase` | Final → present completion options to user
