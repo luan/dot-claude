@@ -248,8 +248,12 @@
       "Bash(gt track --help:*)",
       "Bash(gt track:*)"
     ],
-    "deny": ["Bash(sudo *)"],
-    "ask": ["Bash(git push:*)"],
+    "deny": [
+      "Bash(sudo *)"
+    ],
+    "ask": [
+      "Bash(git push:*)"
+    ],
     "defaultMode": "bypassPermissions"
   },
   "enableAllProjectMcpServers": true,
@@ -264,9 +268,10 @@
     "clangd-lsp@claude-plugins-official": true,
     "gopls-lsp@claude-plugins-official": true,
     "pyright-lsp@claude-plugins-official": true,
-    "superpowers@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": false,
     "code-simplifier@claude-plugins-official": true,
-    "rust-analyzer-lsp@claude-plugins-official": true
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
   "promptSuggestionEnabled": true
