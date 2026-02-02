@@ -1,6 +1,6 @@
 ---
 name: explore
-description: "Use when starting fresh investigation - understand how something works, research before coding, plan a new feature. NOT for continuing existing work (use continue-explore)"
+description: "Use when starting fresh investigation. Triggers: 'explore', 'how does X work', 'understand', 'research', 'plan a feature', 'figure out', 'investigate', 'look into', 'what's the best way to', 'design', 'architect'. NOT for continuing existing work (use continue-explore)"
 argument-hint: "<prompt>"
 ---
 
@@ -36,7 +36,10 @@ To continue: use Skill tool to invoke `implement` with arg `{filename}`
 ## Steps
 
 1. **Use EnterPlanMode tool** to switch to plan mode
-2. Explore: search patterns, analyze code, identify 2-3 approaches
+2. **Explore via Task tool** (subagent_type=Explore):
+   - "Explore how [X] works, identify patterns/files involved, suggest 2-3 approaches"
+   - Let subagent do the heavy lifting - searching, reading, analyzing
+   - Review subagent findings before proceeding
 3. **Design process** (for complex features):
    - Ask questions one at a time via `AskUserQuestion`
    - Prefer multiple choice when options are clear
@@ -50,4 +53,7 @@ To continue: use Skill tool to invoke `implement` with arg `{filename}`
    - End with: `To continue: use Skill tool to invoke implement with arg {filename}`
 5. Write summary to plan mode's file (for approval UI) - MUST also end with:
    `To continue: use Skill tool to invoke implement with arg {filename}`
-6. Resolve Open Questions via `AskUserQuestion`
+6. **MANDATORY: Resolve ALL Open Questions** via `AskUserQuestion` before ExitPlanMode
+   - Do NOT exit plan mode with unresolved questions
+   - Questions about fundamental design (like "does X work with Y?") MUST be verified
+   - If verification requires code experiment, note it as Task 0 in plan

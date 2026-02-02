@@ -1,6 +1,6 @@
 ---
 name: continue-explore
-description: "Use when continuing work on a problem - refining approach, exploring what's still wrong, iterating on previous analysis. Triggers: 'keep improving', 'still wrong', 'made progress but', 'explore more'"
+description: "Use when continuing/refining existing exploration. Triggers: 'keep improving', 'still wrong', 'made progress but', 'explore more', 'that's not quite right', 'try again', 'reconsider', 'rethink', 'what about', 'actually', 'hmm', 'refine the plan', 'update the approach', 'missed something'"
 argument-hint: "[plan-file] <feedback>"
 ---
 
@@ -38,13 +38,16 @@ To continue: use Skill tool to invoke `implement` with arg `{filename}`
 1. **Use EnterPlanMode tool** to switch to plan mode
 2. Find plan: arg → `.agents/plans/{arg}` or most recent
 3. Read existing plan
-4. If design rethink needed:
+4. If exploration needed for feedback:
+   - **Use Task tool** (subagent_type=Explore) to investigate specific areas
+   - Let subagent validate assumptions, find edge cases, check patterns
+5. If design rethink needed:
    - Ask questions one at a time via `AskUserQuestion`
    - Present 2-3 revised approaches with trade-offs
-5. **Update `.agents/plans/{plan-file}`** with changes
+6. **Update `.agents/plans/{plan-file}`** with changes
    - Keep implement instruction at end
    - Bite-sized task structure (each step = one action)
    - YAGNI ruthlessly
-6. Write summary to plan mode's file (for approval UI) - MUST also end with:
+7. Write summary to plan mode's file (for approval UI) - MUST also end with:
    `To continue: use Skill tool to invoke implement with arg {filename}`
-7. Resolve new Open Questions via `AskUserQuestion`
+8. Resolve new Open Questions via `AskUserQuestion`
