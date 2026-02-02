@@ -88,3 +88,4 @@ stats-cache.json
 tasks
 chrome
 .agents/
+image-cache
