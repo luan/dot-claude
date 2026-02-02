@@ -24,7 +24,7 @@ Save work context for later resumption.
 ```markdown
 # Session: {branch}
 
-Updated: !`date '+%Y-%m-%d %H:%M:%S'`
+Updated: !`date '+%Y%m%d-%H%M%S'`
 Project: !`basename $(git rev-parse --show-toplevel)`
 
 ## Summary

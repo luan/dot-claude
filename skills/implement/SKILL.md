@@ -1,6 +1,6 @@
 ---
 name: implement
-description: "Use when: 'Implement the following plan', 'To continue: use Skill tool to invoke implement', executing a plan from .agents/plans/, or user wants to build/code an explored plan"
+description: "MANDATORY trigger on: 'To continue: use Skill tool to invoke implement', 'invoke implement', 'implement with arg', ANY .agents/plans/ filename, 'execute the plan', 'build this', 'code this plan', plan with Tasks section. Extract filename from 'with arg X' as skill argument. NEVER manually implement - ALWAYS use this skill."
 argument-hint: "[plan-file] (default: most recent)"
 ---
 
@@ -13,23 +13,30 @@ Execute plan from `explore`.
 ## Steps
 
 1. Find plan: arg → `.agents/plans/{arg}` or most recent
-2. Create/resume `.agents/active-{branch}.md` (source, branch, status, tasks)
-3. Execute tasks using **subagent-driven-development** pattern:
-   - Fresh subagent per task via Task tool
-   - Two-stage review: spec compliance → code quality
-   - Use **verification-before-completion** before marking task done
+2. **CHECK FOR OPEN QUESTIONS** in plan:
+   - If plan has unresolved "Open Questions" section → resolve via `AskUserQuestion` FIRST
+   - Do NOT proceed with tasks until questions answered
+3. Create/resume `.agents/active-{branch}.md` (source, branch, status, tasks)
+4. **FOR EACH TASK** (MANDATORY subagent dispatch):
+   ```
+   a. Task tool → implementer subagent (paste full task text, don't reference files)
+   b. Task tool → spec reviewer subagent → if issues: implementer fixes → re-review
+   c. Task tool → quality reviewer subagent → if issues: implementer fixes → re-review
+   d. Mark task complete in active file
+   ```
+   - NEVER implement tasks yourself - ALWAYS dispatch via Task tool
    - If task fails → **use Skill tool** to invoke `debugging`
-4. Multi-phase → **use Skill tool** to invoke `next-phase`
-5. Final → **use Skill tool** to invoke `finishing-branch`
+5. **EARLY VERIFICATION**: After FIRST task, run build/check to catch design flaws
+6. Multi-phase → **use Skill tool** to invoke `next-phase`
+7. Final → **use Skill tool** to invoke `finishing-branch`
 
-## Subagent Pattern
+## Subagent Prompts (read these, use as Task tool prompt)
 
-Use prompts from **subagent-driven-development** skill:
-- `implementer-prompt.md` - dispatch per task
-- `spec-reviewer-prompt.md` - verify spec compliance first
-- `code-quality-reviewer-prompt.md` - verify quality second
+- **subagent-driven-development**/`implementer-prompt.md`
+- **subagent-driven-development**/`spec-reviewer-prompt.md`
+- **subagent-driven-development**/`code-quality-reviewer-prompt.md`
 
-Key: provide full task text + context to subagent, don't make them read files.
+Key: paste full task text + context into prompt. Don't make subagent read files.
 
 ## Errors
 

@@ -66,3 +66,8 @@ State tracking for exploration → implementation flows.
 - `/next-phase` - continue multi-phase work
 - `/save-state [summary]` - save session
 - `/resume-state` - load session (auto on start)
+
+**CRITICAL: After plan approval**, when you see "To continue: use Skill tool to invoke implement with arg X":
+- **IMMEDIATELY** use Skill tool with skill="implement" args="X"
+- Do NOT manually implement - the skill handles subagent dispatch
+- User saying "yes", "go ahead", "proceed" after plan = invoke implement NOW

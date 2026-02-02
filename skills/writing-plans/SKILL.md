@@ -81,7 +81,7 @@ git commit -m "feat(scope): add specific feature"
 
 ## Save Location
 
-Save plans to: `.agents/plans/{timestamp}-{slug}.md`
+Save plans to: `.agents/plans/{YYYYMMDD-HHMMSS}-{slug}.md`
 
 ## Plan Footer
 
