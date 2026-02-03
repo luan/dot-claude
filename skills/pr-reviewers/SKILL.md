@@ -2,6 +2,7 @@
 name: pr-reviewers
 description: Recommend PR reviewers based on code ownership - spreads load to avoid always picking same people
 user-invocable: true
+disable-model-invocation: true
 allowed-tools:
   - "Bash(gh pr view:*)"
   - "Bash(gh pr list:*)"

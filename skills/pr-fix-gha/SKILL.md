@@ -2,6 +2,7 @@
 name: pr-fix-gha
 description: Fetch failed GHA checks from PR and fix them
 user-invocable: true
+disable-model-invocation: true
 allowed-tools:
   - "Bash(gh pr view:*)"
   - "Bash(gh pr checks:*)"
@@ -31,12 +32,15 @@ Fix failed GitHub Actions checks.
 2. **Verify branch** (if PR specified manually)
 
 3. **Fetch failed checks**:
+
    ```bash
    gh pr checks <PR> --json name,state,bucket,link
    ```
+
    Display as numbered list, ask "Which to fix?"
 
 4. **Fetch logs**:
+
    ```bash
    gh run list --branch <BRANCH> --json databaseId,name,conclusion --limit 20
    gh run view <RUN_ID> --log-failed

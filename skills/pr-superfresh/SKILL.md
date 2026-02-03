@@ -2,6 +2,7 @@
 name: pr-superfresh
 description: Complete PR refresh - sync, restack, fix GHA, fix comments, submit
 user-invocable: true
+disable-model-invocation: true
 allowed-tools:
   - "Bash(gt sync:*)"
   - "Bash(gt restack:*)"

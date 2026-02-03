@@ -2,6 +2,7 @@
 name: pr-fix-comments
 description: Fetch unresolved PR comments and fix them
 user-invocable: true
+disable-model-invocation: true
 allowed-tools:
   - "Bash(python3 ~/.claude/skills/pr-fix-comments/scripts/pr_threads.py:*)"
   - "Bash(gh pr view:*)"
@@ -28,9 +29,11 @@ Fix unresolved PR review comments.
 1. **Detect PR**: `gh pr view --json number -q '.number'` or ask user
 2. **Verify branch** (if PR specified manually): confirm current branch matches PR's branch
 3. **Fetch comments**:
+
    ```bash
    python3 ~/.claude/skills/pr-fix-comments/scripts/pr_threads.py fetch --pr <PR>
    ```
+
    Display as numbered list, ask "Which to fix?" (Fix all / Other)
 
 4. **Plan fixes**: Read code, understand request, create concise plan (one line each)
@@ -46,6 +49,7 @@ Fix unresolved PR review comments.
 7. **Thread replies** (show first, ask confirmation):
    - Simple fix: "Done [pr-fix-comments]"
    - With explanation: "{how it was fixed} [pr-fix-comments]"
+
    ```bash
    python3 ~/.claude/skills/pr-fix-comments/scripts/pr_threads.py reply --pr <PR> --comment-id <ID> --body "<msg>"
    python3 ~/.claude/skills/pr-fix-comments/scripts/pr_threads.py resolve --thread-id <ID>
