@@ -81,14 +81,14 @@ git commit -m "feat(scope): add specific feature"
 
 ## Save Location
 
-Save plans to: `.agents/plans/{YYYYMMDD-HHMMSS}-{slug}.md`
+Save plans to beads issue notes field: `bd update <issue-id> --notes "..."`
 
 ## Plan Footer
 
-End every plan with:
+End every plan summary (in plan mode file) with:
 
 ```
-To continue: use Skill tool to invoke `implement` with arg `{filename}`
+To continue: use Skill tool to invoke `implement` with arg `<issue-id>`
 ```
 
 ## Integration
