@@ -50,28 +50,16 @@
 
 **Exceptions (ask first):** throwaway prototypes, generated code, config-only changes.
 
-## Agent Workflow (.agents/)
+## Agent Workflow (beads)
 
-State tracking for exploration → implementation flows.
-
-**Global** (`~/.claude/.agents/`):
-
-- `sessions/{branch}.md` - session context, auto-loaded if <30 min
-- `archive/` - historical sessions
-
-**Per-project** (`.agents/`):
-
-- `plans/{ts}-{slug}.md` - exploration outputs
-- `active-{branch}.md` - implementation progress
-- `archive/` - completed work
+State tracking for exploration → implementation flows via beads issues.
 
 **Skills:**
 
-- `/explore <prompt>` - subagent explores, writes plan
-- `/implement [plan]` - execute plan, track state
-- `/next-phase` - continue multi-phase work
-- `/save-state [summary]` - save session
-- `/resume-state` - load session (auto on start)
+- `/explore <prompt>` - subagent explores, writes plan to beads issue
+- `/implement [issue-id] [--fresh]` - execute plan, track state via beads (--fresh clears context first)
+
+Session state (save/resume) handled automatically via beads notes field.
 
 **CRITICAL: After plan approval**, when you see "To continue: use Skill tool to invoke implement with arg X":
 - **IMMEDIATELY** use Skill tool with skill="implement" args="X"
