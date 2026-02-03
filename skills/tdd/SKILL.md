@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: "Use when implementing features/bugfixes. Iron law: no production code without failing test first."
+description: "DEFAULT for all implementation. Triggers: 'implement', 'build', 'add feature', 'fix bug', 'write code', starting any coding task. Iron law: no production code without failing test first. Skip only for explicit prototypes."
 ---
 
 # Test-Driven Development

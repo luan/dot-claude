@@ -20,12 +20,14 @@ Execute plan from `explore`.
 4. **FOR EACH TASK** (MANDATORY subagent dispatch):
    ```
    a. Task tool → implementer subagent (paste full task text, don't reference files)
+      - Implementer MUST use TDD: failing test → minimal code → pass
    b. Task tool → spec reviewer subagent → if issues: implementer fixes → re-review
    c. Task tool → quality reviewer subagent → if issues: implementer fixes → re-review
    d. Mark task complete in active file
    ```
    - NEVER implement tasks yourself - ALWAYS dispatch via Task tool
    - If task fails → **use Skill tool** to invoke `debugging`
+   - **TDD is mandatory** unless explicitly building throwaway prototype
 5. **EARLY VERIFICATION**: After FIRST task, run build/check to catch design flaws
 6. Multi-phase → **use Skill tool** to invoke `next-phase`
 7. Final → **use Skill tool** to invoke `finishing-branch`
