@@ -1,6 +1,44 @@
 {
+  "alwaysThinkingEnabled": true,
+  "enableAllProjectMcpServers": true,
+  "enabledPlugins": {
+    "beads@beads-marketplace": true,
+    "clangd-lsp@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "gopls-lsp@claude-plugins-official": true,
+    "pyright-lsp@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": false,
+    "swift-lsp@claude-plugins-official": true
+  },
   "env": {
     "BASH_DEFAULT_TIMEOUT_MS": "300000"
+  },
+  "hooks": {
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "command": "bd prime",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "bd prime",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ]
   },
   "includeCoAuthoredBy": false,
   "permissions": {
@@ -248,31 +286,18 @@
       "Bash(gt track --help:*)",
       "Bash(gt track:*)"
     ],
-    "deny": [
-      "Bash(sudo *)"
-    ],
     "ask": [
       "Bash(git push:*)"
     ],
-    "defaultMode": "bypassPermissions"
+    "defaultMode": "bypassPermissions",
+    "deny": [
+      "Bash(sudo *)"
+    ]
   },
-  "enableAllProjectMcpServers": true,
+  "promptSuggestionEnabled": true,
   "statusLine": {
-    "type": "command",
     "command": "uv run ~/.claude/statusline.py",
-    "padding": 0
-  },
-  "enabledPlugins": {
-    "context7@claude-plugins-official": true,
-    "swift-lsp@claude-plugins-official": true,
-    "clangd-lsp@claude-plugins-official": true,
-    "gopls-lsp@claude-plugins-official": true,
-    "pyright-lsp@claude-plugins-official": true,
-    "superpowers@claude-plugins-official": false,
-    "code-simplifier@claude-plugins-official": true,
-    "rust-analyzer-lsp@claude-plugins-official": true,
-    "claude-md-management@claude-plugins-official": true
-  },
-  "alwaysThinkingEnabled": true,
-  "promptSuggestionEnabled": true
+    "padding": 0,
+    "type": "command"
+  }
 }
