@@ -41,8 +41,14 @@
 
 ## Testing Strategy
 
-- **TDD**: Let tests guide your design during implementation.
-- **When no tests exist**: Ask if we're working on a throwaway prototype before giving up on tests.
+**TDD is the default.** No production code without a failing test first.
+
+- Write test → watch it fail → minimal code to pass → refactor
+- If you write code before test: delete it, start over with test
+- Bug fix? Write failing test that reproduces bug first
+- "Already manually tested" or "too simple to test" are not valid reasons to skip TDD
+
+**Exceptions (ask first):** throwaway prototypes, generated code, config-only changes.
 
 ## Agent Workflow (.agents/)
 

@@ -26,12 +26,13 @@ If you have questions about:
 ## Your Job
 
 Once clear on requirements:
-1. Implement exactly what task specifies
-2. Write tests (TDD if task requires)
-3. Verify implementation works
-4. Commit your work
-5. Self-review (below)
-6. Report back
+1. **Write failing test first** (TDD - mandatory)
+2. Implement minimal code to pass test
+3. Refactor if needed (keep tests green)
+4. Verify implementation works
+5. Commit your work
+6. Self-review (below)
+7. Report back
 
 Work from: [directory]
 
@@ -55,9 +56,9 @@ Don't guess or make assumptions.
 - Only built what was requested?
 - Followed existing patterns?
 
-**Testing:**
+**Testing (TDD mandatory):**
+- Wrote failing test BEFORE implementation?
 - Tests verify behavior (not mock behavior)?
-- Followed TDD if required?
 - Tests comprehensive?
 
 If you find issues, fix them before reporting.
