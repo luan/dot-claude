@@ -38,6 +38,17 @@
         ],
         "matcher": ""
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "python3 ~/.claude/hooks/non-interactive-continuation.py",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
     ]
   },
   "includeCoAuthoredBy": false,
@@ -286,13 +297,8 @@
       "Bash(gt track --help:*)",
       "Bash(gt track:*)"
     ],
-    "ask": [
-      "Bash(git push:*)"
-    ],
-    "defaultMode": "bypassPermissions",
-    "deny": [
-      "Bash(sudo *)"
-    ]
+    "ask": ["Bash(git push:*)", "Bash(sudo *)"],
+    "defaultMode": "bypassPermissions"
   },
   "promptSuggestionEnabled": true,
   "statusLine": {
@@ -301,3 +307,4 @@
     "type": "command"
   }
 }
+
