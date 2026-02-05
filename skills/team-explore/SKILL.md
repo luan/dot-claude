@@ -4,10 +4,20 @@ description: "Triggers: 'team explore', 'deep explore', 'explore from multiple a
 argument-hint: "<prompt>"
 user-invocable: true
 allowed-tools:
+  - Teammate
   - Task
+  - SendMessage
+  - TaskCreate
+  - TaskUpdate
+  - TaskList
+  - TaskGet
   - EnterPlanMode
   - ExitPlanMode
   - AskUserQuestion
+  - Read
+  - Glob
+  - Grep
+  - Bash
 ---
 
 # Team Explore

@@ -3,6 +3,12 @@ name: review-and-fix
 description: Review existing changes, identify issues, fix with subagent pattern. Start from commits/files instead of plan.
 argument-hint: "[base..head | file-list | PR-number]"
 user-invocable: true
+allowed-tools:
+  - Task
+  - Skill
+  - AskUserQuestion
+  - Read
+  - Bash
 ---
 
 # Review and Fix
@@ -66,6 +72,12 @@ digraph process {
 ```
 
 ## Steps
+
+0. **Triage — auto-escalate to team-review if warranted:**
+   - Run `git diff --stat $ARGUMENTS` (or `gh pr diff $ARGUMENTS --stat`)
+   - Count: files changed, unique top-level directories touched
+   - If **5+ files across 3+ directories**, OR diff touches auth/security/crypto patterns → invoke `Skill tool: team-review` with the same arguments and STOP
+   - Otherwise continue below
 
 1. **Parse input** - determine commit range, files, or PR
 2. **Gather context**:
@@ -143,6 +155,6 @@ Related skills:
 - **pr-fix-comments** - fix PR review comments (from humans)
 - **code-review** - general review guidance
 
-## Escalate to Team Review
+## Auto-Escalation
 
-For security-sensitive changes, performance-critical paths, or changes touching 5+ files across subsystems → recommend: `use Skill tool to invoke team-review`
+Triage step (step 0) handles escalation automatically. If you reach step 1, the diff was small enough for single-agent review.

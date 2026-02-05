@@ -4,8 +4,18 @@ description: "Triggers: 'team debug', 'competing hypotheses'. Competing hypothes
 argument-hint: "<bug description>"
 user-invocable: true
 allowed-tools:
+  - Teammate
   - Task
+  - SendMessage
+  - TaskCreate
+  - TaskUpdate
+  - TaskList
+  - TaskGet
   - AskUserQuestion
+  - Read
+  - Glob
+  - Grep
+  - Bash
 ---
 
 # Team Debug
