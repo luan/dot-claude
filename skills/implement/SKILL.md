@@ -1,28 +1,51 @@
 ---
 name: implement
 description: "Triggers: 'To continue: use Skill tool to invoke implement', 'invoke implement', 'implement with arg', beads issue/epic ID, 'execute the plan', 'build this', 'code this plan'. Extract issue-id from 'with arg X'."
-argument-hint: "[issue-id|epic-id] [--fresh]"
+argument-hint: "[epic-id|task-id] [--fresh]"
+user-invocable: true
+allowed-tools:
+  - Task
+  - AskUserQuestion
 ---
 
 # Implement
 
-Execute plan from explore, tracked via beads. NEVER implement manually—ALWAYS use this skill.
+**IMMEDIATELY dispatch to subagent.** Do not implement on main thread.
 
-!`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && cat ~/.claude/skills/implement/non-interactive.md || cat ~/.claude/skills/implement/interactive.md`
+## Instructions
 
-## Skill Composition
+Dispatch implementation to subagent:
 
-| When | Invoke |
-|------|--------|
-| Task fails | `use Skill tool to invoke debugging` |
-| Before claiming done | `use Skill tool to invoke verification-before-completion` |
-| Quality check | `use Skill tool to invoke critical-review` |
-| All tasks complete | `use Skill tool to invoke finishing-branch` |
+```
+Task tool with subagent_type="beads:task-agent" and prompt:
+"""
+Implement: $ARGUMENTS
 
-## Subagent Prompts
+## Your Job
+1. Run `bd prime` for context
+2. **Create feature branch FIRST**: `gt create luan/<short-description>` (e.g., `gt create luan/fix-container-minimize`)
+3. Find work: `bd ready` or `bd children <epic-id>`
+4. For each task:
+   - `bd show <task-id>` - read instructions
+   - `bd update <task-id> --status in_progress`
+   - Copy test code EXACTLY from description
+   - Verify test fails
+   - Copy implementation EXACTLY from description
+   - Verify test passes
+   - `bd close <task-id>`
+5. Check PR size before starting next task (stop at ~250 lines)
+6. When done or at size limit: invoke finishing-branch skill
 
-- `subagent-driven-development/implementer-prompt.md`
-- `subagent-driven-development/spec-reviewer-prompt.md`
-- `subagent-driven-development/code-quality-reviewer-prompt.md`
+## CRITICAL: Task Atomicity
+NEVER stop mid-task. Finish current task before any PR operations.
 
-Key: paste full task text + context. Don't make subagent read files.
+## Side Quests
+Found bug during impl? `bd create "Found: ..." --type bug` then `bd dep add <current> <new> --type discovered-from`
+"""
+```
+
+## Key Rules
+
+- **Main thread does NOT implement** - subagent does
+- **Copy code EXACTLY** from task descriptions
+- **Task atomicity** - never stop mid-task

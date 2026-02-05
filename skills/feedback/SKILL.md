@@ -11,6 +11,13 @@ allowed-tools:
 
 Process user feedback on recent implementation and apply fixes.
 
+**Chemistry:** No molecules. Feedback is quick, single-session work—no audit trail needed.
+
+- Uses TaskCreate/TaskUpdate for internal tracking (not beads)
+- Checks `bd mol current` for active molecule context
+- Side quests → create beads issue with `discovered-from` dependency
+- Large changes → recommend `/explore` (which uses wisp)
+
 ## Instructions
 
 Spawn a general-purpose agent via Task with this prompt:
@@ -32,8 +39,11 @@ In order:
 1. `git diff --name-only HEAD` (uncommitted changes)
 2. `git diff --name-only HEAD~3..HEAD` (recent commits)
 3. `bd list --status in_progress` (active beads issue)
+4. `bd mol current` (active molecule if any)
 
 No context found → exit: "No recent changes found. What files does this apply to?"
+
+If beads issue found, note it as `<context-issue>` for discovered-from linking.
 
 ## Categorize Feedback
 
@@ -74,6 +84,17 @@ If --type not given, infer:
 - New features
 - Breaking API changes
 - Cross-cutting concerns
+
+**Create beads issue for:**
+- Bugs found that aren't immediate fix (link with discovered-from)
+- Follow-up improvements noticed during fix
+- Technical debt discovered
+
+```bash
+# If feedback reveals related issue during fix:
+bd create "Found: <description>" --type bug
+bd dep add <context-issue> <new-issue> --type discovered-from
+```
 
 ## Workflow
 

@@ -16,3 +16,7 @@ Verify → commit → ready for review. Never submits PRs.
 3. **Squash commits** - `gt squash` (clean history)
 4. **Show stack** - `gt log`
 5. **Report:** "Branch ready. Run `gt ss` to submit."
+6. **Ask to close beads issue** via `AskUserQuestion`:
+   - "Close beads issue <id>?"
+   - If yes: `bd close <id> "Completed: <summary>"`
+   - If no: leave open for continued work

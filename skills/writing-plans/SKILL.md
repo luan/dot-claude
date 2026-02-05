@@ -6,93 +6,185 @@ user-invocable: false
 
 # Writing Plans
 
-Write comprehensive plans assuming the implementer has zero context.
+Write comprehensive plans as epic + child tasks. Implementer is a fresh agent with NO conversation history.
 
-**Core principle:** Bite-sized tasks. Each step = one action (2-5 min).
+**Core principle:** Each task issue contains EVERYTHING needed to implement it. No assumptions.
 
-## Bite-Sized Task Granularity
+## Description vs Notes
 
-**Each step is one action:**
-- "Write the failing test" - step
-- "Run it to make sure it fails" - step
-- "Implement minimal code to pass" - step
-- "Run tests, verify passing" - step
-- "Commit" - step
+| Field | Purpose | When Written | Example |
+|-------|---------|--------------|---------|
+| **description** | Static implementation plan | At creation (explore) | Complete code, exact commands |
+| **notes** | Dynamic session state | During work (implement) | COMPLETED/IN PROGRESS/NEXT |
 
-**Not:** "Implement the feature with tests and commit"
+Description = WHAT to do (doesn't change)
+Notes = WHERE we are (updated each session)
 
-## Plan Document Structure
+## Resumability Format (for complex technical work)
+
+For work that spans sessions, include in task description:
 
 ```markdown
-# [Feature Name] Implementation Plan
+## Implementation
 
-**Goal:** [One sentence]
+### Working Code (tested)
+```python
+# Actual code that works - not pseudocode
+service = build('api', 'v1', credentials=creds)
+result = service.method().execute()
+# Returns: {'key': 'actual structure'}
+```
 
-**Architecture:** [2-3 sentences about approach]
+### API Response Sample
+```json
+{"actualField": "actualValue", "structure": "as returned"}
+```
 
----
+### Desired Output Format
+```markdown
+# What the output should look like
+Not just "return data" but actual structure
+```
 
-### Task 1: [Component Name]
+### Research Context
+- Why this approach?
+- What alternatives considered?
+- Key discoveries that informed design
+```
 
-**Files:**
+**The test:** Would a fresh agent struggle to resume from description alone? If yes, add these sections.
+
+## Structure: Epic + Child Tasks
+
+Instead of one giant notes field, create:
+1. **Epic** - high-level context (problem, solution, key files)
+2. **Child tasks** - one per implementation unit, with complete code
+
+## Step 1: Create Epic
+
+```bash
+bd create "<feature-name>" --type epic --validate --description "$(cat <<'EOF'
+## Problem
+[Why this change is needed - specific user/developer pain]
+
+## Solution
+[Approach chosen and why - reference codebase patterns found]
+
+## Key Files
+- `src/existing/pattern.ts` - follow this pattern for X
+- `tests/example.test.ts` - test style to match
+
+## Acceptance Criteria
+- [ ] Criterion 1
+- [ ] Criterion 2
+EOF
+)"
+```
+
+Save the epic ID (e.g., `bd-abc123`).
+
+## Step 2: Create Child Tasks
+
+For EACH implementation unit, create a child task:
+
+```bash
+bd create "<task-title>" --type task --parent <epic-id> --validate --description "$(cat <<'EOF'
+## Context
+[1-2 sentences linking to epic goal]
+
+## Files
 - Create: `exact/path/to/file.ts`
-- Modify: `exact/path/to/existing.ts`
+- Modify: `exact/path/to/existing.ts` (line ~45, after FooClass)
 - Test: `tests/exact/path/to/test.ts`
 
-**Step 1: Write failing test**
+## Acceptance Criteria
+- [ ] Test exists and fails without implementation
+- [ ] Implementation passes test
+- [ ] No regressions
+
+## Implementation
+
+### Step 1: Write failing test
 ```typescript
-test('specific behavior', () => {
-  // exact code
+// COMPLETE test code - not pseudocode
+test('validates email format', () => {
+  const result = validateEmail('invalid');
+  expect(result.valid).toBe(false);
+  expect(result.error).toBe('Invalid email format');
 });
 ```
 
-**Step 2: Run test, verify fails**
+### Step 2: Run test, verify fails
 ```bash
-npm test path/to/test.ts
+npm test -- path/to/test.ts
 ```
-Expected: FAIL with "function not defined"
+Expected: FAIL with "validateEmail is not defined"
 
-**Step 3: Write minimal implementation**
+### Step 3: Write minimal implementation
 ```typescript
-// exact code
+// COMPLETE implementation - not "add validation logic"
+export function validateEmail(email: string): ValidationResult {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return { valid: false, error: 'Invalid email format' };
+  }
+  return { valid: true };
+}
 ```
 
-**Step 4: Run test, verify passes**
+### Step 4: Run test, verify passes
 Expected: PASS
+EOF
+)"
+```
 
-**Step 5: Commit**
+## Step 3: Add Dependencies (if sequential)
+
 ```bash
-git add path/to/files
-git commit -m "feat(scope): add specific feature"
+bd dep add <task-2-id> <task-1-id>  # task-2 blocked by task-1
 ```
 
----
+## Step 4: Validate All Issues
 
-### Task 2: ...
+```bash
+bd lint <epic-id>
+bd children <epic-id> | xargs bd lint
 ```
+
+Fix any issues flagged by lint before proceeding.
 
 ## Key Requirements
 
-1. **Exact file paths** - always
-2. **Complete code in plan** - not "add validation"
+1. **Complete code in each task** - implementer copies and pastes
+2. **Exact file paths** - no ambiguity
 3. **Exact commands with expected output**
-4. **TDD for each task** - red-green-refactor
-5. **Frequent commits** - after each task
+4. **TDD steps** - red-green-refactor baked in
+5. **--validate flag** - enforces required sections
 
-## Save Location
+## Task Granularity
 
-Save plans to beads issue notes field: `bd update <issue-id> --notes "..."`
+Each task = one logical unit of work:
+- One new function/class with its test
+- One refactoring with verification
+- One integration point
+
+**Size target:** 30-80 lines per task (test + impl combined)
+- Allows 3-4 tasks per PR (~250 line limit)
+- Small enough to complete atomically
+- Large enough to be meaningful
+
+**Not:** "Implement the whole feature" (too big, can't finish in one PR)
+**Not:** "Write line 45" (too small, overhead not worth it)
+
+**CRITICAL:** Tasks must be completable atomically. Once started, a task MUST be finished before any PR operations. Size tasks so they can always be completed.
 
 ## Plan Footer
 
 End every plan summary (in plan mode file) with:
 
 ```
-To continue: use Skill tool to invoke `implement` with arg `<issue-id>`
+Epic: <epic-id>
+Tasks: <task-1-id>, <task-2-id>, ...
+
+To continue: use Skill tool to invoke `implement` with arg `<epic-id>`
 ```
-
-## Integration
-
-- **explore** skill creates plans using this format
-- **implement** skill executes plans in this format
-- **subagent-driven-development** expects this task structure
