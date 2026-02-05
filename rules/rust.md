@@ -17,3 +17,5 @@ paths:
 4. `cargo build --release`
 
 **Dead code:** Remove immediately. Use #[cfg(test)] for test-only code.
+
+**Imports:** All `use` statements at file top only. No inline imports in function bodies.
