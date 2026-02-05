@@ -59,3 +59,4 @@ Random fixes waste time + create new bugs.
 |------|--------|
 | Writing tests | `use Skill tool to invoke tdd` |
 | Verifying fix | `use Skill tool to invoke verification-before-completion` |
+| 3+ plausible root causes | `use Skill tool to invoke team-debug` |

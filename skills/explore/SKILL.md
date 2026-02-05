@@ -53,3 +53,7 @@ This is exploration - ephemeral. Epic+tasks persist, exploration doesn't.
 - **Main thread does NOT explore** - subagent does
 - **bd lint is REQUIRED** - not optional
 - **Chemistry:** `bd mol squash <id>` on approval, `bd mol burn <id> --force` on rejection
+
+## Escalate to Team Explore
+
+If exploration reveals 3+ competing approaches with unclear tradeoffs, or cross-cutting concerns across many subsystems → recommend: `use Skill tool to invoke team-explore`
