@@ -142,3 +142,7 @@ Uses prompts from **subagent-driven-development**:
 Related skills:
 - **pr-fix-comments** - fix PR review comments (from humans)
 - **code-review** - general review guidance
+
+## Escalate to Team Review
+
+For security-sensitive changes, performance-critical paths, or changes touching 5+ files across subsystems → recommend: `use Skill tool to invoke team-review`

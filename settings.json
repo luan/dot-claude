@@ -14,7 +14,8 @@
     "swift-lsp@claude-plugins-official": true
   },
   "env": {
-    "BASH_DEFAULT_TIMEOUT_MS": "300000"
+    "BASH_DEFAULT_TIMEOUT_MS": "300000",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "hooks": {
     "PreCompact": [
