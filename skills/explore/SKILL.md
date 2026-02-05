@@ -1,18 +1,55 @@
 ---
 name: explore
 description: "Triggers: 'explore', 'how does X work', 'understand', 'research', 'plan a feature', 'figure out', 'investigate', 'design', 'architect', 'that's not right', 'try again', 'refine the plan', 'keep improving', 'reconsider'"
-argument-hint: "<prompt> or [issue-id] <feedback>"
+argument-hint: "<prompt> or [epic-id] <feedback>"
+user-invocable: true
+allowed-tools:
+  - Task
+  - EnterPlanMode
+  - ExitPlanMode
+  - AskUserQuestion
 ---
 
 # Explore
 
-Explore codebase → propose approaches → write plan → persist to beads.
+**IMMEDIATELY dispatch to subagent.** Do not explore on main thread.
 
-!`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && cat ~/.claude/skills/explore/non-interactive.md || cat ~/.claude/skills/explore/interactive.md`
+## Instructions
 
-## Skill Composition
+1. Use `EnterPlanMode` tool
+2. Dispatch exploration to subagent:
 
-| When | Invoke |
-|------|--------|
-| Writing plan | `use Skill tool to invoke writing-plans` |
-| Plan approved | Output: `To continue: use Skill tool to invoke implement with arg <id>` |
+```
+Task tool with subagent_type="general-purpose" and prompt:
+"""
+Explore and create implementation plan for: $ARGUMENTS
+
+## Your Job
+1. Run `bd prime` to get workflow context
+2. Check existing work: `bd list --status in_progress --type epic`
+3. Explore codebase (use Explore subagent if needed)
+4. Design approach - identify 2-3 options, choose best
+5. Create epic + tasks with `bd create --type epic --validate`
+6. Run `bd lint` on ALL issues - fix any errors
+7. Return summary: epic-id, task count, key files
+
+## Task Quality Requirements
+Each task must have:
+- Complete test code (copy-pasteable)
+- Complete implementation code (copy-pasteable)
+- Exact file paths
+- Exact commands with expected output
+
+## Chemistry
+This is exploration - ephemeral. Epic+tasks persist, exploration doesn't.
+"""
+```
+
+3. When subagent returns, use `ExitPlanMode`
+4. After approval, output: `To continue: use Skill tool to invoke implement with arg <epic-id>`
+
+## Key Rules
+
+- **Main thread does NOT explore** - subagent does
+- **bd lint is REQUIRED** - not optional
+- **Chemistry:** `bd mol squash <id>` on approval, `bd mol burn <id> --force` on rejection

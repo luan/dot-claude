@@ -23,45 +23,61 @@
 
 ## Maximize Efficiency
 
+- **Subagents first:** Main thread orchestrates, subagents do heavy lifting. Don't explore/implement on main thread.
 - **Parallel operations:** Run multiple searches, reads, and greps in single messages
-- **Multiple subagents / subtasks / tasks / agents:** Aggressively split tasks into multiple sub-agents or equivalent
-- **Use your sub-agents:** Aggressively delegate tasks to sub-agents available in the system
 - **Batch similar work:** Group related file edits together
 
 ## Problem Solving
 
 - **When stuck:** Stop. The simple solution is usually correct.
-- **When uncertain:** Ask clarification.
-
-## Asking Questions
-
-- **Use `AskUserQuestion` tool** when asking the user questions - faster than text output
-- Prefer multiple choice when options are clear
-- Use for: clarifications, design decisions, continue/abort, ready to proceed
+- **When uncertain:** Ask clarification via `AskUserQuestion`.
 
 ## Testing Strategy
 
 **TDD is the default.** No production code without a failing test first.
 
 - Write test → watch it fail → minimal code to pass → refactor
-- If you write code before test: delete it, start over with test
 - Bug fix? Write failing test that reproduces bug first
-- "Already manually tested" or "too simple to test" are not valid reasons to skip TDD
 
 **Exceptions (ask first):** throwaway prototypes, generated code, config-only changes.
 
-## Agent Workflow (beads)
+## Workflow Skills
 
-State tracking for exploration → implementation flows via beads issues.
+You have these skills via `Skill` tool. Use them—don't do this work on main thread.
 
-**Skills:**
+| Invoke | When | Chemistry |
+|--------|------|-----------|
+| `Skill tool: explore` | Plan feature, investigate, research | WISP |
+| `Skill tool: implement` | Execute plan from explore | MOL |
+| `Skill tool: feedback` | Quick fix to recent work | None |
 
-- `/explore <prompt>` - subagent explores, writes plan to beads issue
-- `/implement [issue-id] [--fresh]` - execute plan, track state via beads (--fresh clears context first)
+**Flow:** explore → plan mode → approval → implement → PR
 
-Session state (save/resume) handled automatically via beads notes field.
+**After plan approval** (user says "yes", "go ahead", "proceed"):
+- **IMMEDIATELY** invoke implement skill with the epic-id
+- Do NOT manually implement—skill handles subagent dispatch
 
-**CRITICAL: After plan approval**, when you see "To continue: use Skill tool to invoke implement with arg X":
-- **IMMEDIATELY** use Skill tool with skill="implement" args="X"
-- Do NOT manually implement - the skill handles subagent dispatch
-- User saying "yes", "go ahead", "proceed" after plan = invoke implement NOW
+## Branch Naming
+
+Always use prefix `luan/` with short description: `gt create luan/<description>`
+
+Examples:
+- `luan/fix-container-minimize`
+- `luan/add-theme-constants`
+- `luan/refactor-drag-drop`
+
+## Beads Commands
+
+```bash
+bd ready                    # Find next task (no blockers)
+bd show <id>               # Read task instructions
+bd update <id> --status in_progress
+bd close <id>              # Complete task
+bd lint <id>               # Validate issue quality (REQUIRED)
+bd mol wisp <formula>      # Ephemeral workflow
+bd mol pour <formula>      # Persistent workflow
+```
+
+**CRITICAL:** `bd lint` is NOT optional. Run on all issues before claiming plan complete.
+
+Session state survives compaction via beads notes field.
