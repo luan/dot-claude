@@ -4,8 +4,18 @@ description: "Triggers: 'team review', 'adversarial review', 'deep review'. Mult
 argument-hint: "[base..head | file-list | PR-number]"
 user-invocable: true
 allowed-tools:
+  - Teammate
   - Task
+  - SendMessage
+  - TaskCreate
+  - TaskUpdate
+  - TaskList
+  - TaskGet
   - AskUserQuestion
+  - Read
+  - Glob
+  - Grep
+  - Bash
 ---
 
 # Team Review
@@ -27,13 +37,14 @@ Adversarial multi-lens code review via agent team. Reviewers cross-examine each 
 ```
 Create an agent team to review: $ARGUMENTS
 
-Spawn 3 teammates. Use Opus for each teammate.
+Spawn 4 teammates. Use Opus for each teammate.
 Require plan approval before teammates begin reviewing.
 
 Teammates:
 1. **Security reviewer**: authentication, authorization, injection, data exposure, secrets
 2. **Performance reviewer**: algorithmic complexity, memory, concurrency, caching, I/O
 3. **Spec/test reviewer**: spec compliance, test coverage, edge cases, error handling
+4. **Quality reviewer**: naming, readability, code structure, duplication, idiomatic patterns, maintainability
 
 Each reviewer should:
 - State their review approach (plan approval required)

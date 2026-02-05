@@ -5,10 +5,19 @@ argument-hint: "[epic-id|task-id] [--fresh]"
 user-invocable: true
 allowed-tools:
   - Task
+  - Skill
   - AskUserQuestion
+  - Bash
 ---
 
 # Implement
+
+## Triage — auto-escalate to team-implement if warranted
+
+Before dispatching, check epic scope:
+1. `bd children <epic-id>` — count tasks
+2. If **5+ tasks spanning 3+ modules/layers with no dependency chain** → invoke `Skill tool: team-implement` with the epic-id and STOP
+3. Otherwise continue below
 
 **IMMEDIATELY dispatch to subagent.** Do not implement on main thread.
 

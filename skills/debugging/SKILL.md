@@ -29,9 +29,10 @@ Random fixes waste time + create new bugs.
 ### Phase 3: Hypothesis + Testing
 
 1. Form single hypothesis: "X is root cause because Y"
-2. SMALLEST possible change to test
-3. One variable at a time
-4. Worked → Phase 4. Didn't → NEW hypothesis
+2. **If you identify 3+ plausible hypotheses:** STOP — invoke `Skill tool: team-debug` with the bug description + hypotheses. Do not continue single-thread debugging.
+3. SMALLEST possible change to test
+4. One variable at a time
+5. Worked → Phase 4. Didn't → NEW hypothesis (if this is your 3rd hypothesis, escalate per step 2)
 
 ### Phase 4: Implementation
 

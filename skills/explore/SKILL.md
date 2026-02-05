@@ -5,6 +5,7 @@ argument-hint: "<prompt> or [epic-id] <feedback>"
 user-invocable: true
 allowed-tools:
   - Task
+  - Skill
   - EnterPlanMode
   - ExitPlanMode
   - AskUserQuestion
@@ -40,20 +41,30 @@ Each task must have:
 - Exact file paths
 - Exact commands with expected output
 
+## Escalation Check
+If you discover ANY of these during exploration, STOP and report back with:
+"ESCALATE: team-explore — [reason]"
+Do NOT create the epic. Just return the escalation signal + your findings so far.
+
+Escalation triggers:
+- 3+ viable approaches with unclear tradeoffs
+- Feature spans 3+ independent subsystems
+- Cross-cutting concerns needing adversarial analysis
+- Architecture decision where different perspectives would produce different answers
+
 ## Chemistry
 This is exploration - ephemeral. Epic+tasks persist, exploration doesn't.
 """
 ```
 
-3. When subagent returns, use `ExitPlanMode`
+3. When subagent returns, check for escalation:
+   - If response contains "ESCALATE: team-explore": invoke `Skill tool: team-explore` with the original arguments + subagent findings as context
+   - Otherwise: use `ExitPlanMode`
 4. After approval, output: `To continue: use Skill tool to invoke implement with arg <epic-id>`
 
 ## Key Rules
 
 - **Main thread does NOT explore** - subagent does
 - **bd lint is REQUIRED** - not optional
+- **Auto-escalation** - if subagent reports ESCALATE, invoke team-explore immediately
 - **Chemistry:** `bd mol squash <id>` on approval, `bd mol burn <id> --force` on rejection
-
-## Escalate to Team Explore
-
-If exploration reveals 3+ competing approaches with unclear tradeoffs, or cross-cutting concerns across many subsystems → recommend: `use Skill tool to invoke team-explore`

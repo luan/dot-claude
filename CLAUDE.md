@@ -60,11 +60,12 @@ Agent teams = multiple Claude instances that DISCUSS. Higher token cost.
 | Invoke | When |
 |--------|------|
 | `Skill tool: team-explore` | Multi-angle exploration, architecture decisions |
+| `Skill tool: team-implement` | Cross-layer or multi-module parallel implementation |
 | `Skill tool: team-review` | Adversarial multi-lens review |
 | `Skill tool: team-debug` | Competing hypothesis debugging |
 
 **Decision:** Do agents benefit from talking to each other? Yes → team. No → subagent.
-**Rule:** Teams for EXPLORATION + REVIEW. Subagents for IMPLEMENTATION.
+**Auto-escalation:** Each base skill triages and auto-escalates to its team variant when warranted.
 
 **After plan approval** (user says "yes", "go ahead", "proceed"):
 - **IMMEDIATELY** invoke implement skill with the epic-id
