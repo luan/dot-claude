@@ -2,6 +2,8 @@
 name: commit
 description: Create conventional commit messages. Explains WHY not WHAT.
 user-invocable: true
+context: fork
+agent: general-purpose
 allowed-tools:
   - "Bash(git status)"
   - "Bash(git diff:*)"
@@ -12,6 +14,7 @@ allowed-tools:
   - Read
   - Glob
   - Grep
+  - AskUserQuestion
 ---
 
 # Commit
