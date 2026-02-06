@@ -212,6 +212,11 @@ def evaluate_continuation(hook_input: dict) -> dict:
 def main():
     try:
         hook_input = json.load(sys.stdin)
+
+        # Log hook input to debug
+        with open("/tmp/stop-hook-input.json", "w") as f:
+            json.dump(hook_input, f, indent=2, default=str)
+
         result = evaluate_continuation(hook_input)
         print(json.dumps(result))
     except Exception as e:

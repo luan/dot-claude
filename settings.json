@@ -288,13 +288,65 @@
       "Bash(gt track --help:*)",
       "Bash(gt track:*)"
     ],
-    "ask": ["Bash(git push:*)", "Bash(sudo *)"],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(sudo *)"
+    ],
     "defaultMode": "bypassPermissions"
   },
-  "promptSuggestionEnabled": true,
+  "enableAllProjectMcpServers": true,
+  "hooks": {
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bd prime"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bd prime"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/non-interactive-continuation.py"
+          }
+        ]
+      }
+    ]
+  },
   "statusLine": {
+    "type": "command",
     "command": "uv run ~/.claude/statusline.py",
-    "padding": 0,
-    "type": "command"
-  }
+    "padding": 0
+  },
+  "enabledPlugins": {
+    "beads@beads-marketplace": true,
+    "clangd-lsp@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "gopls-lsp@claude-plugins-official": true,
+    "pyright-lsp@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": false,
+    "swift-lsp@claude-plugins-official": true
+  },
+  "alwaysThinkingEnabled": true,
+  "promptSuggestionEnabled": true
 }

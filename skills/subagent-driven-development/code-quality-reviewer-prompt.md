@@ -30,9 +30,11 @@ Review the implementation for:
 - No unnecessary complexity?
 
 **Testing:**
-- Tests comprehensive?
-- Tests verify behavior (not mock behavior)?
-- Edge cases covered?
+- Every test answers "what bug would this catch?"
+- No tautology tests (mock returns what you told it)?
+- No getter/setter tests or implementation-mirroring?
+- Error paths and edge cases covered, not just happy path?
+- Mocks only for external services? (3+ mocks = flag)
 - Tests actually run and pass?
 
 **Best Practices:**

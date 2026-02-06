@@ -1,7 +1,7 @@
 ---
 name: review-and-fix
 description: Review existing changes, identify issues, fix with subagent pattern. Start from commits/files instead of plan.
-argument-hint: "[base..head | file-list | PR-number]"
+argument-hint: "[base..head | file-list | PR#] [--against <issue-id>]"
 user-invocable: true
 allowed-tools:
   - Task
@@ -15,146 +15,138 @@ allowed-tools:
 
 Review existing changes → identify issues → fix with subagent pattern.
 
-Entry point when you have changes to review (vs implement which starts from a plan).
+## Step 0: Triage — Auto-Escalate
 
-## When to Use
+- Run `git diff --stat $ARGUMENTS` (or `gh pr diff $ARGUMENTS --stat`)
+- Count: files changed, unique top-level directories touched
+- If **5+ files across 3+ directories**, OR diff touches auth/security/crypto patterns → invoke `Skill tool: team-review` with the same arguments and STOP
+- Otherwise continue below
 
-```dot
-digraph when_to_use {
-    "Have existing changes?" [shape=diamond];
-    "Have a plan/spec?" [shape=diamond];
-    "review-and-fix" [shape=box];
-    "subagent-driven-development" [shape=box];
-    "explore first" [shape=box];
+## Step 1: Determine Scope
 
-    "Have existing changes?" -> "Have a plan/spec?" [label="yes"];
-    "Have existing changes?" -> "explore first" [label="no"];
-    "Have a plan/spec?" -> "subagent-driven-development" [label="yes - implement from scratch"];
-    "Have a plan/spec?" -> "review-and-fix" [label="yes - review against spec"];
-    "Have a plan/spec?" -> "review-and-fix" [label="no - quality review only"];
-}
-```
+Parse $ARGUMENTS for:
+- `--against <issue-id>`: beads issue to compare against (plan adherence)
+- Remaining args: one of:
 
-## Input
+| Input | How to get diff |
+|-------|----------------|
+| (none) | `git diff HEAD` (uncommitted) |
+| `main..HEAD` | `git diff main..HEAD` |
+| file list | Read those files + `git diff HEAD -- <files>` |
+| `#123` | `gh pr diff 123` |
 
-Accepts one of:
-- Commit range: `main..HEAD`, `HEAD~3..HEAD`
-- File list: `src/foo.ts src/bar.ts`
-- PR number: `#123` (fetches via `gh pr view`)
+## Step 2: Gather Context
 
-## Process
+1. Get the diff
+2. If `--against`: run `bd show <issue-id>` to get plan from notes
+3. Get list of changed files
+4. Read all changed files in parallel (full context, not just diff)
 
-```dot
-digraph process {
-    rankdir=TB;
+## Step 3: Dispatch Reviewer via Task
 
-    "Identify changes (commits/files/PR)" [shape=box];
-    "Has spec/plan to compare?" [shape=diamond];
-    "Dispatch spec reviewer" [shape=box];
-    "Spec compliant?" [shape=diamond];
-    "Dispatch quality reviewer" [shape=box];
-    "Quality approved?" [shape=diamond];
-    "Dispatch implementer to fix" [shape=box];
-    "Done" [shape=box];
-
-    "Identify changes (commits/files/PR)" -> "Has spec/plan to compare?";
-    "Has spec/plan to compare?" -> "Dispatch spec reviewer" [label="yes"];
-    "Has spec/plan to compare?" -> "Dispatch quality reviewer" [label="no - quality only"];
-    "Dispatch spec reviewer" -> "Spec compliant?";
-    "Spec compliant?" -> "Dispatch implementer to fix" [label="no"];
-    "Dispatch implementer to fix" -> "Dispatch spec reviewer" [label="re-review"];
-    "Spec compliant?" -> "Dispatch quality reviewer" [label="yes"];
-    "Dispatch quality reviewer" -> "Quality approved?";
-    "Quality approved?" -> "Dispatch implementer to fix" [label="no"];
-    "Dispatch implementer to fix" -> "Dispatch quality reviewer" [label="re-review"];
-    "Quality approved?" -> "Done" [label="yes"];
-}
-```
-
-## Steps
-
-0. **Triage — auto-escalate to team-review if warranted:**
-   - Run `git diff --stat $ARGUMENTS` (or `gh pr diff $ARGUMENTS --stat`)
-   - Count: files changed, unique top-level directories touched
-   - If **5+ files across 3+ directories**, OR diff touches auth/security/crypto patterns → invoke `Skill tool: team-review` with the same arguments and STOP
-   - Otherwise continue below
-
-1. **Parse input** - determine commit range, files, or PR
-2. **Gather context**:
-   - `git diff {range}` or file contents
-   - Find related spec/plan if exists (`.agents/plans/`, PR description, issue)
-3. **Spec review** (if spec exists):
-   - Use `subagent-driven-development/spec-reviewer-prompt.md`
-4. **Quality review**:
-   - Use `subagent-driven-development/code-quality-reviewer-prompt.md`
-5. **Present summary** - table of issues by severity
-6. **CRITICAL: Use AskUserQuestion** to determine next steps:
-   ```
-   AskUserQuestion:
-     question: "How should I proceed with fixes?"
-     header: "Fix scope"
-     options:
-       - label: "Critical only"
-         description: "Fix {N} critical issues, leave rest"
-       - label: "Critical + High"
-         description: "Fix {N} critical and high priority issues"
-       - label: "All issues"
-         description: "Fix all {N} issues across all severities"
-       - label: "Let me pick"
-         description: "I'll specify which issues to fix"
-   ```
-7. **Dispatch fixes** based on answer - use implementer prompt per component/area
-8. **Re-review** fixed code → loop until approved or user stops
-
-## Implementer Fix Prompt
-
-When reviewer finds issues, dispatch fix subagent:
+Spawn a general-purpose agent via Task with this prompt:
 
 ```
-Task tool (general-purpose):
-  description: "Fix review issues"
-  prompt: |
-    The reviewer found these issues in the code:
+Review this code change.
 
-    ## Issues to Fix
+## Diff
 
-    {list of issues with file:line references}
+{paste full diff here}
 
-    ## Context
+## Changed Files (full content)
 
-    {what the code is supposed to do}
+{paste full file contents here}
 
-    ## Your Job
+## Plan to Compare Against
 
-    1. Fix each issue listed
-    2. Verify fixes work
-    3. Commit with message: "fix: address review feedback"
-    4. Report what you fixed
+{if --against: paste beads issue notes here}
+{if no plan: "No plan provided. Quality review only."}
 
-    Do NOT:
-    - Fix things not listed (scope creep)
-    - Refactor beyond what's needed
-    - Add features
+## Review Criteria
+
+### Plan Adherence (if plan provided)
+- Does implementation match what was planned?
+- Missing planned features?
+- Unplanned additions?
+- Deviations justified?
+
+### Architecture & Design
+- Follows existing codebase patterns?
+- Complexity justified?
+- Abstractions at right level?
+- Could be simpler?
+
+### Code Quality
+- Readable, maintainable?
+- Edge cases handled?
+- Clear naming?
+- Functions focused on one thing?
+
+### Standards
+- Follows project style?
+- Comments explain "why" not "what"?
+- Consistent with codebase?
+
+### Security & Performance
+- Obvious security concerns?
+- Input validated at boundaries?
+- Performance bottlenecks?
+
+## Output Format
+
+Return structured findings:
+
+| Severity | File:Line | Issue | Suggestion |
+|----------|-----------|-------|------------|
+| Critical | path:N | ... | ... |
+| High | path:N | ... | ... |
+| Medium | path:N | ... | ... |
+| Low | path:N | ... | ... |
+
+Then a brief summary: what's good, what needs work, overall assessment.
 ```
 
-## Key Behaviors
+## Step 4: Present & Ask
 
-- **After summary → AskUserQuestion** to determine fix scope
-- **After user answers → dispatch fixes immediately**
-- **After fixes → re-review automatically**
+Show review summary to user.
 
-Keep momentum: summary → ask → fix → verify → done
+!`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Return findings to caller. Don't fix." || echo "Use AskUserQuestion: Fix all / Fix critical only / Skip fixes"`
 
-## Integration
+## Step 5: Dispatch Fixes
 
-Uses prompts from **subagent-driven-development**:
-- `spec-reviewer-prompt.md`
-- `code-quality-reviewer-prompt.md`
+Spawn a general-purpose agent via Task with this prompt:
 
-Related skills:
-- **pr-fix-comments** - fix PR review comments (from humans)
-- **code-review** - general review guidance
+```
+Fix these review issues in the code.
 
-## Auto-Escalation
+## Issues to Fix
 
-Triage step (step 0) handles escalation automatically. If you reach step 1, the diff was small enough for single-agent review.
+{list of issues with file:line references from review}
+
+## Context
+
+{what the code is supposed to do}
+
+## Your Job
+
+1. Fix each issue listed
+2. Verify fixes (syntax check, tests if quick)
+3. Report what you fixed
+
+Do NOT:
+- Fix things not listed
+- Refactor beyond what's needed
+- Add features
+```
+
+## Step 6: Re-review
+
+After fixes applied, re-run Step 3 to verify. Loop until clean or user stops.
+
+## Skill Composition
+
+| When | Invoke |
+|------|--------|
+| Complex bug found | `use Skill tool to invoke debugging` |
+| Before claiming done | `use Skill tool to invoke verification-before-completion` |
+| User has feedback | `use Skill tool to invoke feedback` |
