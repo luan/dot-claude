@@ -58,8 +58,10 @@ Don't guess or make assumptions.
 
 **Testing (TDD mandatory):**
 - Wrote failing test BEFORE implementation?
-- Tests verify behavior (not mock behavior)?
-- Tests comprehensive?
+- Every test answers "what bug would this catch?"
+- No tautology/getter/setter/mirror tests?
+- Mocks only for external services? Real collaborators used?
+- Edge cases and error paths covered?
 
 If you find issues, fix them before reporting.
 

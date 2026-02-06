@@ -38,6 +38,11 @@
 
 - Write test → watch it fail → minimal code to pass → refactor
 - Bug fix? Write failing test that reproduces bug first
+- "Already manually tested" or "too simple to test" are not valid reasons to skip TDD
+- Every test must answer: "what bug would this catch?" No answer = delete it
+- Banned: getter/setter tests, tautology tests, mock-returns-mock tests, happy-path-only
+- Mocks: external services only. 3+ mocks = simplify the design
+- Every comment must say something the code doesn't. No restating, no filler docstrings
 
 **Exceptions (ask first):** throwaway prototypes, generated code, config-only changes.
 
