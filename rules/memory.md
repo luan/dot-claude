@@ -1,26 +1,26 @@
-# Memory & Learning Rules
+# Memory & Learning
 
-## Where Learnings Go
+## Where
 
-- **Universal rule** (applies across projects) → `~/.claude/rules/<topic>.md`
-- **Project-specific context** → that project's `CLAUDE.md`
-- **Never use auto-memory** (`projects/*/memory/`). It's not version-controlled, not reviewable, and fragments knowledge.
+- Universal rule → `~/.claude/rules/<topic>.md`
+- Project-specific → project's `CLAUDE.md`
+- Never use auto-memory (`projects/*/memory/`) — not version-controlled, fragments knowledge
 
 ## When to Record
 
-Record a learning when:
-- A mistake was made that a rule would prevent next time
-- User corrects a workflow preference (tool choice, naming convention, process)
-- A non-obvious constraint is discovered (API quirk, build system gotcha)
+Record when:
+- Mistake made that rule would prevent
+- User corrects workflow preference (tool choice, naming, process)
+- Non-obvious constraint discovered (API quirk, build gotcha)
 
 Don't record:
-- One-off facts about a specific task
-- Things already covered by existing rules
-- Obvious things that don't need a rule
+- One-off task facts
+- Already covered by existing rules
+- Obvious things
 
 ## How to Record
 
-1. Check if an existing rule file covers the topic — edit it if so
-2. Otherwise create a new `~/.claude/rules/<topic>.md`
-3. Keep rules concise — actionable statements, not narratives
-4. After writing, remind user to commit in dot-claude repo
+1. Check if existing rule file covers topic — edit if so
+2. Otherwise create `~/.claude/rules/<topic>.md`
+3. Keep concise — actionable statements, not narratives
+4. Remind user to commit in dot-claude repo
