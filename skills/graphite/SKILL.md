@@ -80,6 +80,18 @@ Split when changes are large or multi-concern. Each PR: small, self-contained, b
 
 Don't over-split. Related + small together → one PR.
 
+## Hunk-Level Splitting
+
+When a file has changes for different PRs, use `/git-surgeon`:
+
+```bash
+git-surgeon hunks                              # list with IDs
+git-surgeon commit <id1> <id2> -m "message"    # stage + commit hunks
+git-surgeon commit <id>:5-30 -m "message"      # partial hunk by lines
+```
+
+Then `gt create -m "msg"` picks up the commit into a new stack branch.
+
 ## Common Workflows
 
 | Task | Commands |
