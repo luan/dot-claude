@@ -186,5 +186,5 @@ When user provides feedback on findings:
 | When | Invoke |
 |------|--------|
 | Complex bug found | `use Skill tool to invoke debugging` |
-| Before claiming done | `use Skill tool to invoke verification-before-completion` |
+| Before claiming done | Run verification — evidence before assertions |
 | User has feedback | `use Skill tool to invoke feedback` |

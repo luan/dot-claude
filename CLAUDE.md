@@ -32,6 +32,7 @@
 
 - **When stuck:** Stop. The simple solution is usually correct.
 - **When uncertain:** Ask clarification via `AskUserQuestion`.
+- **Before claiming done:** Run verification. Evidence before assertions — no "should work now."
 
 ## Testing Strategy
 
@@ -54,10 +55,11 @@ You have these skills via `Skill` tool. Use them—don't do this work on main th
 | Invoke | When | Chemistry |
 |--------|------|-----------|
 | `Skill tool: explore` | Plan feature, investigate, research | WISP |
+| `Skill tool: continue-explore` | Refine existing plan with feedback | Same epic |
 | `Skill tool: implement` | Execute plan from explore | MOL |
 | `Skill tool: feedback` | Quick fix to recent work | None |
 
-**Flow:** explore → plan mode → approval → implement → PR
+**Flow:** explore → [continue-explore]* → plan mode → approval → implement → PR
 
 ## Agent Teams
 

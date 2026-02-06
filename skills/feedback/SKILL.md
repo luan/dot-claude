@@ -131,5 +131,5 @@ Return:
 | When | Invoke |
 |------|--------|
 | Large change needed | Recommend `/explore` |
-| Before claiming done | `use Skill tool to invoke verification-before-completion` |
+| Before claiming done | Run verification — evidence before assertions |
 | Complex bug | `use Skill tool to invoke debugging` |

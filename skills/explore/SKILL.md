@@ -1,7 +1,7 @@
 ---
 name: explore
-description: "Triggers: 'explore', 'how does X work', 'understand', 'research', 'plan a feature', 'figure out', 'investigate', 'design', 'architect', 'that's not right', 'try again', 'refine the plan', 'keep improving', 'reconsider'"
-argument-hint: "<prompt> or [epic-id] <feedback>"
+description: "Triggers: 'explore', 'how does X work', 'understand', 'research', 'plan a feature', 'figure out', 'investigate', 'design', 'architect'"
+argument-hint: "<prompt>"
 user-invocable: true
 allowed-tools:
   - Task
