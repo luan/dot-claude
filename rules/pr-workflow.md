@@ -9,5 +9,9 @@
 - Graphite adopts existing PRs with `gt submit --force`.
 - Closing PRs leaves visible trail of garbage for team.
 
+## Always Draft
+- NEVER mark a PR as "ready for review" unless the user explicitly asks.
+- Leave PRs in draft state by default.
+
 ## General Principle
 - Correcting mistakes in shared/visible systems (PRs, issues, messages): prefer additive fixes over destructive ones.
