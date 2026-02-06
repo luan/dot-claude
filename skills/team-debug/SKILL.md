@@ -62,6 +62,16 @@ After investigation:
 
 3. After root cause identified, dispatch fix via `debugging` skill flow (regular subagent)
 
+## Oracle Techniques
+
+Investigators should compare buggy behavior against known-good baselines as hard evidence:
+
+1. **Git worktree baseline:** Check out a known-good commit in a worktree, run the same test, diff output against current. Use an available worktree from the pool (`git worktree list` — detached HEAD = available, `git checkout <last-green-commit>` inside it). Creating a new worktree is expensive — **always ask the user first**. Never use `git stash`/`git checkout` on the main worktree (risks uncommitted work). Return the worktree to detached HEAD when done.
+2. **Reference implementation:** Use stdlib or mature library as oracle. If your function should match `hashlib.sha256()` output, test against it directly.
+3. **Reduced test case:** Minimize input to smallest case that still fails. Known-correct output for minimal input is often obvious — use it as ground truth.
+
+Oracle results are hard evidence. Use them when arguing for/against hypotheses.
+
 ## Key Rules
 
 - **Sonnet** for teammates (hypothesis testing is exploratory)

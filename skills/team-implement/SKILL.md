@@ -20,7 +20,7 @@ allowed-tools:
 
 # Team Implement
 
-Coordinated implementation via agent team. Each teammate owns a layer or module, communicates with others to resolve interface mismatches and discovered issues in real time.
+Coordinated implementation via agent team. Teammates self-select tasks from beads queue, coordinate via messaging when interfaces overlap.
 
 ## When to Use (vs `implement`)
 
@@ -32,7 +32,7 @@ Coordinated implementation via agent team. Each teammate owns a layer or module,
 ## Instructions
 
 1. Read the epic: `bd show <epic-id>` + `bd children <epic-id>`
-2. Group tasks by module/layer — each group becomes a teammate's workload
+2. **Prep file ownership:** Ensure each task has file ownership in beads metadata. If two ready tasks share files, `bd dep add` between them to serialize. This is the lead's critical prep step.
 3. Create feature branch: `gt create luan/<short-description>`
 4. Create agent team:
 
@@ -43,7 +43,7 @@ Teammate tool:
   description: "Implementing <epic summary>"
 ```
 
-5. Spawn one teammate per module/layer. Use Sonnet. Require plan approval:
+5. Spawn 2-4 worker teammates. Use Sonnet. Require plan approval:
 
 ```
 Task tool (for each):
@@ -51,30 +51,29 @@ Task tool (for each):
   model: "sonnet"
   mode: "plan"
   team_name: "<team-name>"
-  name: "<module-name>"
+  name: "worker-<n>"
   prompt: """
-  You are implementing the <MODULE> portion of epic <epic-id>.
+  You are a worker on epic <epic-id>.
 
-  ## Your Tasks
-  <paste full task descriptions — don't make them read files>
+  ## Work Loop
+  1. `bd ready` — find next unblocked task
+  2. `bd show <id>` — read task instructions
+  3. `bd update <id> --status in_progress` — claim it
+  4. `bd show <id>` — verify you're the owner (if someone else claimed it, go to step 1)
+  5. Respect file ownership metadata on the task — those are YOUR files while in_progress
+  6. Write failing test FIRST, then minimal implementation
+  7. `bd close <id>` when done
+  8. Go to step 1. When `bd ready` returns nothing, report completion to lead.
 
   ## Context
   - Branch: luan/<description> (already created)
   - Run `bd prime` for workflow context
-  - Run `bd update <task-id> --status in_progress` before starting each task
 
-  ## Rules
-  1. Plan your approach (will be reviewed before you start)
-  2. Write failing test FIRST, then minimal implementation
-  3. If you need an interface/type/API from another teammate's module, MESSAGE them
-  4. If you discover an issue the exploration missed, MESSAGE the team — don't just file a bug
-  5. If another teammate asks about your interface, respond with the exact signature/shape
-  6. `bd close <task-id>` when each task passes
-  7. Do NOT edit files outside your module unless coordinated with the owning teammate
-
-  ## File Ownership
-  Your files: <list of files/directories this teammate owns>
-  Other teammates own other paths. Coordinate before touching shared files.
+  ## Coordination Rules
+  - If you need an interface/type/API from another teammate's module, MESSAGE them
+  - If you discover an issue the exploration missed, MESSAGE the team
+  - If another teammate asks about your interface, respond with the exact signature/shape
+  - Do NOT edit files outside your current task's ownership unless coordinated with the owning teammate
 
   ## Output
   Report: tasks completed, files changed, any unresolved interface questions
@@ -82,36 +81,40 @@ Task tool (for each):
 ```
 
 6. Review and approve each teammate's plan. Verify:
-   - No file ownership overlaps
+   - File ownership metadata on concurrent tasks doesn't overlap
    - Interface assumptions are compatible across teammates
-   - If conflicts exist, message teammates to resolve before approving
+   - If conflicts exist, add beads dependencies to serialize or message teammates to resolve
 
 7. Monitor implementation. Watch for:
+   - Two teammates claiming tasks with overlapping files — pause one, add dependency
    - Interface mismatches — nudge teammates to coordinate
    - Discovered issues — decide: fix now or beads bug for later
-   - File conflicts — if two teammates need the same file, pause one
+   - `bd ready` returning nothing for all teammates = done
 
 8. When teammates finish:
    - Verify all beads tasks closed: `bd children <epic-id>`
    - Run full test suite
-   - Check for merge conflicts between teammates' changes
    - Shut down teammates, clean up team
 
 9. Invoke `finishing-branch` skill
 
 ## File Ownership Protocol
 
-**Critical:** Two teammates editing the same file = overwrites. Before spawning:
-- Map every task to its primary files
-- Assign non-overlapping file sets to each teammate
-- Shared files (e.g., types, config) → assign to ONE teammate, others request changes via messages
+Ownership is per-task, stored in beads metadata — not per-teammate.
+
+- `bd update <id> --status in_progress` = claim. Only one agent works a task at a time.
+- If two ready tasks share files, lead adds a beads dependency so they serialize.
+- Shared files (types, config) owned by one task; other tasks that need changes MESSAGE the owner.
+- Teammates verify ownership after claiming (`bd show` to confirm).
 
 ## Key Rules
 
 - **Sonnet** for teammates (implementation is mechanical, coordination is the value-add)
-- **Plan approval required** — verify no file overlaps, compatible interfaces
+- **Plan approval required** — verify no file ownership overlaps on concurrent tasks
+- **Self-selecting** — teammates pull from `bd ready`, not pre-assigned by lead
+- **Claim verification** — `bd show` after `bd update --status in_progress` to confirm ownership
 - **TDD still applies** — each teammate writes failing test first
-- **File ownership is strict** — teammates don't touch each other's files without messaging
+- **File ownership is strict** — per-task metadata, not per-teammate
 - **Task atomicity** — teammates finish current task before stopping
 - **Beads = source of truth** — teammates close beads tasks, not just team tasks
 - **Always clean up team** when done

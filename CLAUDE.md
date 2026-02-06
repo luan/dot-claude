@@ -26,6 +26,7 @@
 - **Subagents first:** Main thread orchestrates, subagents do heavy lifting. Don't explore/implement on main thread.
 - **Parallel operations:** Run multiple searches, reads, and greps in single messages
 - **Batch similar work:** Group related file edits together
+- **Context is finite:** Truncate verbose output, summarize between agents. See `rules/context-budget.md`.
 
 ## Problem Solving
 
