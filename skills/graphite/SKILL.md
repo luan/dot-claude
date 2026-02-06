@@ -13,7 +13,7 @@ allowed-tools:
 
 ```bash
 # Create
-gt create -am "msg"         # New branch with staged changes
+gt create -am "msg"         # New branch + staged changes
 gt c -am "msg"              # Short form
 
 # Navigate
@@ -24,7 +24,7 @@ gt log                      # View stack
 # Modify
 gt modify -a                # Amend changes to current branch
 gt squash                   # Squash commits in current branch
-gt absorb -a                # Auto-distribute changes to downstack
+gt absorb -a                # Auto-distribute changes downstack
 
 # Sync
 gt sync                     # Pull trunk, restack (NO PUSH)
@@ -56,20 +56,44 @@ main (trunk)
 - **up** = toward top (children)
 - **down** = toward bottom (parent/main)
 
+## When to Stack
+
+Split when changes are large or multi-concern. Each PR: small, self-contained, buildable.
+
+**Good split candidates:**
+- Utility/support code for feature
+- New types, models, protocols feature depends on
+- Refactoring to make room (extractions, renames)
+- Tests for existing behavior before modifying
+- Schema/migration separate from code using them
+- API/interface definitions separate from implementations
+- UI scaffolding separate from business logic
+- Cleanup/tech debt discovered during implementation
+
+**Principles:**
+- Each PR independently reviewable — no cross-PR context needed
+- Each PR compiles + passes tests — no "fixed in next PR"
+- Lower-risk/mechanical changes first, riskier logic later
+- Target 100-300 lines per PR
+
+**Before splitting:** present stack table (PR title + summary each), get user feedback first.
+
+Don't over-split. Related + small together → one PR.
+
 ## Common Workflows
 
 | Task | Commands |
 |------|----------|
 | Start new work | `gt create -am "msg"` |
 | Add to stack | `gt create -am "msg"` |
-| Push changes | `gt ss` (or `gt ss -u` for existing PRs) |
+| Push changes | `gt ss` (or `gt ss -u` for existing) |
 | Update from main | `gt sync` |
 | Amend current | `gt modify -a` |
 | View stack | `gt log` |
 
 ## Forbidden Git Commands
 
-Never use these on stacked branches:
+Never use on stacked branches:
 
 | Forbidden | Use Instead |
 |-----------|-------------|

@@ -76,7 +76,7 @@ agent: Explore # Subagent type (with context: fork)
 
 ## Dynamic Context Injection
 
-`!` + command in backticks → runs shell before sending to Claude.
+**!** + command in backticks → runs shell before sending to Claude.
 
 ```
 Current branch: !\`git branch --show-current\`
