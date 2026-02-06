@@ -1,6 +1,6 @@
 ---
 name: refine
-description: "Pre-commit code polish. Simplifies complexity, removes low-value comments. Does NOT change behavior."
+description: "Use before committing to polish code. Triggers: 'refine', 'clean up', 'simplify'. Removes low-value comments, simplifies complexity, cleans imports. Does NOT change behavior."
 argument-hint: "[optional: file-pattern]"
 user-invocable: true
 allowed-tools:

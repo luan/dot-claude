@@ -1,6 +1,6 @@
 ---
 name: review
-description: "Adversarial code review: parallel reviewers find issues, fix with subagent pattern."
+description: "Adversarial code review with parallel reviewers. Triggers: 'review', 'review my changes', 'check this code', 'code review'."
 argument-hint: "[base..head | file-list | PR#] [--against <issue-id>]"
 user-invocable: true
 allowed-tools:

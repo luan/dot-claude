@@ -1,6 +1,6 @@
 ---
 name: pr-fix-gha
-description: Fetch failed GHA checks from PR and fix them
+description: "Fix failing CI/GitHub Actions checks. Triggers: 'fix CI', 'fix GHA', 'build failing', 'tests failing in CI', 'checks red'."
 user-invocable: true
 disable-model-invocation: true
 allowed-tools:
