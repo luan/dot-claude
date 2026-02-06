@@ -1,6 +1,6 @@
 ---
 name: commit
-description: Create conventional commit messages. Explains WHY not WHAT.
+description: "Use when the user wants to commit, save changes, create a conventional commit, amend a commit, make a fixup commit, or squash commits."
 user-invocable: true
 context: fork
 agent: general-purpose

@@ -1,6 +1,6 @@
 ---
 name: pr-superfresh
-description: Complete PR refresh - sync, restack, fix GHA, fix comments, submit
+description: "Full PR refresh: sync, restack, fix CI, fix comments, submit. Triggers: 'refresh PR', 'superfresh', 'update PR', 'PR is stale'."
 user-invocable: true
 disable-model-invocation: true
 allowed-tools:

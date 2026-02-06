@@ -1,6 +1,6 @@
 ---
 name: pr-fix-comments
-description: Fetch unresolved PR comments and fix them
+description: "Fix unresolved PR review comments. Triggers: 'fix comments', 'address review', 'resolve threads', 'PR feedback'."
 user-invocable: true
 disable-model-invocation: true
 allowed-tools:
