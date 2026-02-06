@@ -28,6 +28,14 @@
 - **Batch similar work:** Group related file edits together
 - **Context is finite:** Truncate verbose output, summarize between agents. See `rules/context-budget.md`.
 
+## Learning & Memory
+
+- **Never use auto-memory** (`projects/*/memory/`). Not version-controlled, not reviewable.
+- Universal learnings → `~/.claude/rules/<topic>.md` (in dot-claude repo)
+- Project-specific learnings → that project's `CLAUDE.md`
+- After writing a rule, remind user to commit in dot-claude.
+- See `rules/memory.md` for full guidelines.
+
 ## Problem Solving
 
 - **When stuck:** Stop. The simple solution is usually correct.
