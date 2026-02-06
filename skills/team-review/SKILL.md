@@ -22,12 +22,12 @@ allowed-tools:
 
 Adversarial multi-lens code review via agent team. Reviewers cross-examine each other's findings.
 
-## When to Use (vs `review-and-fix`)
+## When to Use (vs `review`)
 
 - Security-sensitive changes
 - Performance-critical paths
 - 5+ files across subsystems
-- Otherwise → use regular `review-and-fix`
+- Otherwise → use regular `review`
 
 ## Instructions
 

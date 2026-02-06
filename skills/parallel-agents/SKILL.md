@@ -5,30 +5,30 @@ description: Dispatch parallel subagents for 3+ independent failures or tasks wi
 
 # Parallel Agents
 
-Dispatch one agent per independent problem domain. Let them work concurrently.
+One agent per independent problem domain, working concurrently.
 
 ## When to Use
 
-- 3+ failures in different test files/subsystems
-- Each problem understood without context from others
+- 3+ failures in different files/subsystems
+- Each problem independent (no shared context)
 - No shared state between investigations
 
 ## When NOT to Use
 
 - Related failures (fix one → might fix others)
 - Need full system context
-- Agents would interfere (same files, shared resources)
-- Exploratory debugging (don't know what's broken yet)
+- Agents would interfere (same files/resources)
+- Exploratory debugging (unknown root cause)
 
 ## Process
 
-1. **Group by domain:** Identify independent problem areas
-2. **Dispatch focused agents:** One Task per domain
-3. **Review + integrate:** Read summaries, verify no conflicts, run full suite
+1. **Group by domain:** identify independent areas
+2. **Dispatch:** one Task per domain
+3. **Integrate:** read summaries, check conflicts, run full suite
 
 ## Agent Prompt Structure
 
-Good prompts are focused, self-contained, specific about output:
+Focused, self-contained, specific output:
 
 ```
 Fix 3 failing tests in src/foo/bar.test.ts:
@@ -51,15 +51,14 @@ Return: Summary of findings + fixes.
 
 ## Prompt Anti-patterns
 
-- Too broad ("Fix all tests") → agent gets lost
+- Too broad ("Fix all tests") → lost
 - No context ("Fix race condition") → where?
 - No constraints → agent refactors everything
-- Vague output ("Fix it") → don't know what changed
+- Vague output ("Fix it") → unknown changes
 
 ## Verification
 
-After agents return:
 1. Review each summary
-2. Check for conflicts (same code edited?)
+2. Check conflicts (same code edited?)
 3. Run full test suite
-4. Spot check (agents can make systematic errors)
+4. Spot check (agents make systematic errors)

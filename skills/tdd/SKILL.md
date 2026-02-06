@@ -5,7 +5,7 @@ description: "DEFAULT for all implementation. Triggers: 'implement', 'build', 'a
 
 # Test-Driven Development
 
-Write test first → watch fail → minimal code → pass → refactor.
+Write test → watch fail → minimal code → pass → refactor.
 
 **Iron Law:** No production code without failing test first. Violate → delete code, start over.
 
@@ -13,7 +13,7 @@ Write test first → watch fail → minimal code → pass → refactor.
 
 ### RED - Write Failing Test
 
-One minimal test showing desired behavior.
+One minimal test for desired behavior.
 
 ```typescript
 test('rejects empty email', async () => {
@@ -26,29 +26,21 @@ Requirements: one behavior, clear name, real code (mocks only if unavoidable).
 
 ### Verify RED
 
-**MANDATORY. Never skip.**
+**MANDATORY.**
 
 ```bash
 npm test path/to/test.test.ts
 ```
 
-Confirm:
-- Test fails (not errors)
-- Failure = feature missing (not typo)
-
-Test passes? Testing existing behavior. Fix test.
+Confirm: test fails (not errors), failure = feature missing (not typo). Passes immediately? Fix test.
 
 ### GREEN - Minimal Code
 
-Simplest code to pass. No extra features, no refactoring yet.
+Simplest code to pass. No extras, no refactoring yet.
 
 ### Verify GREEN
 
-**MANDATORY.**
-
-- Test passes
-- Other tests still pass
-- Output pristine (no warnings)
+**MANDATORY.** Test passes + other tests pass + output pristine (no warnings).
 
 ### REFACTOR
 
@@ -75,33 +67,24 @@ Next failing test → next feature.
 | "Keep as reference" | You'll adapt it = testing after. Delete means delete. |
 | "Need to explore first" | Fine. Throw away exploration, TDD from scratch. |
 | "Test hard = skip TDD" | Hard to test = hard to use. Simplify design. |
-| "TDD slows me down" | TDD faster than debugging production. |
-| "Existing code has no tests" | Improving it? Add tests for touched code. |
+| "TDD slows me down" | Faster than debugging production. |
+| "No tests in existing code" | Improving it? Add tests for touched code. |
 
 ## Verification Checklist
 
-Before marking complete:
-
 - [ ] Every new function has test
 - [ ] Watched each test fail before implementing
-- [ ] Each test failed for expected reason
+- [ ] Each failed for expected reason
 - [ ] Wrote minimal code to pass
-- [ ] All tests pass
-- [ ] Output pristine
+- [ ] All tests pass, output pristine
 - [ ] Real code tested (minimal mocks)
 - [ ] Edge cases + errors covered
 
-Can't check all? Skipped TDD. Start over.
+Can't check all → skipped TDD → start over.
 
-## Red Flags - STOP and Restart
+## Red Flags - STOP + Restart
 
-- Code before test
-- Test passes immediately
-- Can't explain why test failed
-- "Just this once"
-- "Keep as reference"
-- "Already spent X hours"
-- "This is different because..."
+Code before test, test passes immediately, can't explain failure, "just this once", "keep as reference", "already spent X hours", "this is different because..."
 
 All mean: delete code, start over with TDD.
 
@@ -111,16 +94,14 @@ All mean: delete code, start over with TDD.
 |---------|----------|
 | Don't know how to test | Write wished-for API. Ask human. |
 | Test too complicated | Design too complicated. Simplify. |
-| Must mock everything | Code too coupled. Use DI. |
+| Must mock everything | Too coupled. Use DI. |
 | Test setup huge | Extract helpers or simplify design. |
 
 ## Bug Fixes
 
-Bug found → write failing test reproducing it → TDD cycle → test proves fix + prevents regression.
-
-Never fix bugs without test.
+Bug → write failing test reproducing it → TDD cycle → test proves fix + prevents regression. Never fix without test.
 
 ## See Also
 
-- **debugging** skill → root cause investigation before fixing
+- **debugging** → root cause investigation before fixing
 - **verification-before-completion** → evidence before claiming done

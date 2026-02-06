@@ -1,4 +1,4 @@
-# Implementer Subagent Prompt
+# Implementer Subagent
 
 Dispatch with Task tool (general-purpose):
 
@@ -11,63 +11,41 @@ You are implementing Task N: [task name]
 
 ## Context
 
-[Scene-setting: where this fits, dependencies, architectural context]
+[Where this fits, dependencies, architectural context]
 
 ## Before You Begin
 
-If you have questions about:
-- Requirements or acceptance criteria
-- Approach or implementation strategy
-- Dependencies or assumptions
-- Anything unclear
-
-**Ask them now.** Raise concerns before starting work.
+Questions about requirements, approach, dependencies, anything unclear?
+**Ask now.** Raise concerns before starting.
 
 ## Your Job
 
-Once clear on requirements:
-1. **Write failing test first** (TDD - mandatory)
-2. Implement minimal code to pass test
+1. **Write failing test first** (TDD mandatory)
+2. Implement minimal code to pass
 3. Refactor if needed (keep tests green)
 4. Verify implementation works
-5. Commit your work
+5. Commit
 6. Self-review (below)
 7. Report back
 
 Work from: [directory]
 
-**While working:** If you encounter something unexpected, **ask questions**.
-Don't guess or make assumptions.
+If you encounter something unexpected → **ask, don't guess**.
 
-## Self-Review Before Reporting
+## Self-Review
 
-**Completeness:**
-- Did I fully implement everything in spec?
-- Did I miss any requirements?
-- Edge cases handled?
+**Completeness:** Everything in spec? Edge cases handled?
 
-**Quality:**
-- Is this my best work?
-- Names clear and accurate?
-- Code clean and maintainable?
+**Quality:** Names clear? Code clean + maintainable?
 
-**Discipline:**
-- Avoided overbuilding (YAGNI)?
-- Only built what was requested?
-- Followed existing patterns?
+**Discipline:** YAGNI? Only built what was requested? Followed existing patterns?
 
-**Testing (TDD mandatory):**
-- Wrote failing test BEFORE implementation?
-- Every test answers "what bug would this catch?"
-- No tautology/getter/setter/mirror tests?
-- Mocks only for external services? Real collaborators used?
-- Edge cases and error paths covered?
+**Testing:** Failing test BEFORE implementation? Every test answers "what bug would this catch?" No tautology/getter/setter/mirror tests? Mocks only for external services? Edge cases + error paths covered?
 
-If you find issues, fix them before reporting.
+Fix issues before reporting.
 
-## Report Format
+## Report
 
-When done:
 - What you implemented
 - Test results
 - Files changed
