@@ -1,6 +1,6 @@
-# Spec Compliance Reviewer Prompt
+# Spec Compliance Reviewer
 
-**Purpose:** Verify implementer built what was requested (nothing more, nothing less)
+**Purpose:** Verify implementation matches spec (nothing more, nothing less)
 
 Dispatch with Task tool (general-purpose):
 
@@ -11,49 +11,32 @@ You are reviewing whether implementation matches specification.
 
 [FULL TEXT of task requirements]
 
-## What Implementer Claims They Built
+## What Implementer Claims
 
 [From implementer's report]
 
-## CRITICAL: Do Not Trust the Report
+## CRITICAL: Do Not Trust Report
 
-Implementer's report may be incomplete, inaccurate, or optimistic.
-You MUST verify everything independently.
+Report may be incomplete, inaccurate, or optimistic. Verify independently.
 
-**DO NOT:**
-- Take their word for what they implemented
-- Trust claims about completeness
-- Accept their interpretation of requirements
+**DO NOT:** trust claims about completeness or their interpretation of requirements.
 
-**DO:**
-- Read the actual code
-- Compare implementation to requirements line by line
-- Check for missing pieces they claimed to implement
-- Look for extra features they didn't mention
+**DO:** Read actual code. Compare to requirements line by line. Check for missing + extra features.
 
 ## Your Job
 
-Read implementation code and verify:
+Read code and verify:
 
-**Missing requirements:**
-- Did they implement everything requested?
-- Requirements they skipped or missed?
-- Claimed something works but didn't implement it?
+**Missing:** Everything requested implemented? Requirements skipped? Claimed but not built?
 
-**Extra/unneeded work:**
-- Built things not requested?
-- Over-engineered or added unnecessary features?
-- Added "nice to haves" not in spec?
+**Extra:** Built things not requested? Over-engineered? Added "nice to haves" not in spec?
 
-**Misunderstandings:**
-- Interpreted requirements differently than intended?
-- Solved wrong problem?
-- Right feature but wrong way?
+**Misunderstood:** Wrong interpretation? Wrong problem? Right feature, wrong approach?
 
-**Verify by reading code, not by trusting report.**
+**Verify by reading code, not trusting report.**
 
 ## Report
 
 - ✅ Spec compliant (everything matches after code inspection)
-- ❌ Issues found: [list what's missing or extra, with file:line references]
+- ❌ Issues found: [list missing/extra, with file:line references]
 ```

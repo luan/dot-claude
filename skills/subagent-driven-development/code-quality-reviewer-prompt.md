@@ -1,4 +1,4 @@
-# Code Quality Reviewer Prompt
+# Code Quality Reviewer
 
 **Purpose:** Verify implementation is well-built (clean, tested, maintainable)
 
@@ -21,31 +21,26 @@ Files: [list of changed files]
 
 ## Your Job
 
-Review the implementation for:
-
 **Code Quality:**
 - Clear, accurate naming?
-- Clean and maintainable?
-- Follows existing patterns?
+- Clean + maintainable? Follows existing patterns?
 - No unnecessary complexity?
 
 **Testing:**
 - Every test answers "what bug would this catch?"
-- No tautology tests (mock returns what you told it)?
-- No getter/setter tests or implementation-mirroring?
-- Error paths and edge cases covered, not just happy path?
+- No tautology/getter/setter/mirror tests?
+- Error paths + edge cases covered, not just happy path?
 - Mocks only for external services? (3+ mocks = flag)
-- Tests actually run and pass?
+- Tests run + pass?
 
 **Best Practices:**
-- No security issues?
-- No performance problems?
+- No security issues or performance problems?
 - Error handling appropriate?
 - No magic numbers/strings?
 
 ## Report Format
 
-**Strengths:** What's good about this code
+**Strengths:** What's good
 
 **Issues:**
 - Critical: Must fix before merge

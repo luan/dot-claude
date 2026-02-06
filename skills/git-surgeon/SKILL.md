@@ -5,124 +5,103 @@ description: Non-interactive hunk-level git staging, unstaging, discarding, undo
 
 # git-surgeon
 
-CLI for hunk-level git operations without interactive prompts. Useful for AI
-agents that need precise control over which changes to stage, unstage, discard,
-or undo.
+Non-interactive hunk-level git operations. Precise control over staging, unstaging, discarding + undoing changes.
 
 ## Commands
 
 ```bash
-# List unstaged hunks (shows ID, file, +/- counts, preview)
-git-surgeon hunks
+# List hunks
+git-surgeon hunks                          # unstaged (ID, file, +/- counts, preview)
+git-surgeon hunks --staged                 # staged
+git-surgeon hunks --file=src/main.rs       # filter by file
+git-surgeon hunks --commit <HEAD/sha>      # from specific commit
+git-surgeon hunks --commit <sha> --full    # with line numbers (for line-range splits)
 
-# List staged hunks
-git-surgeon hunks --staged
-
-# Filter to one file
-git-surgeon hunks --file=src/main.rs
-
-# List hunks from a specific commit
-git-surgeon hunks --commit <HEAD/sha>
-
-# Show all hunks with line numbers (for small commits needing line-range splits)
-git-surgeon hunks --commit <sha> --full
-
-# Show full diff for a hunk (lines are numbered for use with --lines)
+# Show full diff for hunk (lines numbered for --lines)
 git-surgeon show <id>
 git-surgeon show <id> --commit HEAD
 
-# Stage specific hunks
+# Stage
 git-surgeon stage <id1> <id2> ...
-
-# Stage only part of a hunk by line range
 git-surgeon stage <id> --lines 5-30
 
-# Stage and commit hunks in one step
+# Stage + commit in one step
 git-surgeon commit <id1> <id2> ... -m "message"
+git-surgeon commit <id>:1-11 <id2> -m "message"   # inline line ranges
 
-# With inline line ranges
-git-surgeon commit <id>:1-11 <id2> -m "message"
-
-# Unstage specific hunks
+# Unstage
 git-surgeon unstage <id1> <id2> ...
 git-surgeon unstage <id> --lines 5-30
 
-# Discard working tree changes for specific hunks
+# Discard working tree changes
 git-surgeon discard <id1> <id2> ...
 git-surgeon discard <id> --lines 5-30
 
-# Fixup an earlier commit with currently staged changes
+# Fixup earlier commit with staged changes
 git-surgeon fixup <commit>
 
-# Change commit message
+# Reword commit message
 git-surgeon reword HEAD -m "new message"
 git-surgeon reword <commit> -m "new message"
 git-surgeon reword HEAD -m "subject" -m "body"
 
-# Undo specific hunks from a commit (reverse-apply to working tree)
+# Undo hunks from commit (reverse-apply → working tree)
 git-surgeon undo <id1> <id2> ... --from <commit>
 git-surgeon undo <id> --from <commit> --lines 2-10
 
-# Undo all changes to specific files from a commit
+# Undo entire files from commit
 git-surgeon undo-file <file1> <file2> ... --from <commit>
 
-# Split a commit into multiple commits by hunk selection
+# Split commit by hunk selection
 git-surgeon split HEAD \
   --pick <id1> <id2> -m "first commit" \
   --rest-message "remaining changes"
 
-# Split with subject + body (multiple -m flags, like git commit)
+# Split with subject + body
 git-surgeon split HEAD \
-  --pick <id1> -m "Add feature" -m "Detailed description here." \
+  --pick <id1> -m "Add feature" -m "Detailed description." \
   --rest-message "Other changes" --rest-message "Body for rest."
 
-# Split with line ranges (comma syntax or repeat ID for non-contiguous ranges)
+# Split with line ranges (comma for non-contiguous)
 git-surgeon split <commit> \
   --pick <id>:1-11,20-30 <id2> -m "partial split"
 
-# Split into three+ commits
+# Split into 3+ commits
 git-surgeon split HEAD \
   --pick <id1> -m "first" \
   --pick <id2> -m "second" \
   --rest-message "rest"
 ```
 
-## Typical workflow
+## Typical Workflow
 
-1. Run `git-surgeon hunks` to list hunks with their IDs
-2. Use `git-surgeon show <id>` to inspect a hunk (lines are numbered)
-3. Stage and commit in one step: `git-surgeon commit <id1> <id2> -m "message"`
-4. Or stage separately: `git-surgeon stage <id1> <id2>`, then `git commit`
-5. To commit only part of a hunk, use inline ranges: `git-surgeon commit <id>:5-30 -m "message"`
+1. `git-surgeon hunks` → list hunks with IDs
+2. `git-surgeon show <id>` → inspect (lines numbered)
+3. `git-surgeon commit <id1> <id2> -m "message"` (or stage separately → `git commit`)
+4. Partial hunk: `git-surgeon commit <id>:5-30 -m "message"`
 
-## Fixing up earlier commits
+## Fixup Workflow
 
-1. Stage desired hunks: `git-surgeon stage <id1> <id2>`
-2. Fixup the target commit: `git-surgeon fixup <commit-sha>`
-3. For HEAD, this amends directly; for older commits, it uses autosquash rebase
-4. Unstaged changes are preserved automatically
+1. `git-surgeon stage <id1> <id2>`
+2. `git-surgeon fixup <commit-sha>` (HEAD → amend; older → autosquash rebase)
+3. Unstaged changes preserved
 
-## Undoing changes from commits
+## Undo Workflow
 
-1. Run `git-surgeon hunks --commit <sha>` to list hunks in a commit
-2. Undo specific hunks: `git-surgeon undo <id> --from <sha>`
-3. Or undo entire files: `git-surgeon undo-file src/main.rs --from <sha>`
-4. Changes appear as unstaged modifications in the working tree
+1. `git-surgeon hunks --commit <sha>`
+2. `git-surgeon undo <id> --from <sha>` or `git-surgeon undo-file src/main.rs --from <sha>`
+3. Changes appear as unstaged modifications
 
-## Splitting commits
+## Split Workflow
 
-1. List hunks in the commit: `git-surgeon hunks --commit <sha>`
-   - For small commits, use `--full` to see all lines with line numbers in one call
-2. Split by picking hunks: `git-surgeon split <sha> --pick <id1> -m "first" --rest-message "second"`
-3. Use multiple `-m` flags for subject + body: `--pick <id> -m "Subject" -m "Body paragraph"`
-4. Use `id:range` syntax for partial hunks: `--pick <id>:5-20`
-   - For non-contiguous lines, use commas: `--pick <id>:2-6,34-37`
-5. Works on HEAD (direct reset) or earlier commits (via rebase)
-6. Requires a clean working tree
+1. `git-surgeon hunks --commit <sha>` (use `--full` for line numbers)
+2. `git-surgeon split <sha> --pick <id1> -m "first" --rest-message "second"`
+3. Multiple `-m` flags → subject + body
+4. `id:range` for partial hunks; commas for non-contiguous: `--pick <id>:2-6,34-37`
+5. HEAD → direct reset; older → rebase. Requires clean working tree.
 
 ## Hunk IDs
 
-- 7-character hex strings derived from file path + hunk content
-- Stable across runs as long as the diff content hasn't changed
-- Duplicates get `-2`, `-3` suffixes
-- If a hunk ID is not found, re-run `hunks` to get fresh IDs
+- 7-char hex from file path + hunk content
+- Stable while diff unchanged; duplicates get `-2`, `-3` suffixes
+- ID not found → re-run `hunks` for fresh IDs

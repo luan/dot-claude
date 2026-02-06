@@ -5,38 +5,29 @@ description: "Use when creating new skills, editing existing skills, or verifyin
 
 # Writing Skills
 
-TDD applied to process documentation. Write test (pressure scenario) → watch fail (baseline) → write skill → watch pass → refactor (close loopholes).
+TDD for process docs. Write test (pressure scenario) → fail (baseline) → write skill → pass → refactor (close loopholes).
 
-**Iron Law:** No skill without failing test first. Same as TDD for code.
+**Iron Law:** No skill without failing test first.
 
 ## When to Create
 
-**Create when:**
+**Create:** non-obvious technique, cross-project reference, broadly applicable pattern.
 
-- Technique wasn't intuitively obvious
-- Would reference across projects
-- Pattern applies broadly
-- Others would benefit
-
-**Don't create for:**
-
-- One-off solutions
-- Standard practices documented elsewhere
-- Project-specific conventions (use CLAUDE.md)
+**Skip:** one-off solutions, standard practices documented elsewhere, project-specific conventions (use CLAUDE.md).
 
 ## Skill Types
 
-- **Technique:** Concrete method with steps (condition-based-waiting)
-- **Pattern:** Way of thinking (flatten-with-flags)
+- **Technique:** concrete steps (condition-based-waiting)
+- **Pattern:** way of thinking (flatten-with-flags)
 - **Reference:** API docs, syntax guides
 
 ## Skill Locations
 
-| Location | Path                               | Scope                |
-| -------- | ---------------------------------- | -------------------- |
-| Personal | `~/.claude/skills/<name>/SKILL.md` | All your projects    |
-| Project  | `.claude/skills/<name>/SKILL.md`   | This project only    |
-| Plugin   | `<plugin>/skills/<name>/SKILL.md`  | Where plugin enabled |
+| Location | Path | Scope |
+|----------|------|-------|
+| Personal | `~/.claude/skills/<name>/SKILL.md` | All projects |
+| Project | `.claude/skills/<name>/SKILL.md` | This project |
+| Plugin | `<plugin>/skills/<name>/SKILL.md` | Where enabled |
 
 Priority: enterprise > personal > project. Plugin uses `plugin:skill` namespace.
 
@@ -51,7 +42,7 @@ skills/
     scripts/              # Executable utilities
 ```
 
-Keep `SKILL.md` under 500 lines. Move heavy reference to separate files.
+Keep `SKILL.md` under 500 lines. Heavy reference → separate files.
 
 ## Frontmatter Reference
 
@@ -69,33 +60,27 @@ agent: Explore # Subagent type (with context: fork)
 ---
 ```
 
-| Field                            | Effect                           |
-| -------------------------------- | -------------------------------- |
-| `disable-model-invocation: true` | User-only (deploy, commit)       |
-| `user-invocable: false`          | Claude-only (background context) |
-| `context: fork`                  | Runs in isolated subagent        |
+| Field | Effect |
+|-------|--------|
+| `disable-model-invocation: true` | User-only (deploy, commit) |
+| `user-invocable: false` | Claude-only (background context) |
+| `context: fork` | Runs in isolated subagent |
 
 ## String Substitutions
 
-| Variable                | Description                   |
-| ----------------------- | ----------------------------- |
-| `$ARGUMENTS`            | All arguments passed          |
+| Variable | Description |
+|----------|-------------|
+| `$ARGUMENTS` | All arguments passed |
 | `$ARGUMENTS[N]` or `$N` | Specific argument (0-indexed) |
-| `${CLAUDE_SESSION_ID}`  | Current session ID            |
-
-Example: `Fix GitHub issue $0 following our coding standards.`
+| `${CLAUDE_SESSION_ID}` | Current session ID |
 
 ## Dynamic Context Injection
 
-Syntax: `!` followed by command in backticks runs shell before sending to Claude.
-
-Example in a skill file:
+`!` + command in backticks → runs shell before sending to Claude.
 
 ```
 Current branch: !\`git branch --show-current\`
 ```
-
-Commands execute during preprocessing → output replaces placeholder.
 
 ## SKILL.md Structure
 
@@ -108,23 +93,18 @@ description: "Use when [triggering conditions only - NO workflow summary]"
 # Skill Name
 
 ## Overview
-
 Core principle in 1-2 sentences.
 
 ## When to Use
-
-Symptoms and use cases. When NOT to use.
+Symptoms + use cases. When NOT to use.
 
 ## Core Pattern
-
 Before/after code, key steps.
 
 ## Quick Reference
-
 Table for scanning.
 
 ## Common Mistakes
-
 What goes wrong + fixes.
 ```
 
@@ -133,94 +113,64 @@ What goes wrong + fixes.
 **ONLY triggering conditions. NEVER workflow summary.**
 
 ```yaml
-# BAD: Summarizes workflow - Claude follows this instead of reading skill
+# BAD: Claude follows this instead of reading skill
 description: Use when executing plans - dispatches subagent per task with code review
 
 # GOOD: Just triggers
 description: Use when executing implementation plans with independent tasks
 ```
 
-**Why:** Testing showed Claude shortcuts workflow summaries in descriptions, skipping the actual skill content.
+**Why:** Claude shortcuts workflow summaries in descriptions, skipping actual skill content.
 
 ## Token Efficiency
 
-- getting-started skills: <150 words
+- getting-started: <150 words
 - Frequently-loaded: <200 words
-- Other skills: <500 words
-- Move details to `--help`, cross-reference other skills
-- One excellent example beats many mediocre ones
+- Other: <500 words
+- Move details to `--help`, cross-reference skills
+- One excellent example > many mediocre ones
 
 ## RED-GREEN-REFACTOR for Skills
 
 ### RED: Baseline Test
-
-Run pressure scenario WITHOUT skill. Document:
-
-- What choices agent made
-- Exact rationalizations used (verbatim)
-- Which pressures triggered violations
+Run pressure scenario WITHOUT skill. Document: agent choices, exact rationalizations (verbatim), which pressures triggered violations.
 
 ### GREEN: Minimal Skill
-
-Write skill addressing those specific rationalizations. Run same scenario WITH skill. Agent should comply.
+Address those specific rationalizations. Run same scenario WITH skill → agent should comply.
 
 ### REFACTOR: Close Loopholes
-
-New rationalization found? Add explicit counter. Re-test until bulletproof.
+New rationalization found → add explicit counter → re-test until bulletproof.
 
 ## Bulletproofing Discipline Skills
 
-For skills enforcing rules (TDD, verification):
+For rule-enforcing skills (TDD, verification):
 
 1. **Close loopholes explicitly:**
-
    ```markdown
    Write code before test? Delete it.
-
    - Don't keep as "reference"
    - Don't "adapt" while testing
    - Delete means delete
    ```
 
-2. **Add foundational principle:**
-
-   ```markdown
-   **Violating the letter is violating the spirit.**
-   ```
-
+2. **Add:** `**Violating the letter is violating the spirit.**`
 3. **Build rationalization table** from baseline failures
 4. **Create red flags list** for self-checking
 
 ## Troubleshooting
 
-| Problem                  | Solution                                                       |
-| ------------------------ | -------------------------------------------------------------- |
-| Skill not triggering     | Check description keywords, try `/skill-name` directly         |
-| Triggers too often       | Make description more specific, add `disable-model-invocation` |
-| Claude doesn't see skill | Check `/context` for character budget warning                  |
+| Problem | Solution |
+|---------|----------|
+| Not triggering | Check description keywords, try `/skill-name` directly |
+| Triggers too often | More specific description, add `disable-model-invocation` |
+| Claude doesn't see | Check `/context` for character budget warning |
 
 ## Checklist
 
-**RED Phase:**
+**RED:** pressure scenarios (3+ for discipline) → run WITHOUT skill, document baseline → identify rationalization patterns
 
-- [ ] Create pressure scenarios (3+ pressures for discipline skills)
-- [ ] Run WITHOUT skill, document baseline verbatim
-- [ ] Identify rationalization patterns
+**GREEN:** YAML frontmatter (name + description only) → description triggers only → address baseline failures → one excellent example
 
-**GREEN Phase:**
+**REFACTOR:** identify NEW rationalizations → add counters → rationalization table → re-test until bulletproof
 
-- [ ] YAML frontmatter: name + description only
-- [ ] Description: "Use when..." (triggers only, no workflow)
-- [ ] Address specific baseline failures
-- [ ] One excellent example
-
-**REFACTOR Phase:**
-
-- [ ] Identify NEW rationalizations
-- [ ] Add explicit counters
-- [ ] Build rationalization table
-- [ ] Re-test until bulletproof
-
-**Deployment:**
-
-- [ ] Commit and push
+**Deploy:** commit + push

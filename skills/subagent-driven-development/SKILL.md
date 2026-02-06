@@ -36,7 +36,7 @@ Per Task:
 
 ## Key Principles
 
-- Controller provides full context (paste task text, don't make subagent read files)
+- Controller pastes full task text (don't make subagent read files)
 - Spec review FIRST (built what was requested?)
 - Quality review SECOND (well-built?)
 - Review loops until approved
