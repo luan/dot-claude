@@ -30,13 +30,14 @@ Create conventional commits explaining WHY changes were made.
    git log --oneline -5
    ```
 
-2. **Create message**: `type(scope): description`
-   - Max 72 chars, lowercase, no period, imperative mood
+2. **Message**: `type(scope): description`
+   - Max 72 chars, lowercase, no period, imperative
    - Types: feat|fix|refactor|perf|docs|test|style|build|ci|chore|revert
    - Scope: primary area (auth, api, ui, db) or omit if global
-   - If beads issue is in_progress (`bd list --status in_progress -q`), append its ID: `fix(auth): handle token expiry (bd-abc123)`
+   - If beads issue in_progress (`bd list --status in_progress -q`),
+     append ID: `fix(auth): handle token expiry (bd-abc123)`
 
-3. **Confirm** with AskUserQuestion: "Commit with this message?"
+3. **Confirm** via AskUserQuestion: "Commit with this message?"
 
 4. **Execute**:
    ```bash
@@ -48,8 +49,8 @@ Create conventional commits explaining WHY changes were made.
 
 ## Hook failures
 
-If hooks modify files: `git add -u && git commit --amend --no-edit`
-If hooks fail: show error, suggest fix, let user decide.
+Hooks modify files: `git add -u && git commit --amend --no-edit`
+Hooks fail: show error, suggest fix, let user decide.
 
 ## Special ops
 
@@ -59,9 +60,9 @@ If hooks fail: show error, suggest fix, let user decide.
 
 ## Edge cases
 
-- Nothing staged: ask "Stage all changes?" (all vs tracked vs select)
-- Multiple unrelated changes: use **git-surgeon** skill to split
-- Clean tree: "No changes to commit"
+- Nothing staged → ask "Stage all changes?" (all vs tracked vs select)
+- Multiple unrelated changes → use **git-surgeon** skill to split
+- Clean tree → "No changes to commit"
 
 ## Good vs bad
 

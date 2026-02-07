@@ -13,29 +13,27 @@ allowed-tools:
 
 # Explore
 
-**IMMEDIATELY dispatch to subagent.** Do not explore on main thread.
+**IMMEDIATELY dispatch to subagent.** Never explore on main thread.
 
 ## Instructions
 
-1. Use `EnterPlanMode` tool
-2. Dispatch exploration to subagent:
+1. `EnterPlanMode`
+2. Dispatch via Task (subagent_type="general-purpose"):
 
 ```
-Task tool with subagent_type="general-purpose" and prompt:
-"""
-Explore and create implementation plan for: $ARGUMENTS
+Explore + create implementation plan for: $ARGUMENTS
 
-## Your Job
-1. Run `bd prime` to get workflow context
-2. Check existing work: `bd list --status in_progress --type epic`
+## Job
+1. `bd prime` for workflow context
+2. Check existing: `bd list --status in_progress --type epic`
 3. Explore codebase (use Explore subagent if needed)
-4. Design approach - identify 2-3 options, choose best
-5. Create epic + tasks with `bd create --type epic --validate`
-6. Label each task: `bd label add <id> architecture|implementation|testing` (enables persona filtering in team workflows)
-7. Run `bd lint` on ALL issues - fix any errors
-8. Return summary: epic-id, task count, key files
+4. Design approach — 2-3 options, choose best
+5. Create epic + tasks: `bd create --type epic --validate`
+6. Label each task: `bd label add <id> architecture|implementation|testing`
+7. `bd lint` ALL issues — fix errors
+8. Return: epic-id, task count, key files
 
-## Task Quality Requirements
+## Task Quality
 Each task must have:
 - Complete test code (copy-pasteable)
 - Complete implementation code (copy-pasteable)
@@ -43,33 +41,31 @@ Each task must have:
 - Exact commands with expected output
 
 ## Escalation Check
-If you discover ANY of these during exploration, STOP and report back with:
-"ESCALATE: team-explore — [reason]"
-Do NOT create the epic. Just return the escalation signal + your findings so far.
+If ANY of these → STOP, return "ESCALATE: team-explore — [reason]"
++ findings so far. Do NOT create epic.
 
-Escalation triggers:
+Triggers:
 - 3+ viable approaches with unclear tradeoffs
 - Feature spans 3+ independent subsystems
 - Cross-cutting concerns needing adversarial analysis
-- Architecture decision where different perspectives would produce different answers
+- Architecture decision where perspectives diverge
 
 ## Chemistry
-This is exploration - ephemeral. Epic+tasks persist, exploration doesn't.
-"""
+Ephemeral exploration. Epic+tasks persist, exploration doesn't.
 ```
 
-3. When subagent returns, check for escalation:
-   - If response contains "ESCALATE: team-explore": invoke `Skill tool: team-explore` with the original arguments + subagent findings as context
-   - Otherwise: use `ExitPlanMode`
+3. Check for escalation in response:
+   - Contains "ESCALATE: team-explore" → invoke `Skill tool: team-explore` with original args + findings
+   - Otherwise → `ExitPlanMode`
 4. After approval, output exactly:
    ```
    To continue: use Skill tool to invoke implement with arg <epic-id>
    ```
-   Do NOT use Task tool directly. The implement skill handles all subagent dispatch.
+   Never use Task tool directly.
 
 ## Key Rules
 
-- **Main thread does NOT explore** - subagent does
-- **bd lint is REQUIRED** - not optional
-- **Auto-escalation** - if subagent reports ESCALATE, invoke team-explore immediately
+- **Main thread does NOT explore** — subagent does
+- **bd lint REQUIRED** — not optional
+- **Auto-escalation** — ESCALATE response → invoke team-explore immediately
 - **Chemistry:** `bd mol squash <id>` on approval, `bd mol burn <id> --force` on rejection

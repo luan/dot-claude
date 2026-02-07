@@ -14,47 +14,43 @@ allowed-tools:
 
 ## Triage — auto-escalate to team-implement if warranted
 
-Before dispatching, check epic scope:
 1. `bd swarm validate <epic-id> --verbose` — check parallelism
-2. If **max parallelism >= 3** → invoke `Skill tool: team-implement` with the epic-id and STOP
+2. **max parallelism >= 3** → invoke `Skill tool: team-implement` with epic-id, STOP
 3. Otherwise continue below
 
-**IMMEDIATELY dispatch to subagent.** Do not implement on main thread.
+**IMMEDIATELY dispatch to subagent.** Never implement on main thread.
 
 ## Instructions
 
-Dispatch implementation to subagent:
+Dispatch via Task (subagent_type="beads:task-agent"):
 
 ```
-Task tool with subagent_type="beads:task-agent" and prompt:
-"""
 Implement: $ARGUMENTS
 
-## Your Job
-1. Run `bd prime` for context
-2. **Create feature branch FIRST**: `gt create luan/<short-description>` (e.g., `gt create luan/fix-container-minimize`)
+## Job
+1. `bd prime` for context
+2. **Create feature branch FIRST**: `gt create luan/<short-description>`
 3. Find work: `bd ready` or `bd children <epic-id>`
-4. For each task:
-   - `bd show <task-id>` - read instructions
+4. Per task:
+   - `bd show <task-id>` — read instructions
    - `bd update <task-id> --claim`
    - Copy test code EXACTLY from description
    - Verify test fails
    - Copy implementation EXACTLY from description
    - Verify test passes
    - `bd close <task-id>`
-5. Check PR size before starting next task (stop at ~250 lines)
+5. Check PR size before next task (stop at ~250 lines)
 6. When done or at size limit: invoke finishing-branch skill
 
 ## CRITICAL: Task Atomicity
-NEVER stop mid-task. Finish current task before any PR operations.
+NEVER stop mid-task. Finish current task before any PR ops.
 
 ## Side Quests
-Found bug during impl? `bd create "Found: ..." --type bug --validate --deps discovered-from:<current-task-id>`
-"""
+Found bug? `bd create "Found: ..." --type bug --validate --deps discovered-from:<current-task-id>`
 ```
 
 ## Key Rules
 
-- **Main thread does NOT implement** - subagent does
+- **Main thread does NOT implement** — subagent does
 - **Copy code EXACTLY** from task descriptions
-- **Task atomicity** - never stop mid-task
+- **Task atomicity** — never stop mid-task
