@@ -40,7 +40,10 @@ Multi-perspective exploration via agent team. Teammates investigate different an
 Create an agent team to explore: $ARGUMENTS
 
 Spawn 2-3 teammates, each investigating a different angle.
-Use Sonnet for each teammate.
+Use Opus for each teammate. Read and include behavioral guidelines from `agents/`:
+- `researcher.md` for breadth-first investigators
+- `architect.md` for design/tradeoff analysts
+- `devil.md` for contrarian challengers
 Require plan approval before teammates begin investigating.
 
 Each teammate should:
@@ -62,7 +65,7 @@ After teammates finish:
 ## Key Rules
 
 - **Main thread does NOT explore** — team does
-- **Sonnet** for teammates (exploration doesn't need Opus)
+- **Opus** for teammates (nuanced cross-system analysis needs depth). Use Sonnet for narrow-scope explorations.
 - **Plan approval required** — lead approves teammate plans before they investigate
 - **bd lint is REQUIRED** — not optional
 - **Always clean up team** when done

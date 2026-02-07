@@ -38,6 +38,10 @@ Adversarial multi-lens code review via agent team. Reviewers cross-examine each 
 Create an agent team to review: $ARGUMENTS
 
 Spawn 4 teammates. Use Opus for each teammate.
+Read and include behavioral guidelines from `agents/`:
+- `reviewer.md` for security + quality reviewers
+- `architect.md` for performance reviewer
+- `devil.md` for spec/test reviewer (contrarian edge-case focus)
 Require plan approval before teammates begin reviewing.
 
 Teammates:
