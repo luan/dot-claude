@@ -22,51 +22,52 @@ allowed-tools:
 
 # Team Explore
 
-Multi-perspective exploration via agent team. Teammates investigate different angles and challenge each other's findings.
+Multi-perspective exploration via agent team. Teammates investigate
+different angles, challenge each other's findings.
 
 ## When to Use (vs `explore`)
 
-- 3+ subsystems involved with unclear tradeoffs
+- 3+ subsystems with unclear tradeoffs
 - Competing architectural approaches
 - Cross-cutting concerns needing adversarial analysis
-- Otherwise → use regular `explore`
+- Otherwise → regular `explore`
 
 ## Instructions
 
-1. Use `EnterPlanMode` tool
-2. Tell Claude to create an agent team:
+1. `EnterPlanMode`
+2. Create agent team:
 
 ```
-Create an agent team to explore: $ARGUMENTS
+Explore: $ARGUMENTS
 
-Spawn 2-3 teammates, each investigating a different angle.
-Use Opus for each teammate. Read and include behavioral guidelines from `agents/`:
+Spawn 2-3 Opus teammates, each investigating different angle.
+Read + include behavioral guidelines from `agents/`:
 - `researcher.md` for breadth-first investigators
 - `architect.md` for design/tradeoff analysts
 - `devil.md` for contrarian challengers
-Require plan approval before teammates begin investigating.
+Require plan approval before investigating.
 
-Each teammate should:
-- Focus on their assigned perspective
-- Message other teammates to share findings and challenge conclusions
-- When disagreeing with another teammate, explain why with evidence
+Each teammate:
+- Focus on assigned perspective
+- Message others: share findings, challenge conclusions
+- Disagree with evidence, not opinion
 
 After teammates finish:
-1. Synthesize findings into a unified plan
+1. Synthesize into unified plan
 2. Create beads epic + tasks: `bd create --type epic --validate`
-3. Run `bd lint` on ALL issues
-4. Clean up the team
+3. `bd lint` ALL issues
+4. Clean up team
 5. Report: epic-id, task count, key files, tradeoffs resolved
 ```
 
-3. When team finishes, use `ExitPlanMode`
+3. Team finishes → `ExitPlanMode`
 4. After approval: `To continue: use Skill tool to invoke implement with arg <epic-id>`
 
 ## Key Rules
 
 - **Main thread does NOT explore** — team does
-- **Opus** for teammates (nuanced cross-system analysis needs depth). Use Sonnet for narrow-scope explorations.
-- **Plan approval required** — lead approves teammate plans before they investigate
-- **bd lint is REQUIRED** — not optional
+- **Opus** for teammates (nuanced cross-system analysis). Sonnet for narrow scope.
+- **Plan approval required** — lead approves teammate plans first
+- **bd lint REQUIRED** — not optional
 - **Always clean up team** when done
 - **Beads = source of truth** — team task list is ephemeral scratchpad

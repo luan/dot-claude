@@ -7,20 +7,20 @@ allowed-tools:
   - Task
 ---
 
-# Feedback Skill
+# Feedback
 
-Process user feedback on recent implementation and apply fixes.
+Process user feedback on recent implementation. Apply fixes.
 
-**Chemistry:** No molecules. Feedback is quick, single-session work—no audit trail needed.
+**Chemistry:** None. Quick single-session work — no audit trail.
 
-- Uses TaskCreate/TaskUpdate for internal tracking (not beads)
+- Uses TaskCreate/TaskUpdate internally (not beads)
 - Checks `bd mol current` for active molecule context
-- Side quests → create beads issue with `discovered-from` dependency
-- Large changes → recommend `/explore` (which uses wisp)
+- Side quests → beads issue with `discovered-from` dep
+- Large changes → recommend `/explore`
 
 ## Instructions
 
-Spawn a general-purpose agent via Task with this prompt:
+Spawn general-purpose agent via Task:
 
 ```
 Process user feedback on recent implementation.
@@ -36,99 +36,69 @@ No feedback text → exit: "Please provide feedback. Example: /feedback The butt
 ## Find Recent Context
 
 In order:
-1. `git diff --name-only HEAD` (uncommitted changes)
+1. `git diff --name-only HEAD` (uncommitted)
 2. `git diff --name-only HEAD~3..HEAD` (recent commits)
-3. `bd list --status in_progress` (active beads issue)
-4. `bd mol current` (active molecule if any)
+3. `bd list --status in_progress` (active beads)
+4. `bd mol current` (active molecule)
 
-No context found → exit: "No recent changes found. What files does this apply to?"
+No context → exit: "No recent changes found. What files does this apply to?"
 
-If beads issue found, note it as `<context-issue>` for discovered-from linking.
+If beads issue found, note as `<context-issue>` for discovered-from linking.
 
-## Categorize Feedback
+## Categorize
 
 If --type not given, infer:
-- **Bug**: "doesn't work", "fails", "error", "broken", "crash", "expected X got Y"
-- **Quality**: "naming", "readability", "confusing", "inconsistent", "messy"
-- **Change**: "add", "change", "modify", "instead", "also need", "should have"
+- **Bug**: "doesn't work", "fails", "error", "broken", "crash"
+- **Quality**: "naming", "readability", "confusing", "inconsistent"
+- **Change**: "add", "change", "modify", "instead", "also need"
 - Default: change
 
 ## Analyze & Fix
 
 ### Bugs
-1. Identify symptom
-2. Read relevant files completely
-3. Find likely cause (missing error handling, wrong logic, edge case)
-4. Apply minimal fix via Edit
+1. Identify symptom → read files → find cause → minimal fix
 
 ### Quality
-1. Identify specific concern
-2. Read files to understand patterns
-3. Apply improvement preserving behavior
+1. Identify concern → read files → improve preserving behavior
 
 ### Changes
-1. Understand what's requested
-2. Assess scope: small (inline fix), medium (multiple edits), large (needs /explore)
-3. Small/medium: apply. Large: recommend `/explore` instead.
+1. Understand request → assess scope (small/medium/large)
+2. Small/medium: apply. Large: recommend `/explore`.
 
-## Fix Categorization
+## Fix Scope
 
-**Apply automatically:**
-- Renaming, null checks, typos, imports
-- Simple logic corrections
-- Adding error handling
-- Multi-line edits within a file
+**Apply automatically:** renames, null checks, typos, imports,
+simple logic fixes, error handling, multi-line edits within file
 
-**Defer to /explore:**
-- Architecture changes
-- New features
-- Breaking API changes
-- Cross-cutting concerns
+**Defer to /explore:** architecture changes, new features,
+breaking API changes, cross-cutting concerns
 
-**Create beads issue for:**
-- Bugs found that aren't immediate fix (link with discovered-from)
-- Follow-up improvements noticed during fix
-- Technical debt discovered
-
+**Create beads issue for:** non-immediate bugs, follow-up
+improvements, tech debt discovered
 ```bash
-# If feedback reveals related issue during fix:
 bd create "Found: <description>" --type bug --validate --deps discovered-from:<context-issue>
 ```
 
 ## Workflow
 
-1. Create tasks via TaskCreate for each fix
-2. For each task:
-   - TaskUpdate to in_progress
-   - Read file completely
-   - Apply fix via Edit
-   - Verify syntax
-   - TaskUpdate to completed
-3. If fix fails: note reason, continue to next
+1. TaskCreate per fix
+2. TaskUpdate → in_progress → read file → Edit → verify → completed
+3. Fix fails → note reason, continue
 
-## Return Value
+## Return
 
-Return:
 - Type: Bug|Quality|Change
 - Status: Fixed|Partial|Deferred
-- Files modified (list)
+- Files modified
 - What was done (brief)
 - Verification steps
 - If deferred: recommend `/explore "{description}"`
-
-## Guidelines
-
-- Only fix what feedback mentions
-- Don't expand scope
-- Preserve existing patterns
-- When unsure: ask, don't guess
-- Large changes → /explore
 ```
 
 ## Skill Composition
 
 | When | Invoke |
 |------|--------|
-| Large change needed | Recommend `/explore` |
-| Before claiming done | Run verification — evidence before assertions |
-| Complex bug | `use Skill tool to invoke debugging` |
+| Large change | Recommend `/explore` |
+| Before claiming done | Run verification |
+| Complex bug | `Skill tool: debugging` |

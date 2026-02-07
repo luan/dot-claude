@@ -20,55 +20,55 @@ allowed-tools:
 
 # Team Review
 
-Adversarial multi-lens code review via agent team. Reviewers cross-examine each other's findings.
+Adversarial multi-lens code review via agent team. Reviewers
+cross-examine each other's findings.
 
 ## When to Use (vs `review`)
 
 - Security-sensitive changes
 - Performance-critical paths
 - 5+ files across subsystems
-- Otherwise → use regular `review`
+- Otherwise → regular `review`
 
 ## Instructions
 
 1. Parse input (commit range, files, or PR number)
-2. Tell Claude to create an agent team:
+2. Create agent team:
 
 ```
-Create an agent team to review: $ARGUMENTS
+Review: $ARGUMENTS
 
-Spawn 4 teammates. Use Opus for each teammate.
-Read and include behavioral guidelines from `agents/`:
+Spawn 4 Opus teammates. Read + include behavioral guidelines from `agents/`:
 - `reviewer.md` for security + quality reviewers
 - `architect.md` for performance reviewer
 - `devil.md` for spec/test reviewer (contrarian edge-case focus)
-Require plan approval before teammates begin reviewing.
+Require plan approval before reviewing.
 
 Teammates:
-1. **Security reviewer**: authentication, authorization, injection, data exposure, secrets
-2. **Performance reviewer**: algorithmic complexity, memory, concurrency, caching, I/O
-3. **Spec/test reviewer**: spec compliance, test coverage, edge cases, error handling
-4. **Quality reviewer**: naming, readability, code structure, duplication, idiomatic patterns, maintainability
+1. **Security**: auth, injection, data exposure, secrets
+2. **Performance**: complexity, memory, concurrency, caching, I/O
+3. **Spec/test**: compliance, coverage, edge cases, error handling
+4. **Quality**: naming, readability, structure, duplication, idioms
 
-Each reviewer should:
-- State their review approach (plan approval required)
-- Review the diff through their specific lens
-- Message other reviewers to challenge findings ("You flagged X, but it's mitigated by Y")
-- Classify findings by severity: critical / high / medium / low
+Each reviewer:
+- State approach (approval required)
+- Review diff through specific lens
+- Message others to challenge ("You flagged X, mitigated by Y")
+- Classify: critical / high / medium / low
 
 After reviewers finish:
-1. Synthesize consensus findings, severity-ranked
-2. Present summary table to user
-3. Clean up the team
+1. Synthesize consensus, severity-ranked
+2. Present summary table
+3. Clean up team
 ```
 
-3. Use `AskUserQuestion` to determine fix scope (critical only / critical+high / all / user picks)
-4. Dispatch fixes via regular subagent (NOT team — fixes are fire-and-forget)
-5. Re-review fixed code → loop until approved or user stops
+3. AskUserQuestion: fix scope (critical only / critical+high / all / user picks)
+4. Dispatch fixes via regular subagent (NOT team)
+5. Re-review → loop until approved or user stops
 
 ## Key Rules
 
 - **Opus** for teammates (security/perf review needs depth)
 - **Plan approval required** — reviewers state approach, lead approves
-- **Fixes use subagents, not teams** — no discussion needed for fixing
+- **Fixes use subagents, not teams** — no discussion needed
 - **Always clean up team** when done

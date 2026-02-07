@@ -19,7 +19,7 @@ Plans = epic + child tasks. Implementer is fresh agent with NO history.
 
 Description = WHAT (immutable). Notes = WHERE (updated per session).
 
-## Resumability Format
+## Resumability
 
 For multi-session work, include in description:
 
@@ -40,7 +40,7 @@ result = service.method().execute()
 
 ### Desired Output Format
 ```markdown
-# Actual expected structure, not just "return data"
+# Actual expected structure
 ```
 
 ### Research Context
@@ -48,7 +48,8 @@ result = service.method().execute()
 - Key discoveries informing design
 ```
 
-**Test:** Would fresh agent struggle to resume from description alone? If yes → add these sections.
+**Test:** Would fresh agent struggle to resume from description alone?
+If yes → add these sections.
 
 ## Structure: Epic + Child Tasks
 
@@ -57,21 +58,18 @@ result = service.method().execute()
 
 ### Multi-Phase Epics (5+ tasks)
 
-For larger epics, group tasks into phases with blocking dependencies:
+Group into phases with blocking deps:
 
 ```bash
-# Phase 1 tasks have no cross-phase deps
+# Phase 1: no cross-phase deps
 bd create "Phase 1: <name>" --type task --parent <epic-id> --validate
-# Phase 2 tasks blocked by phase 1 completion
+# Phase 2: blocked by phase 1
 bd create "Phase 2: <name>" --type task --parent <epic-id> --validate --deps <phase-1-task-id>
 ```
 
-- `bd ready` auto-scopes to current phase (blocked tasks hidden)
-- Implementers naturally work phase-by-phase without manual coordination
+`bd ready` auto-scopes to current phase — blocked tasks hidden.
 
-### Bulk Task Creation
-
-For plans with many tasks, write a plan file and create in bulk:
+### Bulk Creation
 
 ```bash
 bd create --file plan.md
@@ -82,7 +80,7 @@ bd create --file plan.md
 ```bash
 bd create "<feature-name>" --type epic --validate --description "$(cat <<'EOF'
 ## Problem
-[Specific user/developer pain]
+[Specific pain]
 
 ## Solution
 [Approach + why — reference codebase patterns]
@@ -136,7 +134,7 @@ npm test -- path/to/test.ts
 ```
 Expected: FAIL — "validateEmail is not defined"
 
-### Step 3: Write minimal implementation
+### Step 3: Minimal implementation
 ```typescript
 export function validateEmail(email: string): ValidationResult {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -159,7 +157,7 @@ EOF
 bd dep add <task-2-id> <task-1-id>  # task-2 blocked by task-1
 ```
 
-## Step 4: Validate All Issues
+## Step 4: Validate
 
 ```bash
 bd lint <epic-id>
@@ -174,17 +172,18 @@ Fix lint issues before proceeding.
 2. Exact file paths, no ambiguity
 3. Exact commands + expected output
 4. TDD steps baked in (red → green → refactor)
-5. `--validate` flag on all creates
+5. `--validate` on all creates
 
 ## Task Granularity
 
-Each task = one logical unit: function/class + test, one refactor, one integration point.
+Each task = one logical unit: function/class + test, one refactor,
+one integration point.
 
 **Size:** 30-80 lines (test + impl). Allows 3-4 tasks per PR (~250 lines).
 
 **Not:** "Implement whole feature" (too big) or "Write line 45" (too small).
 
-**CRITICAL:** Tasks must be atomic. Once started → must finish before PR ops.
+**CRITICAL:** Tasks atomic. Once started → must finish before PR ops.
 
 ## Plan Footer
 

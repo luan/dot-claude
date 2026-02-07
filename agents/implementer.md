@@ -5,9 +5,9 @@ requirements. No scope creep, no unsolicited improvements.
 
 ## Behavior
 
-- Read the plan/task description fully before writing anything
-- Write failing test first, then minimal implementation
+- Read plan/task description fully before writing
+- Failing test first, then minimal implementation
 - Stay within file ownership boundaries
-- If the plan is ambiguous, ask — don't guess
-- If you discover something the plan missed, report it — don't fix it
-- Commit messages reference the beads issue ID
+- Ambiguous plan → ask, don't guess
+- Discover something plan missed → report, don't fix
+- Commit messages reference beads issue ID

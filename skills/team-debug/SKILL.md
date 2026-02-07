@@ -20,62 +20,69 @@ allowed-tools:
 
 # Team Debug
 
-Competing hypothesis debugging via agent team. Each teammate investigates a different theory, actively trying to disprove the others.
+Competing hypothesis debugging via agent team. Each teammate
+investigates a different theory, actively disproving others.
 
 ## When to Use (vs `debugging`)
 
 - Root cause unclear, multiple plausible explanations
 - Flaky test with unclear trigger
-- Bug that defies single-thread investigation
-- Otherwise → use regular `debugging`
+- Bug defies single-thread investigation
+- Otherwise → regular `debugging`
 
 ## Instructions
 
-1. Analyze bug symptoms, formulate 3-5 hypotheses
-2. Tell Claude to create an agent team:
+1. Analyze symptoms, formulate 3-5 hypotheses
+2. Create agent team:
 
 ```
-Create an agent team to debug: $ARGUMENTS
+Debug: $ARGUMENTS
 
 Hypotheses:
 1. [hypothesis 1]
 2. [hypothesis 2]
 3. [hypothesis 3]
-...
 
-Spawn one teammate per hypothesis. Use Opus for each teammate. Include `agents/researcher.md` behavioral guidelines in each investigator's prompt.
-Require plan approval — each teammate states their hypothesis and investigation plan, lead approves before they proceed.
+Spawn one Opus teammate per hypothesis. Include `agents/researcher.md`
+behavioral guidelines. Require plan approval — each states hypothesis
++ investigation plan, lead approves before proceeding.
 
-Each investigator should:
-- State hypothesis + investigation plan (plan approval required)
-- Gather evidence for/against their theory
-- Message other teammates to share evidence
-- Actively try to disprove other teammates' theories
-- Report: evidence found, confidence level, whether hypothesis survived
+Each investigator:
+- State hypothesis + plan (approval required)
+- Gather evidence for/against
+- Message teammates to share evidence
+- Actively disprove other theories
+- Report: evidence, confidence, whether hypothesis survived
 
 After investigation:
-1. Identify the surviving hypothesis (strongest evidence)
-2. If multiple survive, present tradeoff to user
-3. Clean up the team
-4. Report: root cause, evidence, recommended fix approach
+1. Identify surviving hypothesis (strongest evidence)
+2. Multiple survive → present tradeoff to user
+3. Clean up team
+4. Report: root cause, evidence, recommended fix
 ```
 
-3. After root cause identified, dispatch fix via `debugging` skill flow (regular subagent)
+3. Dispatch fix via `debugging` skill (regular subagent)
 
 ## Oracle Techniques
 
-Investigators should compare buggy behavior against known-good baselines as hard evidence:
+Compare buggy behavior against known-good baselines:
 
-1. **Git worktree baseline:** Check out a known-good commit in a worktree, run the same test, diff output against current. Use an available worktree from the pool (`git worktree list` — detached HEAD = available, `git checkout <last-green-commit>` inside it). Creating a new worktree is expensive — **always ask the user first**. Never use `git stash`/`git checkout` on the main worktree (risks uncommitted work). Return the worktree to detached HEAD when done.
-2. **Reference implementation:** Use stdlib or mature library as oracle. If your function should match `hashlib.sha256()` output, test against it directly.
-3. **Reduced test case:** Minimize input to smallest case that still fails. Known-correct output for minimal input is often obvious — use it as ground truth.
+1. **Git worktree baseline:** Check out known-good commit in worktree,
+   run same test, diff output. Use available worktree (`git worktree list`
+   — detached HEAD = available). Creating new worktree is expensive —
+   **ask user first**. Never `git stash`/`git checkout` on main worktree.
+   Return to detached HEAD when done.
+2. **Reference implementation:** Use stdlib/mature library as oracle.
+   Test against it directly.
+3. **Reduced test case:** Minimize input to smallest failing case.
+   Known-correct output for minimal input is often obvious.
 
-Oracle results are hard evidence. Use them when arguing for/against hypotheses.
+Oracle results = hard evidence. Use when arguing hypotheses.
 
 ## Key Rules
 
-- **Opus** for teammates (root cause analysis needs depth). Use Sonnet for shallow hypotheses.
-- **Plan approval required** — each teammate's investigation plan approved by lead
-- **Adversarial** — teammates must try to disprove each other
-- **Fix uses debugging skill**, not team — investigation done, fix is straightforward
+- **Opus** for teammates (root cause needs depth). Sonnet for shallow hypotheses.
+- **Plan approval required** — each investigator's plan approved by lead
+- **Adversarial** — teammates must disprove each other
+- **Fix uses debugging skill**, not team — investigation done, fix straightforward
 - **Always clean up team** when done
