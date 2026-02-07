@@ -1,6 +1,6 @@
 ---
 name: implement
-description: "Triggers: 'To continue: use Skill tool to invoke implement', 'invoke implement', 'implement with arg', beads issue/epic ID, 'execute the plan', 'build this', 'code this plan'. Extract issue-id from 'with arg X'."
+description: "Triggers: 'invoke implement', 'implement with arg', beads issue/epic ID, 'execute the plan', 'build this', 'code this plan', 'start implementing', 'now implement', 'time to implement', 'ready to implement', 'begin implementation', 'let me implement', 'To continue: use Skill tool to invoke implement'. Extract issue-id from 'with arg X'."
 argument-hint: "[epic-id|task-id] [--fresh]"
 user-invocable: true
 allowed-tools:
