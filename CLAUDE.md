@@ -91,11 +91,15 @@ Examples: `luan/fix-container-minimize`, `luan/add-theme-constants`
 ```bash
 bd ready                    # Next task (no blockers)
 bd show <id>               # Read instructions
-bd update <id> --status in_progress
+bd update <id> --claim     # Atomic: assignee + in_progress (race-safe)
 bd close <id>              # Complete
 bd lint <id>               # Validate (REQUIRED)
+bd create "Found: ..." --type bug --validate --deps discovered-from:<parent-id>  # Side quest linking
 bd mol wisp <formula>      # Ephemeral workflow
 bd mol pour <formula>      # Persistent workflow
+bd swarm validate <epic-id>    # Pre-flight: parallelism, cycles, ready fronts
+bd swarm status <epic-id>      # Live progress: Completed/Active/Ready/Blocked
+bd merge-slot acquire/release  # Serialize git ops in team work
 ```
 **CRITICAL:** `bd lint` NOT optional. Run on all issues before plan complete.
 Session state survives compaction via beads notes.
