@@ -1,549 +1,329 @@
 #!/usr/bin/env uv run
-"""
-Standalone statusline module inspired by cc-sessions design.
-Provides beautiful visual progress bars and status information.
-"""
-
-import sys
-import os
-from enum import Enum
-from typing import Optional, Dict, Any
-
-
-class IconStyle(Enum):
-    NERD_FONTS = "nerd_fonts"
-    EMOJI = "emoji"
-    ASCII = "ascii"
-
-
-class Statusline:
-    """Beautiful statusline with progress bars and visual indicators."""
-
-    def __init__(self, icon_style: str = "nerd_fonts", enable_colors: bool = True):
-        """
-        Initialize statusline.
-
-        Args:
-            icon_style: "nerd_fonts", "emoji", or "ascii"
-            enable_colors: Force disable colors (useful for non-ANSI terminals)
-        """
-        self.icon_style = IconStyle(icon_style)
-        self.enable_colors = enable_colors and self._supports_ansi()
-        self._setup_colors()
-        self._setup_icons()
-
-    def _supports_ansi(self) -> bool:
-        """Check if the current environment supports ANSI color codes."""
-
-        # Windows detection
-        if sys.platform == "win32":
-            wt_session = os.environ.get("WT_SESSION")
-            pwsh_version = os.environ.get("POWERSHELL_DISTRIBUTION_CHANNEL")
-
-            if wt_session:
-                return True
-
-            if pwsh_version and "PSCore" in pwsh_version:
-                return True
-
-            try:
-                import platform
-
-                win_ver = platform.version()
-                if int(win_ver.split(".")[2]) >= 14393:
-                    import ctypes
-
-                    kernel32 = ctypes.windll.kernel32
-                    stdout_handle = kernel32.GetStdHandle(-11)
-                    mode = ctypes.c_ulong()
-                    kernel32.GetConsoleMode(stdout_handle, ctypes.byref(mode))
-                    mode.value |= 0x0004
-                    kernel32.SetConsoleMode(stdout_handle, mode.value)
-                    return True
-            except:
-                pass
-            return False
-
-        # Unix-like systems support ANSI
-        return True
-
-    def _setup_colors(self):
-        """Setup Ayu Dark color scheme."""
-        if self.enable_colors:
-            self.colors = {
-                "green": "\033[38;5;114m",
-                "orange": "\033[38;5;215m",
-                "red": "\033[38;5;203m",
-                "gray": "\033[38;5;242m",
-                "l_gray": "\033[38;5;250m",
-                "cyan": "\033[38;5;111m",
-                "purple": "\033[38;5;183m",
-                "reset": "\033[0m",
-            }
-        else:
-            # No color support
-            self.colors = {
-                key: ""
-                for key in [
-                    "green",
-                    "orange",
-                    "red",
-                    "gray",
-                    "l_gray",
-                    "cyan",
-                    "purple",
-                    "reset",
-                ]
-            }
-
-    def _setup_icons(self):
-        """Setup icons based on selected style."""
-        if self.icon_style == IconStyle.NERD_FONTS:
-            self.icons = {
-                "context": "󱃖 ",
-                "task": "󰒓 ",
-                "mode_implement": "󰷫 ",
-                "mode_discuss": "󰭹 ",
-                "branch": "󰘬 ",
-                "tasks": "󰈙 ",
-                "edit": "✎ ",
-            }
-        elif self.icon_style == IconStyle.EMOJI:
-            self.icons = {
-                "context": "",
-                "task": "⚙️ ",
-                "mode_implement": "🛠️ ",
-                "mode_discuss": "💬 ",
-                "branch": "Branch: ",
-                "tasks": "💼 ",
-                "edit": "✎ ",
-            }
-        else:  # ASCII
-            self.icons = {
-                "context": "",
-                "task": "Task: ",
-                "mode_implement": "Mode:",
-                "mode_discuss": "Mode:",
-                "branch": "Branch: ",
-                "tasks": "",
-                "edit": "✎ ",
-            }
-
-    def _format_tokens(self, count: Optional[int]) -> str:
-        """Format token count as 'k' notation."""
-        if count is None:
-            return "0k"
-        return f"{count // 1000}k" if count >= 1000 else str(count)
-
-    def _create_progress_bar(self, current: int, limit: int) -> str:
-        """
-        Create a visual progress bar with block characters.
-
-        Args:
-            current: Current usage/progress
-            limit: Maximum limit
-
-        Returns:
-            Formatted progress bar string
-        """
-        if limit <= 0:
-            return f"{self.colors['gray']}No progress data{self.colors['reset']}"
-
-        # Calculate percentage
-        pct = min((current * 100) / limit, 100)
-        progress_pct = f"{pct:.1f}"
-        progress_int = int(pct)
-
-        # Progress bar blocks (0-10)
-        filled_blocks = min(progress_int // 10, 10)
-        empty_blocks = 10 - filled_blocks
-
-        # Choose color based on percentage
-        if progress_int < 50:
-            bar_color = self.colors["green"]
-        elif progress_int < 80:
-            bar_color = self.colors["orange"]
-        else:
-            bar_color = self.colors["red"]
-
-        # Format token counts
-        formatted_current = self._format_tokens(current)
-        formatted_limit = self._format_tokens(limit)
-
-        # Build progress bar
-        progress_parts = []
-        progress_parts.append(f"{bar_color}{self.icons['context']}")
-        progress_parts.append(bar_color + ("█" * filled_blocks))
-        progress_parts.append(self.colors["gray"] + ("░" * empty_blocks))
-        progress_parts.append(
-            f"{self.colors['reset']} {self.colors['l_gray']}{progress_pct}% ({formatted_current}/{formatted_limit}){self.colors['reset']}"
-        )
-
-        return "".join(progress_parts)
-
-    def _format_model(self, model) -> str:
-        """Format model information from various input formats."""
-        if model is None:
-            return None
-
-        if isinstance(model, dict):
-            # Handle model dict format
-            return model.get("display_name", model.get("id", str(model)))
-        elif isinstance(model, str):
-            # Handle string format
-            return model
-        else:
-            # Fallback for other types
-            return str(model)
-
-    def render(
-        self,
-        context_usage: Optional[int] = None,
-        context_limit: int = 160000,
-        model: Optional[Any] = None,
-        custom_status: Optional[str] = None,
-        git_branch: Optional[str] = None,
-        edited_files: int = 0,
-        custom_info: Optional[Dict[str, str]] = None,
-    ) -> str:
-        """
-        Render the complete statusline.
-
-        Args:
-            context_usage: Current context usage in tokens
-            context_limit: Maximum context limit
-            model: Model information (string, dict, or other)
-            custom_status: Custom status message to display
-            git_branch: Git branch name
-            edited_files: Number of edited/uncommitted files
-            custom_info: Additional custom information to display
-
-        Returns:
-            Formatted statusline string
-        """
-        # Line 1: Progress bar | Status (with optional model)
-        progress_bar = self._create_progress_bar(context_usage or 0, context_limit)
-
-        # Format model info
-        formatted_model = self._format_model(model)
-
-        # Build line 1: Progress bar | Model (or custom status)
-        if custom_status:
-            status_part = f"{self.colors['cyan']}{custom_status}{self.colors['reset']}"
-            if formatted_model:
-                model_part = (
-                    f"{self.colors['l_gray']}({formatted_model}){self.colors['reset']}"
-                )
-                line1 = f"{progress_bar} | {status_part} {model_part}"
-            else:
-                line1 = f"{progress_bar} | {status_part}"
-        elif formatted_model:
-            # Show model as primary status when no custom status
-            line1 = f"{progress_bar} | {self.colors['purple']}{formatted_model}{self.colors['reset']}"
-        else:
-            line1 = progress_bar
-
-        # Build line 2: Edited files | Git branch | Custom info
-        line2_parts = []
-
-        if edited_files > 0:
-            edited_part = f"{self.colors['orange']}{self.icons['edit']} {edited_files}{self.colors['reset']}"
-            line2_parts.append(edited_part)
-
-        if git_branch:
-            branch_part = f"{self.colors['l_gray']}{self.icons['branch']}{git_branch}{self.colors['reset']}"
-            line2_parts.append(branch_part)
-
-        # Add custom info if provided
-        if custom_info:
-            for key, value in custom_info.items():
-                if value is None:
-                    # Directory names (without prefix)
-                    line2_parts.append(
-                        f"{self.colors['cyan']}{key}{self.colors['reset']}"
-                    )
-                else:
-                    # Regular key: value pairs
-                    line2_parts.append(
-                        f"{self.colors['l_gray']}{key}: {self.colors['cyan']}{value}{self.colors['reset']}"
-                    )
-
-        # Return appropriate number of lines
-        if line2_parts:
-            line2 = " | ".join(line2_parts)
-            return f"{line1}\n{line2}"
-        else:
-            return line1
-
-    def _format_duration(self, duration_ms: Optional[int]) -> str:
-        """Format duration in milliseconds to readable format."""
-        if duration_ms is None:
-            return None
-
-        seconds = duration_ms // 1000
-        if seconds < 60:
-            return f"{seconds}s"
-        elif seconds < 3600:
-            minutes = seconds // 60
-            return f"{minutes}m"
-        else:
-            hours = seconds // 3600
-            minutes = (seconds % 3600) // 60
-            return f"{hours}h{minutes}m"
-
-    def _format_cost(self, cost_usd: Optional[float]) -> str:
-        """Format cost in USD to readable format."""
-        if cost_usd is None:
-            return None
-
-        if cost_usd < 0.01:
-            return f"${cost_usd * 1000:.1f}m"
-        else:
-            return f"${cost_usd:.3f}"
-
-    def _format_path(self, path: Optional[str], max_length: int = 30) -> str:
-        """Format and truncate path for display."""
-        if path is None:
-            return None
-
-        # Replace home directory with ~
-        home = os.path.expanduser("~")
-        if path.startswith(home):
-            path = "~" + path[len(home) :]
-
-        # Truncate if too long
-        if len(path) > max_length:
-            # Keep the beginning and end, truncate middle
-            half = max_length // 2
-            path = path[:half] + "..." + path[-half:]
-
-        return path
-
-    def _extract_context_usage(
-        self, transcript_path: Optional[str], session_id: Optional[str]
-    ) -> Optional[int]:
-        """Extract context usage from transcript file like the original cc-sessions implementation."""
-        if not transcript_path or not os.path.exists(transcript_path):
-            return None
-
-        try:
-            import json as json_module
-            from datetime import datetime, timezone
-
-            with open(
-                transcript_path, "r", encoding="utf-8", errors="backslashreplace"
-            ) as f:
-                lines = f.readlines()
-
-            most_recent_usage = None
-            most_recent_timestamp = None
-
-            for line in lines:
-                try:
-                    data = json_module.loads(line.strip())
-                    # Skip sidechain entries (subagent calls)
-                    if data.get("isSidechain", False):
-                        continue
-
-                    # Check for usage data in main-chain messages
-                    if data.get("message", {}).get("usage"):
-                        timestamp = data.get("timestamp")
-                        if timestamp and (
-                            not most_recent_timestamp
-                            or timestamp > most_recent_timestamp
-                        ):
-                            most_recent_timestamp = timestamp
-                            most_recent_usage = data["message"]["usage"]
-                except:
-                    continue
-
-            # Calculate context length (input + cache tokens only, NOT output)
-            if most_recent_usage:
-                context_length = (
-                    most_recent_usage.get("input_tokens", 0)
-                    + most_recent_usage.get("cache_read_input_tokens", 0)
-                    + most_recent_usage.get("cache_creation_input_tokens", 0)
-                )
-                # Set minimum to 17000 like original
-                return max(context_length, 17000)
-        except:
-            pass
-
-        return None
-
-    def render_from_claude_data(self, data: Dict[str, Any]) -> str:
-        """
-        Render statusline from Claude Code's JSON data structure.
-
-        Args:
-            data: The JSON data passed from Claude Code
-
-        Returns:
-            Formatted statusline string
-        """
-        # Extract basic information
-        model = data.get("model")
-        workspace = data.get("workspace", {})
-        cwd = data.get("cwd", workspace.get("current_dir"))
-        project_dir = workspace.get("project_dir")
-        session_id = data.get("session_id")
-        transcript_path = data.get("transcript_path")
-        version = data.get("version")
-
-        # Extract cost and metrics
-        cost_data = data.get("cost", {})
-        total_cost = cost_data.get("total_cost_usd")
-        duration = cost_data.get("total_duration_ms")
-        lines_added = cost_data.get("lines_added", 0)
-        lines_removed = cost_data.get("lines_removed", 0)
-
-        # Extract context usage from transcript
-        context_usage = self._extract_context_usage(transcript_path, session_id)
-
-        # Determine context limit based on model
-        context_limit = 160000
-        if model:
-            model_id = model.get("id", "").lower()
-            if "[1m]" in model_id:
-                context_limit = 800000
-            elif "opus" in model_id:
-                context_limit = 200000
-
-        # Format directory info
-        formatted_cwd = self._format_path(cwd)
-        formatted_project = self._format_path(project_dir)
-
-        # Build custom info
-        custom_info = {}
-
-        # Add line changes if any
-        if lines_added > 0 or lines_removed > 0:
-            lines_text = []
-            if lines_added > 0:
-                lines_text.append(f"+{lines_added}")
-            if lines_removed > 0:
-                lines_text.append(f"-{lines_removed}")
-            custom_info["Lines"] = "".join(lines_text)
-
-        # Add directory info (without prefix)
-        if formatted_project and formatted_cwd != formatted_project:
-            custom_info[formatted_cwd] = None
-        elif formatted_cwd:
-            # Show just the current directory name if it's the project
-            custom_info[os.path.basename(formatted_cwd) or formatted_cwd] = None
-
-        # Get git branch
-        git_branch = None
-        try:
-            if cwd:
-                import subprocess
-
-                branch_cmd = ["git", "-C", cwd, "branch", "--show-current"]
-                branch = subprocess.check_output(
-                    branch_cmd,
-                    stderr=subprocess.PIPE,
-                    encoding="utf-8",
-                    errors="replace",
-                ).strip()
-                if branch:
-                    git_branch = branch
-        except:
-            pass
-
-        # Get edited files count
-        edited_files = 0
-        try:
-            if cwd:
-                import subprocess
-
-                # Count unstaged changes
-                unstaged_cmd = ["git", "-C", cwd, "diff", "--name-only"]
-                unstaged_files = (
-                    subprocess.check_output(
-                        unstaged_cmd,
-                        stderr=subprocess.PIPE,
-                        encoding="utf-8",
-                        errors="replace",
-                    )
-                    .strip()
-                    .split("\n")
-                )
-                unstaged_count = len([f for f in unstaged_files if f])
-
-                # Count staged changes
-                staged_cmd = ["git", "-C", cwd, "diff", "--cached", "--name-only"]
-                staged_files = (
-                    subprocess.check_output(
-                        staged_cmd,
-                        stderr=subprocess.PIPE,
-                        encoding="utf-8",
-                        errors="replace",
-                    )
-                    .strip()
-                    .split("\n")
-                )
-                staged_count = len([f for f in staged_files if f])
-
-                edited_files = unstaged_count + staged_count
-        except:
-            pass
-
-        return self.render(
-            context_usage=context_usage,
-            context_limit=context_limit,
-            model=model,
-            custom_status=None,
-            git_branch=git_branch,
-            edited_files=edited_files,
-            custom_info=custom_info,
-        )
-
-
-# Simple CLI usage
-if __name__ == "__main__":
-    import json
-
-    # Read JSON input from stdin if available
+"""Two-line Claude Code statusline with dot progress bars and quota tracking."""
+
+import json, os, sys, subprocess, time
+from datetime import datetime, timezone
+
+# Ayu Dark palette
+GREEN = "\033[38;5;114m"
+ORANGE = "\033[38;5;215m"
+RED = "\033[38;5;203m"
+DIM = "\033[38;5;242m"
+LGRAY = "\033[38;5;250m"
+BLUE = "\033[38;5;75m"
+CYAN = "\033[38;5;111m"
+PURPLE = "\033[38;5;183m"
+YELLOW = "\033[38;5;228m"
+RESET = "\033[0m"
+
+SEP = f" {DIM}|{RESET} "
+
+GIT_CACHE = "/tmp/claude-statusline-git"
+GIT_TTL = 5
+USAGE_CACHE = "/tmp/claude-statusline-usage.json"
+USAGE_TTL = 60
+BEADS_CACHE = "/tmp/claude-statusline-beads"
+BEADS_TTL = 10
+
+
+def dot_bar(pct, width=10):
+    pct = max(0, min(100, int(pct or 0)))
+    filled = round(pct * width / 100)
+    empty = width - filled
+    if pct >= 80:
+        col = RED
+    elif pct >= 50:
+        col = ORANGE
+    else:
+        col = GREEN
+    return f"{col}{'●' * filled}{DIM}{'○' * empty}{RESET}", col
+
+
+def fmt_tokens(n):
+    if not n:
+        return "0"
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f}m"
+    if n >= 1000:
+        return f"{n // 1000}k"
+    return str(n)
+
+
+def fmt_cost(usd):
+    if not usd:
+        return "$0"
+    return f"${usd:.2f}" if usd >= 0.01 else f"${usd:.4f}"
+
+
+def fmt_duration(ms):
+    if not ms:
+        return "0s"
+    s = int(ms) // 1000
+    if s < 60:
+        return f"{s}s"
+    if s < 3600:
+        return f"{s // 60}m{s % 60:02d}s"
+    return f"{s // 3600}h{(s % 3600) // 60:02d}m"
+
+
+def fmt_reset(iso_str):
+    if not iso_str:
+        return "", 0
     try:
-        if not sys.stdin.isatty():
-            data = json.load(sys.stdin)
-            # Use Claude Code data
-            statusline = Statusline(icon_style="nerd_fonts")
-            print(statusline.render_from_claude_data(data))
-        else:
-            # Default values for testing
-            context_usage = 45000
-            context_limit = 160000
-            model = {"id": "claude-sonnet-4-5-20250929", "display_name": "Sonnet 4.5"}
-            custom_status = "Working on feature"
-            git_branch = "main"
-            edited_files = 3
-            custom_info = {"Lines": "+5/-2", "~/.claude": None}
+        dt = datetime.fromisoformat(iso_str).astimezone()
+        now = datetime.now(timezone.utc).astimezone()
+        delta = dt - now
+        total_secs = max(0, delta.total_seconds())
+        hours = int(total_secs // 3600)
+        mins = int((total_secs % 3600) // 60)
+        days = hours // 24
+        if days > 0:
+            remaining_hours = hours % 24
+            return f"{days}d{remaining_hours}h", total_secs
+        if hours > 0:
+            return f"{hours}h{mins:02d}m", total_secs
+        return f"{mins}m", total_secs
+    except Exception:
+        return "", 0
 
-            statusline = Statusline(icon_style="nerd_fonts")
-            print(
-                statusline.render(
-                    context_usage=context_usage,
-                    context_limit=context_limit,
-                    model=model,
-                    custom_status=custom_status,
-                    git_branch=git_branch,
-                    edited_files=edited_files,
-                    custom_info=custom_info,
-                )
-            )
-    except Exception as e:
-        # Fallback on error
-        statusline = Statusline(icon_style="nerd_fonts")
-        print(
-            statusline.render(
-                context_usage=45000,
-                context_limit=160000,
-                model={
-                    "id": "claude-sonnet-4-5-20250929",
-                    "display_name": "Sonnet 4.5",
-                },
-                custom_status="Statusline Error",
-            )
-        )
 
+def quota_color(utilization, remaining_secs, window_secs):
+    """Color based on remaining quota per remaining time unit."""
+    if not window_secs or remaining_secs <= 0:
+        if utilization >= 80:
+            return RED
+        if utilization >= 50:
+            return ORANGE
+        return CYAN
+    # How many "units" (hours for 5h, days for 7d) remain?
+    is_daily = window_secs > 86400
+    unit_secs = 86400 if is_daily else 3600
+    total_units = window_secs / unit_secs
+    remaining_units = max(remaining_secs / unit_secs, 0.1)
+    remaining_pct = 100 - utilization
+    # How much quota per remaining unit vs even pace
+    per_unit = remaining_pct / remaining_units
+    even_pace = 100 / total_units
+    if per_unit >= even_pace * 0.7:
+        return CYAN
+    if per_unit >= even_pace * 0.35:
+        return ORANGE
+    return RED
+
+
+# -- Cache helpers --
+
+def read_cache(path, ttl):
+    try:
+        if time.time() - os.stat(path).st_mtime < ttl:
+            with open(path) as f:
+                return f.read()
+    except OSError:
+        pass
+    return None
+
+
+def write_cache(path, value):
+    try:
+        with open(path, "w") as f:
+            f.write(value)
+    except OSError:
+        pass
+
+
+def _run(cmd, cwd=None):
+    return subprocess.check_output(
+        cmd, cwd=cwd, stderr=subprocess.DEVNULL, text=True, timeout=3
+    ).strip()
+
+
+# -- Data fetchers --
+
+def git_info(cwd):
+    if not cwd:
+        return None
+    import hashlib
+    cache_path = GIT_CACHE + "-" + hashlib.md5(cwd.encode()).hexdigest()[:8]
+    cached = read_cache(cache_path, GIT_TTL)
+    if cached is not None:
+        return cached or None
+
+    try:
+        branch = _run(["git", "branch", "--show-current"], cwd)
+        if not branch:
+            branch = _run(["git", "rev-parse", "--short", "HEAD"], cwd)[:7]
+
+        lines = _run(["git", "status", "--porcelain"], cwd).splitlines()
+        staged = modified = 0
+        for ln in lines:
+            if len(ln) < 2:
+                continue
+            if ln[0] in "AMDRC":
+                staged += 1
+            if ln[1] in "MD":
+                modified += 1
+
+        parts = [f"{LGRAY}󰘬 {branch}{RESET}"]
+        if staged:
+            parts.append(f"{GREEN}•{staged}{RESET}")
+        if modified:
+            parts.append(f"{ORANGE}+{modified}{RESET}")
+
+        try:
+            raw = _run(["git", "remote", "get-url", "origin"], cwd)
+            url = raw
+            if url.startswith("git@"):
+                url = url.replace(":", "/", 1).replace("git@", "https://")
+            if url.endswith(".git"):
+                url = url[:-4]
+            name = url.rsplit("/", 1)[-1]
+            parts.append(f"\033]8;;{url}\a{CYAN}{name}{RESET}\033]8;;\a")
+        except Exception:
+            parts.append(f"{CYAN}{os.path.basename(cwd)}{RESET}")
+
+        result = " ".join(parts)
+    except Exception:
+        result = ""
+
+    write_cache(cache_path, result)
+    return result or None
+
+
+def fetch_usage():
+    cached = read_cache(USAGE_CACHE, USAGE_TTL)
+    if cached is not None:
+        try:
+            return json.loads(cached) if cached else None
+        except Exception:
+            pass
+
+    try:
+        raw = _run(["security", "find-generic-password", "-s", "Claude Code-credentials", "-w"])
+        token = json.loads(raw).get("claudeAiOauth", {}).get("accessToken")
+        if not token:
+            return None
+
+        result = subprocess.check_output([
+            "curl", "-s", "--max-time", "5",
+            "-H", "Accept: application/json",
+            "-H", f"Authorization: Bearer {token}",
+            "-H", "anthropic-beta: oauth-2025-04-20",
+            "-H", "User-Agent: claude-code/2.1.34",
+            "https://api.anthropic.com/api/oauth/usage",
+        ], stderr=subprocess.DEVNULL, text=True, timeout=8).strip()
+
+        if result:
+            json.loads(result)  # validate
+            write_cache(USAGE_CACHE, result)
+            return json.loads(result)
+    except Exception:
+        pass
+
+    write_cache(USAGE_CACHE, "")
+    return None
+
+
+def beads_task(cwd):
+    if not cwd:
+        return None
+    import hashlib
+    cache_path = BEADS_CACHE + "-" + hashlib.md5(cwd.encode()).hexdigest()[:8]
+    cached = read_cache(cache_path, BEADS_TTL)
+    if cached is not None:
+        return cached or None
+
+    result = ""
+    try:
+        out = _run(["bd", "list", "--status=in_progress", "--format=oneline"], cwd)
+        if out:
+            result = out.splitlines()[0].strip()
+    except Exception:
+        pass
+
+    write_cache(cache_path, result)
+    return result or None
+
+
+# -- Main --
+
+def main():
+    try:
+        data = json.load(sys.stdin)
+    except Exception:
+        sys.stdout.write(f"{DIM}statusline: waiting{RESET}")
+        return
+
+    model_name = (data.get("model") or {}).get("display_name", "")
+    cw = data.get("context_window") or {}
+    pct = int(cw.get("used_percentage") or 0)
+    ctx_size = int(cw.get("context_window_size") or 200000)
+    usage = cw.get("current_usage") or {}
+    input_tokens = (usage.get("input_tokens") or 0) + \
+                   (usage.get("cache_creation_input_tokens") or 0) + \
+                   (usage.get("cache_read_input_tokens") or 0)
+
+    cost_data = data.get("cost") or {}
+    cwd = (data.get("workspace") or {}).get("current_dir", "")
+    vim = data.get("vim")
+    agent = data.get("agent")
+
+    # === LINE 1: Model | context bar pct tokens | cost | duration ===
+    parts1 = []
+    if model_name:
+        parts1.append(f"{PURPLE}{model_name}{RESET}")
+    bar, bar_col = dot_bar(pct)
+    parts1.append(f"{bar} {bar_col}{pct}%{RESET} {DIM}{fmt_tokens(input_tokens)}/{fmt_tokens(ctx_size)}{RESET}")
+    parts1.append(f"{LGRAY}󰅐 {fmt_duration(cost_data.get('total_duration_ms'))}{RESET}")
+    parts1.append(f"{DIM}󰇁 {fmt_cost(cost_data.get('total_cost_usd'))}{RESET}")
+    sys.stdout.write(SEP.join(parts1))
+
+    # === LINE 2: git | 5h quota bar | weekly quota bar | vim | agent ===
+    parts2 = []
+
+    gi = git_info(cwd)
+    if gi:
+        parts2.append(gi)
+
+    quota = fetch_usage()
+    if quota:
+        FIVE_HOURS = 5 * 3600
+        SEVEN_DAYS = 7 * 24 * 3600
+
+        fh = quota.get("five_hour") or {}
+        fh_pct = int(fh.get("utilization") or 0)
+        fh_reset_str, fh_remaining = fmt_reset(fh.get("resets_at"))
+        fh_col = quota_color(fh_pct, fh_remaining, FIVE_HOURS)
+        filled = round(fh_pct * 8 / 100)
+        fh_bar = f"{fh_col}{'●' * filled}{DIM}{'○' * (8 - filled)}{RESET}"
+        fh_label = f"5h: {fh_bar} {fh_col}{fh_pct}%{RESET}"
+        if fh_reset_str:
+            fh_label += f" {DIM}{fh_reset_str}{RESET}"
+        parts2.append(fh_label)
+
+        sd = quota.get("seven_day") or {}
+        sd_pct = int(sd.get("utilization") or 0)
+        sd_reset_str, sd_remaining = fmt_reset(sd.get("resets_at"))
+        sd_col = quota_color(sd_pct, sd_remaining, SEVEN_DAYS)
+        filled = round(sd_pct * 8 / 100)
+        sd_bar = f"{sd_col}{'●' * filled}{DIM}{'○' * (8 - filled)}{RESET}"
+        sd_label = f"7d: {sd_bar} {sd_col}{sd_pct}%{RESET}"
+        if sd_reset_str:
+            sd_label += f" {DIM}{sd_reset_str}{RESET}"
+        parts2.append(sd_label)
+
+    if vim:
+        parts2.append(f"{PURPLE} {vim['mode']}{RESET}")
+    if agent:
+        parts2.append(f"{ORANGE}{agent['name']}{RESET}")
+
+    if parts2:
+        sys.stdout.write("\n" + SEP.join(parts2))
+
+    # === LINE 3: beads task (if active) ===
+    bt = beads_task(cwd)
+    if bt:
+        sys.stdout.write(f"\n{YELLOW} {bt}{RESET}")
+
+
+if __name__ == "__main__":
+    main()
