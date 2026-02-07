@@ -73,6 +73,15 @@ Task tool (for each):
       - `bd agent state worker-<n> done`
       - Report completion to lead
 
+  ## Fix Loop (Post-Completion)
+  After reporting completion, stay idle — do NOT shut down. Lead may
+  message you with test failures:
+  1. Read failure output and file paths from lead's message
+  2. Fix the issue (you have full context from your original work)
+  3. `bd merge-slot acquire` → git add, commit, push → `bd merge-slot release`
+  4. Report fix completion to lead
+  5. Return to idle (may be called again for re-verification)
+
   ## Context
   - Branch: luan/<description> (already created)
   - Run `bd prime` for workflow context
@@ -99,12 +108,21 @@ Task tool (for each):
     - Discovered issues — decide: fix now or beads bug for later
     - Completion = Ready: 0, Active: 0
 
-11. When swarm complete:
+11. Verify-fix loop (max 2 cycles):
     - Verify all beads tasks closed: `bd children <epic-id>`
-    - Run full test suite
-    - Shut down teammates, clean up team
+    - Run full test suite (workers still idle, NOT shut down)
+    - **Green** → proceed to step 12
+    - **Red** →
+      a. For each failing test, identify affected files from error output
+      b. Find owner: `bd children <epic-id>` → `bd show <task-id>` → match assignee to files in task metadata
+      c. Message worker(s) with: failure output, file paths, specific test names
+      d. Workers fix in place (see Fix Loop in worker prompt) and report back
+      e. Re-run test suite (back to verify step)
+    - After 2 failed cycles: escalate to user with full failure details and ask how to proceed
 
-12. Invoke `finishing-branch` skill
+12. Shut down teammates, clean up team (only after green tests or user approval)
+
+13. Invoke `finishing-branch` skill
 
 ## File Ownership Protocol
 
@@ -128,4 +146,6 @@ Ownership is per-task, stored in beads metadata — not per-teammate.
 - **Agent tracking** — `bd agent state` + `bd agent heartbeat` for visibility
 - **Swarm = source of truth** — `bd swarm status` for progress, not manual polling
 - **Beads = source of truth** — teammates close beads tasks, not just team tasks
-- **Always clean up team** when done
+- **Verify before shutdown** — full test suite runs while workers idle, failures routed back to file owners
+- **Fix cycles capped** — max 2 verification cycles before escalating to user
+- **Always clean up team** after green tests or user approval
