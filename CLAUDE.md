@@ -1,3 +1,9 @@
+## Non-Negotiable Rules
+
+1. **Never implement on main thread.** After plan approval → `Skill tool: implement` with epic-id. Never raw `Task` calls.
+2. **Never explore on main thread.** Use `Skill tool: explore`. Subagents investigate, main thread orchestrates.
+3. **Never use Task tool directly for implementation.** Skills handle dispatch. Task tool is for use INSIDE skills only.
+
 ## Plan Mode
 - Extremely concise. Sacrifice grammar.
 - End with unresolved questions list if any.
@@ -73,8 +79,9 @@ Multiple Claude instances DISCUSS. Higher token cost.
 **Auto-escalation:** Base skill triages + auto-escalates to team variant when warranted.
 
 **After plan approval** ("yes", "go ahead", "proceed"):
-- **IMMEDIATELY** invoke implement skill with epic-id
-- Don't manually implement—skill handles subagent dispatch
+- **IMMEDIATELY** invoke `Skill tool: implement` with epic-id and STOP
+- No Task tool directly—skill handles all dispatch
+- No main thread implementation under any circumstances
 
 ## Branch Naming
 Prefix `luan/` + short description: `gt create luan/<description>`

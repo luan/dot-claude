@@ -60,7 +60,11 @@ This is exploration - ephemeral. Epic+tasks persist, exploration doesn't.
 3. When subagent returns, check for escalation:
    - If response contains "ESCALATE: team-explore": invoke `Skill tool: team-explore` with the original arguments + subagent findings as context
    - Otherwise: use `ExitPlanMode`
-4. After approval, output: `To continue: use Skill tool to invoke implement with arg <epic-id>`
+4. After approval, output exactly:
+   ```
+   To continue: use Skill tool to invoke implement with arg <epic-id>
+   ```
+   Do NOT use Task tool directly. The implement skill handles all subagent dispatch.
 
 ## Key Rules
 
