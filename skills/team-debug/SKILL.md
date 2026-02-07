@@ -43,7 +43,7 @@ Hypotheses:
 3. [hypothesis 3]
 ...
 
-Spawn one teammate per hypothesis. Use Sonnet for each teammate.
+Spawn one teammate per hypothesis. Use Opus for each teammate. Include `agents/researcher.md` behavioral guidelines in each investigator's prompt.
 Require plan approval — each teammate states their hypothesis and investigation plan, lead approves before they proceed.
 
 Each investigator should:
@@ -74,7 +74,7 @@ Oracle results are hard evidence. Use them when arguing for/against hypotheses.
 
 ## Key Rules
 
-- **Sonnet** for teammates (hypothesis testing is exploratory)
+- **Opus** for teammates (root cause analysis needs depth). Use Sonnet for shallow hypotheses.
 - **Plan approval required** — each teammate's investigation plan approved by lead
 - **Adversarial** — teammates must try to disprove each other
 - **Fix uses debugging skill**, not team — investigation done, fix is straightforward

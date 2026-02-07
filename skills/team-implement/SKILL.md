@@ -24,17 +24,19 @@ Coordinated implementation via agent team. Teammates self-select tasks from bead
 
 ## When to Use (vs `implement`)
 
-- Tasks span 3+ independent modules or layers (frontend/backend/tests/infra)
+- `bd swarm validate <epic-id> --verbose` shows max parallelism >= 3
 - Shared interfaces between tasks need live coordination
-- Epic has 5+ tasks with no dependency chain (parallelizable)
 - Otherwise → use regular `implement` (sequential subagent)
 
 ## Instructions
 
 1. Read the epic: `bd show <epic-id>` + `bd children <epic-id>`
-2. **Prep file ownership:** Ensure each task has file ownership in beads metadata. If two ready tasks share files, `bd dep add` between them to serialize. This is the lead's critical prep step.
-3. Create feature branch: `gt create luan/<short-description>`
-4. Create agent team:
+2. `bd swarm validate <epic-id> --verbose` — check cycles, max parallelism, ready fronts
+3. `bd swarm create <epic-id>` — register swarm molecule
+4. `bd merge-slot create` — create git serialization lock
+5. **Prep file ownership:** Ensure each task has file ownership in beads metadata. If two ready tasks share files, `bd dep add` between them to serialize. Re-validate with `bd swarm validate` after adding deps.
+6. Create feature branch: `gt create luan/<short-description>`
+7. Create agent team:
 
 ```
 Teammate tool:
@@ -43,7 +45,7 @@ Teammate tool:
   description: "Implementing <epic summary>"
 ```
 
-5. Spawn 2-4 worker teammates. Use Sonnet. Require plan approval:
+8. Spawn workers. Count = `min(max_parallelism from validate, 4)`. Use Opus. Require plan approval:
 
 ```
 Task tool (for each):
@@ -52,17 +54,24 @@ Task tool (for each):
   team_name: "<team-name>"
   name: "worker-<n>"
   prompt: """
-  You are a worker on epic <epic-id>.
+  You are worker-<n> on epic <epic-id>.
 
   ## Work Loop
-  1. `bd ready` — find next unblocked task
+  1. `bd ready --parent <epic-id> --unassigned` — find next unblocked, unclaimed task
   2. `bd show <id>` — read task instructions
-  3. `bd update <id> --status in_progress` — claim it
-  4. `bd show <id>` — verify you're the owner (if someone else claimed it, go to step 1)
+  3. `bd update <id> --claim` — atomic claim (fails if already claimed → go to step 1)
+  4. `bd agent state worker-<n> working` — register active state
   5. Respect file ownership metadata on the task — those are YOUR files while in_progress
   6. Write failing test FIRST, then minimal implementation
-  7. `bd close <id>` when done
-  8. Go to step 1. When `bd ready` returns nothing, report completion to lead.
+  7. Git ops (commit/push):
+     - `bd merge-slot acquire` — wait for lock
+     - git add, commit, push
+     - `bd merge-slot release` — free lock
+  8. `bd close <id>`
+  9. `bd agent heartbeat` — signal progress
+  10. Go to step 1. When `bd ready --parent <epic-id> --unassigned` returns nothing:
+      - `bd agent state worker-<n> done`
+      - Report completion to lead
 
   ## Context
   - Branch: luan/<description> (already created)
@@ -79,41 +88,44 @@ Task tool (for each):
   """
 ```
 
-6. Review and approve each teammate's plan. Verify:
+9. Review and approve each teammate's plan. Verify:
    - File ownership metadata on concurrent tasks doesn't overlap
    - Interface assumptions are compatible across teammates
    - If conflicts exist, add beads dependencies to serialize or message teammates to resolve
 
-7. Monitor implementation. Watch for:
-   - Two teammates claiming tasks with overlapping files — pause one, add dependency
-   - Interface mismatches — nudge teammates to coordinate
-   - Discovered issues — decide: fix now or beads bug for later
-   - `bd ready` returning nothing for all teammates = done
+10. Monitor with `bd swarm status <epic-id>`. Watch for:
+    - Two teammates claiming tasks with overlapping files — pause one, add dependency
+    - Interface mismatches — nudge teammates to coordinate
+    - Discovered issues — decide: fix now or beads bug for later
+    - Completion = Ready: 0, Active: 0
 
-8. When teammates finish:
-   - Verify all beads tasks closed: `bd children <epic-id>`
-   - Run full test suite
-   - Shut down teammates, clean up team
+11. When swarm complete:
+    - Verify all beads tasks closed: `bd children <epic-id>`
+    - Run full test suite
+    - Shut down teammates, clean up team
 
-9. Invoke `finishing-branch` skill
+12. Invoke `finishing-branch` skill
 
 ## File Ownership Protocol
 
 Ownership is per-task, stored in beads metadata — not per-teammate.
 
-- `bd update <id> --status in_progress` = claim. Only one agent works a task at a time.
+- `bd update <id> --claim` = atomic claim (assignee + in_progress, fails if already claimed).
 - If two ready tasks share files, lead adds a beads dependency so they serialize.
 - Shared files (types, config) owned by one task; other tasks that need changes MESSAGE the owner.
-- Teammates verify ownership after claiming (`bd show` to confirm).
+- `--claim` is atomic — no separate verify step needed.
 
 ## Key Rules
 
-- **Sonnet** for teammates (implementation is mechanical, coordination is the value-add)
+- **Opus** for teammates (correct code needs depth). Use Sonnet if epic is mechanical/low-risk. Include `agents/implementer.md` behavioral guidelines in worker prompts.
 - **Plan approval required** — verify no file ownership overlaps on concurrent tasks
-- **Self-selecting** — teammates pull from `bd ready`, not pre-assigned by lead
-- **Claim verification** — `bd show` after `bd update --status in_progress` to confirm ownership
+- **Self-selecting** — teammates pull from `bd ready --parent <epic-id> --unassigned`, not pre-assigned
+- **Atomic claims** — `bd update --claim` fails if already claimed, no verify needed
 - **TDD still applies** — each teammate writes failing test first
 - **File ownership is strict** — per-task metadata, not per-teammate
 - **Task atomicity** — teammates finish current task before stopping
+- **Merge serialization** — `bd merge-slot acquire/release` around all git commit/push ops
+- **Agent tracking** — `bd agent state` + `bd agent heartbeat` for visibility
+- **Swarm = source of truth** — `bd swarm status` for progress, not manual polling
 - **Beads = source of truth** — teammates close beads tasks, not just team tasks
 - **Always clean up team** when done
