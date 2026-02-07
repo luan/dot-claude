@@ -55,6 +55,28 @@ result = service.method().execute()
 1. **Epic** — problem, solution, key files
 2. **Child tasks** — one per implementation unit, complete code
 
+### Multi-Phase Epics (5+ tasks)
+
+For larger epics, group tasks into phases with blocking dependencies:
+
+```bash
+# Phase 1 tasks have no cross-phase deps
+bd create "Phase 1: <name>" --type task --parent <epic-id> --validate
+# Phase 2 tasks blocked by phase 1 completion
+bd create "Phase 2: <name>" --type task --parent <epic-id> --validate --deps <phase-1-task-id>
+```
+
+- `bd ready` auto-scopes to current phase (blocked tasks hidden)
+- Implementers naturally work phase-by-phase without manual coordination
+
+### Bulk Task Creation
+
+For plans with many tasks, write a plan file and create in bulk:
+
+```bash
+bd create --file plan.md
+```
+
 ## Step 1: Create Epic
 
 ```bash

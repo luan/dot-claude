@@ -34,6 +34,7 @@ Create conventional commits explaining WHY changes were made.
    - Max 72 chars, lowercase, no period, imperative mood
    - Types: feat|fix|refactor|perf|docs|test|style|build|ci|chore|revert
    - Scope: primary area (auth, api, ui, db) or omit if global
+   - If beads issue is in_progress (`bd list --status in_progress -q`), append its ID: `fix(auth): handle token expiry (bd-abc123)`
 
 3. **Confirm** with AskUserQuestion: "Commit with this message?"
 

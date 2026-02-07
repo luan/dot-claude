@@ -31,8 +31,9 @@ Explore and create implementation plan for: $ARGUMENTS
 3. Explore codebase (use Explore subagent if needed)
 4. Design approach - identify 2-3 options, choose best
 5. Create epic + tasks with `bd create --type epic --validate`
-6. Run `bd lint` on ALL issues - fix any errors
-7. Return summary: epic-id, task count, key files
+6. Label each task: `bd label add <id> architecture|implementation|testing` (enables persona filtering in team workflows)
+7. Run `bd lint` on ALL issues - fix any errors
+8. Return summary: epic-id, task count, key files
 
 ## Task Quality Requirements
 Each task must have:

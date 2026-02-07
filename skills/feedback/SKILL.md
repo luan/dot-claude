@@ -92,8 +92,7 @@ If --type not given, infer:
 
 ```bash
 # If feedback reveals related issue during fix:
-bd create "Found: <description>" --type bug
-bd dep add <context-issue> <new-issue> --type discovered-from
+bd create "Found: <description>" --type bug --validate --deps discovered-from:<context-issue>
 ```
 
 ## Workflow
