@@ -48,7 +48,6 @@ Teammate tool:
 ```
 Task tool (for each):
   subagent_type: "beads:task-agent"
-  model: "sonnet"
   mode: "plan"
   team_name: "<team-name>"
   name: "worker-<n>"
