@@ -32,6 +32,10 @@ pre-push, post-checkout, prepare-commit-msg).
 ## Bulk Creation
 `bd create --file plan.md`
 
+## Sync
+`bd sync` — no flags. Exports to JSONL in the beads repo.
+NOT `bd sync --from-main` (that flag does not exist).
+
 ## Swarm Coordination
 `bd swarm validate` before team work — parallelism + DAG check.
 `bd swarm create` registers swarm. `bd swarm status` monitors.
