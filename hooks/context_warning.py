@@ -3,9 +3,12 @@
 
 Reads context percentage from /tmp/claude-context-pct-{session_id}
 (written by statusline, per-session to avoid collisions).
+Uses exit code 2 (blocking) so Claude sees the warning.
+Warns once per threshold crossing to avoid noise.
 """
 
 import json
+import os
 import sys
 
 WARN_THRESHOLD = 65
@@ -30,18 +33,34 @@ def main():
     except (OSError, ValueError):
         return
 
-    if pct >= CRITICAL_THRESHOLD:
+    flag_file = f"/tmp/claude-context-warned-{sid}"
+
+    # Read previous warning level (0=none, 1=warned, 2=critical)
+    prev_level = 0
+    try:
+        with open(flag_file) as f:
+            prev_level = int(f.read().strip())
+    except (OSError, ValueError):
+        pass
+
+    if pct >= CRITICAL_THRESHOLD and prev_level < 2:
+        with open(flag_file, "w") as f:
+            f.write("2")
         print(
-            f"\n\033[31m⛔ CONTEXT {pct}% — Save state to beads notes NOW. "
-            f"Wrap up current task and suggest fresh session.\033[0m",
+            f"⛔ CONTEXT {pct}% — Save state to beads notes NOW. "
+            f"Wrap up current task and suggest fresh session.",
             file=sys.stderr,
         )
-    elif pct >= WARN_THRESHOLD:
+        sys.exit(2)
+    elif pct >= WARN_THRESHOLD and prev_level < 1:
+        with open(flag_file, "w") as f:
+            f.write("1")
         print(
-            f"\n\033[33m⚠️  CONTEXT {pct}% — Consider saving progress to beads notes "
-            f"and creating a plan for remaining work before context runs out.\033[0m",
+            f"⚠️  CONTEXT {pct}% — Consider saving progress to beads notes "
+            f"and creating a plan for remaining work before context runs out.",
             file=sys.stderr,
         )
+        sys.exit(2)
 
 
 if __name__ == "__main__":
