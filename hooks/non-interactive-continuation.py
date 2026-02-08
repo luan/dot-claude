@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 """Stop hook for non-interactive mode continuation.
 
 Uses AI to evaluate if current session's work is complete.

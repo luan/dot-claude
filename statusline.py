@@ -267,6 +267,15 @@ def main():
     vim = data.get("vim")
     agent = data.get("agent")
 
+    # Bridge context % to hooks via per-session temp file
+    sid = data.get("session_id", "")
+    if sid:
+        try:
+            with open(f"/tmp/claude-context-pct-{sid}", "w") as f:
+                f.write(str(pct))
+        except OSError:
+            pass
+
     # === LINE 1: Model | context bar pct tokens | cost | duration ===
     parts1 = []
     if model_name:

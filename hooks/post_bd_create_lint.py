@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 """
 PostToolUse hook: auto-lint beads issues after `bd create` commands.
 Skips bulk creates (`bd create --file`).

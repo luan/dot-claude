@@ -27,6 +27,8 @@
 - **Parallel ops:** Multiple searches, reads, greps in single message
 - **Batch work:** Group related file edits
 - **Context finite:** Truncate verbose output, summarize between agents. See `rules/context-budget.md`.
+- **Context warning:** Hook warns at 65%. When warned: save progress to beads notes, create plan for remaining work, suggest fresh session. Don't let compaction happen — plan mode reset is always better.
+- **Ticket batches:** 1-2 tickets on main thread is fine. 3+ tickets → delegate to subagent (use `bd create --file` for bulk).
 
 ## Learning & Memory
 - **Never use auto-memory** (`projects/*/memory/`). Not version-controlled.
@@ -116,7 +118,8 @@ bd mol wisp <formula>      # Ephemeral workflow
 bd mol pour <formula>      # Persistent workflow
 bd swarm validate <epic-id>    # Pre-flight: parallelism, cycles, ready fronts
 bd swarm status <epic-id>      # Live progress: Completed/Active/Ready/Blocked
-bd merge-slot acquire/release  # Serialize git ops in team work
+bd merge-slot acquire --wait  # Block until slot free
+bd merge-slot release         # Release after git ops
 ```
 **CRITICAL:** `bd lint` NOT optional. Run on all issues before plan complete.
 Session state survives compaction via beads notes.

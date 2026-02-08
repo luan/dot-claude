@@ -285,7 +285,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/non-interactive-continuation.py"
+            "command": "uv run ~/.claude/hooks/non-interactive-continuation.py"
           }
         ]
       }
@@ -296,7 +296,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/post_tool_use_format.py"
+            "command": "uv run ~/.claude/hooks/post_tool_use_format.py"
           }
         ]
       },
@@ -305,7 +305,16 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/post_bd_create_lint.py"
+            "command": "uv run ~/.claude/hooks/post_bd_create_lint.py"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run ~/.claude/hooks/context_warning.py"
           }
         ]
       }
