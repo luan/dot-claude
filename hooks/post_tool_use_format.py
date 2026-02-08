@@ -289,6 +289,57 @@ def format_python_file(file_path: Path) -> bool:
     return not has_errors
 
 
+def format_svelte_file(file_path: Path) -> bool:
+    """Format Svelte file with prettier and run project-level svelte-check."""
+    has_errors = False
+
+    # Format with prettier
+    if command_exists("prettier"):
+        print_info(f"Running prettier on {file_path.name}")
+        success, output = run_command(
+            ["prettier", "--write", str(file_path)], file_path
+        )
+        if not success:
+            print_error(f"prettier failed on {file_path.name}")
+            if output.strip():
+                print(output, file=sys.stderr)
+            has_errors = True
+        else:
+            print_success("prettier completed successfully")
+
+    # Project-level type check with svelte-check
+    svelte_config = find_config_file(file_path, "svelte.config.js")
+    if not svelte_config:
+        svelte_config = find_config_file(file_path, "svelte.config.ts")
+    if svelte_config:
+        project_root = svelte_config.parent
+        print_info(f"Running svelte-check from {project_root}")
+        try:
+            result = subprocess.run(
+                ["npx", "svelte-check", "--threshold", "error",
+                 "--output", "human"],
+                cwd=project_root,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            if result.returncode != 0:
+                combined = (result.stdout + result.stderr).strip()
+                if combined:
+                    lines = combined.split("\n")
+                    print_error("svelte-check found errors:")
+                    print("\n".join(lines[:30]), file=sys.stderr)
+                has_errors = True
+            else:
+                print_success("svelte-check passed")
+        except subprocess.TimeoutExpired:
+            print_warning("svelte-check timed out (60s), skipping")
+        except Exception as e:
+            print_warning(f"svelte-check failed to run: {e}")
+
+    return not has_errors
+
+
 def format_javascript_typescript_file(file_path: Path) -> bool:
     """Format JavaScript/TypeScript file."""
     has_errors = False
@@ -513,6 +564,10 @@ def format_file(file_path: Path) -> bool:
     # Python files
     elif suffix == ".py":
         return format_python_file(file_path)
+
+    # Svelte files
+    elif suffix == ".svelte":
+        return format_svelte_file(file_path)
 
     # JavaScript/TypeScript files
     elif suffix in {".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"}:

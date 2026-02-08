@@ -3,6 +3,8 @@
 ## Graphite First
 - Always use Graphite (`gt submit`) for PRs. Never `gh pr create`.
 - Use `Skill tool: graphite` for all PR operations.
+- "Review this branch" = diff against stack parent (`gt log`), not trunk.
+  Branches are stacked; only the delta from parent matters.
 
 ## Never Destructively Fix Visible Things
 - Don't close/delete PRs, issues, or comments to fix mistakes — update in place.

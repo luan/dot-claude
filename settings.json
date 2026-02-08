@@ -329,6 +329,5 @@
     "swift-lsp@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
-  "promptSuggestionEnabled": true,
-  "teammateMode": "in-process"
+  "promptSuggestionEnabled": true
 }

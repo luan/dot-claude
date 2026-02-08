@@ -38,7 +38,16 @@ NOT `bd sync --from-main` (that flag does not exist).
 
 ## Swarm Coordination
 `bd swarm validate` before team work — parallelism + DAG check.
-`bd swarm create` registers swarm. `bd swarm status` monitors.
+`bd swarm status` monitors progress.
 Workers: `bd ready --parent <epic-id> --unassigned` for scoped discovery.
 `bd merge-slot acquire/release` serializes git ops across agents.
 Slots auto-release after 5min inactivity (deadlock prevention).
+
+**Bug (v0.49.4):** `bd swarm create` fails with
+"invalid issue type: molecule". Internal validator rejects
+the type its own CLI accepts. Workaround — create manually:
+```bash
+bd create --type molecule --title "swarm: <epic-id>" \
+  --parent <epic-id> --mol-type swarm
+```
+Skip `bd swarm create` until fixed.

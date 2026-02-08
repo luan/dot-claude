@@ -40,6 +40,12 @@
 - **Uncertain:** `AskUserQuestion`
 - **Before done:** Run verification. Evidence before assertions.
 
+## Debugging
+- **Root cause first.** Explain cause, get approval before writing fix code.
+- **One bug at a time.** Fix, verify, then next. Never batch speculative fixes.
+- **First fix failed?** Re-read runtime flow from user interaction to break. Don't guess from static code.
+- **Indentation:** Match existing file style. Hooks auto-format; if editing without hooks, read file first.
+
 ## Testing Strategy
 **TDD default.** No production code without failing test first.
 
@@ -61,9 +67,12 @@ Via `Skill` tool. Not on main thread.
 | `explore` | Plan feature, investigate, research | WISP |
 | `continue-explore` | Refine plan with feedback | Same epic |
 | `implement` | Execute plan | MOL |
+| `refine` | Polish code post-implementation | None |
+| `review` | Adversarial code review | None |
 | `feedback` | Quick fix recent work | None |
 
-**Flow:** explore → [continue-explore]* → plan mode → approval → implement → PR
+**Flow:** explore → [continue-explore]* → approval → implement → refine → review
+**Never auto-commit or auto-PR.** User explicitly requests these. Don't overestimate completion.
 
 ## Agent Teams
 Multiple Claude instances DISCUSS. Higher token cost.
@@ -82,6 +91,14 @@ Multiple Claude instances DISCUSS. Higher token cost.
 - **IMMEDIATELY** invoke `Skill tool: implement` with epic-id and STOP
 - No Task tool directly—skill handles all dispatch
 - No main thread implementation under any circumstances
+
+## Subagent Rules
+- **Self-healing:** Workers MUST iterate until build passes before reporting done. No partial work.
+- **Check git log** before starting — avoid duplicate work from parallel workers.
+- **Main thread verifies** full build after all workers complete.
+- **Respect deps:** Never start blocked tasks. `bd ready` for unblocked work.
+- **TDD first:** Failing test before implementation, even in team workflows.
+- **No file collisions:** Coordinate file ownership. Two workers never edit the same file.
 
 ## Branch Naming
 Prefix `luan/` + short description: `gt create luan/<description>`
