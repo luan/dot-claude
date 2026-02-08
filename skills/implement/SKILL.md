@@ -12,11 +12,11 @@ allowed-tools:
 
 # Implement
 
-## Triage — auto-escalate to team-implement if warranted
+## Triage — auto-escalate
 
-1. `bd swarm validate <epic-id> --verbose` — check parallelism
-2. **max parallelism >= 3** → invoke `Skill tool: team-implement` with epic-id, STOP
-3. Otherwise continue below
+1. `bd swarm validate <epic-id> --verbose`
+2. **max parallelism >= 3** → `Skill tool: team-implement` with epic-id, STOP
+3. Otherwise continue
 
 **IMMEDIATELY dispatch to subagent.** Never implement on main thread.
 
@@ -29,28 +29,31 @@ Implement: $ARGUMENTS
 
 ## Job
 1. `bd prime` for context
-2. **Create feature branch FIRST**: `gt create luan/<short-description>`
-3. Find work: `bd ready` or `bd children <epic-id>`
-4. Per task:
-   - `bd show <task-id>` — read instructions
-   - `bd update <task-id> --claim`
-   - Copy test code EXACTLY from description
-   - Verify test fails
-   - Copy implementation EXACTLY from description
-   - Verify test passes
+2. **Pre-flight:** `bd children <epic-id>` — no children or tasks
+   lack code in description → STOP, return "explore phase
+   incomplete — no implementable tasks". Do NOT create tasks.
+3. `gt create luan/<short-description>`
+4. `bd ready` or `bd children <epic-id>`
+5. Per task:
+   - `bd show <task-id>` + `bd update <task-id> --claim`
+   - Copy test code EXACTLY → verify fails
+   - Copy implementation EXACTLY → verify passes
+   - **Build check:** detect build cmd from justfile/Makefile/
+     package.json/CLAUDE.md. Fix until clean. No close with errors.
    - `bd close <task-id>`
-5. Check PR size before next task (stop at ~250 lines)
-6. When done or at size limit: invoke finishing-branch skill
+6. Stop at ~250 lines PR size
+7. Done/size limit → invoke finishing-branch skill
 
-## CRITICAL: Task Atomicity
-NEVER stop mid-task. Finish current task before any PR ops.
+## Task Atomicity
+NEVER stop mid-task. Finish before any PR ops.
 
 ## Side Quests
-Found bug? `bd create "Found: ..." --type bug --validate --deps discovered-from:<current-task-id>`
+Bug found? `bd create "Found: ..." --type bug --validate --deps discovered-from:<current-task-id>`
 ```
 
 ## Key Rules
 
-- **Main thread does NOT implement** — subagent does
-- **Copy code EXACTLY** from task descriptions
-- **Task atomicity** — never stop mid-task
+- Main thread does NOT implement — subagent does
+- Copy code EXACTLY from task descriptions
+- Task atomicity — never stop mid-task
+- Pre-flight required — bail if no implementable tasks
