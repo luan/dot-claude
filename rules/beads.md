@@ -1,9 +1,8 @@
 # Beads Conventions
 
 ## Atomic Claims
-`bd update <id> --claim` instead of `--status in_progress`.
-Atomic: sets assignee + status in one op, fails if already claimed.
-Race-safe for team workflows.
+`bd update <id> --claim` not `--status in_progress`.
+Sets assignee + status atomically, fails if claimed. Race-safe.
 
 ## Discovery Linking
 ```bash
@@ -11,15 +10,15 @@ bd create "Found: <description>" --type bug --validate --deps discovered-from:<p
 ```
 
 ## Multi-Phase Epics
-5+ tasks → group into phases with blocking deps.
-`bd ready` auto-scopes to current phase — blocked tasks hidden.
+5+ tasks → phases with blocking deps.
+`bd ready` auto-scopes to current phase.
 
 ## Labels
-Tag tasks: `bd label add <id> architecture|implementation|testing`.
-Enables `bd ready --label <label>` filtering in team workflows.
+`bd label add <id> architecture|implementation|testing`
+Enables `bd ready --label <label>` filtering.
 
 ## Commit Traceability
-Append beads ID to commits when task in_progress:
+Append beads ID when task in_progress:
 ```
 fix(auth): handle token expiry (bd-abc123)
 ```
@@ -33,19 +32,18 @@ pre-push, post-checkout, prepare-commit-msg).
 `bd create --file plan.md`
 
 ## Sync
-`bd sync` — no flags. Exports to JSONL in the beads repo.
-NOT `bd sync --from-main` (that flag does not exist).
+`bd sync` — no flags. Exports to JSONL.
+NOT `bd sync --from-main` (flag doesn't exist).
 
 ## Swarm Coordination
 `bd swarm validate` before team work — parallelism + DAG check.
 `bd swarm status` monitors progress.
 Workers: `bd ready --parent <epic-id> --unassigned` for scoped discovery.
-`bd merge-slot acquire/release` serializes git ops across agents.
-Slots auto-release after 5min inactivity (deadlock prevention).
+`bd merge-slot acquire --wait` then `release` serializes git ops.
+Slots auto-release after 5min (deadlock prevention).
 
-**Bug (v0.49.4):** `bd swarm create` fails with
-"invalid issue type: molecule". Internal validator rejects
-the type its own CLI accepts. Workaround — create manually:
+**Bug (v0.49.4):** `bd swarm create` fails —
+"invalid issue type: molecule". Workaround:
 ```bash
 bd create --type molecule --title "swarm: <epic-id>" \
   --parent <epic-id> --mol-type swarm

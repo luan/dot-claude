@@ -1,19 +1,17 @@
-# PR & Shared Resource Workflow
+# PR & Shared Resources
 
 ## Graphite First
-- Always use Graphite (`gt submit`) for PRs. Never `gh pr create`.
-- Use `Skill tool: graphite` for all PR operations.
+- Always `gt submit` for PRs. Never `gh pr create`.
+- `Skill tool: graphite` for all PR ops.
 - "Review this branch" = diff against stack parent (`gt log`), not trunk.
-  Branches are stacked; only the delta from parent matters.
 
 ## Never Destructively Fix Visible Things
-- Don't close/delete PRs, issues, or comments to fix mistakes — update in place.
-- Graphite adopts existing PRs with `gt submit --force`.
-- Closing PRs leaves visible trail of garbage for team.
+- Don't close/delete PRs, issues, comments — update in place.
+- `gt submit --force` adopts existing PRs.
+- Closing PRs leaves visible garbage.
 
 ## Always Draft
-- NEVER mark a PR as "ready for review" unless the user explicitly asks.
-- Leave PRs in draft state by default.
+- Never mark PR "ready for review" unless user explicitly asks.
 
-## General Principle
-- Correcting mistakes in shared/visible systems (PRs, issues, messages): prefer additive fixes over destructive ones.
+## General
+- Shared/visible systems: prefer additive fixes over destructive.

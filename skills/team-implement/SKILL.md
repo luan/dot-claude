@@ -22,19 +22,19 @@ allowed-tools:
 
 Coordinated agent team. Teammates self-select from beads queue, coordinate via messaging on interface overlaps.
 
-## When to Use (vs `implement`)
+## When (vs `implement`)
 
 - `bd swarm validate` shows max parallelism >= 3
 - Shared interfaces need live coordination
 - Otherwise → regular `implement`
 
-## Instructions
+## Steps
 
 1. `bd show <epic-id>` + `bd children <epic-id>`
 2. `bd swarm validate <epic-id> --verbose` — cycles, parallelism, ready fronts
 3. `bd swarm create <epic-id>`
 4. `bd merge-slot create`
-5. **File ownership prep:** Each task needs file ownership in metadata. Two ready tasks share files → `bd dep add` to serialize. Re-validate.
+5. **File ownership:** Each task needs file ownership in metadata. Two ready tasks share files → `bd dep add` to serialize. Re-validate.
 6. `gt create luan/<short-description>`
 7. Create team:
 
@@ -48,7 +48,7 @@ Teammate tool:
 8. Spawn workers. Count = `min(max_parallelism, 4)`. Opus. Plan approval required:
 
 ```
-Task tool (for each):
+Task tool (each):
   subagent_type: "beads:task-agent"
   mode: "plan"
   team_name: "<team-name>"
@@ -63,16 +63,15 @@ Task tool (for each):
   4. Respect file ownership — YOUR files while in_progress
   5. Failing test FIRST → minimal implementation
   5b. Build check (justfile/Makefile/package.json/CLAUDE.md). Fix until clean.
-  6. `bd merge-slot acquire` → git add/commit/push → `bd merge-slot release`
+  6. `bd merge-slot acquire --wait` → git add/commit/push → `bd merge-slot release`
   7. `bd close <id>` → `bd agent heartbeat`
-  8. → step 1. `bd ready` empty →
-     `bd agent state worker-<n> done` + report to lead
+  8. → step 1. Empty → `bd agent state worker-<n> done` + report
 
   ## Fix Loop
   Stay idle after completion. Lead sends failures:
-  1. Read failure + file paths → fix
-  2. `bd merge-slot acquire` → commit/push → release
-  3. Report fix → return to idle
+  1. Read failure + paths → fix
+  2. `bd merge-slot acquire --wait` → commit/push → release
+  3. Report → idle
 
   ## Context
   Branch: luan/<description> (already created). `bd prime` for context.
@@ -87,8 +86,7 @@ Task tool (for each):
   """
 ```
 
-9. Review plans. Verify no file ownership overlap, compatible interfaces.
-   Conflicts → add deps or message teammates.
+9. Review plans. Verify no file ownership overlap, compatible interfaces. Conflicts → add deps or message.
 
 10. Monitor: `bd swarm status <epic-id>`. Watch:
     - Overlapping file claims → pause + add dep
@@ -97,11 +95,10 @@ Task tool (for each):
     - Done: Ready: 0, Active: 0
 
 11. Verify-fix loop (max 2 cycles):
-    - All tasks closed → run full test suite (workers still idle)
+    - All closed → full test suite (workers idle)
     - **Green** → step 12
-    - **Red** → match errors to file owners via `bd children` + `bd show`,
-      message workers with failure output/paths/test names, re-run
-    - 2 failed cycles → escalate to user
+    - **Red** → match errors to owners via `bd children` + `bd show`, message workers w/ failure output, re-run
+    - 2 failed → escalate to user
 
 12. Shut down teammates + clean up (only after green or user approval)
 
@@ -122,7 +119,7 @@ Per-task in beads metadata, not per-teammate.
 - **Atomic claims** — `--claim` fails if claimed
 - **TDD** — failing test first
 - **Task atomicity** — finish task before stopping
-- **Merge serialization** — `bd merge-slot acquire/release` around git ops
+- **Merge serialization** — `bd merge-slot acquire --wait` then `release`
 - **Agent tracking** — `bd agent state` + `bd agent heartbeat`
 - **Swarm = truth** — `bd swarm status`, not manual polling
 - **Beads = truth** — close beads tasks, not just team tasks

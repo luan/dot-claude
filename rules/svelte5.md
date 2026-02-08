@@ -4,27 +4,26 @@ paths:
   - "**/*.svelte.ts"
 ---
 
-# Svelte 5 Conventions
+# Svelte 5
 
-## Deprecated Patterns (never use)
-- `svelte:component` → use dynamic component syntax
-- `on:click`, `on:change`, etc. → use `onclick`, `onchange`
-- `<slot>` / `<slot name="x">` → use snippets (`{#snippet}`)
-- `$:` reactive statements → use `$derived()`, `$effect()`
-- Svelte stores (`writable`, `readable`) → use `$state()`
+## Deprecated (never use)
+- `svelte:component` → dynamic component syntax
+- `on:click`, `on:change` → `onclick`, `onchange`
+- `<slot>` / `<slot name="x">` → snippets (`{#snippet}`)
+- `$:` reactive → `$derived()`, `$effect()`
+- Svelte stores (`writable`, `readable`) → `$state()`
 
-## Placement Rules
+## Placement
 - `{@const}` only inside `{#each}`, `{#if}`, or component
-  boundaries — never directly inside HTML elements
-  (`<button>`, `<span>`, `<div>`, etc.)
+  boundaries — never in HTML elements (`<button>`, `<div>`, etc.)
 
 ## Runes
-- `$state()` for reactive state (replaces `let x = ...` reactive)
-- `$derived()` for computed values (replaces `$: x = ...`)
-- `$effect()` for side effects (replaces `$: { ... }`)
-- `$props()` for component props (replaces `export let`)
-- `$bindable()` for two-way bindable props
+- `$state()` — reactive state (replaces reactive `let`)
+- `$derived()` — computed (replaces `$: x = ...`)
+- `$effect()` — side effects (replaces `$: { ... }`)
+- `$props()` — component props (replaces `export let`)
+- `$bindable()` — two-way bindable props
 
 ## Verification
-Post-edit hooks run `svelte-check --threshold error` automatically.
-If no hook available, run `npx svelte-check` manually after edits.
+Post-edit hooks run `svelte-check --threshold error`.
+No hook → `npx svelte-check` manually.
