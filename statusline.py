@@ -17,6 +17,14 @@ YELLOW = "\033[38;5;228m"
 RESET = "\033[0m"
 
 SEP = f" {DIM}|{RESET} "
+SUPERSCRIPT = str.maketrans(
+    "0123456789.abcdefghijklmnoprstuvwxyz",
+    "⁰¹²³⁴⁵⁶⁷⁸⁹·ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖʳˢᵗᵘᵛʷˣʸᶻ",
+)
+SUBSCRIPT = str.maketrans(
+    "0123456789.aehijklmnoprstuvx",
+    "₀₁₂₃₄₅₆₇₈₉.ₐₑₕᵢⱼₖₗₘₙₒₚᵣₛₜᵤᵥₓ",
+)
 
 GIT_CACHE = "/tmp/claude-statusline-git"
 GIT_TTL = 5
@@ -113,6 +121,7 @@ def quota_color(utilization, remaining_secs, window_secs):
 
 # -- Cache helpers --
 
+
 def read_cache(path, ttl):
     try:
         if time.time() - os.stat(path).st_mtime < ttl:
@@ -139,10 +148,12 @@ def _run(cmd, cwd=None):
 
 # -- Data fetchers --
 
+
 def git_info(cwd):
     if not cwd:
         return None
     import hashlib
+
     cache_path = GIT_CACHE + "-" + hashlib.md5(cwd.encode()).hexdigest()[:8]
     cached = read_cache(cache_path, GIT_TTL)
     if cached is not None:
@@ -198,19 +209,33 @@ def fetch_usage():
             pass
 
     try:
-        raw = _run(["security", "find-generic-password", "-s", "Claude Code-credentials", "-w"])
+        raw = _run(
+            ["security", "find-generic-password", "-s", "Claude Code-credentials", "-w"]
+        )
         token = json.loads(raw).get("claudeAiOauth", {}).get("accessToken")
         if not token:
             return None
 
-        result = subprocess.check_output([
-            "curl", "-s", "--max-time", "5",
-            "-H", "Accept: application/json",
-            "-H", f"Authorization: Bearer {token}",
-            "-H", "anthropic-beta: oauth-2025-04-20",
-            "-H", "User-Agent: claude-code/2.1.34",
-            "https://api.anthropic.com/api/oauth/usage",
-        ], stderr=subprocess.DEVNULL, text=True, timeout=8).strip()
+        result = subprocess.check_output(
+            [
+                "curl",
+                "-s",
+                "--max-time",
+                "5",
+                "-H",
+                "Accept: application/json",
+                "-H",
+                f"Authorization: Bearer {token}",
+                "-H",
+                "anthropic-beta: oauth-2025-04-20",
+                "-H",
+                "User-Agent: claude-code/2.1.34",
+                "https://api.anthropic.com/api/oauth/usage",
+            ],
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=8,
+        ).strip()
 
         if result:
             json.loads(result)  # validate
@@ -227,6 +252,7 @@ def beads_task(cwd):
     if not cwd:
         return None
     import hashlib
+
     cache_path = BEADS_CACHE + "-" + hashlib.md5(cwd.encode()).hexdigest()[:8]
     cached = read_cache(cache_path, BEADS_TTL)
     if cached is not None:
@@ -246,6 +272,7 @@ def beads_task(cwd):
 
 # -- Main --
 
+
 def main():
     try:
         data = json.load(sys.stdin)
@@ -258,9 +285,11 @@ def main():
     pct = int(cw.get("used_percentage") or 0)
     ctx_size = int(cw.get("context_window_size") or 200000)
     usage = cw.get("current_usage") or {}
-    input_tokens = (usage.get("input_tokens") or 0) + \
-                   (usage.get("cache_creation_input_tokens") or 0) + \
-                   (usage.get("cache_read_input_tokens") or 0)
+    input_tokens = (
+        (usage.get("input_tokens") or 0)
+        + (usage.get("cache_creation_input_tokens") or 0)
+        + (usage.get("cache_read_input_tokens") or 0)
+    )
 
     cost_data = data.get("cost") or {}
     cwd = (data.get("workspace") or {}).get("current_dir", "")
@@ -276,12 +305,21 @@ def main():
         except OSError:
             pass
 
-    # === LINE 1: Model | context bar pct tokens | cost | duration ===
+    # === LINE 1: Version | Model | context bar pct tokens | cost | duration ===
     parts1 = []
-    if model_name:
-        parts1.append(f"{PURPLE}{model_name}{RESET}")
+    version = data.get("version", "")
+    if version or model_name:
+        small = f"{DIM}{version.translate(SUPERSCRIPT)}{RESET}" if version else ""
+        sub = (
+            f"{PURPLE}{model_name.lower().translate(SUBSCRIPT)}{RESET}"
+            if model_name
+            else ""
+        )
+        parts1.append(f"{small}{sub}")
     bar, bar_col = dot_bar(pct)
-    parts1.append(f"{bar} {bar_col}{pct}%{RESET} {DIM}{fmt_tokens(input_tokens)}/{fmt_tokens(ctx_size)}{RESET}")
+    parts1.append(
+        f"{bar} {bar_col}{pct}%{RESET} {DIM}{fmt_tokens(input_tokens)}/{fmt_tokens(ctx_size)}{RESET}"
+    )
     parts1.append(f"{LGRAY}󰅐 {fmt_duration(cost_data.get('total_duration_ms'))}{RESET}")
     parts1.append(f"{DIM}󰇁 {fmt_cost(cost_data.get('total_cost_usd'))}{RESET}")
     sys.stdout.write(SEP.join(parts1))
