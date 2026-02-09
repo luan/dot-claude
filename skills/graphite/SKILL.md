@@ -19,7 +19,8 @@ gt c -am "msg"              # Short form
 # Navigate
 gt up / gt down             # Move through stack
 gt top / gt bottom          # Jump to ends
-gt log                      # View stack
+gt log --stack              # View CURRENT stack only (use this by default)
+gt log                      # View ALL branches (not just current stack)
 
 # Modify
 gt modify -a                # Amend changes to current branch
@@ -101,7 +102,8 @@ Then `gt create -m "msg"` picks up the commit into a new stack branch.
 | Push changes | `gt ss` (or `gt ss -u` for existing) |
 | Update from main | `gt sync` |
 | Amend current | `gt modify -a` |
-| View stack | `gt log` |
+| View current stack | `gt log --stack` |
+| View all branches | `gt log` |
 
 ## Forbidden Git Commands
 
