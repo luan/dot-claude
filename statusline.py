@@ -32,6 +32,9 @@ USAGE_CACHE = "/tmp/claude-statusline-usage.json"
 USAGE_TTL = 60
 BEADS_CACHE = "/tmp/claude-statusline-beads"
 BEADS_TTL = 10
+VERSION_CACHE = "/tmp/claude-statusline-version"
+VERSION_TTL = 3600
+UPDATE_ICON = "\U000f0047"
 
 
 def dot_bar(pct, width=10):
@@ -138,6 +141,31 @@ def write_cache(path, value):
             f.write(value)
     except OSError:
         pass
+
+
+def latest_version():
+    cached = read_cache(VERSION_CACHE, VERSION_TTL)
+    if cached is not None:
+        return cached or None
+    try:
+        raw = subprocess.check_output(
+            [
+                "curl",
+                "-s",
+                "--max-time",
+                "3",
+                "https://registry.npmjs.org/@anthropic-ai/claude-code/latest",
+            ],
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=5,
+        ).strip()
+        ver = json.loads(raw).get("version", "")
+        write_cache(VERSION_CACHE, ver)
+        return ver
+    except Exception:
+        write_cache(VERSION_CACHE, "")
+        return None
 
 
 def _run(cmd, cwd=None):
@@ -308,13 +336,18 @@ def main():
     parts1 = []
     version = data.get("version", "")
     if version or model_name:
+        update_prefix = ""
+        if version:
+            latest = latest_version()
+            if latest and latest != version:
+                update_prefix = f"{ORANGE}{UPDATE_ICON} {RESET}"
         small = f"{DIM}{version.translate(SUPERSCRIPT)}{RESET}" if version else ""
         sub = (
             f"{PURPLE}{model_name.lower().translate(SUBSCRIPT)}{RESET}"
             if model_name
             else ""
         )
-        parts1.append(f"{small}{sub}")
+        parts1.append(f"{update_prefix}{small}{sub}")
     bar, bar_col = dot_bar(pct)
     parts1.append(
         f"{bar} {bar_col}{pct}%{RESET} {DIM}{fmt_tokens(input_tokens)}/{fmt_tokens(ctx_size)}{RESET}"
