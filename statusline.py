@@ -248,12 +248,11 @@ def fetch_usage():
     return None
 
 
-def beads_task(cwd):
+def beads_task(cwd, sid=""):
     if not cwd:
         return None
-    import hashlib
 
-    cache_path = BEADS_CACHE + "-" + hashlib.md5(cwd.encode()).hexdigest()[:8]
+    cache_path = BEADS_CACHE + "-" + sid if sid else BEADS_CACHE
     cached = read_cache(cache_path, BEADS_TTL)
     if cached is not None:
         return cached or None
@@ -367,7 +366,7 @@ def main():
         sys.stdout.write("\n" + SEP.join(parts2))
 
     # === LINE 3: beads task (if active) ===
-    bt = beads_task(cwd)
+    bt = beads_task(cwd, sid)
     if bt:
         sys.stdout.write(f"\n{YELLOW} {bt}{RESET}")
 
