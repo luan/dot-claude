@@ -287,7 +287,7 @@ def beads_task(cwd, sid=""):
 
     result = ""
     try:
-        out = _run(["bd", "list", "--status=in_progress", "--format=oneline"], cwd)
+        out = _run(["bd", "list", "--status=in_progress"], cwd)
         if out:
             result = out.splitlines()[0].strip()
     except Exception:
