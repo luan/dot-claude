@@ -20,7 +20,7 @@ Process user feedback on recent implementation. Apply fixes.
 
 ## Instructions
 
-Spawn general-purpose agent via Task:
+Spawn general-purpose agent via Task (model: "sonnet"):
 
 ```
 Process user feedback on recent implementation.

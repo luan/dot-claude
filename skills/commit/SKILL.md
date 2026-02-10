@@ -4,6 +4,7 @@ description: "Use when the user wants to commit, save changes, create a conventi
 user-invocable: true
 context: fork
 agent: general-purpose
+model: haiku
 allowed-tools:
   - "Bash(git status)"
   - "Bash(git diff:*)"

@@ -42,35 +42,16 @@ Parse $ARGUMENTS:
 3. List changed files
 4. Read all changed files in parallel (full content)
 
-## Step 3: Dispatch 4 Adversarial Reviewers
+## Step 3: Dispatch 2 Adversarial Reviewers
 
-Spawn 4 Task agents (general-purpose) **ALL in a single message**. Each gets full diff + changed file contents + one adversarial lens.
+Spawn 2 Task agents (general-purpose) **ALL in a single message**. Each gets full diff + changed file contents + one adversarial lens.
 
 If `--against` provided, append to each prompt: "Also check plan adherence: does implementation match plan? Missing/unplanned features? Deviations justified? Plan: {beads issue notes}"
 
-### Lens 1: Architecture
+### Lens 1: Correctness & Security
 
 ```
-You are an adversarial architecture reviewer. Find structural problems others miss.
-
-{diff + full file contents}
-
-Focus:
-- Incomplete refactors (changed in some places, not others)
-- Unnecessary abstractions, wrappers, indirection
-- Dead code, stale flags, unused params
-- Design pattern violations or inconsistencies
-- Coupling that makes future changes harder
-- Could this be simpler?
-
-Output: table with Severity (Critical/High/Medium/Low) | File:Line | Issue | Suggestion
-Then brief summary.
-```
-
-### Lens 2: Correctness & Data Integrity
-
-```
-You are an adversarial correctness reviewer. Find bugs and data integrity issues others miss.
+You are an adversarial correctness and security reviewer. Find bugs and vulnerabilities others miss.
 
 {diff + full file contents}
 
@@ -80,44 +61,32 @@ Focus:
 - Resource leaks (unclosed handles, uncancelled tasks, missing cleanup)
 - Silent failures, swallowed errors, missing fallbacks
 - Off-by-one, wrong operator, logic inversions
-- Multiple sources of truth, stale caches
-
-Output: table with Severity (Critical/High/Medium/Low) | File:Line | Issue | Suggestion
-Then brief summary.
-```
-
-### Lens 3: Security
-
-```
-You are an adversarial security reviewer. Find vulnerabilities others miss.
-
-{diff + full file contents}
-
-Focus:
 - Injection (SQL, command, XSS, template)
 - Auth/authz gaps (missing checks, privilege escalation)
 - Data exposure (secrets in logs, oversharing in APIs, PII leaks)
-- Input validation at trust boundaries
 - Cryptographic misuse
-- Dependency risks
 
 Output: table with Severity (Critical/High/Medium/Low) | File:Line | Issue | Suggestion
 Then brief summary.
 ```
 
-### Lens 4: Performance
+### Lens 2: Architecture & Performance
 
 ```
-You are an adversarial performance reviewer. Find efficiency problems others miss.
+You are an adversarial architecture and performance reviewer. Find structural and efficiency problems others miss.
 
 {diff + full file contents}
 
 Focus:
-- Algorithmic complexity (O(n²) hidden in loops, unnecessary iterations)
+- Incomplete refactors (changed in some places, not others)
+- Unnecessary abstractions, wrappers, indirection
+- Dead code, stale flags, unused params
+- Coupling that makes future changes harder
+- Could this be simpler?
+- Algorithmic complexity (O(n^2) hidden in loops, unnecessary iterations)
 - Memory (large allocations, retained references, unbounded growth)
 - I/O (blocking calls, missing batching, N+1 queries)
 - Concurrency (thread safety, deadlock potential, contention)
-- Resource cleanup and lifecycle management
 
 Output: table with Severity (Critical/High/Medium/Low) | File:Line | Issue | Suggestion
 Then brief summary.
@@ -125,7 +94,7 @@ Then brief summary.
 
 ## Step 4: Consolidate & Present
 
-Merge findings from all 4 reviewers:
+Merge findings from both reviewers:
 
 1. Deduplicate (same issue from multiple lenses → keep highest severity)
 2. Sort by severity
@@ -148,7 +117,7 @@ Merge findings from all 4 reviewers:
 
 ## Step 5: Dispatch Fixes
 
-Spawn general-purpose agent with:
+Spawn general-purpose agent (model: "sonnet") with:
 
 ```
 Fix these review issues in the code.

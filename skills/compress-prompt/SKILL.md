@@ -3,6 +3,7 @@ name: compress-prompt
 description: Use when compressing text for AI consumption - skill files, system prompts, agent instructions. Not for human docs.
 context: fork
 agent: general-purpose
+model: sonnet
 ---
 
 # Compress Prompt
@@ -13,6 +14,7 @@ Reduce tokens in AI-targeted text. **Always use subagents** - never compress on 
 
 1. For each file/text to compress, spawn Task:
    - subagent_type: "general-purpose"
+   - model: "haiku"
    - prompt: include COMPRESSION RULES below + the text
 2. Subagent writes compressed output directly to file
 3. Main thread reports: file path + before/after token counts

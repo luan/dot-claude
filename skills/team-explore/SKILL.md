@@ -40,11 +40,11 @@ different angles, challenge each other's findings.
 ```
 Explore: $ARGUMENTS
 
-Spawn 2-3 Opus teammates, each investigating different angle.
+Spawn 2-3 teammates, each investigating different angle.
 Read + include behavioral guidelines from `agents/`:
-- `researcher.md` for breadth-first investigators
-- `architect.md` for design/tradeoff analysts
-- `devil.md` for contrarian challengers
+- `researcher.md` for breadth-first investigators (model: "haiku" — reads lots, reports patterns)
+- `architect.md` for design/tradeoff analysts (model: "opus" — deep reasoning)
+- `devil.md` for contrarian challengers (model: "opus" — adversarial depth)
 Require plan approval before investigating.
 
 Each teammate:
@@ -81,7 +81,7 @@ To continue: use Skill tool to invoke `implement` with arg `<epic-id>`
 ## Key Rules
 
 - **Main thread does NOT explore** — team does
-- **Opus** for teammates (nuanced cross-system analysis). Sonnet for narrow scope.
+- **Per-role models**: haiku for researcher (breadth-first reads), opus for architect/devil (reasoning depth). Sonnet for narrow scope.
 - **Plan approval required** — lead approves teammate plans first
 - **bd lint** — hook auto-runs after create; manual only for final validation
 - **Always clean up team** when done

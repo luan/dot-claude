@@ -38,17 +38,16 @@ cross-examine each other's findings.
 ```
 Review: $ARGUMENTS
 
-Spawn 4 Opus teammates. Read + include behavioral guidelines from `agents/`:
-- `reviewer.md` for security + quality reviewers
-- `architect.md` for performance reviewer
+Spawn 3 teammates with per-role models. Read + include behavioral guidelines from `agents/`:
+- `reviewer.md` for security reviewer
+- `architect.md` for architecture/performance reviewer
 - `devil.md` for spec/test reviewer (contrarian edge-case focus)
 Require plan approval before reviewing.
 
 Teammates:
-1. **Security**: auth, injection, data exposure, secrets
-2. **Performance**: complexity, memory, concurrency, caching, I/O
-3. **Spec/test**: compliance, coverage, edge cases, error handling
-4. **Quality**: naming, readability, structure, duplication, idioms
+1. **Security** (model: "opus"): auth, injection, data exposure, secrets — needs depth
+2. **Architecture & Performance** (model: "sonnet"): structure, complexity, memory, I/O, concurrency — pattern matching
+3. **Spec/test** (model: "opus"): compliance, coverage, edge cases, error handling — adversarial
 
 Each reviewer:
 - State approach (approval required)
@@ -68,7 +67,7 @@ After reviewers finish:
 
 ## Key Rules
 
-- **Opus** for teammates (security/perf review needs depth)
+- **Per-role models**: opus for security + spec/test (depth), sonnet for arch/perf (pattern matching)
 - **Plan approval required** — reviewers state approach, lead approves
 - **Fixes use subagents, not teams** — no discussion needed
 - **Always clean up team** when done

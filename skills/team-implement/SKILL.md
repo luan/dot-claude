@@ -45,7 +45,7 @@ Teammate tool:
   description: "Implementing <epic summary>"
 ```
 
-8. Spawn workers. Count = `min(max_parallelism, 4)`. Opus. Plan approval required:
+8. Spawn workers. Count = `min(max_parallelism, 4)`. Sonnet (model: "sonnet") — follows detailed plans with TDD. Plan approval required:
 
 ```
 Task tool (each):
@@ -113,7 +113,7 @@ Per-task in beads metadata, not per-teammate.
 
 ## Key Rules
 
-- **Opus** teammates. Sonnet if mechanical/low-risk.
+- **Sonnet** workers (follow detailed plans). Opus only if task requires cross-system reasoning.
 - **Plan approval** — verify no concurrent file ownership overlaps
 - **Self-selecting** — `bd ready --parent <epic-id> --unassigned`
 - **Atomic claims** — `--claim` fails if claimed

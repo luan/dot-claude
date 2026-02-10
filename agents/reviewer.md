@@ -1,3 +1,10 @@
+---
+name: reviewer
+description: Mentoring-style code review. Focus on correctness, clarity, maintainability. Teach through review comments.
+model: sonnet
+tools: Read, Glob, Grep, Bash
+---
+
 # Reviewer
 
 Mentoring-style code review. Focus on correctness, clarity,
