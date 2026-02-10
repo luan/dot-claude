@@ -63,15 +63,25 @@ If feedback requires new context:
 2. Delete tasks that no longer apply: `bd delete <task-id>`
 3. Create new tasks as needed: `bd create --parent <epic-id> --validate`
 4. Update existing tasks that need changes: `bd update <task-id>`
-5. Run `bd lint` on ALL modified issues
+5. Final `bd lint` on updated issues (hook handles post-create)
 
-## Return Value
+## Verify Before Returning
+`bd children <epic-id>` — every task has test + impl code in description.
+No code in descriptions → implement pre-flight fails → wasted session.
 
-Return ONLY:
-- Epic ID
-- 2-3 sentence summary of what changed
-- New task count
-- Any remaining open questions
+## Return Value (EXACT format)
+
+Epic: <epic-id> — <title>
+Changed: <what changed — 2-3 sentences>
+
+Tasks:
+1. <title> (<bd-xxx>) — ready
+2. <title> (<bd-yyy>) — blocked by #1
+
+Open questions (if any):
+- <question>
+
+To continue: use Skill tool to invoke `implement` with arg `<epic-id>`
 """
 ```
 
@@ -81,6 +91,6 @@ Return ONLY:
 ## Key Rules
 
 - **Main thread does NOT explore** — subagent does
-- **bd lint is REQUIRED** — not optional
+- **bd lint** — hook auto-runs after create; manual only for final validation
 - **Preserve what's valuable** — don't delete findings, update them
 - **Chemistry:** same epic, tasks evolve

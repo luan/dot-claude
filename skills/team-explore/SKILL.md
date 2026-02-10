@@ -54,10 +54,25 @@ Each teammate:
 
 After teammates finish:
 1. Synthesize into unified plan
-2. Create beads epic + tasks: `bd create --type epic --validate`
-3. `bd lint` ALL issues
-4. Clean up team
-5. Report: epic-id, task count, key files, tradeoffs resolved
+2. Create beads epic + ALL child tasks with full code (writing-plans skill)
+3. `bd lint` on epic + children (hook handles post-create)
+4. Verify: `bd children <epic-id>` — every task has test + impl code
+5. Clean up team
+6. Return plan summary (EXACT format):
+
+Epic: <epic-id> — <title>
+Problem: <1 sentence>
+Solution: <1 sentence>
+
+Tasks:
+1. <title> (<bd-xxx>) — ready
+2. <title> (<bd-yyy>) — blocked by #1
+
+Key decisions:
+- <why this approach>
+- <tradeoffs resolved>
+
+To continue: use Skill tool to invoke `implement` with arg `<epic-id>`
 ```
 
 3. Team finishes → `ExitPlanMode`
@@ -68,6 +83,6 @@ After teammates finish:
 - **Main thread does NOT explore** — team does
 - **Opus** for teammates (nuanced cross-system analysis). Sonnet for narrow scope.
 - **Plan approval required** — lead approves teammate plans first
-- **bd lint REQUIRED** — not optional
+- **bd lint** — hook auto-runs after create; manual only for final validation
 - **Always clean up team** when done
 - **Beads = source of truth** — team task list is ephemeral scratchpad

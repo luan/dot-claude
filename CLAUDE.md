@@ -110,7 +110,6 @@ bd ready                    # Next task (no blockers)
 bd show <id>               # Read instructions
 bd update <id> --claim     # Atomic: assignee + in_progress (race-safe)
 bd close <id>              # Complete
-bd lint <id>               # Validate (REQUIRED)
 bd create "Found: ..." --type bug --validate --deps discovered-from:<parent-id>
 bd mol wisp <formula>      # Ephemeral workflow
 bd mol pour <formula>      # Persistent workflow
@@ -119,5 +118,5 @@ bd swarm status <epic-id>      # Progress: Completed/Active/Ready/Blocked
 bd merge-slot acquire --wait  # Block until slot free
 bd merge-slot release         # Release after git ops
 ```
-**CRITICAL:** `bd lint` NOT optional. Run on all issues before plan complete.
+**Lint:** Hook auto-lints after `bd create`. Only run `bd lint` manually as final plan validation (catches issues changed via `bd update`).
 Session state survives compaction via beads notes.

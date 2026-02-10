@@ -160,11 +160,10 @@ bd dep add <task-2-id> <task-1-id>  # task-2 blocked by task-1
 ## Step 4: Validate
 
 ```bash
-bd lint <epic-id>
+# Hook auto-lints after bd create. Run manually only as final check
+# (catches issues modified via bd update after creation).
 bd children <epic-id> | xargs bd lint
 ```
-
-Fix lint issues before proceeding.
 
 ## Key Requirements
 
@@ -173,6 +172,7 @@ Fix lint issues before proceeding.
 3. Exact commands + expected output
 4. TDD steps baked in (red → green → refactor)
 5. `--validate` on all creates
+6. Beads created DURING planning, not after — implement reads from beads
 
 ## Task Granularity
 
