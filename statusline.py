@@ -302,7 +302,9 @@ def attentive_status(cwd, sid=""):
     hot = data.get("hot", 0)
     warm = data.get("warm", 0)
     cold = data.get("cold", 0)
-    hit = data.get("hit_rate", -1)
+    saved = data.get("saved", 0)
+    redundant = data.get("redundant", 0)
+    missed = data.get("missed", 0)
 
     if hot + warm + cold == 0:
         write_cache(cache_path, "")
@@ -310,9 +312,14 @@ def attentive_status(cwd, sid=""):
 
     parts = [f"{DIM}󱡠{RESET}"]
 
-    if hit >= 0:
-        hcol = GREEN if hit >= 70 else (ORANGE if hit >= 40 else RED)
-        parts.append(f"{hcol}{hit}%h{RESET}")
+    # Effectiveness: saved/redundant/missed
+    total = saved + redundant + missed
+    if total > 0:
+        parts.append(
+            f"{GREEN}{saved}s{RESET}{DIM}/{RESET}"
+            f"{ORANGE}{redundant}r{RESET}{DIM}/{RESET}"
+            f"{RED}{missed}m{RESET}"
+        )
 
     if hot + warm > 0:
         parts.append(
