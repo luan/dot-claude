@@ -48,6 +48,12 @@ Create conventional commits explaining WHY changes were made.
    )"
    ```
 
+5. **Beads sync** (after successful commit):
+   ```bash
+   bd epic close-eligible 2>/dev/null || true
+   bd sync 2>/dev/null || true
+   ```
+
 ## Hook failures
 
 Hooks modify files: `git add -u && git commit --amend --no-edit`

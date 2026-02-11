@@ -5,6 +5,7 @@ user-invocable: true
 allowed-tools:
   - "Bash(gt *)"
   - "Bash(git status)"
+  - "Bash(bd sync)"
 ---
 
 # Graphite
@@ -104,6 +105,24 @@ Then `gt create -m "msg"` picks up the commit into a new stack branch.
 | Amend current | `gt modify -a` |
 | View current stack | `gt log --stack` |
 | View all branches | `gt log` |
+
+## Beads Sync
+
+After state-changing gt operations, sync beads:
+
+| Operation | Sync? |
+|-----------|-------|
+| `gt create` | Yes |
+| `gt submit` / `gt ss` | Yes |
+| `gt sync` | Yes |
+| `gt restack` | Yes |
+| `gt modify` / `gt squash` | No |
+| `gt log` / navigation | No |
+
+After each state-changing command:
+```bash
+bd sync 2>/dev/null || true
+```
 
 ## Forbidden Git Commands
 
