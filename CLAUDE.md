@@ -98,6 +98,8 @@ Multiple Claude instances DISCUSS. Higher cost.
 - **Respect deps:** Never start blocked tasks. `bd ready` for unblocked.
 - **TDD first:** Failing test before implementation, even in teams.
 - **No file collisions:** Coordinate ownership. Two workers never edit same file.
+- **Pre-existing failures:** Not caused by your changes → report once, continue.
+- See `rules/worker-protocol.md` for full coordination protocol.
 
 ## Branch Naming
 `gt create luan/<description>`

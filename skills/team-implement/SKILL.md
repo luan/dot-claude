@@ -79,7 +79,14 @@ Task tool (each):
   ## Coordination
   Need interface from teammate → MESSAGE them
   Discover issue → MESSAGE team
-  Don't edit files outside task ownership without coordination
+
+  ## File Boundaries (HARD RULE)
+  NEVER edit files outside your task ownership.
+  Need a change in another worker's file:
+  1. MESSAGE the file owner
+  2. Owner idle → MESSAGE team lead
+  3. Never edit directly — even "just one line"
+  Violation = task failure.
 
   ## Output
   Report: tasks completed, files changed, unresolved interface questions

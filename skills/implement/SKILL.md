@@ -38,11 +38,14 @@ Implement: $ARGUMENTS
    - `bd show <task-id>` + `bd update <task-id> --claim`
    - Copy test code EXACTLY → verify fails
    - Copy implementation EXACTLY → verify passes
-   - **Build check:** detect build cmd from justfile/Makefile/
-     package.json/CLAUDE.md. Fix until clean. No close with errors.
+   - **Completion gate (MANDATORY):** No `bd close` without ALL:
+     1. Build clean (zero errors)
+     2. Tests pass (new + existing in scope)
+     3. Linter clean (clippy/eslint/swiftc as applicable)
+     Detect build cmd from justfile/Makefile/package.json/CLAUDE.md.
+     ANY failure → fix loop. Never skip.
    - `bd close <task-id>`
-6. Stop at ~250 lines PR size
-7. Done/size limit → invoke finishing-branch skill
+6. Done → invoke finishing-branch skill
 
 ## Task Atomicity
 NEVER stop mid-task. Finish before any PR ops.

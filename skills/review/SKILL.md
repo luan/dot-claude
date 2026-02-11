@@ -98,6 +98,7 @@ Merge findings from both reviewers:
 
 1. Deduplicate (same issue from multiple lenses → keep highest severity)
 2. Sort by severity
+3. **NEVER truncate.** Output EVERY finding. Long table is fine.
 
 ```markdown
 # Adversarial Review Summary

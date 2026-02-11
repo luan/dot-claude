@@ -277,24 +277,13 @@ def fetch_usage():
 
 
 def beads_task(cwd, sid=""):
-    if not cwd:
+    if not cwd or not sid:
         return None
-
-    cache_path = BEADS_CACHE + "-" + sid if sid else BEADS_CACHE
-    cached = read_cache(cache_path, BEADS_TTL)
-    if cached is not None:
-        return cached or None
-
-    result = ""
     try:
-        out = _run(["bd", "list", "--status=in_progress"], cwd)
-        if out:
-            result = out.splitlines()[0].strip()
-    except Exception:
-        pass
-
-    write_cache(cache_path, result)
-    return result or None
+        with open(f"/tmp/claude-beads-task-{sid}") as f:
+            return f.read().strip() or None
+    except OSError:
+        return None
 
 
 # -- Main --
