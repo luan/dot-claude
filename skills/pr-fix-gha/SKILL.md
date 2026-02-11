@@ -46,8 +46,7 @@ Fix failed GitHub Actions checks.
    gh run view <RUN_ID> --log-failed
    ```
 
-5. **Plan fixes**: Identify root cause, create concise plan
-   Ask "Ready to execute?"
+5. **Plan fixes**: Identify root cause, create concise plan. Ask "Ready to execute?"
 
 6. **Execute**: Apply fixes, summarize
 

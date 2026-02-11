@@ -7,8 +7,7 @@ user-invocable: true
 
 # Reference Sync
 
-Track changes in `references/` git submodule (jfmyers9/claude),
-incorporate learnings into workflow.
+Track changes in `references/` git submodule (jfmyers9/claude), incorporate learnings into workflow.
 
 ## Steps
 
@@ -30,11 +29,9 @@ incorporate learnings into workflow.
    | agents-analyst | `agents/ .claude/agents/` diff | Agent definitions, workflows |
    | infra-analyst | `*.json *.sh install.sh hooks/ .claude/settings.json` diff | Config, hooks, settings |
 
-   Each agent: read diff for area, compare with `~/.claude/`
-   equivalents, produce: what changed, why it matters, what to adopt
+   Each agent: read diff for area, compare with `~/.claude/` equivalents, produce: what changed, why it matters, what to adopt
 
-4. **Synthesize**: merge reports, categorize:
-   adopt now / consider later / not relevant
+4. **Synthesize**: merge reports, categorize: adopt now / consider later / not relevant
 
 5. **Present**:
    ```

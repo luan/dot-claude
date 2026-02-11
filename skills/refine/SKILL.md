@@ -39,7 +39,7 @@ Remove: code-restating inline comments (`// Create user object` above `user = ne
 
 Keep:
 - WHY explanations, edge case warnings, business logic context, performance implications
-- **Doc comments by default** — JSDoc, Python docstrings, Rust `///`, Go doc comments are API docs. Preserve them unless they are genuinely vacuous (`@param name the name`, `@return the result`). Removing a doc comment is a deliberate per-case judgment, not a blanket rule.
+- **Doc comments by default** — JSDoc, Python docstrings, Rust `///`, Go doc comments are API docs. Preserve them unless genuinely vacuous (`@param name the name`, `@return the result`). Removing doc comment is deliberate per-case judgment, not blanket rule.
 
 ### Clean Up
 - Remove unused imports from this change

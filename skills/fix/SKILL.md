@@ -34,8 +34,7 @@ Does NOT implement — use `/implement` after.
 
 3. **Create beads for each finding:**
    - `bd create "<title>" --type <type> --priority <N>`
-   - Bug type: include `## Steps to Reproduce` and
-     `## Acceptance Criteria` in description
+   - Bug type: include `## Steps to Reproduce` + `## Acceptance Criteria` in description
    - Task/feature: include `## Acceptance Criteria`
    - `bd lint <id>` after each create
 

@@ -20,7 +20,7 @@ allowed-tools:
 
 # Commit
 
-Create conventional commits explaining WHY changes were made.
+Create conventional commits explaining WHY changes made.
 
 ## Steps
 
@@ -35,8 +35,7 @@ Create conventional commits explaining WHY changes were made.
    - Max 72 chars, lowercase, no period, imperative
    - Types: feat|fix|refactor|perf|docs|test|style|build|ci|chore|revert
    - Scope: primary area (auth, api, ui, db) or omit if global
-   - If beads issue in_progress (`bd list --status in_progress -q`),
-     append ID: `fix(auth): handle token expiry (bd-abc123)`
+   - If beads issue in_progress (`bd list --status in_progress -q`), append ID: `fix(auth): handle token expiry (bd-abc123)`
 
 3. **Confirm** via AskUserQuestion: "Commit with this message?"
 
@@ -68,7 +67,7 @@ Hooks fail: show error, suggest fix, let user decide.
 ## Edge cases
 
 - Nothing staged → ask "Stage all changes?" (all vs tracked vs select)
-- Multiple unrelated changes → use **git-surgeon** skill to split
+- Multiple unrelated changes → use **git-surgeon** to split
 - Clean tree → "No changes to commit"
 
 ## Good vs bad

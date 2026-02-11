@@ -14,8 +14,7 @@ paths:
 - Svelte stores (`writable`, `readable`) → `$state()`
 
 ## Placement
-- `{@const}` only inside `{#each}`, `{#if}`, or component
-  boundaries — never in HTML elements (`<button>`, `<div>`, etc.)
+- `{@const}` only inside `{#each}`, `{#if}`, or component boundaries — never in HTML elements (`<button>`, `<div>`, etc.)
 
 ## Runes
 - `$state()` — reactive state (replaces reactive `let`)

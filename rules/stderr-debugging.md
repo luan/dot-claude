@@ -6,9 +6,7 @@ paths:
 ## Pattern
 
 Use `fputs("...\n", stderr)` for debug logging in Swift.
-This prints to stderr immediately (no buffering issues),
-visible in Xcode console and terminal, and doesn't go
-through the Logger system.
+This prints to stderr immediately (no buffering issues), visible in Xcode console + terminal, doesn't go through Logger system.
 
 ## Format
 

@@ -5,23 +5,23 @@ description: "Use when creating new skills, editing existing skills, or verifyin
 
 # Writing Skills
 
-TDD for process docs. Write test (pressure scenario) → fail (baseline) → write skill → pass → refactor (close loopholes).
+TDD for process docs. Write test (pressure scenario) → fail → write skill → pass → refactor.
 
 **Iron Law:** No skill without failing test first.
 
 ## When to Create
 
-**Create:** non-obvious technique, cross-project reference, broadly applicable pattern.
+**Create:** non-obvious technique, cross-project reference, broadly applicable.
 
-**Skip:** one-off solutions, standard practices documented elsewhere, project-specific conventions (use CLAUDE.md).
+**Skip:** one-off, standard practices, project-specific (use CLAUDE.md).
 
 ## Skill Types
 
-- **Technique:** concrete steps (condition-based-waiting)
-- **Pattern:** way of thinking (flatten-with-flags)
-- **Reference:** API docs, syntax guides
+- **Technique:** concrete steps
+- **Pattern:** way of thinking
+- **Reference:** API docs, syntax
 
-## Skill Locations
+## Locations
 
 | Location | Path | Scope |
 |----------|------|-------|
@@ -29,7 +29,7 @@ TDD for process docs. Write test (pressure scenario) → fail (baseline) → wri
 | Project | `.claude/skills/<name>/SKILL.md` | This project |
 | Plugin | `<plugin>/skills/<name>/SKILL.md` | Where enabled |
 
-Priority: enterprise > personal > project. Plugin uses `plugin:skill` namespace.
+Priority: enterprise > personal > project. Plugin: `plugin:skill` namespace.
 
 ## Directory Structure
 
@@ -37,46 +37,46 @@ Priority: enterprise > personal > project. Plugin uses `plugin:skill` namespace.
 skills/
   skill-name/
     SKILL.md              # Main reference (required)
-    template.md           # Template for Claude to fill in
+    template.md           # Template
     examples/             # Example outputs
-    scripts/              # Executable utilities
+    scripts/              # Utilities
 ```
 
-Keep `SKILL.md` under 500 lines. Heavy reference → separate files.
+Keep `SKILL.md` <500 lines. Heavy reference → separate files.
 
-## Frontmatter Reference
+## Frontmatter
 
 ```yaml
 ---
-name: my-skill # Display name (default: directory name)
-description: "Use when..." # When to use (REQUIRED for discovery)
-argument-hint: "[issue-number]" # Autocomplete hint
-disable-model-invocation: true # Only user can invoke via /name
-user-invocable: false # Only Claude can invoke (background knowledge)
-allowed-tools: Read, Grep, Glob # Tools without permission prompt
-model: opus # Model override
-context: fork # Run in subagent
-agent: Explore # Subagent type (with context: fork)
+name: my-skill
+description: "Use when..." # REQUIRED for discovery
+argument-hint: "[issue-number]"
+disable-model-invocation: true # User-only
+user-invocable: false # Claude-only
+allowed-tools: Read, Grep, Glob
+model: opus
+context: fork # Subagent
+agent: Explore # Subagent type
 ---
 ```
 
 | Field | Effect |
 |-------|--------|
-| `disable-model-invocation: true` | User-only (deploy, commit) |
-| `user-invocable: false` | Claude-only (background context) |
-| `context: fork` | Runs in isolated subagent |
+| `disable-model-invocation: true` | User-only |
+| `user-invocable: false` | Claude-only |
+| `context: fork` | Isolated subagent |
 
 ## String Substitutions
 
 | Variable | Description |
 |----------|-------------|
-| `$ARGUMENTS` | All arguments passed |
-| `$ARGUMENTS[N]` or `$N` | Specific argument (0-indexed) |
-| `${CLAUDE_SESSION_ID}` | Current session ID |
+| `$ARGUMENTS` | All args |
+| `$ARGUMENTS[N]` or `$N` | Specific arg (0-indexed) |
+| `${CLAUDE_SESSION_ID}` | Session ID |
 
-## Dynamic Context Injection
+## Dynamic Context
 
-**!** + command in backticks → runs shell before sending to Claude.
+**!** + command in backticks → shell before Claude.
 
 ```
 Current branch: !\`git branch --show-current\`
@@ -87,7 +87,7 @@ Current branch: !\`git branch --show-current\`
 ```markdown
 ---
 name: skill-name-with-hyphens
-description: "Use when [triggering conditions only - NO workflow summary]"
+description: "Use when [triggers only - NO workflow summary]"
 ---
 
 # Skill Name
@@ -105,45 +105,45 @@ Before/after code, key steps.
 Table for scanning.
 
 ## Common Mistakes
-What goes wrong + fixes.
+What fails + fixes.
 ```
 
 ## Description Field (Critical)
 
-**ONLY triggering conditions. NEVER workflow summary.**
+**ONLY triggers. NEVER workflow summary.**
 
 ```yaml
-# BAD: Claude follows this instead of reading skill
-description: Use when executing plans - dispatches subagent per task with code review
+# BAD: Claude shortcuts instead of reading skill
+description: Use when executing plans - dispatches subagent per task with review
 
 # GOOD: Just triggers
 description: Use when executing implementation plans with independent tasks
 ```
 
-**Why:** Claude shortcuts workflow summaries in descriptions, skipping actual skill content.
+**Why:** Claude shortcuts workflow summaries, skips actual content.
 
 ## Token Efficiency
 
 - getting-started: <150 words
 - Frequently-loaded: <200 words
 - Other: <500 words
-- Move details to `--help`, cross-reference skills
-- One excellent example > many mediocre ones
+- Move details to `--help`, cross-reference
+- One excellent example > many mediocre
 
-## RED-GREEN-REFACTOR for Skills
+## RED-GREEN-REFACTOR
 
-### RED: Baseline Test
-Run pressure scenario WITHOUT skill. Document: agent choices, exact rationalizations (verbatim), which pressures triggered violations.
+### RED: Baseline
+Run pressure scenario WITHOUT skill. Document: choices, rationalizations (verbatim), pressures triggering violations.
 
-### GREEN: Minimal Skill
-Address those specific rationalizations. Run same scenario WITH skill → agent should comply.
+### GREEN: Minimal
+Address rationalizations. Run WITH skill → compliance.
 
 ### REFACTOR: Close Loopholes
-New rationalization found → add explicit counter → re-test until bulletproof.
+New rationalization → add counter → re-test until bulletproof.
 
 ## Bulletproofing Discipline Skills
 
-For rule-enforcing skills (TDD, verification):
+For rule-enforcing (TDD, verification):
 
 1. **Close loopholes explicitly:**
    ```markdown
@@ -154,23 +154,23 @@ For rule-enforcing skills (TDD, verification):
    ```
 
 2. **Add:** `**Violating the letter is violating the spirit.**`
-3. **Build rationalization table** from baseline failures
+3. **Build rationalization table** from baseline
 4. **Create red flags list** for self-checking
 
 ## Troubleshooting
 
 | Problem | Solution |
 |---------|----------|
-| Not triggering | Check description keywords, try `/skill-name` directly |
+| Not triggering | Check description keywords, try `/skill-name` |
 | Triggers too often | More specific description, add `disable-model-invocation` |
 | Claude doesn't see | Check `/context` for character budget warning |
 
 ## Checklist
 
-**RED:** pressure scenarios (3+ for discipline) → run WITHOUT skill, document baseline → identify rationalization patterns
+**RED:** pressure scenarios (3+ for discipline) → run WITHOUT skill → document baseline → identify rationalizations
 
-**GREEN:** YAML frontmatter (name + description only) → description triggers only → address baseline failures → one excellent example
+**GREEN:** YAML frontmatter (name + description) → description triggers only → address baseline → one excellent example
 
-**REFACTOR:** identify NEW rationalizations → add counters → rationalization table → re-test until bulletproof
+**REFACTOR:** identify NEW rationalizations → add counters → rationalization table → re-test
 
 **Deploy:** commit + push

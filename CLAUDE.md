@@ -1,7 +1,7 @@
 ## Non-Negotiable
 
-1. **Never implement on main thread.** `Skill tool: implement` with epic-id. Never raw `Task` calls.
-2. **Never explore on main thread.** `Skill tool: explore`. Subagents investigate, main orchestrates.
+1. **Never implement on main.** `Skill tool: implement` with epic-id. Never raw `Task`.
+2. **Never explore on main.** `Skill tool: explore`. Subagents investigate, main orchestrates.
 3. **Never Task tool directly.** Skills dispatch. Task tool INSIDE skills only.
 
 ## Architecture
@@ -13,17 +13,15 @@
 - Doc comments only if project style. Comments for subtle/surprising only.
 
 ## Communication
-- Be direct. Skip preamble and summaries unless asked.
-- Prefer bullet points over prose. Omit filler words.
+- Direct. Skip preamble + summaries unless asked.
+- Prefer bullets over prose. Omit filler.
 - Wrap prose at 80 chars. Don't wrap code, URLs, headings, tables.
 
 ## Efficiency
 - **Subagents first:** Main orchestrates, subagents work
 - **Parallel ops:** Multiple searches/reads/greps per message
 - **Batch:** Group related file edits
-- **Context finite:** Pipe `| tail -20`, use `--quiet` flags,
-  summarize between agents. >30 lines → summarize.
-  Context running low → finish current work, don't start new.
+- **Context finite:** Pipe `| tail -20`, use `--quiet`, summarize between agents. >30 lines → summarize. Context low → finish current, don't start new.
 - **Tickets:** 1-2 on main fine. 3+ → subagent (`bd create --file` for bulk).
 
 ## Memory
@@ -41,13 +39,12 @@
 ## Testing
 **TDD default.** test → fail → minimal code → pass → refactor.
 - Every test answers: "what bug caught?" No answer → delete.
-- Banned: tautology, getter/setter, implementation mirroring,
-  happy-path-only, coverage padding
+- Banned: tautology, getter/setter, implementation mirroring, happy-path-only, coverage padding
 - Mocks: external services only. 3+ → simplify design.
 - Exceptions (ask first): prototypes, generated code, config-only.
 
 ## Workflow Skills
-Via `Skill` tool. Not on main thread.
+Via `Skill` tool. Not on main.
 
 | Invoke | When |
 |--------|------|
@@ -62,7 +59,7 @@ Via `Skill` tool. Not on main thread.
 | `refine` | Polish post-implementation |
 | `debugging` | Systematic bug diagnosis |
 
-**Flow:** explore (research) → prepare (tasks) → implement → review → commit
+**Flow:** explore → prepare → implement → review → commit
 **Never auto-commit/auto-PR.** User explicitly requests.
 
 **After explore:** review findings, then `/prepare <id>`.
@@ -71,10 +68,8 @@ Via `Skill` tool. Not on main thread.
 ## Subagent Rules
 - **Self-healing:** Iterate until build passes. No partial work.
 - **Claim atomically:** `bd update <id> --claim` (not status + assignee)
-- **File ownership:** Never edit files outside your task scope.
-  Need change in another worker's file → message the owner.
-- **Build failures:** Yours → fix. Another worker's → report, continue.
-  Pre-existing → report once, continue.
+- **File ownership:** Never edit files outside task scope. Need change in another worker's file → message owner.
+- **Build failures:** Yours → fix. Another worker's → report, continue. Pre-existing → report once, continue.
 - **Completion:** No `bd close` without build + tests + linter passing.
 - **Escalation:** 2 failed attempts → message lead with details.
 
@@ -84,7 +79,7 @@ Examples: `luan/fix-container-minimize`, `luan/add-theme-constants`
 
 ## Beads — Single Source of Truth
 
-All plans, notes, and state live in beads. No filesystem documents.
+All plans, notes, state live in beads. No filesystem documents.
 
 - **Exploration plans**: `bd edit <id> --design`
 - **Review findings**: `bd edit <id> --design`

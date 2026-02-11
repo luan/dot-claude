@@ -18,9 +18,9 @@ Before exploring:
 - Build on existing knowledge instead of re-discovering
 
 After exploring:
-- Save architectural patterns and key abstractions
-- Save file relationships and dependency chains
-- Save non-obvious constraints and gotchas
+- Save architectural patterns + key abstractions
+- Save file relationships + dependency chains
+- Save non-obvious constraints + gotchas
 - Save areas explored (avoid redundant work)
 
 ## Exploration Output
@@ -32,4 +32,4 @@ Structure findings as:
 4. Risks — what could go wrong
 5. Next Steps — phased plan with file paths per phase
 
-Each phase must include file paths and approach hints.
+Each phase must include file paths + approach hints.

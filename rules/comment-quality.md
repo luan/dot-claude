@@ -2,7 +2,7 @@
 
 ## The Gate
 
-Every comment must tell the reader something they **cannot get from the code itself**.
+Every comment must tell reader something they **cannot get from code itself**.
 
 ## Banned
 
@@ -15,15 +15,15 @@ Every comment must tell the reader something they **cannot get from the code its
 
 ## Allowed
 
-- **WHY** explanations: why a non-obvious approach was chosen
-- Edge case warnings: gotchas future maintainers need to know
+- **WHY** explanations: why non-obvious approach chosen
+- Edge case warnings: gotchas future maintainers need
 - Business logic context: domain rules not evident from code
 - Non-obvious constraints: performance implications, ordering requirements
-- Surprising behavior: anything that would make a reader do a double-take
+- Surprising behavior: anything making reader double-take
 
 ## Rules
 
-- Never generate docstrings unless the project already uses them as convention
-- Never add comments to code you didn't write (unless fixing a bug there)
-- If you need a comment to explain WHAT code does, the code needs renaming or splitting — not a comment
+- Never generate docstrings unless project already uses them as convention
+- Never add comments to code you didn't write (unless fixing bug there)
+- If you need comment to explain WHAT code does, code needs renaming or splitting — not comment
 - Three clear function names > one function with three section comments

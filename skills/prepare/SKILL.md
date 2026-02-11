@@ -23,20 +23,18 @@ Reads beads design field, creates implementable task hierarchy.
 
 1. **Find plan source:**
    - If arg is beads ID → `bd show <id> --json`, extract design field
-   - Otherwise → `bd list --status in_progress` and find first
-     task with title "Explore:" or "Review:"
+   - Otherwise → `bd list --status in_progress` and find first task with title "Explore:" or "Review:"
    - No plan found → suggest `/explore` or `/review`
 
 2. **Pre-check design quality:**
    - Design field must have "Phase" sections with file paths
-   - Missing file paths or vague descriptions → suggest
-     re-running `/explore` with more detail, STOP
+   - Missing file paths or vague descriptions → suggest re-running `/explore` with more detail, STOP
 
 3. **Parse plan from design field:**
    - Extract title from first heading or recommendation
    - Find "Next Steps" or "Phase" sections
    - Parse phases: `**Phase N: Description**`
-   - Extract files and approach per phase
+   - Extract files + approach per phase
 
 4. **Create epic:**
    ```bash
@@ -45,11 +43,10 @@ Reads beads design field, creates implementable task hierarchy.
    bd lint <epic-id>
    ```
 
-5. **Create tasks per phase** — dispatch ONE subagent per phase
-   via Task (subagent_type="general-purpose", model=sonnet):
+5. **Create tasks per phase** — dispatch ONE subagent per phase via Task (subagent_type="general-purpose", model=sonnet):
 
    ```
-   Create an implementation task for Phase N: <title>
+   Create implementation task for Phase N: <title>
 
    ## Phase Context (from design field)
    <phase description, files, approach>
@@ -58,7 +55,7 @@ Reads beads design field, creates implementable task hierarchy.
    <epic-id>
 
    ## Job
-   1. Read the referenced files to understand current code
+   1. Read referenced files to understand current code
    2. Design exact changes needed
    3. Create beads task with FULL implementation code:
 
@@ -103,12 +100,11 @@ Reads beads design field, creates implementable task hierarchy.
    - Each task = one logical unit (30-80 lines test + impl)
    ```
 
-   Spawn phases sequentially (each needs the epic-id).
+   Spawn phases sequentially (each needs epic-id).
 
 6. **Detect dependencies:**
    - Default: sequential (each phase blocks next)
-   - Override if phase text says "parallel with Phase N"
-     or "independent of"
+   - Override if phase text says "parallel with Phase N" or "independent of"
    - `bd dep add <phase-N> <phase-N-1>` for sequential
 
 7. **Validate swarm:**

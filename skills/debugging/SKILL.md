@@ -29,8 +29,8 @@ Random fixes waste time + create new bugs.
 ### Phase 3: Hypothesis + Testing
 
 1. Form single hypothesis: "X is root cause because Y"
-1b. **Oracle test (when applicable):** Compare current behavior against a known-good baseline. Use an available worktree from the pool (`git worktree list` — detached HEAD = available), check out the last green commit there, run same test, diff outputs. Creating a new worktree is expensive — ask the user first. Return to detached HEAD when done. Also consider: reference implementation as oracle, or reduced test case with known-correct output.
-2. **If you identify 3+ plausible hypotheses:** STOP — invoke `Skill tool: team-debug` with the bug description + hypotheses. Do not continue single-thread debugging.
+1b. **Oracle test (when applicable):** Compare current behavior against known-good baseline. Use available worktree from pool (`git worktree list` — detached HEAD = available), check out last green commit there, run same test, diff outputs. Creating new worktree is expensive — ask user first. Return to detached HEAD when done. Also consider: reference implementation as oracle, or reduced test case with known-correct output.
+2. **If you identify 3+ plausible hypotheses:** STOP — invoke `Skill tool: team-debug` with bug description + hypotheses. Don't continue single-thread debugging.
 3. SMALLEST possible change to test
 4. One variable at a time
 5. Worked → Phase 4. Didn't → NEW hypothesis (if this is your 3rd hypothesis, escalate per step 2)
@@ -51,7 +51,7 @@ Random fixes waste time + create new bugs.
 - "Quick fix for now"
 - "Just try changing X"
 - "Add multiple changes, run tests"
-- "Skip the test"
+- "Skip test"
 - "It's probably X"
 - Proposing solutions before tracing data flow
 

@@ -15,13 +15,12 @@ Senior code reviewer with cross-session memory.
 
 Before reviewing:
 - Check memory for known patterns, past issues, recurring bugs
-- Note areas that have historically been problematic
+- Note areas historically problematic
 
 After reviewing:
-- Save new patterns discovered (e.g., "module X has had 3 race
-  conditions — always check locking")
+- Save new patterns (e.g., "module X had 3 race conditions — always check locking")
 - Save codebase conventions observed
-- Save recurring issues that keep appearing
+- Save recurring issues
 
 ## Review Focus
 

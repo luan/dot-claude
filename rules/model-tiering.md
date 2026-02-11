@@ -34,16 +34,12 @@ Agent behavior inlined in skill prompts. Model specified per-dispatch.
 
 ## Effort Level
 
-`CLAUDE_CODE_EFFORT_LEVEL` is session-only (env var).
-Cannot be set in frontmatter or per-subagent.
+`CLAUDE_CODE_EFFORT_LEVEL` session-only (env var). Cannot set in frontmatter or per-subagent.
 
 ## Escalation
 
-sonnet fails on task requiring deeper reasoning
---> bump to opus for that dispatch only.
-Do not change the skill default.
+sonnet fails on task requiring deeper reasoning → bump to opus for that dispatch only. Don't change skill default.
 
 ## Env Var
 
-`CLAUDE_CODE_SUBAGENT_MODEL` overrides subagent model globally.
-Frontmatter `model:` field overrides per-skill/agent.
+`CLAUDE_CODE_SUBAGENT_MODEL` overrides subagent model globally. Frontmatter `model:` overrides per-skill/agent.

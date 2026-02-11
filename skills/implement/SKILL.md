@@ -22,8 +22,7 @@ allowed-tools:
 
 # Implement
 
-Detects solo vs swarm automatically. Handles both single-agent
-and multi-agent parallel execution.
+Detects solo vs swarm automatically. Handles both single-agent + multi-agent parallel execution.
 
 **IMMEDIATELY dispatch.** Never implement on main thread.
 
@@ -46,9 +45,7 @@ Implement: $ARGUMENTS
 
 ## Job
 1. `bd prime` for context
-2. **Pre-flight:** `bd children <epic-id>` — no children or tasks
-   lack code in description → STOP, return "explore phase
-   incomplete — no implementable tasks". Do NOT create tasks.
+2. **Pre-flight:** `bd children <epic-id>` — no children or tasks lack code in description → STOP, return "explore phase incomplete — no implementable tasks". Do NOT create tasks.
 3. `gt create luan/<short-description>`
 4. `bd ready` or `bd children <epic-id>`
 5. Per task:
@@ -80,8 +77,7 @@ Orchestrate parallel workers via waves.
 1. `bd show <epic-id>` + `bd children <epic-id>`
 2. `bd swarm validate <epic-id> --verbose`
 3. `bd merge-slot create`
-4. **File ownership:** Two ready tasks share files →
-   `bd dep add` to serialize. Re-validate.
+4. **File ownership:** Two ready tasks share files → `bd dep add` to serialize. Re-validate.
 5. `gt create luan/<short-description>`
 6. Create team:
    ```
@@ -100,28 +96,25 @@ while true:
   Spawn ALL ready tasks in SINGLE message (parallel).
   Workers = min(ready_count, 4). Model: sonnet.
 
-  Each worker (Task, subagent_type="general-purpose",
-    mode="plan", team_name="<team>", name="worker-<n>"):
+  Each worker (Task, subagent_type="general-purpose", mode="plan", team_name="<team>", name="worker-<n>"):
 
   """
   Worker-<n> on epic <epic-id>.
 
   ## Work Loop
   1. `bd ready --parent <epic-id> --unassigned`
-  2. `bd show <id>` → `bd update <id> --claim`
-     (fails if claimed → step 1)
+  2. `bd show <id>` → `bd update <id> --claim` (fails if claimed → step 1)
   3. Respect file ownership — YOUR files while in_progress
   4. Failing test FIRST → minimal implementation
   4b. Build check. Fix until clean.
-  5. `bd merge-slot acquire --wait` → git add/commit →
-     `bd merge-slot release`
+  5. `bd merge-slot acquire --wait` → git add/commit → `bd merge-slot release`
   6. `bd close <id>`
   7. → step 1. Empty → report completion
 
   ## File Boundaries (HARD RULE)
   NEVER edit files outside your task ownership.
-  Need a change in another worker's file:
-  1. MESSAGE the file owner
+  Need change in another worker's file:
+  1. MESSAGE file owner
   2. Owner idle → MESSAGE team lead
   3. Never edit directly — even "just one line"
 
@@ -139,8 +132,7 @@ while true:
 
 1. All closed → full test suite (workers idle)
 2. **Green** → continue
-3. **Red** → match errors to owners via `bd children`,
-   message workers w/ failure output, re-run
+3. **Red** → match errors to owners via `bd children`, message workers w/ failure output, re-run
 4. 2 failed → escalate to user
 
 ### Teardown

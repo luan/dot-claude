@@ -3,12 +3,12 @@ paths:
   - "**/*.rs"
 ---
 
-**Toolchain:** Latest nightly, latest edition (don't assume - check project config)
+**Toolchain:** Latest nightly, latest edition (check project config)
 
 **Zero warnings:**
 - `cargo clippy -- -W clippy::all` after EVERY implementation
 - Zero warnings before complete
-- Document any #[allow(...)] with reason
+- Document #[allow(...)] with reason
 
 **Validation:**
 1. `cargo fmt`
@@ -16,6 +16,6 @@ paths:
 3. `cargo test`
 4. `cargo build --release`
 
-**Dead code:** Remove immediately. Use #[cfg(test)] for test-only code.
+**Dead code:** Remove immediately. Use #[cfg(test)] for test-only.
 
-**Imports:** All `use` statements at file top only. No inline imports in function bodies.
+**Imports:** All `use` at file top. No inline imports.

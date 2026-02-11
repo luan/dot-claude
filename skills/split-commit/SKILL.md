@@ -11,8 +11,7 @@ allowed-tools:
 
 # Split Commit
 
-Repackage branch changes into clean vertical commits. Each commit
-compiles + passes tests independently.
+Repackage branch changes into clean vertical commits. Each commit compiles + passes tests independently.
 
 ## Phase 1: Analyze
 

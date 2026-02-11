@@ -13,7 +13,7 @@ allowed-tools:
 
 # Resume Work
 
-Context recovery after a break. Gathers state, suggests next action.
+Context recovery after break. Gathers state, suggests next action.
 
 ## Steps
 
