@@ -26,7 +26,6 @@
 - **Parallel ops:** Multiple searches/reads/greps per message
 - **Batch:** Group related file edits
 - **Context finite:** Truncate verbose output, summarize between agents. See `rules/context-budget.md`.
-- **Context warning:** Hook at 65% → save to beads notes, plan remaining, suggest fresh session. Never let compaction happen.
 - **Tickets:** 1-2 on main fine. 3+ → subagent (`bd create --file` for bulk).
 
 ## Memory

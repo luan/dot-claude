@@ -11,8 +11,8 @@ import json
 import os
 import sys
 
-WARN_THRESHOLD = 65
-CRITICAL_THRESHOLD = 85
+WARN_THRESHOLD = 73
+CRITICAL_THRESHOLD = 80
 
 
 def main():
@@ -47,8 +47,9 @@ def main():
         with open(flag_file, "w") as f:
             f.write("2")
         print(
-            f"⛔ CONTEXT {pct}% — Save state to beads notes NOW. "
-            f"Wrap up current task and suggest fresh session.",
+            f"⛔ CONTEXT {pct}% — Compaction imminent. "
+            f"Save active task context, decisions, and remaining plan to beads notes. "
+            f"Anything not in notes or memory may be lost.",
             file=sys.stderr,
         )
         sys.exit(2)
@@ -56,8 +57,9 @@ def main():
         with open(flag_file, "w") as f:
             f.write("1")
         print(
-            f"⚠️  CONTEXT {pct}% — Consider saving progress to beads notes "
-            f"and creating a plan for remaining work before context runs out.",
+            f"⚠️  CONTEXT {pct}% — Save session-critical state to beads notes: "
+            f"active task context, key decisions, discoveries, and remaining plan. "
+            f"Ensure anything that wouldn't survive a summary is persisted.",
             file=sys.stderr,
         )
         sys.exit(2)
