@@ -1,92 +1,114 @@
 ---
 name: explore
 description: "Triggers: 'explore', 'how does X work', 'understand', 'research', 'plan a feature', 'figure out', 'investigate', 'design', 'architect'"
-argument-hint: "<prompt>"
+argument-hint: "<prompt> [--continue]"
 user-invocable: true
 allowed-tools:
   - Task
   - Skill
-  - EnterPlanMode
-  - ExitPlanMode
   - AskUserQuestion
+  - Bash
 ---
 
 # Explore
+
+Research, investigate, design. Stores findings in beads design
+field. Auto-escalates to team for complex multi-system work.
 
 **IMMEDIATELY dispatch to subagent.** Never explore on main thread.
 
 ## Instructions
 
-1. `EnterPlanMode`
-2. Dispatch via Task (subagent_type="general-purpose"):
+### New Exploration
+
+1. Create bead:
+   ```bash
+   bd create "Explore: <topic>" --type task --priority 2 --validate
+   bd lint <id>
+   bd update <id> --status in_progress
+   ```
+
+2. Dispatch via Task (subagent_type="codebase-researcher"):
 
 ```
-Explore + plan: $ARGUMENTS
+Research <topic> thoroughly. Return COMPLETE findings as text
+(do NOT write files, do NOT create beads).
 
 ## Job
 1. `bd prime` for context
 2. Check existing: `bd list --status in_progress --type epic`
 3. Explore codebase
 4. Design approach — 2-3 options, choose best
-5. Create beads: epic + ALL child tasks with full code (writing-plans skill)
-6. `bd label add <id> architecture|implementation|testing`
-7. `bd lint` on epic + children (catches post-update gaps)
-8. Verify: `bd children <epic-id>` — every task has test + impl code in description
-9. Return plan summary (format below)
 
-## CRITICAL: Beads ARE the plan
-Create ALL beads with complete code BEFORE returning.
-Plan summary = view of beads, NOT a standalone plan.
-No beads → implement pre-flight fails → wasted session.
-Missing info → AskUserQuestion. Never "create tickets later".
+## Output Structure
 
-## Plan Summary Format (return EXACTLY this)
+1. **Current State**: What exists now (files, patterns, architecture)
+2. **Recommendation**: Chosen approach with rationale
+3. **Key Files**: Exact paths of files to modify/create
+4. **Risks**: What could go wrong, edge cases
+5. **Next Steps**: Phased implementation plan using format:
 
-Epic: <epic-id> — <title>
+**Phase N: <title>**
+Files: exact/path/to/file.ts, exact/path/to/other.ts
+Approach: <what to change and why>
+1. <specific step>
+2. <specific step>
+
+Each phase must include file paths and approach hints —
+downstream task creation depends on this detail.
+```
+
+3. Store findings: `bd edit <id> --design "<full-findings>"`
+
+4. Output summary:
+```
+Explore: <bead-id> — <topic>
 Problem: <1 sentence>
-Solution: <1 sentence>
+Recommendation: <1 sentence>
 
-Tasks:
-1. <title> (<bd-xxx>) — ready
-2. <title> (<bd-yyy>) — blocked by #1
+Phases:
+1. <title> — <key files>
+2. <title> — <key files>
 
 Key decisions:
 - <why this approach>
 
-To continue: use Skill tool to invoke `implement` with arg `<epic-id>`
+Next: /prepare <bead-id>
+```
 
-## Task Quality
-Each task description must contain:
-- Complete copy-pasteable test + implementation code
-- Exact file paths
-- Exact commands with expected output
-Implement copies code EXACTLY from descriptions. Missing code = failed task.
+### Continuation (--continue flag)
 
-## Escalation
-ANY → STOP, return "ESCALATE: team-explore — [reason]" + findings. No epic.
+1. Find most recent in_progress explore task:
+   - If $ARGUMENTS matches a beads ID → use it
+   - If --continue → `bd list --status in_progress --type task`,
+     find first with title "Explore:"
+2. `bd show <id> --json` → read existing design field
+3. Dispatch subagent with: "Previous findings:\n<design>\n\n
+   Continue exploring: <new prompt>"
+4. Update design: `bd edit <id> --design "<combined>"`
+5. Output updated summary
+
+### Escalation
+
+Subagent returns "ESCALATE: team — [reason]":
+
+Spawn 2-3 Task agents in parallel:
+- **Researcher** (model: haiku): breadth-first investigation
+- **Architect** (model: opus): design analysis, tradeoffs
+- **Devil's Advocate** (model: opus): challenges assumptions
+
+Each investigates independently, returns findings text.
+Synthesize into unified findings, store in design field.
+
+Escalation triggers:
 - 3+ viable approaches, unclear tradeoffs
 - Spans 3+ independent subsystems
 - Cross-cutting concerns needing adversarial analysis
-- Architecture decision with diverging perspectives
-
-## Chemistry
-Ephemeral exploration. Epic+tasks persist, exploration doesn't.
-```
-
-3. Check subagent response:
-   - "ESCALATE: team-explore" → `Skill tool: team-explore` with args + findings
-   - No epic-id in response → `AskUserQuestion` (exploration failed)
-   - Otherwise → output plan summary verbatim, then `ExitPlanMode`
-4. After approval, output exactly:
-   ```
-   To continue: use Skill tool to invoke implement with arg <epic-id>
-   ```
-   Never Task tool directly.
 
 ## Key Rules
 
 - Main thread does NOT explore — subagent does
-- **Beads MUST exist before ExitPlanMode** — no standalone plan text
-- `bd lint` REQUIRED
-- Auto-escalation — ESCALATE → invoke team-explore immediately
-- Chemistry: `bd mol squash <id>` on approval, `bd mol burn <id> --force` on rejection
+- **No plan mode** — findings stored in beads design field
+- **No task/epic creation** — that's /prepare's job
+- `bd lint` after bead creation
+- Next Steps must include file paths (prepare depends on it)
