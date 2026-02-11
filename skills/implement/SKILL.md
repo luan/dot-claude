@@ -44,8 +44,7 @@ Dispatch via Task (subagent_type="general-purpose"):
 Implement: $ARGUMENTS
 
 ## Job
-1. `bd prime` for context
-2. **Pre-flight:** `bd children <epic-id>` — no children or tasks lack code in description → STOP, return "explore phase incomplete — no implementable tasks". Do NOT create tasks.
+1. **Pre-flight:** `bd children <epic-id>` — no children or tasks lack code in description → STOP, return "explore phase incomplete — no implementable tasks". Do NOT create tasks.
 3. `gt create luan/<short-description>`
 4. `bd ready` or `bd children <epic-id>`
 5. Per task:
@@ -120,7 +119,6 @@ while true:
 
   ## Context
   Branch: luan/<description> (already created).
-  `bd prime` for context.
   """
 
   Wait for all workers to complete.

@@ -30,6 +30,8 @@ GIT_CACHE = "/tmp/claude-statusline-git"
 GIT_TTL = 5
 USAGE_CACHE = "/tmp/claude-statusline-usage.json"
 USAGE_TTL = 60
+ATTN_CACHE = "/tmp/claude-statusline-attn"
+ATTN_TTL = 3
 BEADS_CACHE = "/tmp/claude-statusline-beads"
 BEADS_TTL = 10
 VERSION_CACHE = "/tmp/claude-statusline-version"
@@ -276,6 +278,56 @@ def fetch_usage():
     return None
 
 
+def attentive_status(cwd, sid=""):
+    if not cwd:
+        return None
+
+    import hashlib
+
+    cache_path = ATTN_CACHE + "-" + hashlib.md5(cwd.encode()).hexdigest()[:8]
+    cached = read_cache(cache_path, ATTN_TTL)
+    if cached is not None:
+        return cached or None
+
+    cmd = ["attentive", "status"]
+    if sid:
+        cmd += ["--session", sid]
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=3, cwd=cwd)
+        data = json.loads(out.stdout)
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError):
+        write_cache(cache_path, "")
+        return None
+
+    hot = data.get("hot", 0)
+    warm = data.get("warm", 0)
+    cold = data.get("cold", 0)
+    hit = data.get("hit_rate", -1)
+
+    if hot + warm + cold == 0:
+        write_cache(cache_path, "")
+        return None
+
+    parts = [f"{DIM}󱡠{RESET}"]
+
+    if hit >= 0:
+        hcol = GREEN if hit >= 70 else (ORANGE if hit >= 40 else RED)
+        parts.append(f"{hcol}{hit}%h{RESET}")
+
+    if hot + warm > 0:
+        parts.append(
+            f"{GREEN}{hot}H{RESET}{DIM}/{RESET}"
+            f"{ORANGE}{warm}W{RESET}{DIM}/{RESET}"
+            f"{DIM}{cold}C{RESET}"
+        )
+    else:
+        parts.append(f"{DIM}{hot + warm + cold} tracked{RESET}")
+
+    result = " ".join(parts)
+    write_cache(cache_path, result)
+    return result
+
+
 def beads_task(cwd, sid=""):
     if not cwd or not sid:
         return None
@@ -378,6 +430,10 @@ def main():
         if sd_reset_str:
             sd_label += f" {DIM}{sd_reset_str}{RESET}"
         parts2.append(sd_label)
+
+    attn = attentive_status(cwd, sid)
+    if attn:
+        parts2.append(attn)
 
     if vim:
         parts2.append(f"{PURPLE} {vim['mode']}{RESET}")

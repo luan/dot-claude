@@ -22,14 +22,16 @@ allowed-tools:
 
 Create conventional commits explaining WHY changes made.
 
+## Context
+
+Status: !`git status -sb 2>/dev/null`
+Staged diff: !`git diff --cached --stat 2>/dev/null`
+Recent commits: !`git log --oneline -5 2>/dev/null`
+Beads in progress: !`bd list --status in_progress -q 2>/dev/null`
+
 ## Steps
 
-1. **Analyze** (parallel):
-   ```bash
-   git status
-   git diff --cached  # or git diff if nothing staged
-   git log --oneline -5
-   ```
+1. **Analyze**: review context above. If nothing staged, read full `git diff`. If staged, read `git diff --cached` for details.
 
 2. **Message**: `type(scope): description`
    - Max 72 chars, lowercase, no period, imperative

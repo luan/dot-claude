@@ -17,6 +17,10 @@ Auto-escalates to team for complex multi-system work.
 
 **IMMEDIATELY dispatch to subagent.** Never explore on main thread.
 
+## Context
+
+Active epics: !`bd list --status in_progress --type epic -q 2>/dev/null`
+
 ## Instructions
 
 ### New Exploration
@@ -42,9 +46,7 @@ Research <topic> thoroughly. Return COMPLETE findings as text
 (do NOT write files, do NOT create beads).
 
 ## Job
-1. `bd prime` for context
-2. Check existing: `bd list --status in_progress --type epic`
-3. Explore codebase
+1. Explore codebase
 4. Design approach — 2-3 options, choose best
 
 ## Output Structure

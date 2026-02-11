@@ -15,15 +15,15 @@ allowed-tools:
 Feedback → beads converter. Creates classified issues.
 Does NOT implement — use `/implement` after.
 
+## Context
+
+Branch: !`git branch --show-current`
+Recent changes: !`git diff --name-only HEAD~3..HEAD 2>/dev/null`
+Recent commits: !`git log --oneline -5 2>/dev/null`
+
 ## Steps
 
-1. **Gather context (parallel):**
-   - `git diff --name-only HEAD~3..HEAD`
-   - `git log --oneline -5`
-   - `git branch --show-current`
-   - Read referenced files if any
-
-2. **Analyze feedback ($ARGUMENTS):**
+1. **Analyze feedback ($ARGUMENTS):**
    - Break into individual findings
    - Classify type: `bug`, `task`, or `feature`
    - Set priority:

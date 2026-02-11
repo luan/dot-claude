@@ -15,21 +15,25 @@ allowed-tools:
 
 Context recovery after break. Gathers state, suggests next action.
 
+## Context
+
+Branch: !`git branch --show-current`
+Status: !`git status -sb 2>/dev/null`
+Recent commits: !`git log --oneline -5 2>/dev/null`
+Beads in progress: !`bd list --status in_progress -q 2>/dev/null`
+Beads ready: !`bd ready -q 2>/dev/null`
+
 ## Steps
 
 1. **Resolve branch:**
-   - No args → `git branch --show-current`
+   - No args → use current branch (above)
    - PR# → `gh pr view <num> --json headRefName`, checkout
    - Branch name → checkout
 
-2. **Gather context (parallel):**
-   - `git log --oneline -5`
-   - `git status -sb`
-   - `gh pr view --json title,state,isDraft,reviewDecision,statusCheckRollup` (if PR exists)
-   - `gh pr checks` (if PR exists)
+2. **Gather PR context** (if PR exists):
+   - `gh pr view --json title,state,isDraft,reviewDecision,statusCheckRollup`
+   - `gh pr checks`
    - PR review comments: `gh api repos/{owner}/{repo}/pulls/{num}/comments`
-   - `bd list --status in_progress`
-   - `bd ready`
 
 3. **Summarize:**
    ```
