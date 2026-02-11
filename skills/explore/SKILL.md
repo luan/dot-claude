@@ -12,8 +12,8 @@ allowed-tools:
 
 # Explore
 
-Research, investigate, design. Stores findings in beads design
-field. Auto-escalates to team for complex multi-system work.
+Research, investigate, design. Findings stored in beads design field.
+Auto-escalates to team for complex multi-system work.
 
 **IMMEDIATELY dispatch to subagent.** Never explore on main thread.
 
@@ -23,12 +23,19 @@ field. Auto-escalates to team for complex multi-system work.
 
 1. Create bead:
    ```bash
-   bd create "Explore: <topic>" --type task --priority 2 --validate
-   bd lint <id>
-   bd update <id> --status in_progress
+   bd create "Explore: <topic>" --type task --priority 2 \
+     --description "$(cat <<'EOF'
+   ## Acceptance Criteria
+   - Findings stored in bead design field
+   - Structured as Current State, Recommendation, and phased Next Steps
+   - Each phase includes file paths and is independently actionable
+   EOF
+   )"
    ```
+2. Validate: `bd lint <id>` — if it fails, `bd edit <id> --description` to fix
+3. `bd update <id> --status in_progress`
 
-2. Dispatch via Task (subagent_type="codebase-researcher"):
+4. Dispatch via Task (subagent_type="codebase-researcher"):
 
 ```
 Research <topic> thoroughly. Return COMPLETE findings as text
@@ -58,9 +65,9 @@ Each phase must include file paths and approach hints —
 downstream task creation depends on this detail.
 ```
 
-3. Store findings: `bd edit <id> --design "<full-findings>"`
+5. Store findings: `bd update <id> --design "<full-findings>"`
 
-4. Output summary:
+6. Output summary:
 ```
 Explore: <bead-id> — <topic>
 Problem: <1 sentence>
@@ -78,14 +85,14 @@ Next: /prepare <bead-id>
 
 ### Continuation (--continue flag)
 
-1. Find most recent in_progress explore task:
+1. Resolve issue ID:
    - If $ARGUMENTS matches a beads ID → use it
    - If --continue → `bd list --status in_progress --type task`,
-     find first with title "Explore:"
-2. `bd show <id> --json` → read existing design field
+     find first with title starting "Explore:"
+2. Load existing: `bd show <id> --json` → extract design field
 3. Dispatch subagent with: "Previous findings:\n<design>\n\n
    Continue exploring: <new prompt>"
-4. Update design: `bd edit <id> --design "<combined>"`
+4. Update: `bd update <id> --design "<combined>"`
 5. Output updated summary
 
 ### Escalation
@@ -108,7 +115,6 @@ Escalation triggers:
 ## Key Rules
 
 - Main thread does NOT explore — subagent does
-- **No plan mode** — findings stored in beads design field
-- **No task/epic creation** — that's /prepare's job
-- `bd lint` after bead creation
+- Findings stored in beads design field
+- `bd lint` after bead creation — fix if it fails
 - Next Steps must include file paths (prepare depends on it)
