@@ -1,7 +1,7 @@
 ---
 name: review
-description: "Adversarial code review with parallel reviewers. Triggers: 'review', 'review my changes', 'check this code', 'code review'."
-argument-hint: "[base..head | file-list | PR#] [--against <issue-id>]"
+description: "Adversarial code review with parallel reviewers. Triggers: 'review', 'review my changes', 'check this code', 'code review'. Use --team for 3-perspective mode."
+argument-hint: "[base..head | file-list | PR#] [--against <issue-id>] [--team] [--continue]"
 user-invocable: true
 allowed-tools:
   - Task
@@ -13,19 +13,15 @@ allowed-tools:
 
 # Adversarial Review
 
-Parallel adversarial reviewers → consolidate → fix via subagent.
+Three modes: solo (default), file-split (auto for large diffs),
+perspective (--team flag). All modes consolidate findings into
+phase-structured output.
 
-## Step 0: Triage — Auto-Escalate
-
-- `git diff --stat $ARGUMENTS` (or `gh pr diff $ARGUMENTS --stat`)
-- Count files changed + unique top-level dirs
-- **5+ files across 3+ dirs** OR auth/security/crypto touched → `Skill tool: team-review` with same args, STOP
-- Otherwise continue
-
-## Step 1: Determine Scope
+## Step 1: Determine Scope + Mode
 
 Parse $ARGUMENTS:
 - `--against <issue-id>`: beads issue for plan adherence
+- `--team`: force 3-perspective mode
 - Remaining args:
 
 | Input | Diff source |
@@ -35,6 +31,28 @@ Parse $ARGUMENTS:
 | file list | `git diff HEAD -- <files>` + read files |
 | `#123` | `gh pr diff 123` |
 
+Count files: `git diff --stat`
+
+Choose mode:
+- `--team` flag → **Perspective Mode** (3 specialists)
+- 15+ files, no `--team` → **File-Split Mode**
+- Otherwise → **Solo Mode** (2 lenses)
+
+## Step 1b: Create Review Bead
+
+```bash
+bd create "Review: <scope-summary>" --type task --priority 2 --validate
+bd lint <id>
+bd update <id> --status in_progress
+```
+
+If `--continue` in args: skip creation, find existing:
+- If $ARGUMENTS matches a beads ID → use it
+- Else: `bd list --status in_progress --type task`,
+  find first with title "Review:"
+- `bd show <id> --json` → read existing design field
+- Prepend to reviewer prompts: "Previous findings:\n<design>\n\nContinue reviewing..."
+
 ## Step 2: Gather Context
 
 1. Get diff
@@ -42,79 +60,123 @@ Parse $ARGUMENTS:
 3. List changed files
 4. Read all changed files in parallel (full content)
 
-## Step 3: Dispatch 2 Adversarial Reviewers
+## Step 3: Dispatch Reviewers
 
-Spawn 2 Task agents (general-purpose) **ALL in a single message**. Each gets full diff + changed file contents + one adversarial lens.
+### Solo Mode (2 lenses)
 
-If `--against` provided, append to each prompt: "Also check plan adherence: does implementation match plan? Missing/unplanned features? Deviations justified? Plan: {beads issue notes}"
+Spawn 2 Task agents (persistent-reviewer) in a SINGLE message.
+Each gets full diff + changed file contents.
 
-### Lens 1: Correctness & Security
-
+**Lens 1: Correctness & Security**
 ```
-You are an adversarial correctness and security reviewer. Find bugs and vulnerabilities others miss.
+You are an adversarial correctness and security reviewer.
 
 {diff + full file contents}
 
 Focus:
 - Edge cases (empty, null, overflow, concurrent access)
-- Invalid states possible? Race conditions?
-- Resource leaks (unclosed handles, uncancelled tasks, missing cleanup)
-- Silent failures, swallowed errors, missing fallbacks
-- Off-by-one, wrong operator, logic inversions
+- Invalid states, race conditions
+- Resource leaks (unclosed handles, missing cleanup)
+- Silent failures, swallowed errors
+- Off-by-one, logic inversions
 - Injection (SQL, command, XSS, template)
-- Auth/authz gaps (missing checks, privilege escalation)
-- Data exposure (secrets in logs, oversharing in APIs, PII leaks)
-- Cryptographic misuse
+- Auth/authz gaps, data exposure, cryptographic misuse
 
-Output: table with Severity (Critical/High/Medium/Low) | File:Line | Issue | Suggestion
+Output: table with Severity | File:Line | Issue | Suggestion
 Then brief summary.
 ```
 
-### Lens 2: Architecture & Performance
-
+**Lens 2: Architecture & Performance**
 ```
-You are an adversarial architecture and performance reviewer. Find structural and efficiency problems others miss.
+You are an adversarial architecture and performance reviewer.
 
 {diff + full file contents}
 
 Focus:
-- Incomplete refactors (changed in some places, not others)
-- Unnecessary abstractions, wrappers, indirection
-- Dead code, stale flags, unused params
-- Coupling that makes future changes harder
+- Incomplete refactors, dead code, unused params
+- Unnecessary abstractions, coupling
 - Could this be simpler?
-- Algorithmic complexity (O(n^2) hidden in loops, unnecessary iterations)
-- Memory (large allocations, retained references, unbounded growth)
-- I/O (blocking calls, missing batching, N+1 queries)
-- Concurrency (thread safety, deadlock potential, contention)
+- O(n^2) in loops, unnecessary allocations
+- Memory (retained refs, unbounded growth)
+- I/O (blocking calls, N+1 queries)
+- Concurrency (thread safety, deadlock, contention)
 
-Output: table with Severity (Critical/High/Medium/Low) | File:Line | Issue | Suggestion
+Output: table with Severity | File:Line | Issue | Suggestion
 Then brief summary.
 ```
 
-## Step 4: Consolidate & Present
+### File-Split Mode (>15 files)
 
-Merge findings from both reviewers:
+Split files into groups of ~8. Spawn parallel Task agents,
+one per group. Each gets full diff for its file group.
+Use the same 2-lens prompt combined into one reviewer per group.
 
-1. Deduplicate (same issue from multiple lenses → keep highest severity)
-2. Sort by severity
-3. **NEVER truncate.** Output EVERY finding. Long table is fine.
+### Perspective Mode (--team)
 
-```markdown
-# Adversarial Review Summary
+Spawn EXACTLY 3 Task agents in a SINGLE message. Each gets
+the FULL changeset (no file splitting). Each focuses on one
+perspective:
 
-| Severity | File:Line | Issue | Lens |
-|----------|-----------|-------|------|
-| Critical | ... | ... | ... |
-| High | ... | ... | ... |
+**Perspective 1: Architect** (model: opus)
+```
+You are an architecture reviewer. Focus on:
+- System boundaries, coupling, scalability
+- Design flaws, incomplete abstractions
+- Dependency direction, module cohesion
+- Could this be simpler or more maintainable?
 
-**Per-lens notes**: [one line each — what's good, what's concerning]
-
-**Verdict**: APPROVE / APPROVE WITH COMMENTS / REQUEST CHANGES
-**Blocking Issues**: N
+Tag each finding: [architect]
+Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
 ```
 
+**Perspective 2: Code Quality** (model: sonnet)
+```
+You are a code quality reviewer. Focus on:
+- Readability, naming, error handling
+- Edge cases, off-by-one, null safety
+- Consistency with surrounding code
+- Resource leaks, missing cleanup
+
+Tag each finding: [code-quality]
+Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
+```
+
+**Perspective 3: Devil's Advocate** (model: opus)
+```
+You are a devil's advocate reviewer. Focus on:
+- Failure modes others miss
+- Security: injection, auth gaps, data exposure
+- Bad assumptions, race conditions
+- What breaks under load, bad input, or partial failure?
+
+Tag each finding: [devil]
+Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
+```
+
+If `--against` provided, append to each: "Also check plan
+adherence: does implementation match plan? Missing/unplanned
+features? Deviations justified? Plan: {beads design field}"
+
+## Step 4: Consolidate & Present
+
+1. Deduplicate (same issue from multiple lenses → highest severity)
+2. Sort by severity. **NEVER truncate.** Output EVERY finding.
+3. --team only: tag `[architect]`/`[code-quality]`/`[devil]`,
+   detect consensus (2+ flag same issue), note disagreements
+
+Output: `# Adversarial Review Summary`
+- Sections by severity: Critical → High → Medium → Low
+- --team adds: Consensus (top), Disagreements (bottom)
+- Table: `| Severity | File:Line | Issue | Suggestion |`
+- Footer: Verdict (APPROVE/COMMENTS/CHANGES), Blocking count,
+  Review bead-id, "Next: `/prepare <bead-id>`"
+
 !`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Return findings to caller. Don't fix." || echo "Use AskUserQuestion: Fix all / Fix critical+high only / Fix critical only / Skip fixes"`
+
+## Step 4b: Store Findings in Beads
+
+Store consolidated findings in design field:
+`bd edit <review-id> --design "<full-consolidated-output>"`
 
 ## Step 5: Dispatch Fixes
 
@@ -125,9 +187,6 @@ Fix these review issues in the code.
 
 ## Issues to Fix
 {issues with file:line refs from review}
-
-## Context
-{what code is supposed to do}
 
 ## Your Job
 1. Fix each listed issue
@@ -141,20 +200,14 @@ Do NOT: fix unlisted things, refactor beyond needed, add features
 
 Re-run Step 3 after fixes. Loop until clean or user stops.
 
+## Step 6b: Close Review Bead
+
+After review is complete (user approves or skips fixes):
+`bd close <review-id>`
+
 ## Receiving Feedback
 
-When user provides feedback on findings:
-
 - **Verify** claims against code before agreeing/disagreeing
-- Respond with evidence: "Verified: [evidence]. Implementing." or "Checked [X]. Disagree because [reason]."
-- Never: "You're absolutely right!" / "Great catch!" / performative agreement without verification
-- Push back when: breaks existing functionality, reviewer lacks context, violates YAGNI, technically incorrect
-- No "done" claims without fresh evidence (test output, specific results)
-
-## Skill Composition
-
-| When | Invoke |
-|------|--------|
-| Complex bug found | `use Skill tool to invoke debugging` |
-| Before claiming done | Run verification — evidence before assertions |
-| User has feedback | `use Skill tool to invoke feedback` |
+- Respond with evidence, not performative agreement
+- Push back when: breaks functionality, violates YAGNI, incorrect
+- No "done" claims without fresh evidence
