@@ -2,7 +2,6 @@
   "alwaysThinkingEnabled": true,
   "enableAllProjectMcpServers": true,
   "enabledPlugins": {
-    "beads@beads-marketplace": true,
     "clangd-lsp@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": true,
@@ -32,10 +31,6 @@
         "hooks": [
           {
             "command": "uv run ~/.claude/hooks/post_bd_create_lint.py",
-            "type": "command"
-          },
-          {
-            "command": "uv run ~/.claude/hooks/post_bd_claim.py",
             "type": "command"
           }
         ],
@@ -84,14 +79,6 @@
       {
         "hooks": [
           {
-            "command": "uv run ~/.claude/hooks/non-interactive-continuation.py",
-            "type": "command"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
             "command": "attentive hook:stop",
             "type": "command"
           }
@@ -113,17 +100,8 @@
   },
   "includeCoAuthoredBy": false,
   "permissions": {
-    "allow": [
-      "Read(.*)",
-      "Glob(.*)",
-      "Grep(.*)",
-      "mcp__context7"
-    ],
-    "ask": [
-      "Bash(git push:*)",
-      "Bash(sudo *)"
-    ],
-    "defaultMode": "bypassPermissions"
+    "defaultMode": "bypassPermissions",
+    "deny": []
   },
   "promptSuggestionEnabled": true,
   "statusLine": {
@@ -132,3 +110,4 @@
     "type": "command"
   }
 }
+
