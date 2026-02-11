@@ -6,40 +6,17 @@ Every test must answer: **"What bug would this catch?"** No realistic bug scenar
 
 ## Banned Patterns
 
-**Tautology tests** — testing that mocks return what you told them to:
-```
-// BAD: proves nothing
-mock_db.get_user = () => { name: 'Alice' }
-expect(service.get_user()).toEqual({ name: 'Alice' })
-```
+- **Tautology** — mock returns what you told it to
+- **Getter/setter** — testing language features
+- **Implementation mirroring** — test duplicates production formula
+- **Happy-path-only** — no error/edge/boundary tests
+- **Coverage padding** — executes code without asserting outcomes
 
-**Getter/setter tests** — testing language features:
-```
-// BAD: tests that assignment works
-user.name = 'Bob'
-expect(user.name).toBe('Bob')
-```
-
-**Implementation mirroring** — test duplicates the production formula:
 ```
 // BAD: same formula in test and production
 expect(total(10, 5, 2)).toBe(10 * 5 + 2)
 // GOOD: known-answer test
 expect(total(10, 5, 2)).toBe(52)
-```
-
-**Happy-path-only** — only testing success when failure modes exist:
-```
-// BAD: what about empty input? invalid data? timeouts?
-expect(process([1, 2])).toEqual([2, 4])
-// Must also test: process([]), process(null), process(huge_array)
-```
-
-**Coverage padding** — tests that execute code without asserting outcomes:
-```
-// BAD: no assertion on correctness
-result = process_data([1, 2, 3])
-// just checking it doesn't crash is not a test
 ```
 
 ## What to Test Instead

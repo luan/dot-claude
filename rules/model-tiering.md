@@ -14,33 +14,23 @@
 |-------|---------------|--------------|
 | commit | haiku | - |
 | compress-prompt | sonnet | haiku |
-| feedback | sonnet | - |
+| fix | sonnet | - |
 | review | inherit (lenses) | sonnet (fixes) |
 | split-commit | inherit (analysis) | sonnet (commits) |
 
-## Agent Assignments
+Agent behavior inlined in skill prompts. Model specified per-dispatch.
 
-| Agent | Model |
-|-------|-------|
-| implementer | sonnet |
-| tester | sonnet |
-| reviewer | sonnet |
-| researcher | haiku |
-| architect | inherit |
-| devil | inherit |
+## Team Assignments (inline in skills)
 
-## Team Assignments
-
-| Team Skill | Role | Model |
-|------------|------|-------|
-| team-explore | researcher | haiku |
-| team-explore | architect | opus |
-| team-explore | devil | opus |
-| team-implement | workers | sonnet |
-| team-review | security | opus |
-| team-review | arch/perf | sonnet |
-| team-review | spec/test | opus |
-| team-debug | investigators | opus |
+| Skill | Role | Model |
+|-------|------|-------|
+| explore (escalation) | researcher | haiku |
+| explore (escalation) | architect | opus |
+| explore (escalation) | devil | opus |
+| implement (swarm) | workers | sonnet |
+| review (perspective) | architect | opus |
+| review (perspective) | code-quality | sonnet |
+| review (perspective) | devil | opus |
 
 ## Effort Level
 

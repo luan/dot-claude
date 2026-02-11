@@ -1,7 +1,8 @@
-# Coding Preferences
+# Code Style
 
-- Prefer simple, readable code over clever abstractions
-- Avoid over-engineering - only build what's needed now
-- Use meaningful variable and function names
-- Keep functions small and focused on one thing
-- Write code that's easy to delete, not easy to extend
+- Simple > clever. Readable > compact.
+- Easy to delete > easy to extend.
+- Small functions, one job each. Name explains the job.
+- Three similar lines > premature abstraction.
+- Many small files > few large files.
+- No dead code, no commented-out code, no "just in case" code.
