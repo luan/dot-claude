@@ -4,9 +4,9 @@
 
 | Tier | Model | When |
 |------|-------|------|
-| Deep | opus (inherit) | Architecture, devil's advocate, complex planning |
-| Standard | sonnet | Implementation, testing, review, feedback |
-| Fast | haiku | Research, commit messages, compression |
+| Deep | opus (inherit) | Architecture, research, devil's advocate, complex planning, complex implementation |
+| Standard | sonnet | Mechanical implementation (copy from spec), testing, feedback, mechanical fixes |
+| Fast | haiku | Commit messages, compression |
 
 ## Skill Assignments
 
@@ -15,6 +15,7 @@
 | commit | haiku | - |
 | compress-prompt | sonnet | haiku |
 | fix | sonnet | - |
+| prepare | inherit | opus (task creation) |
 | review | inherit (lenses) | sonnet (fixes) |
 | split-commit | inherit (analysis) | sonnet (commits) |
 
@@ -24,7 +25,7 @@ Agent behavior inlined in skill prompts. Model specified per-dispatch.
 
 | Skill | Role | Model |
 |-------|------|-------|
-| explore (escalation) | researcher | haiku |
+| explore (escalation) | researcher | sonnet |
 | explore (escalation) | architect | opus |
 | explore (escalation) | devil | opus |
 | implement (swarm) | workers | sonnet |

@@ -102,7 +102,7 @@ Next: /prepare <bead-id>
 Subagent returns "ESCALATE: team — [reason]":
 
 Spawn 2-3 Task agents in parallel:
-- **Researcher** (model: haiku): breadth-first investigation
+- **Researcher** (model: sonnet): breadth-first investigation
 - **Architect** (model: opus): design analysis, tradeoffs
 - **Devil's Advocate** (model: opus): challenges assumptions
 

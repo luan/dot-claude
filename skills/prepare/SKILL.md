@@ -43,7 +43,7 @@ Reads beads design field, creates implementable task hierarchy.
    bd lint <epic-id>
    ```
 
-5. **Create tasks per phase** — dispatch ONE subagent per phase via Task (subagent_type="general-purpose", model=sonnet):
+5. **Create tasks per phase** — dispatch ONE subagent per phase via Task (subagent_type="general-purpose", model=opus):
 
    ```
    Create implementation task for Phase N: <title>
