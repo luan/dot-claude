@@ -87,5 +87,6 @@
     "swift-lsp@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
-  "promptSuggestionEnabled": true
+  "promptSuggestionEnabled": true,
+  "skipDangerousModePermissionPrompt": true
 }
