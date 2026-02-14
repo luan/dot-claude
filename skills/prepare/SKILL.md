@@ -10,6 +10,7 @@ allowed-tools:
   - Glob
   - Grep
   - AskUserQuestion
+  - Skill
 ---
 
 # Prepare
@@ -18,6 +19,14 @@ Findings → epic + phased tasks with design briefs.
 Reads beads design field, creates implementable task hierarchy.
 
 **IMMEDIATELY dispatch to subagent.** Never prepare on main thread.
+
+## Mid-Skill Interviewing
+
+Use AskUserQuestion when facing genuine ambiguity during execution:
+- Unclear task boundaries (should X and Y be one task or two?) → ask splitting preference
+- Dependency ambiguity (can tasks run parallel or must they serialize?) → confirm with user
+
+Do NOT ask when the answer is obvious or covered by the task brief.
 
 ## Steps
 
@@ -117,6 +126,15 @@ Reads beads design field, creates implementable task hierarchy.
 
    Next: /implement <epic-id>
    ```
+
+9. **Continuation prompt:**
+   Use AskUserQuestion:
+   - "Continue to /implement <epic-id>" (Recommended) — description: "Execute implementation tasks"
+   - "Review tasks first" — description: "Inspect the created tasks before implementing"
+   - "Done for now" — description: "Leave bead in_progress for later /resume-work"
+
+   If user selects "Continue to /implement":
+   → Invoke Skill tool: skill="implement", args="<epic-id>"
 
 ## Error Handling
 - No design field content → "Run `/explore` first to generate a design", stop

@@ -10,11 +10,21 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
+  - Skill
+  - AskUserQuestion
 ---
 
 # Refine
 
 Simplify code + remove comment bloat in uncommitted changes.
+
+## Mid-Skill Interviewing
+
+Use AskUserQuestion when facing genuine ambiguity during execution:
+- Simplification might change semantics → confirm intent before applying
+- Uncertain if removing code/comment changes behavior → ask
+
+Do NOT ask when the answer is obvious or covered by the task brief.
 
 ## Step 1: Identify Files
 
@@ -54,6 +64,16 @@ Keep:
 ## Step 5: Summary
 
 Per-file: simplifications applied, comments removed, other cleanups.
+
+## Step 6: Continuation Prompt
+
+Use AskUserQuestion:
+- "Continue to /commit" (Recommended) — description: "Create conventional commit from changes"
+- "Review changes first" — description: "Inspect the polished diff before committing"
+- "Done for now" — description: "Leave bead in_progress for later /resume-work"
+
+If user selects "Continue to /commit":
+→ Invoke Skill tool: skill="commit", args=""
 
 ## Rules
 

@@ -21,6 +21,14 @@ Auto-escalates to team for complex multi-system work.
 
 Active epics: !`bd list --status in_progress --type epic -q 2>/dev/null`
 
+## Mid-Skill Interviewing
+
+Use AskUserQuestion when facing genuine ambiguity during execution:
+- Multiple viable approaches with unclear tradeoffs → ask which direction to pursue
+- Domain ambiguity (business logic interpretation) → clarify with user before deep-diving
+
+Do NOT ask when the answer is obvious or covered by the task brief.
+
 ## Instructions
 
 ### New Exploration
@@ -85,6 +93,8 @@ Key decisions:
 Next: /prepare <bead-id>
 ```
 
+7. → See Continuation Prompt below.
+
 ### Continuation (--continue flag)
 
 1. Resolve issue ID:
@@ -96,6 +106,21 @@ Next: /prepare <bead-id>
    Continue exploring: <new prompt>"
 4. Update: `bd update <id> --design "<combined>"`
 5. Output updated summary
+
+6. → See Continuation Prompt below.
+
+### Continuation Prompt
+
+Use AskUserQuestion:
+- "Continue to /prepare <bead-id>" (Recommended) — description: "Create epic + implementation tasks from findings"
+- "Re-explore with different focus" — description: "Investigate a different angle on the same topic"
+- "Done for now" — description: "Leave bead in_progress for later /resume-work"
+
+If user selects "Continue to /prepare":
+→ Invoke Skill tool: skill="prepare", args="<bead-id>"
+
+If user selects "Re-explore":
+→ Ask what to focus on, then re-run from step 4 with updated prompt
 
 ### Escalation
 

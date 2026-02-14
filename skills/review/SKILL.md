@@ -15,6 +15,14 @@ allowed-tools:
 
 Three modes: solo (default), file-split (auto for large diffs), perspective (--team). All consolidate findings into phase-structured output.
 
+## Mid-Skill Interviewing
+
+Use AskUserQuestion when facing genuine ambiguity during execution:
+- Severity judgment borderline (medium vs high) → ask user's priority
+- Pattern violation unclear (style preference vs correctness issue) → clarify importance
+
+Do NOT ask when the answer is obvious or covered by the task brief.
+
 ## Step 1: Scope + Mode
 
 Parse $ARGUMENTS:
@@ -108,6 +116,40 @@ Re-run Step 3 after fixes. Loop until clean or user stops.
 
 After review complete (user approves or skips fixes):
 `bd close <review-id>`
+
+## Step 7: Interactive Continuation
+
+Note: Fix selection happens in Step 4 above. This step handles pipeline continuation after review completes.
+
+Context-aware next-step prompt based on review outcome:
+
+**Clean review (no issues found):**
+
+Use AskUserQuestion:
+- "Continue to /refine" (Recommended) — description: "Polish code style, imports, comments"
+- "Skip to /commit" — description: "Code is ready, go straight to commit"
+- "Done for now" — description: "Leave bead in_progress for later /resume-work"
+
+**Issues found and fixed (fix loop completed):**
+
+Use AskUserQuestion:
+- "Re-review to verify fixes" (Recommended) — description: "Run review again to confirm fixes are clean (max 2 cycles, then default to /refine)"
+- "Continue to /refine" — description: "Fixes look good, move to polish"
+- "Done for now" — description: "Leave bead in_progress for later /resume-work"
+
+**Issues found but not all fixed:**
+
+Use AskUserQuestion:
+- "Continue fixing" (Recommended) — description: "Address remaining issues"
+- "Continue to /refine anyway" — description: "Move on despite remaining issues"
+- "Done for now" — description: "Leave bead in_progress for later /resume-work"
+
+Skill invocations based on user selection:
+- "Continue to /refine" → `Skill tool: skill="refine"`
+- "Skip to /commit" → `Skill tool: skill="commit"`
+- "Re-review to verify fixes" → `Skill tool: skill="review"`
+- "Continue fixing" → Resume fix loop at Step 5
+- "Done for now" → Exit skill
 
 ## Receiving Feedback
 

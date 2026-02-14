@@ -26,6 +26,14 @@ Detects solo vs swarm automatically. Handles both single-agent + multi-agent par
 
 **IMMEDIATELY dispatch.** Never implement on main thread.
 
+## Mid-Skill Interviewing
+
+Use AskUserQuestion when facing genuine ambiguity during execution:
+- Design decisions not covered in brief → surface to user before implementing
+- Test strategy unclear (integration vs unit, what to mock) → ask approach
+
+Do NOT ask when the answer is obvious or covered by the task brief.
+
 ## Step 1: Classify Work
 
 1. `bd show <id> --json` (from $ARGUMENTS)
@@ -68,6 +76,8 @@ NEVER stop mid-task. Finish before any PR ops.
 ## Side Quests
 Bug found? `bd create "Found: ..." --type bug --validate --deps discovered-from:<current-task-id>`
 ```
+
+7. → See Continuation Prompt below.
 
 ## Swarm Mode
 
@@ -148,6 +158,17 @@ while true:
 1. Shut down teammates (SendMessage shutdown_request)
 2. TeamDelete
 3. `bd sync` + report completion to caller
+4. → See Continuation Prompt below.
+
+## Continuation Prompt
+
+Use AskUserQuestion:
+- "Continue to /review" (Recommended) — description: "Run adversarial code review on changes"
+- "Review changes manually first" — description: "Inspect the diff before automated review"
+- "Done for now" — description: "Leave bead in_progress for later /resume-work"
+
+If user selects "Continue to /review":
+→ Invoke Skill tool: skill="review", args=""
 
 ## Key Rules
 
