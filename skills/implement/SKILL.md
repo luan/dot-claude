@@ -49,14 +49,17 @@ Implement: $ARGUMENTS
 4. `bd ready` or `bd children <epic-id>`
 5. Per task:
    - `bd show <task-id>` + `bd update <task-id> --claim`
+   - **Step 0 — Understand:** Read EVERY file listed in task. Note indent style (tabs vs spaces + width). Verify prepared code matches current file state. Adapt if diverged.
+   - **Indentation pre-flight:** Before first Edit to any file: read file, identify indent char + width. Use EXACTLY that in all edits to that file.
    - Copy test code EXACTLY → verify fails
    - Copy implementation EXACTLY → verify passes
-   - **Completion gate (MANDATORY):** No `bd close` without ALL:
-     1. Build clean (zero errors)
-     2. Tests pass (new + existing in scope)
-     3. Linter clean (clippy/eslint/swiftc as applicable)
-     Detect build cmd from justfile/Makefile/package.json/CLAUDE.md.
-     ANY failure → fix loop. Never skip.
+   - **Completion gate (before bd close):**
+     1. Detect build cmd: justfile/Makefile/package.json/CLAUDE.md
+     2. Run build. Exit != 0 → trace error to root cause, fix (max 3 attempts)
+     3. Run tests: new + existing touching modified files
+     4. Run linter if applicable
+     5. ALL green → `bd close`. ANY red after 3 attempts → report error output, do NOT close
+   - **Fix methodology:** Read error → trace to root cause → ONE targeted fix. No guess-and-patch. >10 tool calls on single fix → checkpoint findings + escalate to caller.
    - `bd close <task-id>`
 6. Done → `bd sync` + report completion to caller
 
@@ -103,12 +106,18 @@ while true:
   ## Work Loop
   1. `bd ready --parent <epic-id> --unassigned`
   2. `bd show <id>` → `bd update <id> --claim` (fails if claimed → step 1)
-  3. Respect file ownership — YOUR files while in_progress
-  4. Failing test FIRST → minimal implementation
-  4b. Build check. Fix until clean.
-  5. `bd merge-slot acquire --wait` → git add/commit → `bd merge-slot release`
-  6. `bd close <id>`
-  7. → step 1. Empty → report completion
+  3. **Understand first:** Read every file in task. Note indent (char + width). Verify prepared code matches current state. Adapt if diverged.
+  4. Respect file ownership — YOUR files while in_progress
+  5. Before first Edit per file: read it, match indent exactly.
+  6. Failing test FIRST → minimal implementation
+  7. **Build gate (max 3 attempts):**
+     a. Build cmd from justfile/Makefile/package.json/CLAUDE.md
+     b. Build + tests + linter. All green → continue. Red → root-cause, ONE fix.
+     c. 3 fails → report error, do NOT close.
+     d. >10 tool calls on one fix → checkpoint + escalate.
+  8. `bd merge-slot acquire --wait` → git add/commit → `bd merge-slot release`
+  9. `bd close <id>`
+  10. → step 1. Empty → report completion
 
   ## File Boundaries (HARD RULE)
   NEVER edit files outside your task ownership.
