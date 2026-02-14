@@ -37,8 +37,8 @@ Beads ready: !`bd ready -q 2>/dev/null`
 
 3. **Check for stale branches:**
    - List all local luan/* branches: `git branch --list 'luan/*' --format='%(refname:short)'`
-   - Get in_progress beads: `bd list --status in_progress`
-   - Cross-reference: branches without matching in_progress beads are potentially stale
+   - Get in_progress beads with branch notes: `bd list --status in_progress --json` and check notes for `Branch:` field (written by /start)
+   - Cross-reference: branches not referenced in any in_progress bead's notes are potentially stale
    - Never auto-delete — only surface for user awareness
 
 4. **Summarize:**

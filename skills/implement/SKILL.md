@@ -178,7 +178,8 @@ Use AskUserQuestion:
 - "Done for now" — description: "Leave bead in_progress for later /resume-work"
 
 If user selects "Continue to /split-commit":
-→ Invoke Skill tool: skill="split-commit", args=""
+→ Determine base branch: `git log --oneline --first-parent | head -20` to find the merge base, or use `main` as default
+→ Invoke Skill tool: skill="split-commit", args="<base-branch>"
 If user selects "Continue to /review":
 → Invoke Skill tool: skill="review", args=""
 

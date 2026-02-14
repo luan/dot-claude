@@ -56,6 +56,7 @@ Via `Skill` tool. Not on main.
 | `fix` | Convert feedback → beads issues |
 | `prepare` | Plan → epic + phased tasks |
 | `commit` | Conventional commit + bd sync |
+| `split-commit` | Repackage WIP into vertical commits |
 | `refine` | Polish after review passes |
 | `debugging` | Systematic bug diagnosis |
 
