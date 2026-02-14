@@ -98,6 +98,7 @@ Reads beads design field, creates implementable task hierarchy.
    - Exact commands with expected output
    - TDD: red → green → refactor baked in
    - Each task = one logical unit (30-80 lines test + impl)
+   - Include ## Assumptions section listing what must be true about referenced files (structure, imports, exports) for implementation to work. Workers verify these before coding.
    ```
 
    Spawn phases sequentially (each needs epic-id).
