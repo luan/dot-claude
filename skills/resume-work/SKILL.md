@@ -35,7 +35,13 @@ Beads ready: !`bd ready -q 2>/dev/null`
    - `gh pr checks`
    - PR review comments: `gh api repos/{owner}/{repo}/pulls/{num}/comments`
 
-3. **Summarize:**
+3. **Check for stale branches:**
+   - List all local luan/* branches: `git branch --list 'luan/*' --format='%(refname:short)'`
+   - Get in_progress beads: `bd list --status in_progress`
+   - Cross-reference: branches without matching in_progress beads are potentially stale
+   - Never auto-delete — only surface for user awareness
+
+4. **Summarize:**
    ```
    Branch: <name>
    Commits: last 3 messages
@@ -44,9 +50,11 @@ Beads ready: !`bd ready -q 2>/dev/null`
    CI: Passing | Failing (list failures)
    Comments: N unresolved (summarize)
    Beads: N in progress, M ready
+   Stale branches: <list> (no matching in_progress beads)
    ```
+   Only show "Stale branches" line if stale branches exist.
 
-4. **Suggest next action (priority order):**
+5. **Suggest next action (priority order):**
    1. CI failing → "Fix checks"
    2. Changes requested → "Address N review comments"
    3. Unresolved comments → "Respond to feedback"

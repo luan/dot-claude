@@ -53,9 +53,8 @@ Implement: $ARGUMENTS
 
 ## Job
 1. **Pre-flight:** `bd children <epic-id>` — no children or tasks lack acceptance criteria or file paths → STOP, return "prepare phase incomplete — no implementable tasks". Do NOT create tasks.
-2. `gt create luan/<short-description>`
-3. `bd ready` or `bd children <epic-id>`
-4. Per task:
+2. `bd ready` or `bd children <epic-id>`
+3. Per task:
    - `bd show <task-id>` + `bd update <task-id> --claim`
    - **Step 0 — Understand:** Read EVERY file listed in task. Note indent style (tabs vs spaces + width). Verify assumptions from task description. Investigate current structure.
    - **Indentation pre-flight:** Before first Edit to any file: read file, identify indent char + width. Use EXACTLY that in all edits to that file.
@@ -69,7 +68,7 @@ Implement: $ARGUMENTS
    - **Fix methodology:** Read error → trace to root cause → ONE targeted fix. No guess-and-patch. >10 tool calls on single fix → checkpoint findings + escalate to caller.
    - **Never run git commands.** Orchestrator handles commits. You: edits + build gate only.
    - `bd close <task-id>`
-5. Done → `bd sync` + report completion to caller
+4. Done → `bd sync` + report completion to caller
 
 ## Task Atomicity
 NEVER stop mid-task. Finish before any PR ops.
@@ -78,8 +77,8 @@ NEVER stop mid-task. Finish before any PR ops.
 Bug found? `bd create "Found: ..." --type bug --validate --deps discovered-from:<current-task-id>`
 ```
 
-6. **Orchestrator** commits all changes: `git add . && git diff --staged --quiet || git commit -m 'feat: implement <epic-title> (<id>)'`
-7. → See Continuation Prompt below.
+5. **Orchestrator** creates single WIP commit: `git add . && git diff --staged --quiet || git commit -m 'wip: implement <epic-title> (<id>)'`
+6. → See Continuation Prompt below.
 
 ## Swarm Mode
 
@@ -90,8 +89,7 @@ Orchestrate parallel workers via waves.
 1. `bd show <epic-id>` + `bd children <epic-id>`
 2. `bd swarm validate <epic-id> --verbose`
 3. **File ownership:** Two ready tasks share files → `bd dep add` to serialize. Re-validate.
-4. `gt create luan/<short-description>`
-5. Create team:
+4. Create team:
    ```
    TeamCreate:
      team_name: "impl-<short-desc>"
@@ -146,11 +144,10 @@ while true:
   **Never run git commands.** Orchestrator handles commits.
 
   ## Context
-  Branch: luan/<description> (already created).
+  Branch: !`git branch --show-current`
   """
 
   Wait for all workers to complete.
-  **Orchestrator** commits wave changes: `git add . && git diff --staged --quiet || git commit -m 'feat: implement wave <n> (<brief-summary>)'`
   If any worker reported escalation or >2 tasks failed build gate → PAUSE. Report status to user before continuing.
   After 3 waves, report progress to user regardless. Do not run unbounded wave loops.
   Check `bd swarm status <epic-id>` for stuck tasks.
@@ -167,17 +164,21 @@ while true:
 ### Teardown
 
 1. Shut down teammates (SendMessage shutdown_request)
-2. TeamDelete
-3. `bd sync` + report completion to caller
-4. → See Continuation Prompt below.
+2. **Orchestrator** creates single WIP commit: `git add . && git diff --staged --quiet || git commit -m 'wip: implement <epic-title> (<id>)'`
+3. TeamDelete
+4. `bd sync` + report completion to caller
+5. → See Continuation Prompt below.
 
 ## Continuation Prompt
 
 Use AskUserQuestion:
-- "Continue to /review" (Recommended) — description: "Run adversarial code review on changes"
+- "Continue to /split-commit" (Recommended) — description: "Split WIP commit into clean, tested vertical commits, then /review"
+- "Continue to /review" — description: "Skip split-commit and review WIP commit directly"
 - "Review changes manually first" — description: "Inspect the diff before automated review"
 - "Done for now" — description: "Leave bead in_progress for later /resume-work"
 
+If user selects "Continue to /split-commit":
+→ Invoke Skill tool: skill="split-commit", args=""
 If user selects "Continue to /review":
 → Invoke Skill tool: skill="review", args=""
 
@@ -187,6 +188,7 @@ If user selects "Continue to /review":
 - Workers own implementation — briefs give direction, not code
 - Task atomicity — never stop mid-task
 - Pre-flight required — bail if no implementable tasks
-- Swarm: per-task model selection (opus default), plan approval, orchestrator-only commits (workers never git)
+- No branch creation — implement assumes branch already exists (use /start)
+- Single WIP commit after all work — orchestrator only, workers never git. Use /split-commit to repackage before review.
 - Swarm: spawn ALL wave workers in single message
 - Fix cycles capped at 2 → escalate to user

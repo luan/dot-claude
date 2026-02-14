@@ -59,7 +59,7 @@ Via `Skill` tool. Not on main.
 | `refine` | Polish after review passes |
 | `debugging` | Systematic bug diagnosis |
 
-**Flow:** explore → prepare → implement → review → refine → commit
+**Flow:** explore → prepare → implement → split-commit → review → refine → commit
 **Never auto-commit/auto-PR.** User explicitly requests.
 
 **Note:** Review includes internal fix loop until clean.
