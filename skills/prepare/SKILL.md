@@ -14,7 +14,7 @@ allowed-tools:
 
 # Prepare
 
-Findings → epic + phased tasks with full implementation code.
+Findings → epic + phased tasks with design briefs.
 Reads beads design field, creates implementable task hierarchy.
 
 **IMMEDIATELY dispatch to subagent.** Never prepare on main thread.
@@ -43,49 +43,48 @@ Reads beads design field, creates implementable task hierarchy.
    bd lint <epic-id>
    ```
 
-5. **Create tasks per phase** — dispatch ONE subagent per phase via Task (subagent_type="general-purpose", model=opus):
+5. **Create all tasks** — dispatch ONE sonnet subagent (subagent_type="general-purpose", model=sonnet) to create ALL tasks:
 
    ```
-   Create implementation task for Phase N: <title>
+   Create implementation tasks for all phases
 
-   ## Phase Context (from design field)
-   <phase description, files, approach>
+   ## All Phases (from design field)
+   <all phase descriptions, files, approaches>
 
    ## Epic
    <epic-id>
 
    ## Job
-   1. Read referenced files to understand current code
+   For each phase:
+   1. Read referenced files to understand current structure
    2. Design exact changes needed
-   3. Create beads task with FULL implementation code:
+   3. Create beads task with design brief:
 
    bd create "<task-title>" --type task \
      --parent <epic-id> --validate --description "$(cat <<'EOF'
    ## Context
-   [link to epic]
+   Epic: <epic-id>
+
+   ## Goal
+   [what needs to be implemented + why]
 
    ## Files
-   - Create/Modify: exact/path/to/file
-   - Test: exact/path/to/test
+   - Read: exact/path/to/file (why: understand current X)
+   - Modify: exact/path/to/file (why: add Y)
+   - Create: exact/path/to/test (why: verify Z)
+
+   ## Approach
+   [how to implement: patterns to use, key decisions, implementation strategy]
 
    ## Acceptance Criteria
-   - [ ] Test exists + fails without impl
-   - [ ] Implementation passes test
+   - [ ] [testable criterion 1]
+   - [ ] [testable criterion 2]
    - [ ] No regressions
 
-   ## Implementation
-
-   ### Step 1: Write failing test
-   [complete test code]
-
-   ### Step 2: Run test, verify fails
-   [exact command + expected output]
-
-   ### Step 3: Minimal implementation
-   [complete implementation code]
-
-   ### Step 4: Run test, verify passes
-   [exact command + expected output]
+   ## Assumptions
+   - [what must be true about file structure]
+   - [what must be true about imports/exports]
+   - [what must be true about dependencies]
    EOF
    )"
 
@@ -93,15 +92,14 @@ Reads beads design field, creates implementable task hierarchy.
    5. Return task ID
 
    ## Quality Requirements
-   - Complete copy-pasteable test + implementation code
-   - Exact file paths, no ambiguity
-   - Exact commands with expected output
-   - TDD: red → green → refactor baked in
-   - Each task = one logical unit (30-80 lines test + impl)
-   - Include ## Assumptions section listing what must be true about referenced files (structure, imports, exports) for implementation to work. Workers verify these before coding.
+   - Exact file paths with Read/Modify/Create labels
+   - Clear implementation approach and key decisions
+   - Testable acceptance criteria
+   - Explicit assumptions about file structure
+   - Each task = one logical unit (one feature/fix/change)
    ```
 
-   Spawn phases sequentially (each needs epic-id).
+   Process all phases in one dispatch (subagent has epic-id for all).
 
 6. **Detect dependencies:**
    - Default: sequential (each phase blocks next)
