@@ -53,9 +53,9 @@ Implement: $ARGUMENTS
 
 ## Job
 1. **Pre-flight:** `bd children <epic-id>` — no children or tasks lack acceptance criteria or file paths → STOP, return "prepare phase incomplete — no implementable tasks". Do NOT create tasks.
-3. `gt create luan/<short-description>`
-4. `bd ready` or `bd children <epic-id>`
-5. Per task:
+2. `gt create luan/<short-description>`
+3. `bd ready` or `bd children <epic-id>`
+4. Per task:
    - `bd show <task-id>` + `bd update <task-id> --claim`
    - **Step 0 — Understand:** Read EVERY file listed in task. Note indent style (tabs vs spaces + width). Verify assumptions from task description. Investigate current structure.
    - **Indentation pre-flight:** Before first Edit to any file: read file, identify indent char + width. Use EXACTLY that in all edits to that file.
@@ -67,8 +67,9 @@ Implement: $ARGUMENTS
      4. Run linter if applicable
      5. ALL green → `bd close`. ANY red after 3 attempts → report error output, do NOT close
    - **Fix methodology:** Read error → trace to root cause → ONE targeted fix. No guess-and-patch. >10 tool calls on single fix → checkpoint findings + escalate to caller.
+   - **Never run git commands.** Orchestrator handles commits. You: edits + build gate only.
    - `bd close <task-id>`
-6. Done → `bd sync` + report completion to caller
+5. Done → `bd sync` + report completion to caller
 
 ## Task Atomicity
 NEVER stop mid-task. Finish before any PR ops.
@@ -77,6 +78,7 @@ NEVER stop mid-task. Finish before any PR ops.
 Bug found? `bd create "Found: ..." --type bug --validate --deps discovered-from:<current-task-id>`
 ```
 
+6. **Orchestrator** commits all changes: `git add . && git diff --staged --quiet || git commit -m 'feat: implement <epic-title> (<id>)'`
 7. → See Continuation Prompt below.
 
 ## Swarm Mode
@@ -87,10 +89,9 @@ Orchestrate parallel workers via waves.
 
 1. `bd show <epic-id>` + `bd children <epic-id>`
 2. `bd swarm validate <epic-id> --verbose`
-3. `bd merge-slot create`
-4. **File ownership:** Two ready tasks share files → `bd dep add` to serialize. Re-validate.
-5. `gt create luan/<short-description>`
-6. Create team:
+3. **File ownership:** Two ready tasks share files → `bd dep add` to serialize. Re-validate.
+4. `gt create luan/<short-description>`
+5. Create team:
    ```
    TeamCreate:
      team_name: "impl-<short-desc>"
@@ -130,9 +131,9 @@ while true:
      b. Build + tests + linter. All green → continue. Red → root-cause, ONE fix.
      c. 3 fails → report error, do NOT close.
      d. >10 tool calls on one fix → checkpoint + escalate.
-  8. `bd merge-slot acquire --wait` → git add/commit → `bd merge-slot release`
-  9. `bd close <id>`
-  10. → step 1. Empty → report completion
+     e. Failure traces to another worker's file → message team lead, wait. Do NOT close or dismiss as pre-existing.
+  8. `bd close <id>`
+  9. → step 1. Empty → report completion
 
   ## File Boundaries (HARD RULE)
   NEVER edit files outside your task ownership.
@@ -141,11 +142,15 @@ while true:
   2. Owner idle → MESSAGE team lead
   3. Never edit directly — even "just one line"
 
+  ## Git Operations
+  **Never run git commands.** Orchestrator handles commits.
+
   ## Context
   Branch: luan/<description> (already created).
   """
 
   Wait for all workers to complete.
+  **Orchestrator** commits wave changes: `git add . && git diff --staged --quiet || git commit -m 'feat: implement wave <n> (<brief-summary>)'`
   If any worker reported escalation or >2 tasks failed build gate → PAUSE. Report status to user before continuing.
   After 3 waves, report progress to user regardless. Do not run unbounded wave loops.
   Check `bd swarm status <epic-id>` for stuck tasks.
@@ -182,6 +187,6 @@ If user selects "Continue to /review":
 - Workers own implementation — briefs give direction, not code
 - Task atomicity — never stop mid-task
 - Pre-flight required — bail if no implementable tasks
-- Swarm: per-task model selection (opus default), plan approval, merge serialization
+- Swarm: per-task model selection (opus default), plan approval, orchestrator-only commits (workers never git)
 - Swarm: spawn ALL wave workers in single message
 - Fix cycles capped at 2 → escalate to user

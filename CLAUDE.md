@@ -70,8 +70,9 @@ Via `Skill` tool. Not on main.
 ## Subagent Rules
 - **Self-healing:** Iterate until build passes. No partial work.
 - **Claim atomically:** `bd update <id> --claim` (not status + assignee)
+- **Git operations:** Workers never run git commands. Orchestrator commits.
 - **File ownership:** Never edit files outside task scope. Need change in another worker's file → message owner.
-- **Build failures:** Yours → fix. Another worker's → report, continue. Pre-existing → report once, continue.
+- **Build failures:** Yours → fix. Another worker's → message lead, wait. Pre-existing → report once, continue.
 - **Completion:** No `bd close` without build + tests + linter passing.
 - **Escalation:** 2 failed attempts → message lead with details.
 

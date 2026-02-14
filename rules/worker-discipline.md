@@ -9,9 +9,17 @@ Before first Edit to any file: read file, identify indent style (tabs vs spaces 
 3. Run tests: new + existing touching modified files
 4. Run linter if applicable
 5. ALL green → close task. Red after 3 → escalate with error output
+6. Foreign failure (error traces to another worker's files, not yours)
+   → DO NOT close task, DO NOT label as pre-existing. Message team
+   lead with failure details and wait for coordination.
 
 ## Fix Methodology
 When build/test fails: read the error, trace to root cause, make ONE targeted fix per attempt. Do NOT guess-and-patch.
+
+## Git Operations
+Workers NEVER run git commands (add, commit, push, checkout, etc).
+All git operations are orchestrator-only. Workers: file edits + build
+gate. That's it.
 
 ## Scope Limits
 - Max 3 fix iterations per failure (total, not per approach)

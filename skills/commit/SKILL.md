@@ -29,6 +29,8 @@ Staged diff: !`git diff --cached --stat 2>/dev/null`
 Recent commits: !`git log --oneline -5 2>/dev/null`
 Beads in progress: !`bd list --status in_progress -q 2>/dev/null`
 
+**Context:** Main thread / foreground only. Workers never commit.
+
 ## Steps
 
 1. **Analyze**: review context above. If nothing staged, read full `git diff`. If staged, read `git diff --cached` for details.

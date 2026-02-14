@@ -6,7 +6,7 @@ When ending work session, ALL steps mandatory:
 2. Run quality gates (tests, linters, build) if code changed
 3. Update beads status — close finished, update in_progress
 4. Sync beads: `bd sync`
-5. Commit code changes if uncommitted
+5. Commit code changes if uncommitted (orchestrator only — workers never commit)
 
 ## Hard Rules
 
