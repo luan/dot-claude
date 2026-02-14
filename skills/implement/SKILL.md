@@ -131,6 +131,8 @@ while true:
   """
 
   Wait for all workers to complete.
+  If any worker reported escalation or >2 tasks failed build gate → PAUSE. Report status to user before continuing.
+  After 3 waves, report progress to user regardless. Do not run unbounded wave loops.
   Check `bd swarm status <epic-id>` for stuck tasks.
   Stuck → skip, proceed if non-stuck done.
 ```
