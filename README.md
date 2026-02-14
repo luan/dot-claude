@@ -1,92 +1,108 @@
 # ~/.claude
 
-My Claude Code configuration. Skills, rules, and workflows for AI-assisted development.
+Claude Code configuration. Skills, rules, hooks, and workflows
+for AI-assisted development with beads issue tracking.
 
 ## Quick Start
 
 ```bash
-/explore "add user authentication"   # Research + propose approaches
-/implement                           # Execute the plan
+/explore "add user authentication"   # Research + design
+/prepare <bead-id>                   # Create epic + task briefs
+/implement <epic-id>                 # Execute (solo or swarm)
+/review                              # Adversarial code review
+/refine                              # Polish (after clean review)
 /commit                              # Conventional commit
 ```
 
-## Directory Structure
+## Pipeline
 
 ```
-~/.claude/
-├── .agents/              # Workflow state tracking
-│   ├── sessions/         # Cross-project session context
-│   └── archive/          # Historical sessions
-├── skills/               # Custom slash commands
-├── rules/                # Language-specific guidelines
-├── hooks/                # Automation scripts
-├── plugins/              # Plugin configs
-├── CLAUDE.md             # Core development guidelines
-└── settings.json         # Permissions & environment
+explore → prepare → implement → review → refine → commit
 ```
 
-## Skills
+- **explore**: Research codebase, produce phased design in bead
+- **prepare**: One subagent creates epic + task briefs (no code)
+- **implement**: Workers own TDD from briefs (auto solo/swarm)
+- **review**: Adversarial review with built-in fix loop
+- **refine**: Cosmetic polish on reviewed code
+- **commit**: Conventional commit + beads sync
 
-### Workflow
+## All Skills
+
+### Core Pipeline
 
 | Command | What it does |
 |---------|--------------|
-| `/explore <prompt>` | Deep codebase exploration, writes plan with 2-3 approaches |
-| `/implement [plan]` | Execute plan, track progress in `.agents/active-{branch}.md` |
-| `/next-phase` | Continue multi-phase implementations |
-| `/save-state` | Save session context for later |
-| `/resume-state` | Load session context |
+| `/explore <prompt>` | Deep research, stores design in bead |
+| `/prepare <bead-id>` | Design → epic + task briefs |
+| `/implement <epic-id>` | Execute tasks (auto solo/swarm) |
+| `/review [--team]` | Adversarial review (3-perspective with --team) |
+| `/refine` | Cosmetic polish after review |
+| `/commit` | Conventional commit + beads sync |
+
+### Investigation & Planning
+
+| Command | What it does |
+|---------|--------------|
+| `/debugging` | Root-cause-first bug diagnosis |
+| `/fix <feedback>` | Convert feedback → one bead with phases |
+| `/resume-work` | Context recovery after a break |
+| `/reference-sync` | Check upstream for new patterns |
 
 ### Git & PRs
 
 | Command | What it does |
 |---------|--------------|
-| `/commit` | Conventional commits that explain WHY |
-| `/pr-fix-comments` | Fetch + fix unresolved PR comments |
-| `/pr-fix-gha` | Fix failed GitHub Actions |
+| `/start <desc>` | Create branch + link bead |
+| `/graphite` | Graphite stack operations |
+| `/split-commit` | Repackage branch into clean commits |
+| `/git-surgeon` | Hunk-level staging/unstaging |
+| `/pr-description` | Update PR title and body |
+| `/pr-fix-comments` | Address PR review feedback |
+| `/pr-fix-gha` | Fix failing CI/GitHub Actions |
 | `/pr-reviewers` | Smart reviewer recommendations |
-| `/pr-superfresh` | Full PR refresh: sync → fix → submit |
 
-### Graphite Stacks
+### Utilities
 
 | Command | What it does |
 |---------|--------------|
-| `/stack-create` | New branch in stack |
-| `/stack-nav` | Navigate up/down/top/bottom |
-| `/stack-sync` | Sync with trunk |
-| `/stack-submit` | Push + create/update PRs |
-| `/stack-modify` | Amend, squash, absorb |
-| `/stack-ops` | Fold, move, split, reorder |
+| `/compress-prompt` | Compress text for AI consumption |
+| `/writing-skills` | Create or verify skills |
 
-## Workflow Philosophy
+## Directory Structure
 
 ```
-/explore → understand before building
-/implement → execute with progress tracking
-/commit → explain why, not what
+~/.claude/
+├── skills/               # Slash command skills (SKILL.md each)
+├── rules/                # Global rules (inherited by subagents)
+├── hooks/                # Pre/post tool automation
+├── references/           # Upstream patterns (git submodule)
+├── .beads/               # Issue tracking database
+├── CLAUDE.md             # Core instructions
+├── settings.json         # Permissions & environment
+└── README.md
 ```
 
-State persists across sessions. Pick up where you left off.
+## Beads (Issue Tracking)
 
-## Per-Project Setup
+All plans, notes, and state live in beads — no filesystem docs.
 
-Projects can have their own `.agents/` folder:
-
+```bash
+bd create "title" --type task    # Create issue
+bd list                          # List open issues
+bd show <id>                     # Show details
+bd update <id> --design "..."    # Store design findings
+bd swarm validate <epic-id>      # Validate parallel execution
+bd sync                          # Sync after commits
 ```
-your-project/
-└── .agents/
-    ├── plans/           # Exploration outputs
-    ├── active-*.md      # Implementation progress
-    └── archive/         # Completed work
-```
 
-## Rules
+## Model Tiering
 
-Language-specific guidelines in `rules/`:
-
-- `rust.md` - Zero warnings, clippy, latest edition
-- `cargo.md` - Dependency preferences
-- `style.md` - Code style preferences
+| Tier | Model | When |
+|------|-------|------|
+| Deep | opus | Default — anything with ambiguity |
+| Standard | sonnet | Purely mechanical, zero ambiguity |
+| Fast | haiku | Commit messages, compression |
 
 ## License
 
