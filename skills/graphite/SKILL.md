@@ -1,6 +1,6 @@
 ---
 name: graphite
-description: Graphite stacked PRs - create, sync, modify, submit. Auto-triggers on gt commands, "stack", "branch", "PR", "push", "submit".
+description: Manage Graphite stacked PRs — create, sync, modify, submit branches and PRs. Triggers: gt commands, "stack", "branch", "PR", "push", "submit".
 user-invocable: true
 allowed-tools:
   - "Bash(gt *)"

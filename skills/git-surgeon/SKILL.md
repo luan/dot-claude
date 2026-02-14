@@ -1,6 +1,6 @@
 ---
 name: git-surgeon
-description: Non-interactive hunk-level git staging, unstaging, discarding, undoing, fixup, and commit splitting. Use when selectively staging, unstaging, discarding, reverting, or splitting individual diff hunks by ID instead of interactively. Also use when asked to commit changes separately, make separate commits, or split changes into multiple commits.
+description: Non-interactive hunk-level git operations — stage, unstage, discard, undo, fixup, and split by hunk ID. Triggers: "stage this hunk", "split commit", "partial stage", "discard hunk", "selective staging", "commit separately", "separate commits".
 ---
 
 # git-surgeon

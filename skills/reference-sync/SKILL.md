@@ -1,6 +1,6 @@
 ---
 name: reference-sync
-description: "Sync references/ submodule and analyze changes since last update"
+description: "Sync references/ submodule and analyze upstream changes since last update. Triggers: \"reference sync\", \"check references\", \"update references\", \"what changed upstream\"."
 disable-model-invocation: true
 user-invocable: true
 ---
