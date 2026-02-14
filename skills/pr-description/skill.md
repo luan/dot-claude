@@ -26,9 +26,17 @@ Update an existing PR's title and description from branch context.
 ```bash
 gh pr view --json number,title,body,headRefName -q '{number,title,headRefName}'
 gt log --short
+git status -sb
 ```
 
 If no PR found, tell user and stop.
+
+**Handle edge cases:**
+- **Uncommitted changes**: "You have uncommitted changes. Describe PR from just committed changes, or include uncommitted too?"
+- **Untracked files**: "Untracked files exist (list them). Include in description or ignore?"
+- **No commits ahead**: "Branch has no commits ahead. Describe uncommitted changes?"
+
+If state is clear (commits on branch, nothing dirty), proceed directly.
 
 ## Step 2: Get Diff
 
@@ -40,7 +48,14 @@ git diff <stack-parent>...HEAD
 git log <stack-parent>..HEAD --oneline
 ```
 
-If diff is large, use `--stat` first and read key files.
+The `...` syntax finds the common ancestor — prevents showing unrelated changes if parent moved.
+
+If including uncommitted changes (per Step 1):
+```bash
+git diff HEAD  # uncommitted on top
+```
+
+If diff is large, use `--stat` first and read key files. If context is unclear from diff alone, check commit messages and read relevant source.
 
 ## Step 3: Generate Title
 
@@ -63,9 +78,18 @@ Format:
 
 No bullet lists, no headers, no changelog. Just prose.
 
-## Step 5: Preview and Update
+## Step 5: Preview and Observations
 
-Show suggested title + body. Then AskUserQuestion: "Update PR?"
+Show suggested title + body, then add observations if relevant:
+- Is the WHY unclear and needs more context from user?
+- Would this be easier to review as multiple PRs?
+- Are there unrelated changes mixed in?
+
+Don't force observations — skip if everything looks clean.
+
+## Step 6: Update
+
+AskUserQuestion: "Update PR with this title and description?"
 
 If confirmed:
 ```bash
