@@ -105,7 +105,13 @@ while true:
   if empty → break
 
   Spawn ALL ready tasks in SINGLE message (parallel).
-  Workers = min(ready_count, 4). Model: sonnet.
+  Workers = min(ready_count, 4).
+
+  Per-task model selection:
+    For each ready task, `bd show <id>` and evaluate against
+    mechanical criteria in rules/model-tiering.md.
+    Insufficient brief to evaluate → opus.
+    opus is the DEFAULT. sonnet is rare.
 
   Each worker (Task, subagent_type="general-purpose", mode="plan", team_name="<team>", name="worker-<n>"):
 
@@ -176,6 +182,6 @@ If user selects "Continue to /review":
 - Workers own implementation — briefs give direction, not code
 - Task atomicity — never stop mid-task
 - Pre-flight required — bail if no implementable tasks
-- Swarm: sonnet workers, plan approval, merge serialization
+- Swarm: per-task model selection (opus default), plan approval, merge serialization
 - Swarm: spawn ALL wave workers in single message
 - Fix cycles capped at 2 → escalate to user

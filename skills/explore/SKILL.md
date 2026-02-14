@@ -75,9 +75,13 @@ Each phase must include file paths and approach hints —
 downstream task creation depends on this detail.
 ```
 
-5. Store findings: `bd update <id> --design "<full-findings>"`
+5. **Validate findings** (subagent-trust.md): spot-check ALL
+   architectural claims + 50% of file/behavioral claims before storing.
+   If echo suspected or key claims fail → send targeted follow-up.
 
-6. Output summary:
+6. Store findings: `bd update <id> --design "<full-findings>"`
+
+7. Output summary:
 ```
 Explore: <bead-id> — <topic>
 Problem: <1 sentence>
@@ -93,7 +97,7 @@ Key decisions:
 Next: /prepare <bead-id>
 ```
 
-7. → See Continuation Prompt below.
+8. → See Continuation Prompt below.
 
 ### Continuation (--continue flag)
 
@@ -127,7 +131,7 @@ If user selects "Re-explore":
 Subagent returns "ESCALATE: team — [reason]":
 
 Spawn 2-3 Task agents in parallel:
-- **Researcher** (model: sonnet): breadth-first investigation
+- **Researcher** (model: opus): breadth-first investigation
 - **Architect** (model: opus): design analysis, tradeoffs
 - **Devil's Advocate** (model: opus): challenges assumptions
 

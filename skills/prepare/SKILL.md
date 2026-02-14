@@ -110,15 +110,21 @@ Do NOT ask when the answer is obvious or covered by the task brief.
 
    Process all phases in one dispatch (subagent has epic-id for all).
 
-6. **Detect dependencies:**
+6. **Validate task quality** (subagent-trust.md): spot-check that
+   created tasks have real file paths (Read 1-2 referenced files),
+   acceptance criteria are testable, and approach is specific enough
+   for a worker to implement without guessing. Vague tasks → send
+   back to subagent with specific feedback.
+
+7. **Detect dependencies:**
    - Default: sequential (each phase blocks next)
    - Override if phase text says "parallel with Phase N" or "independent of"
    - `bd dep add <phase-N> <phase-N-1>` for sequential
 
-7. **Validate swarm:**
+8. **Validate swarm:**
    `bd swarm validate <epic-id> --verbose`
 
-8. **Report:**
+9. **Report:**
    ```
    Epic: <epic-id> — <title>
    Phases: N (M parallel, K sequential)
@@ -127,7 +133,7 @@ Do NOT ask when the answer is obvious or covered by the task brief.
    Next: /implement <epic-id>
    ```
 
-9. **Continuation prompt:**
+10. **Continuation prompt:**
    Use AskUserQuestion:
    - "Continue to /implement <epic-id>" (Recommended) — description: "Execute implementation tasks"
    - "Review tasks first" — description: "Inspect the created tasks before implementing"

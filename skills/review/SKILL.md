@@ -87,6 +87,9 @@ If `--against`: append "Check plan adherence: implementation match plan? Missing
 
 ## Step 4: Consolidate + Present
 
+0. **Validate reviewer output** (subagent-trust.md): spot-check 1-2
+   specific file:line claims from each reviewer before consolidating.
+   If a claimed issue doesn't exist at that location → discard it.
 1. Deduplicate (same issue from multiple lenses → highest severity)
 2. Sort by severity. **NEVER truncate.** Output EVERY finding.
 3. --team only: tag [architect]/[code-quality]/[devil], detect consensus (2+ flag same issue), note disagreements

@@ -54,7 +54,7 @@ Tag: [architect]
 Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
 ```
 
-### Perspective 2: Code Quality (model: sonnet)
+### Perspective 2: Code Quality (model: opus)
 ```
 Code quality reviewer. Focus:
 - Readability, naming, error handling
