@@ -39,8 +39,12 @@ skills/
     SKILL.md              # Main reference (required)
     template.md           # Template
     examples/             # Example outputs
+    references/           # Heavy reference material
+    assets/               # Static assets
     scripts/              # Utilities
 ```
+
+Note: Never add README.md to skill folders — SKILL.md is the entry point.
 
 Keep `SKILL.md` <500 lines. Heavy reference → separate files.
 
@@ -59,6 +63,11 @@ context: fork # Subagent
 agent: Explore # Subagent type
 ---
 ```
+
+**Restrictions:**
+- Name must NOT contain "claude" or "anthropic"
+- No XML tags in frontmatter values
+- Description must be <1024 characters
 
 | Field | Effect |
 |-------|--------|
@@ -108,15 +117,26 @@ Table for scanning.
 What fails + fixes.
 ```
 
+**Progressive disclosure:** Structure content in 3 levels:
+1. **Critical** — must-know rules (## Critical header)
+2. **Important** — common patterns (## Important header)
+3. **Reference** — lookup tables, edge cases
+
+Use `## Critical` / `## Important` headers so Claude prioritizes
+correctly under token pressure.
+
 ## Description Field (Critical)
 
-**ONLY triggers. NEVER workflow summary.**
+**WHAT it does + WHEN to use. NEVER workflow details.**
+
+Must be <1024 characters. Tells Claude what the skill does and when to
+invoke it — but not HOW it works internally.
 
 ```yaml
-# BAD: Claude shortcuts instead of reading skill
+# BAD: workflow details Claude will shortcut
 description: Use when executing plans - dispatches subagent per task with review
 
-# GOOD: Just triggers
+# GOOD: what + when
 description: Use when executing implementation plans with independent tasks
 ```
 
