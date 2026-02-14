@@ -30,14 +30,14 @@ Random fixes waste time + create new bugs.
 
 1. Form single hypothesis: "X is root cause because Y"
 1b. **Oracle test (when applicable):** Compare current behavior against known-good baseline. Use available worktree from pool (`git worktree list` — detached HEAD = available), check out last green commit there, run same test, diff outputs. Creating new worktree is expensive — ask user first. Return to detached HEAD when done. Also consider: reference implementation as oracle, or reduced test case with known-correct output.
-2. **If you identify 3+ plausible hypotheses:** STOP — invoke `Skill tool: team-debug` with bug description + hypotheses. Don't continue single-thread debugging.
+2. **If you identify 3+ plausible hypotheses:** STOP — spawn parallel subagents (one per hypothesis) to investigate simultaneously. Each subagent traces one hypothesis, reports evidence for/against.
 3. SMALLEST possible change to test
 4. One variable at a time
-5. Worked → Phase 4. Didn't → NEW hypothesis (if this is your 3rd hypothesis, escalate per step 2)
+5. Worked → Phase 4. Didn't → NEW hypothesis (if this is your 3rd hypothesis, parallelize per step 2)
 
 ### Phase 4: Implementation
 
-1. Create failing test - use Skill tool to invoke `tdd`
+1. Create failing test that reproduces the bug
 2. Single fix - ONE change
 3. Verify - test passes, no regressions
 4. Fix doesn't work? < 3 attempts → Phase 1. >= 3 → architectural issue
@@ -55,10 +55,3 @@ Random fixes waste time + create new bugs.
 - "It's probably X"
 - Proposing solutions before tracing data flow
 
-## Skill Composition
-
-| When | Invoke |
-|------|--------|
-| Writing tests | `use Skill tool to invoke tdd` |
-| Verifying fix | `use Skill tool to invoke verification-before-completion` |
-| 3+ plausible root causes | `use Skill tool to invoke team-debug` |

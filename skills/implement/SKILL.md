@@ -58,7 +58,7 @@ Implement: $ARGUMENTS
      Detect build cmd from justfile/Makefile/package.json/CLAUDE.md.
      ANY failure → fix loop. Never skip.
    - `bd close <task-id>`
-6. Done → invoke finishing-branch skill
+6. Done → `bd sync` + report completion to caller
 
 ## Task Atomicity
 NEVER stop mid-task. Finish before any PR ops.
@@ -137,7 +137,7 @@ while true:
 
 1. Shut down teammates (SendMessage shutdown_request)
 2. TeamDelete
-3. Invoke finishing-branch skill
+3. `bd sync` + report completion to caller
 
 ## Key Rules
 
