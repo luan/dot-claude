@@ -3,7 +3,7 @@ name: graphite
 description: Manage Graphite stacked PRs — create, sync, modify, submit branches and PRs. Triggers: gt commands, "stack", "branch", "PR", "push", "submit".
 user-invocable: true
 allowed-tools:
-  - "Bash(gt *)"
+  - "Bash(gt:*)"
   - "Bash(git status)"
   - "Bash(bd sync)"
 ---

@@ -3,14 +3,14 @@ name: pr-description
 description: "Update PR title and description from branch context. Triggers: 'pr description', 'update PR', 'PR title', 'describe PR'."
 user-invocable: true
 allowed-tools:
-  - "Bash(git status *)"
-  - "Bash(git diff *)"
-  - "Bash(git log *)"
-  - "Bash(git branch *)"
-  - "Bash(git show *)"
-  - "Bash(gh pr view *)"
-  - "Bash(gh pr edit *)"
-  - "Bash(gt log *)"
+  - "Bash(git status:*)"
+  - "Bash(git diff:*)"
+  - "Bash(git log:*)"
+  - "Bash(git branch:*)"
+  - "Bash(git show:*)"
+  - "Bash(gh pr view:*)"
+  - "Bash(gh pr edit:*)"
+  - "Bash(gt log:*)"
   - Read
   - AskUserQuestion
 ---

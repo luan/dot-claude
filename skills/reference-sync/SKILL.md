@@ -58,3 +58,8 @@ Track changes in `references/` git submodule (jfmyers9/claude), incorporate lear
 - Focus on novel ideas/patterns, not cosmetic differences.
 - Our repo: `~/.claude/` — their repo: `references/`
 - Subagents read BOTH repos for informed comparisons.
+
+## Error Handling
+- No `references/` directory → "Submodule not initialized. Run: `git submodule update --init`"
+- `git fetch` fails → check network, report and stop
+- Subagent fails on area → report which area failed, continue with others

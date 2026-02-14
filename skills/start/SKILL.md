@@ -25,3 +25,8 @@ Create branch + optionally link beads issue.
    - If yes: `bd create "<branch-name>" --type task --priority 2`
    - `bd update <id> --status in_progress`
 6. Report branch + issue, suggest `/explore` or `/implement`
+
+## Error Handling
+- `gt create` fails → check if branch exists (`git branch -a | grep <name>`), suggest alternate name
+- `bd update` fails → verify issue ID exists with `bd show <id>`, report if missing
+- Not on expected parent branch → warn user, suggest `gt checkout` first

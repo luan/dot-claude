@@ -32,13 +32,13 @@ Recent commits: !`git log --oneline -5 2>/dev/null`
      - P3: Normal (default)
      - P4: Low
 
-3. **Create beads for each finding:**
+2. **Create beads for each finding:**
    - `bd create "<title>" --type <type> --priority <N>`
    - Bug type: include `## Steps to Reproduce` + `## Acceptance Criteria` in description
    - Task/feature: include `## Acceptance Criteria`
    - `bd lint <id>` after each create
 
-4. **Report:**
+3. **Report:**
    ```
    ## Created Issues
    - [bd-xxx] Fix X in file.ts:123 (bug, P2)
@@ -46,3 +46,8 @@ Recent commits: !`git log --oneline -5 2>/dev/null`
 
    Next: `/implement <id>` or `/prepare` to structure
    ```
+
+## Error Handling
+- No beads CLI → tell user to install, stop
+- `bd create` fails → show error, retry once, then report
+- Ambiguous feedback → AskUserQuestion for clarification before creating issues

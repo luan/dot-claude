@@ -118,3 +118,9 @@ Reads beads design field, creates implementable task hierarchy.
 
    Next: /implement <epic-id>
    ```
+
+## Error Handling
+- No design field content → "Run `/explore` first to generate a design", stop
+- `bd create` fails for epic → check beads CLI available, report error
+- Subagent fails on phase → report which phase, continue others, note gap in report
+- `bd swarm validate` fails → show validation errors, ask user how to proceed
