@@ -87,7 +87,7 @@ Output: `# Adversarial Review Summary`
 - Sections by severity: Critical → High → Medium → Low
 - --team adds: Consensus (top), Disagreements (bottom)
 - Table: `| Severity | File:Line | Issue | Suggestion |`
-- Footer: Verdict (APPROVE/COMMENTS/CHANGES), Blocking count, Review bead-id, "Next: `/prepare <bead-id>`"
+- Footer: Verdict (APPROVE/COMMENTS/CHANGES), Blocking count, Review bead-id, "Clean review → /refine then /commit", "New work discovered → /prepare <bead-id>"
 
 !`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Return findings to caller. Don't fix." || echo "Use AskUserQuestion: Fix all / Fix critical+high only / Fix critical only / Skip fixes"`
 

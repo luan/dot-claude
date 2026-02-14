@@ -15,7 +15,7 @@
 | commit | haiku | - |
 | compress-prompt | sonnet | haiku |
 | fix | sonnet | - |
-| prepare | inherit | opus (task creation) |
+| prepare | inherit | sonnet (task creation) |
 | review | inherit (lenses) | sonnet (fixes) |
 | split-commit | inherit (analysis) | sonnet (commits) |
 

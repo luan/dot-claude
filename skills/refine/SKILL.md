@@ -66,5 +66,5 @@ Per-file: simplifications applied, comments removed, other cleanups.
 
 | When | Invoke |
 |------|--------|
+| Before refine | Run review until clean |
 | After refine | `use Skill tool to invoke commit` |
-| Found real issues | `use Skill tool to invoke review` |

@@ -56,11 +56,13 @@ Via `Skill` tool. Not on main.
 | `fix` | Convert feedback → beads issues |
 | `prepare` | Plan → epic + phased tasks |
 | `commit` | Conventional commit + bd sync |
-| `refine` | Polish post-implementation |
+| `refine` | Polish after review passes |
 | `debugging` | Systematic bug diagnosis |
 
-**Flow:** explore → prepare → implement → review → commit
+**Flow:** explore → prepare → implement → review → refine → commit
 **Never auto-commit/auto-PR.** User explicitly requests.
+
+**Note:** Review includes internal fix loop until clean.
 
 **After explore:** review findings, then `/prepare <id>`.
 **After prepare:** review tasks, then `/implement <epic-id>`.
