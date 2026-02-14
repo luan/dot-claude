@@ -44,15 +44,14 @@ Dispatch via Task (subagent_type="general-purpose"):
 Implement: $ARGUMENTS
 
 ## Job
-1. **Pre-flight:** `bd children <epic-id>` — no children or tasks lack code in description → STOP, return "explore phase incomplete — no implementable tasks". Do NOT create tasks.
+1. **Pre-flight:** `bd children <epic-id>` — no children or tasks lack acceptance criteria or file paths → STOP, return "prepare phase incomplete — no implementable tasks". Do NOT create tasks.
 3. `gt create luan/<short-description>`
 4. `bd ready` or `bd children <epic-id>`
 5. Per task:
    - `bd show <task-id>` + `bd update <task-id> --claim`
-   - **Step 0 — Understand:** Read EVERY file listed in task. Note indent style (tabs vs spaces + width). Verify prepared code matches current file state. Adapt if diverged.
+   - **Step 0 — Understand:** Read EVERY file listed in task. Note indent style (tabs vs spaces + width). Verify assumptions from task description. Investigate current structure.
    - **Indentation pre-flight:** Before first Edit to any file: read file, identify indent char + width. Use EXACTLY that in all edits to that file.
-   - Copy test code EXACTLY → verify fails
-   - Copy implementation EXACTLY → verify passes
+   - Implement using TDD from brief: failing test first → minimal implementation → verify passes
    - **Completion gate (before bd close):**
      1. Detect build cmd: justfile/Makefile/package.json/CLAUDE.md
      2. Run build. Exit != 0 → trace error to root cause, fix (max 3 attempts)
@@ -106,7 +105,7 @@ while true:
   ## Work Loop
   1. `bd ready --parent <epic-id> --unassigned`
   2. `bd show <id>` → `bd update <id> --claim` (fails if claimed → step 1)
-  3. **Understand first:** Read every file in task. Note indent (char + width). Verify prepared code matches current state. Adapt if diverged.
+  3. **Understand first:** Read every file in task. Note indent (char + width). Verify assumptions from brief. Plan approach from brief's Goal/Approach/Criteria.
   4. Respect file ownership — YOUR files while in_progress
   5. Before first Edit per file: read it, match indent exactly.
   6. Failing test FIRST → minimal implementation
@@ -153,7 +152,7 @@ while true:
 ## Key Rules
 
 - Main thread does NOT implement — subagent/team does
-- Copy code EXACTLY from task descriptions
+- Workers own implementation — briefs give direction, not code
 - Task atomicity — never stop mid-task
 - Pre-flight required — bail if no implementable tasks
 - Swarm: sonnet workers, plan approval, merge serialization
