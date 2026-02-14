@@ -12,40 +12,88 @@ allowed-tools:
 
 # Fix
 
-Feedback → beads converter. Creates classified issues.
-Does NOT implement — use `/implement` after.
+Convert user feedback into ONE bead with phased design field — directly consumable by `/prepare`.
+Does NOT implement — creates actionable work items for later scheduling.
 
-## Context
+## Workflow
 
-Branch: !`git branch --show-current`
-Recent changes: !`git diff --name-only HEAD~3..HEAD 2>/dev/null`
-Recent commits: !`git log --oneline -5 2>/dev/null`
+### 1. Gather Context (Parallel)
 
-## Steps
+Run these in parallel to understand what was recently implemented:
+```bash
+git diff --name-only HEAD~3..HEAD
+git log --oneline -5
+git branch --show-current
+```
 
-1. **Analyze feedback ($ARGUMENTS):**
-   - Break into individual findings
-   - Classify type: `bug`, `task`, or `feature`
-   - Set priority:
-     - P1: Urgent/blocking
-     - P2: High
-     - P3: Normal (default)
-     - P4: Low
+If user references specific files, read those files.
 
-2. **Create beads for each finding:**
-   - `bd create "<title>" --type <type> --priority <N>`
-   - Bug type: include `## Steps to Reproduce` + `## Acceptance Criteria` in description
-   - Task/feature: include `## Acceptance Criteria`
-   - `bd lint <id>` after each create
+### 2. Analyze Feedback
 
-3. **Report:**
-   ```
-   ## Created Issues
-   - [bd-xxx] Fix X in file.ts:123 (bug, P2)
-   - [bd-yyy] Add Y feature (task, P3)
+Break feedback ($ARGUMENTS) into individual findings:
+- Classify each: `bug`, `task`, or `feature`
+- Set priority (P0-P4):
+  - P0: Critical bugs, blocking issues
+  - P1: Important bugs, high-priority features
+  - P2: Normal priority (default for most feedback)
+  - P3: Nice-to-have improvements
+  - P4: Low priority, future consideration
+- Group findings by type for phase structure
 
-   Next: `/implement <id>` or `/prepare` to structure
-   ```
+### 3. Create Single Bead with Phased Design
+
+Create ONE task bead containing all findings:
+
+```bash
+bd create "Fix: <brief-summary-of-feedback>" --type task --priority 2 \
+  --description "$(cat <<'EOF'
+## Acceptance Criteria
+- All feedback items addressed
+- Findings stored in design field as phased structure
+- Consumable by /prepare for epic creation
+EOF
+)"
+```
+
+Validate: `bd lint <id>` — fix violations if needed.
+Mark in progress: `bd update <id> --status in_progress`
+
+Then structure findings as phases in the design field:
+
+```bash
+bd update <id> --design "$(cat <<'EOF'
+## Feedback Analysis
+
+**Phase 1: Bug Fixes**
+1. Fix X in file.ts:123 — description of bug
+2. Fix Y in module.ts:45 — description of bug
+
+**Phase 2: Improvements**
+3. Update Z configuration — description of improvement
+4. Add W feature — description of feature
+
+Each phase groups findings by type (bugs first, then tasks, then features). Skip empty phases.
+EOF
+)"
+```
+
+**Phase grouping rules:**
+- Phase 1: Bugs (highest priority first)
+- Phase 2: Tasks / improvements
+- Phase 3: Features / new functionality
+- Skip phases with no findings
+- Each item: actionable title with file:line when available
+
+### 4. Report
+
+Output format:
+```
+## Fix Issue: #<id>
+
+**Findings**: N items (X bugs, Y tasks, Z features)
+
+**Next**: `bd edit <id> --design` to review findings, `/prepare <id>` to create epic with tasks.
+```
 
 ## Error Handling
 - No beads CLI → tell user to install, stop
