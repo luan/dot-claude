@@ -48,7 +48,8 @@ Do NOT ask when the answer is obvious or covered by the task brief.
 4. **Create epic:**
    ```bash
    bd create "<title>" --type epic --priority 1 --validate \
-     --description "## Problem\n<from design>\n\n## Solution\n<from design>\n\n## Acceptance Criteria\n- [ ] All phases complete"
+     --description "## Problem\n<from design>\n\n## Solution\n<from design>" \
+     --acceptance "## Success Criteria\n- [ ] All phases complete\n- [ ] <criteria from design>"
    bd lint <epic-id>
    ```
 

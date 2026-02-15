@@ -69,7 +69,6 @@ Per-file: simplifications applied, comments removed, other cleanups.
 
 Use AskUserQuestion:
 - "Continue to /commit" (Recommended) — description: "Create conventional commit from changes"
-- "Review changes first" — description: "Inspect the polished diff before committing"
 - "Done for now" — description: "Leave bead in_progress for later /resume-work"
 
 If user selects "Continue to /commit":
