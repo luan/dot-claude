@@ -9,7 +9,10 @@ Never guess bd flags. Use only flags listed here. When unsure, run
 View issue details. Flags: `--short`, `--children`, `--refs`,
 `--thread`, `--json`, `--as-of <commit>`, `--local-time`.
 
-To get a single field: `bd show <id> --json | jq '.status'`
+To get a single field: `bd show <id> --json | jq -r '.[0].status'`
+
+**Gotcha:** `--json` returns an array, not an object. Always index
+with `.[0]` before accessing fields.
 
 ### bd list
 List issues. Key flags:
