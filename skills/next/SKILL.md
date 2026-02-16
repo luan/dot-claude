@@ -2,6 +2,13 @@
 name: next
 description: "Context-aware dispatch: resumes branch work if on a feature branch, otherwise picks the next work item from the board. Triggers: 'next', 'what next', 'pick up next task', 'resume', 'where was I', 'continue working'."
 argument-hint: "[branch-name|PR#]"
+user-invocable: true
+allowed-tools:
+  - Bash
+  - Read
+  - Glob
+  - Grep
+  - AskUserQuestion
 ---
 
 # Next
