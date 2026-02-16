@@ -1,6 +1,6 @@
 ---
 name: implement
-description: "Execute a beads epic or task — auto-detects solo vs swarm mode, dispatches subagents to implement. Triggers: \"implement\", \"execute the plan\", \"build this\", \"code this plan\", \"start implementing\", \"ready to implement\", beads issue/epic ID."
+description: "Execute a work epic or task — auto-detects solo vs swarm mode, dispatches subagents to implement. Triggers: \"implement\", \"execute the plan\", \"build this\", \"code this plan\", \"start implementing\", \"ready to implement\", work issue/epic ID."
 argument-hint: "[epic-id|task-id] [--solo]"
 user-invocable: true
 allowed-tools:
@@ -36,13 +36,13 @@ Do NOT ask when the answer is obvious or covered by the task brief.
 
 ## Step 1: Classify Work
 
-1. `bd show <id> --json` (from $ARGUMENTS)
-2. `bd swarm validate <id> --verbose`
+1. `work show <id> --format=json` (from $ARGUMENTS)
+2. Check for children: does `work show <id>` list children?
 3. Choose mode:
    - `--solo` flag → **Solo Mode**
    - Single task (no children) → **Solo Mode**
-   - max parallelism < 3 → **Solo Mode**
-   - max parallelism >= 3 → **Swarm Mode**
+   - Has children, fewer than 3 open → **Solo Mode**
+   - Has children, 3+ open → **Swarm Mode**
 
 ## Solo Mode
 
@@ -52,43 +52,45 @@ Dispatch via Task (subagent_type="general-purpose"):
 Implement: $ARGUMENTS
 
 ## Job
-1. **Pre-flight:** `bd children <epic-id>` — no children or tasks lack acceptance criteria or file paths → STOP, return "prepare phase incomplete — no implementable tasks". Do NOT create tasks.
-2. `bd ready` or `bd children <epic-id>`
+1. **Pre-flight:** `work show <epic-id>` — no children or tasks lack acceptance criteria or file paths → STOP, return "prepare phase incomplete — no implementable tasks". Do NOT create tasks.
+2. `work list --status open --parent <epic-id>` or `work show <id>`
 3. Per task:
-   - `bd show <task-id>` + `bd update <task-id> --claim`
+   - `work show <task-id>` + `work start <task-id>` + `work edit <task-id> --assignee solo`
    - **Step 0 — Understand:** Read EVERY file listed in task. Note indent style (tabs vs spaces + width). Verify assumptions from task description. Investigate current structure.
    - **Indentation pre-flight:** Before first Edit to any file: read file, identify indent char + width. Use EXACTLY that in all edits to that file.
    - Implement using TDD from brief: failing test first → minimal implementation → verify passes
-   - **Completion gate (before bd close):**
+   - **Completion gate (before work review):**
      1. Detect build cmd: justfile/Makefile/package.json/CLAUDE.md
      2. Run build. Exit != 0 → trace error to root cause, fix (max 3 attempts)
      3. Run tests: new + existing touching modified files
-     4. Run linter if applicable
-     5. ALL green → `bd close`. ANY red after 3 attempts → report error output, do NOT close
+     4. ALL green → `work review <task-id>`. ANY red after 3 attempts → report error output, do NOT review
    - **Fix methodology:** Read error → trace to root cause → ONE targeted fix. No guess-and-patch. >10 tool calls on single fix → checkpoint findings + escalate to caller.
    - **Never run git commands.** Orchestrator handles commits. You: edits + build gate only.
-   - `bd close <task-id>`
-4. Done → `bd sync` + report completion to caller
+   - `work review <task-id>`
+4. Done → report completion to caller
 
 ## Task Atomicity
 NEVER stop mid-task. Finish before any PR ops.
 
 ## Side Quests
-Bug found? `bd create "Found: ..." --type bug --validate --deps discovered-from:<current-task-id>`
+Bug found? `work create "Found: ..." --type bug`
 ```
 
-5. **Orchestrator** creates single WIP commit: `git add . && git diff --staged --quiet || git commit -m 'wip: implement <epic-title> (<id>)'`
-6. → See Continuation Prompt below.
+5. **Orchestrator** approves reviewed tasks: for each child in review status, `work approve <task-id>`
+6. **Orchestrator** creates single WIP commit: `git add . && git diff --staged --quiet || git commit -m 'wip: implement <epic-title> (<id>)'`
+7. → See Continuation Prompt below.
 
 ## Swarm Mode
 
-Orchestrate parallel workers via waves.
+Orchestrate parallel workers grouped by phase number.
 
 ### Setup
 
-1. `bd show <epic-id>` + `bd children <epic-id>`
-2. `bd swarm validate <epic-id> --verbose`
-3. **File ownership:** Two ready tasks share files → `bd dep add` to serialize. Re-validate.
+1. `work show <epic-id>` — get title + description
+2. `work list --status open --parent <epic-id> --format=json` — get children
+3. **Group by phase number:** Parse "Phase N:" from each child's
+   title. Group into phases. Tasks without phase numbers → last phase.
+   Sort phases numerically.
 4. Create team:
    ```
    TeamCreate:
@@ -96,78 +98,74 @@ Orchestrate parallel workers via waves.
      description: "Implementing <epic summary>"
    ```
 
-### Wave Loop
+### Phase Loop
 
 ```
-while true:
-  ready = `bd ready --parent <epic-id> --unassigned`
-  if empty → break
-
-  Spawn ALL ready tasks in SINGLE message (parallel).
-  Workers = min(ready_count, 4).
+for each phase_group (ordered by phase number):
+  Spawn ALL tasks in this phase in SINGLE message (parallel).
+  Workers = min(task_count, 4).
 
   Per-task model selection:
-    For each ready task, `bd show <id>` and evaluate against
+    For each task, `work show <id>` and evaluate against
     mechanical criteria in rules/model-tiering.md.
     Insufficient brief to evaluate → opus.
     opus is the DEFAULT. sonnet is rare.
 
-  Each worker (Task, subagent_type="general-purpose", mode="plan", team_name="<team>", name="worker-<n>"):
+  Each worker (Task, subagent_type="general-purpose", mode="plan",
+  team_name="<team>", name="worker-<n>"):
 
   """
-  Worker-<n> on epic <epic-id>.
+  Worker-<n> implementing <task-id>.
 
-  ## Work Loop
-  1. `bd ready --parent <epic-id> --unassigned`
-  2. `bd show <id>` → `bd update <id> --claim` (fails if claimed → step 1)
-  3. **Understand first:** Read every file in task. Note indent (char + width). Verify assumptions from brief. Plan approach from brief's Goal/Approach/Criteria.
-  4. Respect file ownership — YOUR files while in_progress
-  5. Before first Edit per file: read it, match indent exactly.
-  6. Failing test FIRST → minimal implementation
-  7. **Build gate (max 3 attempts):**
+  ## Your Task
+  <issue description from work show>
+
+  ## Protocol
+  1. `work start <task-id>` + `work edit <task-id> --assignee worker-<n>`
+  2. **Understand first:** Read every file in task. Note indent
+     (char + width). Verify assumptions from brief.
+  3. Failing test FIRST → minimal implementation
+  4. **Build gate (max 3 attempts):**
      a. Build cmd from justfile/Makefile/package.json/CLAUDE.md
-     b. Build + tests + linter. All green → continue. Red → root-cause, ONE fix.
-     c. 3 fails → report error, do NOT close.
+     b. Build + tests. All green → continue. Red → root-cause, ONE fix.
+     c. 3 fails → report error, do NOT submit for review.
      d. >10 tool calls on one fix → checkpoint + escalate.
-     e. Failure traces to another worker's file → message team lead, wait. Do NOT close or dismiss as pre-existing.
-  8. `bd close <id>`
-  9. → step 1. Empty → report completion
+     e. Failure traces to another worker's file → message team
+        lead, wait.
+  5. `work review <task-id>`
+  6. Send completion message to team lead via SendMessage
+  7. Wait for shutdown or next assignment.
 
   ## File Boundaries (HARD RULE)
-  NEVER edit files outside your task ownership.
-  Need change in another worker's file:
-  1. MESSAGE file owner
-  2. Owner idle → MESSAGE team lead
-  3. Never edit directly — even "just one line"
+  NEVER edit files outside your task scope.
+  Need change in another worker's file → MESSAGE team lead.
 
   ## Git Operations
   **Never run git commands.** Orchestrator handles commits.
-
-  ## Context
-  Branch: !`git branch --show-current`
   """
 
-  Wait for all workers to complete.
-  If any worker reported escalation or >2 tasks failed build gate → PAUSE. Report status to user before continuing.
-  After 3 waves, report progress to user regardless. Do not run unbounded wave loops.
-  Check `bd swarm status <epic-id>` for stuck tasks.
-  Stuck → skip, proceed if non-stuck done.
+  Wait for all workers in this phase to complete.
+  If any worker reported escalation or >2 tasks failed build gate
+  → PAUSE. Report status to user before continuing next phase.
+
+  Shut down phase workers (SendMessage shutdown_request).
+  Orchestrator approves reviewed tasks: `work approve <id>` for each.
+  Orchestrator commits phase: `git add . && git diff --staged --quiet || git commit -m 'wip: implement phase <N> (<brief-summary>)'`
 ```
 
-### Verify-Fix Loop (max 2 cycles)
+### Verify (after final phase)
 
-1. All closed → full test suite (workers idle)
+1. Full test suite
 2. **Green** → continue
-3. **Red** → match errors to owners via `bd children`, message workers w/ failure output, re-run
+3. **Red** → spawn fix agent targeting failures (max 2 cycles)
 4. 2 failed → escalate to user
 
 ### Teardown
 
-1. Shut down teammates (SendMessage shutdown_request)
-2. **Orchestrator** creates single WIP commit: `git add . && git diff --staged --quiet || git commit -m 'wip: implement <epic-title> (<id>)'`
-3. TeamDelete
-4. `bd sync` + report completion to caller
-5. → See Continuation Prompt below.
+1. **Orchestrator** reviews + approves epic: `work review <epic-id>` then `work approve <epic-id>`
+2. TeamDelete
+3. Report completion to caller
+4. → See Continuation Prompt below.
 
 ## Continuation Prompt
 
@@ -175,7 +173,7 @@ Use AskUserQuestion:
 - "Continue to /split-commit" (Recommended) — description: "Split WIP commit into clean, tested vertical commits, then /review"
 - "Continue to /review" — description: "Skip split-commit and review WIP commit directly"
 - "Review changes manually first" — description: "Inspect the diff before automated review"
-- "Done for now" — description: "Leave bead in_progress for later /resume-work"
+- "Done for now" — description: "Leave issue active for later /resume-work"
 
 If user selects "Continue to /split-commit":
 → Determine base branch: `git log --oneline --first-parent | head -20` to find the merge base, or use `main` as default
@@ -193,3 +191,4 @@ If user selects "Continue to /review":
 - Single WIP commit after all work — orchestrator only, workers never git. Use /split-commit to repackage before review.
 - Swarm: spawn ALL wave workers in single message
 - Fix cycles capped at 2 → escalate to user
+- Workers submit `work review`, orchestrator `work approve`

@@ -26,7 +26,7 @@ Do NOT ask when the answer is obvious or covered by the task brief.
 ## Step 1: Scope + Mode
 
 Parse $ARGUMENTS:
-- `--against <issue-id>`: beads issue for plan adherence
+- `--against <issue-id>`: work issue for plan adherence
 - `--team`: force 3-perspective mode
 - Remaining args:
 
@@ -44,26 +44,33 @@ Choose mode:
 - 15+ files, no `--team` → **File-Split Mode**
 - Otherwise → **Solo Mode** (2 lenses)
 
-## Step 1b: Create Review Bead
+## Step 1b: Create Review Issue
 
 ```bash
-bd create "Review: <scope-summary>" --type task --priority 2 --validate
-bd lint <id>
-bd update <id> --status in_progress
+work create "Review: <scope-summary>" --type chore --priority 2 \
+  --labels review
+work start <id>
 ```
 
 If `--continue`: skip creation, find existing:
-- $ARGUMENTS matches beads ID → use it
-- Else: `bd list --status in_progress --type task`, find first with "Review:"
-- `bd show <id> --json` → read design field
-- Prepend to reviewers: "Previous findings:\n<design>\n\nContinue reviewing..."
+- $ARGUMENTS matches work ID → use it
+- Else: `work list --status active --label review`, use first result
+- `work show <id> --format=json` → read description
+- Prepend to reviewers: "Previous findings:\n<description>\n\nContinue reviewing..."
 
 ## Step 2: Gather Context
 
 1. Get diff
-2. If `--against`: `bd show <issue-id>` for plan
+2. If `--against`: `work show <issue-id>` for plan
 3. List changed files
 4. Read all changed files in parallel
+
+### Large Diff Handling
+
+If total diff exceeds 3000 lines: for each file with >200 lines
+of diff, truncate to first 50 + last 50 lines in the prompt
+passed to subagents. Note truncations so reviewers know to
+`Read` full files when needed.
 
 ## Step 3: Dispatch Reviewers
 
@@ -83,7 +90,7 @@ Spawn EXACTLY 3 Task agents in SINGLE message. Each gets FULL changeset (no spli
 
 Read references/prompts.md for Perspective Mode prompt templates.
 
-If `--against`: append "Check plan adherence: implementation match plan? Missing/unplanned features? Deviations justified? Plan: {beads design field}"
+If `--against`: append "Check plan adherence: implementation match plan? Missing/unplanned features? Deviations justified? Plan: {issue description}"
 
 ## Step 4: Consolidate + Present
 
@@ -98,14 +105,14 @@ Output: `# Adversarial Review Summary`
 - Sections by severity: Critical → High → Medium → Low
 - --team adds: Consensus (top), Disagreements (bottom)
 - Table: `| Severity | File:Line | Issue | Suggestion |`
-- Footer: Verdict (APPROVE/COMMENTS/CHANGES), Blocking count, Review bead-id, "Clean review → /refine then /commit", "New work discovered → /prepare <bead-id>"
+- Footer: Verdict (APPROVE/COMMENTS/CHANGES), Blocking count, Review issue-id, "Clean review → /refine then /commit", "New work discovered → /prepare <issue-id>"
 
 !`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Return findings to caller. Don't fix." || echo "Use AskUserQuestion: Fix all / Fix critical+high only / Fix critical only / Skip fixes"`
 
 ## Step 4b: Store Findings
 
-Store consolidated findings in design field:
-`bd edit <review-id> --design "<full-consolidated-output>"`
+Store consolidated findings in description:
+`work edit <review-id> --description "<full-consolidated-output>"`
 
 ## Step 5: Dispatch Fixes
 
@@ -115,10 +122,11 @@ Spawn general-purpose agent (model: sonnet). Read references/prompts.md for fix 
 
 Re-run Step 3 after fixes. Loop until clean or user stops.
 
-## Step 6b: Close Review Bead
+## Step 6b: Close Review Issue
 
 After review complete (user approves or skips fixes):
-`bd close <review-id>`
+`work review <review-id>`
+`work approve <review-id>`
 
 ## Step 7: Interactive Continuation
 
@@ -131,21 +139,21 @@ Context-aware next-step prompt based on review outcome:
 Use AskUserQuestion:
 - "Continue to /refine" (Recommended) — description: "Polish code style, imports, comments"
 - "Skip to /commit" — description: "Code is ready, go straight to commit"
-- "Done for now" — description: "Leave bead in_progress for later /resume-work"
+- "Done for now" — description: "Leave issue active for later /resume-work"
 
 **Issues found and fixed (fix loop completed):**
 
 Use AskUserQuestion:
 - "Re-review to verify fixes" (Recommended) — description: "Run review again to confirm fixes are clean (max 2 cycles, then default to /refine)"
 - "Continue to /refine" — description: "Fixes look good, move to polish"
-- "Done for now" — description: "Leave bead in_progress for later /resume-work"
+- "Done for now" — description: "Leave issue active for later /resume-work"
 
 **Issues found but not all fixed:**
 
 Use AskUserQuestion:
 - "Continue fixing" (Recommended) — description: "Address remaining issues"
 - "Continue to /refine anyway" — description: "Move on despite remaining issues"
-- "Done for now" — description: "Leave bead in_progress for later /resume-work"
+- "Done for now" — description: "Leave issue active for later /resume-work"
 
 Skill invocations based on user selection:
 - "Continue to /refine" → `Skill tool: skill="refine"`

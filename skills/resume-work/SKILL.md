@@ -20,8 +20,8 @@ Context recovery after break. Gathers state, suggests next action.
 Branch: !`git branch --show-current`
 Status: !`git status -sb 2>/dev/null`
 Recent commits: !`git log --oneline -5 2>/dev/null`
-Beads in progress: !`bd list --status in_progress -q 2>/dev/null`
-Beads ready: !`bd ready -q 2>/dev/null`
+Active work issues: !`work list --status active --format short 2>/dev/null`
+Open work issues: !`work list --status open --format short 2>/dev/null`
 
 ## Steps
 
@@ -37,8 +37,8 @@ Beads ready: !`bd ready -q 2>/dev/null`
 
 3. **Check for stale branches:**
    - List all local luan/* branches: `git branch --list 'luan/*' --format='%(refname:short)'`
-   - Get in_progress beads with branch notes: `bd list --status in_progress --json` and check notes for `Branch:` field (written by /start)
-   - Cross-reference: branches not referenced in any in_progress bead's notes are potentially stale
+   - Get active work issues: `work list --status active --format=json` and check for comments containing `Branch:` (written by /start)
+   - Cross-reference: branches not referenced in any active issue's comments are potentially stale
    - Never auto-delete — only surface for user awareness
 
 4. **Summarize:**
@@ -49,8 +49,8 @@ Beads ready: !`bd ready -q 2>/dev/null`
    Review: Approved | Changes requested | Pending
    CI: Passing | Failing (list failures)
    Comments: N unresolved (summarize)
-   Beads: N in progress, M ready
-   Stale branches: <list> (no matching in_progress beads)
+   Work issues: N active, M open
+   Stale branches: <list> (no matching active issues)
    ```
    Only show "Stale branches" line if stale branches exist.
 
@@ -58,7 +58,7 @@ Beads ready: !`bd ready -q 2>/dev/null`
    1. CI failing → "Fix checks"
    2. Changes requested → "Address N review comments"
    3. Unresolved comments → "Respond to feedback"
-   4. Beads in progress → "Continue: ..."
+   4. Work issues active → "Continue: ..."
    5. Draft PR, all passing → "Mark ready"
    6. Ready PR, approved → "Merge"
    7. No PR → "Create with /commit then /graphite"

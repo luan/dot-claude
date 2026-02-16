@@ -8,7 +8,7 @@ Before first Edit to any file: read file, identify indent style (tabs vs spaces 
 2. Run build. Exit != 0 → trace error to root cause, fix (max 3 attempts)
 3. Run tests: new + existing touching modified files
 4. Run linter if applicable
-5. ALL green → close task. Red after 3 → escalate with error output
+5. ALL green → submit for review (`work review <id>`). Red after 3 → escalate with error output
 6. Foreign failure (error traces to another worker's files, not yours)
    → DO NOT close task, DO NOT label as pre-existing. Message team
    lead with failure details and wait for coordination.

@@ -1,6 +1,6 @@
 ---
 name: fix
-description: "Convert user feedback into beads issues. Does NOT implement fixes. Triggers: 'fix', 'create issues from feedback', 'file bugs from feedback'."
+description: "Convert user feedback into work issues. Does NOT implement fixes. Triggers: 'fix', 'create issues from feedback', 'file bugs from feedback'."
 argument-hint: "<feedback-text>"
 user-invocable: true
 allowed-tools:
@@ -12,7 +12,8 @@ allowed-tools:
 
 # Fix
 
-Convert user feedback into ONE bead with phased design field — directly consumable by `/prepare`.
+Convert user feedback into ONE work issue with phased design in
+description — directly consumable by `/prepare`.
 Does NOT implement — creates actionable work items for later scheduling.
 
 ## Workflow
@@ -31,7 +32,7 @@ If user references specific files, read those files.
 ### 2. Analyze Feedback
 
 Break feedback ($ARGUMENTS) into individual findings:
-- Classify each: `bug`, `task`, or `feature`
+- Classify each: `bug`, `chore`, or `feature`
 - Set priority (P0-P4):
   - P0: Critical bugs, blocking issues
   - P1: Important bugs, high-priority features
@@ -40,28 +41,19 @@ Break feedback ($ARGUMENTS) into individual findings:
   - P4: Low priority, future consideration
 - Group findings by type for phase structure
 
-### 3. Create Single Bead with Phased Design
+### 3. Create Single Issue with Phased Design
 
-Create ONE task bead containing all findings:
+Create ONE work issue containing all findings:
 
 ```bash
-bd create "Fix: <brief-summary-of-feedback>" --type task --priority 2 \
+work create "Fix: <brief-summary-of-feedback>" --type chore --priority 2 \
+  --labels fix \
   --description "$(cat <<'EOF'
 ## Acceptance Criteria
 - All feedback items addressed
-- Findings stored in design field as phased structure
+- Findings stored as phased structure in description
 - Consumable by /prepare for epic creation
-EOF
-)"
-```
 
-Validate: `bd lint <id>` — fix violations if needed.
-Mark in progress: `bd update <id> --status in_progress`
-
-Then structure findings as phases in the design field:
-
-```bash
-bd update <id> --design "$(cat <<'EOF'
 ## Feedback Analysis
 
 **Phase 1: Bug Fixes**
@@ -72,10 +64,14 @@ bd update <id> --design "$(cat <<'EOF'
 3. Update Z configuration — description of improvement
 4. Add W feature — description of feature
 
-Each phase groups findings by type (bugs first, then tasks, then features). Skip empty phases.
+Each phase groups findings by type (bugs first, then tasks,
+then features). Skip empty phases.
 EOF
 )"
 ```
+
+Mark active: `work start <id>`
+After populating description: `work review <id>`
 
 **Phase grouping rules:**
 - Phase 1: Bugs (highest priority first)
@@ -92,10 +88,10 @@ Output format:
 
 **Findings**: N items (X bugs, Y tasks, Z features)
 
-**Next**: `bd edit <id> --design` to review findings, `/prepare <id>` to create epic with tasks.
+**Next**: `work edit <id>` to review findings, `/prepare <id>` to create epic with tasks.
 ```
 
 ## Error Handling
-- No beads CLI → tell user to install, stop
-- `bd create` fails → show error, retry once, then report
+- No work CLI → tell user to install, stop
+- `work create` fails → show error, retry once, then report
 - Ambiguous feedback → AskUserQuestion for clarification before creating issues

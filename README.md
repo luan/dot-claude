@@ -1,13 +1,13 @@
 # ~/.claude
 
 Claude Code configuration. Skills, rules, hooks, and workflows
-for AI-assisted development with beads issue tracking.
+for AI-assisted development with work issue tracking.
 
 ## Quick Start
 
 ```bash
 /explore "add user authentication"   # Research + design
-/prepare <bead-id>                   # Create epic + task briefs
+/prepare <issue-id>                  # Create epic + task briefs
 /implement <epic-id>                 # Execute (solo or swarm)
 /review                              # Adversarial code review
 /refine                              # Polish (after clean review)
@@ -20,12 +20,12 @@ for AI-assisted development with beads issue tracking.
 explore → prepare → implement → review → refine → commit
 ```
 
-- **explore**: Research codebase, produce phased design in bead
+- **explore**: Research codebase, produce phased design in issue
 - **prepare**: One subagent creates epic + task briefs (no code)
 - **implement**: Workers own TDD from briefs (auto solo/swarm)
 - **review**: Adversarial review with built-in fix loop
 - **refine**: Cosmetic polish on reviewed code
-- **commit**: Conventional commit + beads sync
+- **commit**: Conventional commit
 
 ## All Skills
 
@@ -33,19 +33,19 @@ explore → prepare → implement → review → refine → commit
 
 | Command | What it does |
 |---------|--------------|
-| `/explore <prompt>` | Deep research, stores design in bead |
-| `/prepare <bead-id>` | Design → epic + task briefs |
+| `/explore <prompt>` | Deep research, stores design in issue |
+| `/prepare <issue-id>` | Design → epic + task briefs |
 | `/implement <epic-id>` | Execute tasks (auto solo/swarm) |
 | `/review [--team]` | Adversarial review (3-perspective with --team) |
 | `/refine` | Cosmetic polish after review |
-| `/commit` | Conventional commit + beads sync |
+| `/commit` | Conventional commit |
 
 ### Investigation & Planning
 
 | Command | What it does |
 |---------|--------------|
 | `/debugging` | Root-cause-first bug diagnosis |
-| `/fix <feedback>` | Convert feedback → one bead with phases |
+| `/fix <feedback>` | Convert feedback → one issue with phases |
 | `/resume-work` | Context recovery after a break |
 | `/reference-sync` | Check upstream for new patterns |
 
@@ -53,7 +53,7 @@ explore → prepare → implement → review → refine → commit
 
 | Command | What it does |
 |---------|--------------|
-| `/start <desc>` | Create branch + link bead |
+| `/start <desc>` | Create branch + link issue |
 | `/graphite` | Graphite stack operations |
 | `/split-commit` | Repackage branch into clean commits |
 | `/git-surgeon` | Hunk-level staging/unstaging |
@@ -77,23 +77,24 @@ explore → prepare → implement → review → refine → commit
 ├── rules/                # Global rules (inherited by subagents)
 ├── hooks/                # Pre/post tool automation
 ├── references/           # Upstream patterns (git submodule)
-├── .beads/               # Issue tracking database
 ├── CLAUDE.md             # Core instructions
 ├── settings.json         # Permissions & environment
 └── README.md
 ```
 
-## Beads (Issue Tracking)
+## Work Issues (Issue Tracking)
 
-All plans, notes, and state live in beads — no filesystem docs.
+All plans, notes, and state live in work issues — no filesystem
+docs. Lifecycle: open → active → review → done / cancelled.
 
 ```bash
-bd create "title" --type task    # Create issue
-bd list                          # List open issues
-bd show <id>                     # Show details
-bd update <id> --design "..."    # Store design findings
-bd swarm validate <epic-id>      # Validate parallel execution
-bd sync                          # Sync after commits
+work create "title" --type chore     # Create issue
+work list                            # List open issues
+work show <id>                       # Show details
+work edit <id> --description "..."   # Store design findings
+work start <id>                      # Mark active
+work review <id>                     # Submit for review
+work approve <id>                    # Mark done (after review)
 ```
 
 ## Model Tiering

@@ -22,7 +22,7 @@
 - **Parallel ops:** Multiple searches/reads/greps per message
 - **Batch:** Group related file edits
 - **Context finite:** Pipe `| tail -20`, use `--quiet`, summarize between agents. >30 lines → summarize. Context low → finish current, don't start new.
-- **Tickets:** 1-2 on main fine. 3+ → subagent (`bd create --file` for bulk).
+- **Tickets:** 1-2 on main fine. 3+ → subagent (loop `work create` for bulk).
 
 ## Memory
 - **Never auto-memory** (`projects/*/memory/`). Not version-controlled.
@@ -48,19 +48,20 @@ Via `Skill` tool. Not on main.
 
 | Invoke | When |
 |--------|------|
-| `explore` | Research, investigate (findings → beads design field) |
+| `brainstorm` | Greenfield design via interactive dialogue |
+| `explore` | Research existing systems (findings → issue description) |
 | `implement` | Execute plan (auto-detects solo vs swarm) |
 | `review` | Adversarial review (--team for 3-perspective) |
-| `start` | Create branch + link beads issue |
+| `start` | Create branch + link work issue |
 | `resume-work` | Context recovery after break |
-| `fix` | Convert feedback → beads issues |
+| `fix` | Convert feedback → work issues |
 | `prepare` | Plan → epic + phased tasks |
-| `commit` | Conventional commit + bd sync |
+| `commit` | Conventional commit |
 | `split-commit` | Repackage WIP into vertical commits |
 | `refine` | Polish after review passes |
 | `debugging` | Systematic bug diagnosis |
 
-**Flow:** explore → prepare → implement → split-commit → review → refine → commit
+**Flow:** brainstorm|explore → prepare → implement → split-commit → review → refine → commit
 **Never auto-commit/auto-PR.** User explicitly requests.
 
 **Note:** Review includes internal fix loop until clean.
@@ -70,23 +71,23 @@ Via `Skill` tool. Not on main.
 
 ## Subagent Rules
 - **Self-healing:** Iterate until build passes. No partial work.
-- **Claim atomically:** `bd update <id> --claim` (not status + assignee)
+- **Claim tasks:** `work start <id>` + `work edit <id> --assignee <name>`
 - **Git operations:** Workers never run git commands. Orchestrator commits.
 - **File ownership:** Never edit files outside task scope. Need change in another worker's file → message owner.
 - **Build failures:** Yours → fix. Another worker's → message lead, wait. Pre-existing → report once, continue.
-- **Completion:** No `bd close` without build + tests + linter passing.
+- **Completion:** No `work review` without build + tests passing.
 - **Escalation:** 2 failed attempts → message lead with details.
 
 ## Branch Naming
 `gt create luan/<description>`
 Examples: `luan/fix-container-minimize`, `luan/add-theme-constants`
 
-## Beads — Single Source of Truth
+## Work Issues — Single Source of Truth
 
-All plans, notes, state live in beads. No filesystem documents.
+All plans, notes, state live in work issues. No filesystem documents.
 
-- **Exploration plans**: `bd edit <id> --design`
-- **Review findings**: `bd edit <id> --design`
-- **Session notes**: `bd edit <id> --notes`
-- **Task state**: `bd update <id> --status`
-- **Sync**: `bd sync` after commit, submit, gt ops
+- **Exploration plans**: `work edit <id>` (stored in description)
+- **Review findings**: `work edit <id> --description`
+- **Session notes**: `work comment <id> "note text"`
+- **Task state**: `work status <id> <state>`
+- **Lifecycle**: open → active → review → done / cancelled

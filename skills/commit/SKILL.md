@@ -27,7 +27,7 @@ Create conventional commits explaining WHY changes made.
 Status: !`git status -sb 2>/dev/null`
 Staged diff: !`git diff --cached --stat 2>/dev/null`
 Recent commits: !`git log --oneline -5 2>/dev/null`
-Beads in progress: !`bd list --status in_progress -q 2>/dev/null`
+Active work issues: !`work list --status active --format short 2>/dev/null`
 
 **Context:** Main thread / foreground only. Workers never commit.
 
@@ -39,7 +39,7 @@ Beads in progress: !`bd list --status in_progress -q 2>/dev/null`
    - Max 72 chars, lowercase, no period, imperative
    - Types: feat|fix|refactor|perf|docs|test|style|build|ci|chore|revert
    - Scope: primary area (auth, api, ui, db) or omit if global
-   - If beads issue in_progress (`bd list --status in_progress -q`), append ID: `fix(auth): handle token expiry (bd-abc123)`
+   - If work issue active (`work list --status active --format short`), append ID: `fix(auth): handle token expiry (work-abc123)`
 
 3. **Confirm** via AskUserQuestion: "Commit with this message?"
 
@@ -49,12 +49,6 @@ Beads in progress: !`bd list --status in_progress -q 2>/dev/null`
    type(scope): description
    EOF
    )"
-   ```
-
-5. **Beads sync** (after successful commit):
-   ```bash
-   bd epic close-eligible 2>/dev/null || true
-   bd sync 2>/dev/null || true
    ```
 
 ## Hook failures

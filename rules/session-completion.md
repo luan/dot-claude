@@ -2,15 +2,14 @@
 
 When ending work session, ALL steps mandatory:
 
-1. File remaining work as beads issues
-2. Run quality gates (tests, linters, build) if code changed
-3. Update beads status — close finished, update in_progress
-4. Sync beads: `bd sync`
-5. Commit code changes if uncommitted (orchestrator only — workers never commit)
+1. File remaining work as work issues
+2. Run quality gates (tests, build) if code changed
+3. Update work status — review/approve finished, update active
+4. Commit code changes if uncommitted (orchestrator only — workers never commit)
 
 ## Optional Housekeeping
 
-- Note stale branches for cleanup — list local luan/* branches without matching in_progress beads
+- Note stale branches for cleanup — list local luan/* branches without matching active work issues
 
 ## Hard Rules
 

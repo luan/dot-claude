@@ -107,7 +107,7 @@ Dirty tree after last commit → dispatch final subagent for cleanup commit.
 
 ## Key Rules
 
-- **No beads** — pure git operation, one-shot
+- **No work issues** — pure git operation, one-shot
 - **Subagents for everything** — analysis + each commit in own subagent
 - **git-surgeon always** — hunk-level precision, never plain git add
 - **Every commit compiles** — fix test failures by staging missing deps

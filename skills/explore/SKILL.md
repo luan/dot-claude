@@ -12,14 +12,14 @@ allowed-tools:
 
 # Explore
 
-Research, investigate, design. Findings stored in beads design field.
+Research, investigate, design. Findings stored in issue description.
 Auto-escalates to team for complex multi-system work.
 
 **IMMEDIATELY dispatch to subagent.** Never explore on main thread.
 
 ## Context
 
-Active epics: !`bd list --status in_progress --type epic -q 2>/dev/null`
+Active parent issues: !`work list --status active --roots --format short 2>/dev/null`
 
 ## Mid-Skill Interviewing
 
@@ -33,25 +33,25 @@ Do NOT ask when the answer is obvious or covered by the task brief.
 
 ### New Exploration
 
-1. Create bead:
+1. Create work issue:
    ```bash
-   bd create "Explore: <topic>" --type task --priority 2 \
+   work create "Explore: <topic>" --type chore --priority 2 \
+     --labels explore \
      --description "$(cat <<'EOF'
    ## Acceptance Criteria
-   - Findings stored in bead design field
+   - Findings stored in issue description
    - Structured as Current State, Recommendation, and phased Next Steps
    - Each phase includes file paths and is independently actionable
    EOF
    )"
    ```
-2. Validate: `bd lint <id>` — if it fails, `bd edit <id> --description` to fix
-3. `bd update <id> --status in_progress`
+2. `work start <id>`
 
-4. Dispatch via Task (subagent_type="codebase-researcher"):
+3. Dispatch via Task (subagent_type="codebase-researcher"):
 
 ```
 Research <topic> thoroughly. Return COMPLETE findings as text
-(do NOT write files, do NOT create beads).
+(do NOT write files, do NOT create work issues).
 
 ## Job
 1. Explore codebase
@@ -75,15 +75,16 @@ Each phase must include file paths and approach hints —
 downstream task creation depends on this detail.
 ```
 
-5. **Validate findings** (subagent-trust.md): spot-check ALL
+4. **Validate findings** (subagent-trust.md): spot-check ALL
    architectural claims + 50% of file/behavioral claims before storing.
    If echo suspected or key claims fail → send targeted follow-up.
 
-6. Store findings: `bd update <id> --design "<full-findings>"`
+5. Store findings: `work edit <id> --description "<full-findings>"`
+6. Submit for review: `work review <id>`
 
 7. Output summary:
 ```
-Explore: <bead-id> — <topic>
+Explore: <issue-id> — <topic>
 Problem: <1 sentence>
 Recommendation: <1 sentence>
 
@@ -94,7 +95,7 @@ Phases:
 Key decisions:
 - <why this approach>
 
-Next: /prepare <bead-id>
+Next: /prepare <issue-id>
 ```
 
 8. → See Continuation Prompt below.
@@ -102,29 +103,31 @@ Next: /prepare <bead-id>
 ### Continuation (--continue flag)
 
 1. Resolve issue ID:
-   - If $ARGUMENTS matches a beads ID → use it
-   - If --continue → `bd list --status in_progress --type task`,
-     find first with title starting "Explore:"
-2. Load existing: `bd show <id> --json` → extract design field
-3. Dispatch subagent with: "Previous findings:\n<design>\n\n
+   - If $ARGUMENTS matches a work ID → use it
+   - If --continue → `work list --status review --label explore`
+     or `work list --status active --label explore`, use first result
+2. Load existing: `work show <id> --format=json` → extract description
+3. Move back to active: `work start <id>`
+4. Dispatch subagent with: "Previous findings:\n<description>\n\n
    Continue exploring: <new prompt>"
-4. Update: `bd update <id> --design "<combined>"`
-5. Output updated summary
+5. Update: `work edit <id> --description "<combined>"`
+6. Submit for review: `work review <id>`
+7. Output updated summary
 
-6. → See Continuation Prompt below.
+8. → See Continuation Prompt below.
 
 ### Continuation Prompt
 
 Use AskUserQuestion:
-- "Continue to /prepare <bead-id>" (Recommended) — description: "Create epic + implementation tasks from findings"
+- "Continue to /prepare <issue-id>" (Recommended) — description: "Create epic + implementation tasks from findings"
 - "Re-explore with different focus" — description: "Investigate a different angle on the same topic"
-- "Done for now" — description: "Leave bead in_progress for later /resume-work"
+- "Done for now" — description: "Leave issue active for later /resume-work"
 
 If user selects "Continue to /prepare":
-→ Invoke Skill tool: skill="prepare", args="<bead-id>"
+→ Invoke Skill tool: skill="prepare", args="<issue-id>"
 
 If user selects "Re-explore":
-→ Ask what to focus on, then re-run from step 4 with updated prompt
+→ Ask what to focus on, then re-run from step 3 with updated prompt
 
 ### Escalation
 
@@ -136,7 +139,7 @@ Spawn 2-3 Task agents in parallel:
 - **Devil's Advocate** (model: opus): challenges assumptions
 
 Each investigates independently, returns findings text.
-Synthesize into unified findings, store in design field.
+Synthesize into unified findings, store in description.
 
 Escalation triggers:
 - 3+ viable approaches, unclear tradeoffs
@@ -146,6 +149,5 @@ Escalation triggers:
 ## Key Rules
 
 - Main thread does NOT explore — subagent does
-- Findings stored in beads design field
-- `bd lint` after bead creation — fix if it fails
+- Findings stored in issue description
 - Next Steps must include file paths (prepare depends on it)

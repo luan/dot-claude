@@ -44,7 +44,7 @@ Random fixes waste time + create new bugs.
 
 ## 3+ Fixes = Question Architecture
 
-!`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Document concern in beads notes, attempt one structural fix, surface to caller." || echo "STOP. Discuss with human before more fixes."`
+!`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Document concern in work issue comment, attempt one structural fix, surface to caller." || echo "STOP. Discuss with human before more fixes."`
 
 ## Red Flags → Return to Phase 1
 

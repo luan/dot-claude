@@ -1,7 +1,7 @@
 ---
 name: start
-description: "Create a new Graphite branch and optionally link to a beads issue. Triggers: 'start', 'start new branch', 'begin work on'."
-argument-hint: "<branch-name> [beads-issue-id]"
+description: "Create a new Graphite branch and optionally link to a work issue. Triggers: 'start', 'start new branch', 'begin work on'."
+argument-hint: "<branch-name> [work-issue-id]"
 user-invocable: true
 allowed-tools:
   - Bash
@@ -10,23 +10,23 @@ allowed-tools:
 
 # Start
 
-Create branch + optionally link beads issue.
+Create branch + optionally link work issue.
 
 ## Steps
 
-1. Parse args: branch name + optional beads ID
+1. Parse args: branch name + optional work ID
 2. Normalize: prefix `luan/` if needed
 3. `gt create <branch-name>`
-4. If beads ID:
-   - `bd update <id> --status in_progress`
-   - `bd update <id> --notes "Branch: <branch-name>"`
-5. If no beads ID:
-   - AskUserQuestion: "Create beads issue?"
-   - If yes: `bd create "<branch-name>" --type task --priority 2`
-   - `bd update <id> --status in_progress`
+4. If work ID:
+   - `work start <id>`
+   - `work comment <id> "Branch: <branch-name>"`
+5. If no work ID:
+   - AskUserQuestion: "Create work issue?"
+   - If yes: `work create "<branch-name>" --type chore --priority 2`
+   - `work start <id>`
 6. Report branch + issue, suggest `/explore` or `/implement`
 
 ## Error Handling
 - `gt create` fails → check if branch exists (`git branch -a | grep <name>`), suggest alternate name
-- `bd update` fails → verify issue ID exists with `bd show <id>`, report if missing
+- `work` command fails → verify issue ID exists with `work show <id>`, report if missing
 - Not on expected parent branch → warn user, suggest `gt checkout` first
