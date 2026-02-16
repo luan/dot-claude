@@ -10,21 +10,19 @@ for AI-assisted development with work issue tracking.
 /prepare <issue-id>                  # Create epic + task briefs
 /implement <epic-id>                 # Execute (solo or swarm)
 /review                              # Adversarial code review
-/refine                              # Polish (after clean review)
 /commit                              # Conventional commit
 ```
 
 ## Pipeline
 
 ```
-explore → prepare → implement → review → refine → commit
+explore → prepare → implement → review → commit
 ```
 
 - **explore**: Research codebase, produce phased design in issue
 - **prepare**: One subagent creates epic + task briefs (no code)
 - **implement**: Workers own TDD from briefs (auto solo/swarm)
-- **review**: Adversarial review with built-in fix loop
-- **refine**: Cosmetic polish on reviewed code
+- **review**: Adversarial review with built-in fix loop + polish
 - **commit**: Conventional commit
 
 ## All Skills
@@ -37,7 +35,6 @@ explore → prepare → implement → review → refine → commit
 | `/prepare <issue-id>` | Design → epic + task briefs |
 | `/implement <epic-id>` | Execute tasks (auto solo/swarm) |
 | `/review [--team]` | Adversarial review (3-perspective with --team) |
-| `/refine` | Cosmetic polish after review |
 | `/commit` | Conventional commit |
 
 ### Investigation & Planning

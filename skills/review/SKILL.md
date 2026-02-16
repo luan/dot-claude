@@ -105,7 +105,7 @@ Output: `# Adversarial Review Summary`
 - Sections by severity: Critical → High → Medium → Low
 - --team adds: Consensus (top), Disagreements (bottom)
 - Table: `| Severity | File:Line | Issue | Suggestion |`
-- Footer: Verdict (APPROVE/COMMENTS/CHANGES), Blocking count, Review issue-id, "Clean review → /refine then /commit", "New work discovered → /prepare <issue-id>"
+- Footer: Verdict (APPROVE/COMMENTS/CHANGES), Blocking count, Review issue-id, "Clean review → /commit", "New work discovered → /prepare <issue-id>"
 
 !`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Return findings to caller. Don't fix." || echo "Use AskUserQuestion: Fix all / Fix critical+high only / Fix critical only / Skip fixes"`
 
@@ -118,49 +118,53 @@ Store consolidated findings in description:
 
 Spawn general-purpose agent (model: sonnet). Read references/prompts.md for fix dispatch prompt template.
 
+Fix agent also applies polish: flatten unnecessary nesting (early returns), remove code-restating comments and contextless TODOs, remove unused imports and debug artifacts. Never change behavior.
+
 ## Step 6: Re-review
 
 Re-run Step 3 after fixes. Loop until clean or user stops.
 
-## Step 6b: Close Review Issue
+## Step 6b: Close Review Issue + Approve Implementation
 
 After review complete (user approves or skips fixes):
 `work review <review-id>`
 `work approve <review-id>`
 
+Do NOT auto-approve implementation work. User must explicitly request approval.
+
 ## Step 7: Interactive Continuation
 
 Note: Fix selection happens in Step 4 above. This step handles pipeline continuation after review completes.
+
+Check for implementation issues in review: `work list --status review`
+If any exist, note them in the prompt so the user knows approval is pending.
 
 Context-aware next-step prompt based on review outcome:
 
 **Clean review (no issues found):**
 
 Use AskUserQuestion:
-- "Continue to /refine" (Recommended) — description: "Polish code style, imports, comments"
-- "Skip to /commit" — description: "Code is ready, go straight to commit"
-- "Done for now" — description: "Leave issue active for later /resume-work"
+- "Approve + commit" (Recommended) — description: "Approve implementation work and create conventional commit"
+- "Done for now" — description: "Leave issues in review for later"
 
 **Issues found and fixed (fix loop completed):**
 
 Use AskUserQuestion:
-- "Re-review to verify fixes" (Recommended) — description: "Run review again to confirm fixes are clean (max 2 cycles, then default to /refine)"
-- "Continue to /refine" — description: "Fixes look good, move to polish"
-- "Done for now" — description: "Leave issue active for later /resume-work"
+- "Re-review to verify fixes" (Recommended) — description: "Run review again to confirm fixes are clean (max 2 cycles)"
+- "Approve + commit" — description: "Fixes look good, approve and commit"
+- "Done for now" — description: "Leave issues in review for later"
 
 **Issues found but not all fixed:**
 
 Use AskUserQuestion:
 - "Continue fixing" (Recommended) — description: "Address remaining issues"
-- "Continue to /refine anyway" — description: "Move on despite remaining issues"
-- "Done for now" — description: "Leave issue active for later /resume-work"
+- "Done for now" — description: "Leave issues in review for later"
 
 Skill invocations based on user selection:
-- "Continue to /refine" → `Skill tool: skill="refine"`
-- "Skip to /commit" → `Skill tool: skill="commit"`
+- "Approve + commit" → `work list --status review` → `work approve <id>` for each, then `Skill tool: skill="commit"`
 - "Re-review to verify fixes" → `Skill tool: skill="review"`
 - "Continue fixing" → Resume fix loop at Step 5
-- "Done for now" → Exit skill
+- "Done for now" → Exit skill (issues stay in review)
 
 ## Receiving Feedback
 

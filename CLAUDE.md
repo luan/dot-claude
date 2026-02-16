@@ -58,10 +58,9 @@ Via `Skill` tool. Not on main.
 | `prepare` | Plan → epic + phased tasks |
 | `commit` | Conventional commit |
 | `split-commit` | Repackage WIP into vertical commits |
-| `refine` | Polish after review passes |
 | `debugging` | Systematic bug diagnosis |
 
-**Flow:** brainstorm|explore → prepare → implement → split-commit → review → refine → commit
+**Flow:** brainstorm|explore → prepare → implement → split-commit → review → commit
 **Never auto-commit/auto-PR.** User explicitly requests.
 
 **Note:** Review includes internal fix loop until clean.

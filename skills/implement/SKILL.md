@@ -63,7 +63,8 @@ Implement: $ARGUMENTS
      1. Detect build cmd: justfile/Makefile/package.json/CLAUDE.md
      2. Run build. Exit != 0 → trace error to root cause, fix (max 3 attempts)
      3. Run tests: new + existing touching modified files
-     4. ALL green → `work review <task-id>`. ANY red after 3 attempts → report error output, do NOT review
+     4. **Polish pass:** flatten unnecessary nesting (early returns), remove code-restating comments and contextless TODOs, remove unused imports and debug artifacts (console.log, print). Never change behavior.
+     5. ALL green → `work review <task-id>`. ANY red after 3 attempts → report error output, do NOT review
    - **Fix methodology:** Read error → trace to root cause → ONE targeted fix. No guess-and-patch. >10 tool calls on single fix → checkpoint findings + escalate to caller.
    - **Never run git commands.** Orchestrator handles commits. You: edits + build gate only.
    - `work review <task-id>`
@@ -76,9 +77,8 @@ NEVER stop mid-task. Finish before any PR ops.
 Bug found? `work create "Found: ..." --type bug`
 ```
 
-5. **Orchestrator** approves reviewed tasks: for each child in review status, `work approve <task-id>`
-6. **Orchestrator** creates single WIP commit: `git add . && git diff --staged --quiet || git commit -m 'wip: implement <epic-title> (<id>)'`
-7. → See Continuation Prompt below.
+5. **Orchestrator** creates single WIP commit: `git add . && git diff --staged --quiet || git commit -m 'wip: implement <epic-title> (<id>)'`
+6. → See Continuation Prompt below.
 
 ## Swarm Mode
 
@@ -132,7 +132,8 @@ for each phase_group (ordered by phase number):
      d. >10 tool calls on one fix → checkpoint + escalate.
      e. Failure traces to another worker's file → message team
         lead, wait.
-  5. `work review <task-id>`
+  5. **Polish pass:** flatten unnecessary nesting (early returns), remove code-restating comments and contextless TODOs, remove unused imports and debug artifacts. Never change behavior.
+  6. `work review <task-id>`
   6. Send completion message to team lead via SendMessage
   7. Wait for shutdown or next assignment.
 
@@ -149,7 +150,6 @@ for each phase_group (ordered by phase number):
   → PAUSE. Report status to user before continuing next phase.
 
   Shut down phase workers (SendMessage shutdown_request).
-  Orchestrator approves reviewed tasks: `work approve <id>` for each.
   Orchestrator commits phase: `git add . && git diff --staged --quiet || git commit -m 'wip: implement phase <N> (<brief-summary>)'`
 ```
 
@@ -162,7 +162,7 @@ for each phase_group (ordered by phase number):
 
 ### Teardown
 
-1. **Orchestrator** reviews + approves epic: `work review <epic-id>` then `work approve <epic-id>`
+1. `work review <epic-id>` — marks implementation complete, NOT approved
 2. TeamDelete
 3. Report completion to caller
 4. → See Continuation Prompt below.
@@ -173,7 +173,7 @@ Use AskUserQuestion:
 - "Continue to /split-commit" (Recommended) — description: "Split WIP commit into clean, tested vertical commits, then /review"
 - "Continue to /review" — description: "Skip split-commit and review WIP commit directly"
 - "Review changes manually first" — description: "Inspect the diff before automated review"
-- "Done for now" — description: "Leave issue active for later /resume-work"
+- "Done for now" — description: "Leave epic + tasks in review for later /resume-work"
 
 If user selects "Continue to /split-commit":
 → Determine base branch: `git log --oneline --first-parent | head -20` to find the merge base, or use `main` as default
@@ -191,4 +191,4 @@ If user selects "Continue to /review":
 - Single WIP commit after all work — orchestrator only, workers never git. Use /split-commit to repackage before review.
 - Swarm: spawn ALL wave workers in single message
 - Fix cycles capped at 2 → escalate to user
-- Workers submit `work review`, orchestrator `work approve`
+- Workers submit `work review` — NO `work approve` anywhere in implement. Approval only after user-driven /review or explicit request.
