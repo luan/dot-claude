@@ -44,7 +44,7 @@ Register the project in the local subdomain routing system:
 Skill tool: bootstrap-caddy, args: "<project-name>"
 ```
 
-This assigns a port and creates `http://<project>.localhost`. Use the
+This assigns a port and creates `https://<project>.localhost`. Use the
 returned port in vite.config.ts (`server.port`) and the URL in .env
 (`WEBAUTHN_ORIGIN`).
 
@@ -261,7 +261,7 @@ chosen component approach (tailwind-variants, shadcn pattern, etc.).
   # DEV_PORT=5173
   DATABASE_URL=data/<project-name>.db
   WEBAUTHN_RP_ID=localhost
-  WEBAUTHN_ORIGIN=http://<project-name>.localhost
+  WEBAUTHN_ORIGIN=https://<project-name>.localhost
   CHALLENGE_SECRET=change-me-to-a-random-secret
   ```
 - **.env** (gitignored) — copy from .env.example, then set actual
@@ -285,7 +285,7 @@ scaffold.
 After quality gate passes, report:
 
 - Project location: `~/src/<project-name>`
-- Dev URL: `http://<project-name>.localhost`
+- Dev URL: `https://<project-name>.localhost`
 - How to start: `cd ~/src/<project-name> && bun dev`
 - Reminder: create D1 database with `wrangler d1 create <name>` and
   update wrangler.toml

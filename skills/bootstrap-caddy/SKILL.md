@@ -9,7 +9,7 @@ disable-model-invocation: true
 # Bootstrap Caddy
 
 Register a project in the local subdomain routing system
-(`http://<project>.localhost` via Caddy + dnsmasq).
+(`https://<project>.localhost` via Caddy + dnsmasq).
 
 ## Step 1: Parse arguments
 
@@ -53,7 +53,7 @@ Parse the JSON. It has this shape:
 Check if the project name from Step 1 exists as a key in `projects`.
 
 - If YES → report existing registration and stop:
-  > Already registered: http://<project>.localhost → localhost:<port>
+  > Already registered: https://<project>.localhost → localhost:<port>
 - If NO → continue to Step 4
 
 ## Step 4: Assign port
@@ -73,7 +73,7 @@ to `~/.config/dev-routing/ports.json` using the Write tool.
 Write `~/.config/dev-routing/sites/<project>.caddy`:
 
 ```
-http://<project>.localhost {
+<project>.localhost {
     reverse_proxy localhost:<port>
 }
 ```
@@ -114,11 +114,21 @@ bootstrap-web can set it up during scaffolding.
 caddy reload --config ~/.config/dev-routing/Caddyfile 2>&1 || caddy start --config ~/.config/dev-routing/Caddyfile 2>&1
 ```
 
+## Port Lookup (for other skills)
+
+When any skill needs a project's dev port or URL:
+1. Read `~/.config/dev-routing/ports.json` — project key matches
+   directory name under `~/src/`
+2. Fallback: check `vite.config.ts` for `server.port`, then Vite
+   dev server output
+3. Never assume port 5173
+4. Canonical URL: `https://<project>.localhost`
+
 ## Step 9: Report
 
 Output exactly:
 
-- Dev URL: `http://<project>.localhost`
+- Dev URL: `https://<project>.localhost`
 - Backend port: `<port>`
 - Project configured: yes / no (project not found)
 - For .env: `DEV_PORT=<port>`
