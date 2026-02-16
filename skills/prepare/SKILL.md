@@ -146,7 +146,7 @@ Do NOT ask when the answer is obvious or covered by the task brief.
    Use AskUserQuestion:
    - "Continue to /implement <epic-id>" (Recommended) — description: "Execute implementation tasks"
    - "Review tasks first" — description: "Inspect the created tasks before implementing"
-   - "Done for now" — description: "Leave issue active for later /resume-work"
+   - "Done for now" — description: "Leave issue active for later /next"
 
    If user selects "Continue to /implement":
    → Invoke Skill tool: skill="implement", args="<epic-id>"

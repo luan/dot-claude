@@ -160,7 +160,7 @@ Use AskUserQuestion:
 - "Refine design" — description: "Revisit a section or explore
   a different angle"
 - "Done for now" — description: "Leave issue active for later
-  /resume-work"
+  /next"
 
 If user selects "Continue to /prepare":
 → Invoke Skill tool: skill="prepare", args="<issue-id>"

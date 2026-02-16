@@ -1,7 +1,8 @@
 ---
-name: pr-fix-gha
+name: pr:fix-gha
 description: "Fix failing CI/GitHub Actions checks. Triggers: 'fix CI', 'fix GHA', 'build failing', 'tests failing in CI', 'checks red'."
 user-invocable: true
+disable-model-invocation: true
 allowed-tools:
   - "Bash(gh pr view:*)"
   - "Bash(gh pr checks:*)"

@@ -18,6 +18,7 @@ Three modes: solo (default), file-split (auto for large diffs), perspective (--t
 ## Mid-Skill Interviewing
 
 Use AskUserQuestion when facing genuine ambiguity during execution:
+
 - Severity judgment borderline (medium vs high) → ask user's priority
 - Pattern violation unclear (style preference vs correctness issue) → clarify importance
 
@@ -26,20 +27,22 @@ Do NOT ask when the answer is obvious or covered by the task brief.
 ## Step 1: Scope + Mode
 
 Parse $ARGUMENTS:
+
 - `--against <issue-id>`: work issue for plan adherence
 - `--team`: force 3-perspective mode
 - Remaining args:
 
-| Input | Diff source |
-|-------|-------------|
-| (none) | `git diff HEAD` |
-| `main..HEAD` | `git diff main..HEAD` |
-| file list | `git diff HEAD -- <files>` + read files |
-| `#123` | `gh pr diff 123` |
+| Input        | Diff source                             |
+| ------------ | --------------------------------------- |
+| (none)       | `git diff HEAD`                         |
+| `main..HEAD` | `git diff main..HEAD`                   |
+| file list    | `git diff HEAD -- <files>` + read files |
+| `#123`       | `gh pr diff 123`                        |
 
 Count files: `git diff --stat`
 
 Choose mode:
+
 - `--team` → **Perspective Mode** (3 specialists)
 - 15+ files, no `--team` → **File-Split Mode**
 - Otherwise → **Solo Mode** (2 lenses)
@@ -53,6 +56,7 @@ work start <id>
 ```
 
 If `--continue`: skip creation, find existing:
+
 - $ARGUMENTS matches work ID → use it
 - Else: `work list --status active --label review`, use first result
 - `work show <id> --format=json` → read description
@@ -102,6 +106,7 @@ If `--against`: append "Check plan adherence: implementation match plan? Missing
 3. --team only: tag [architect]/[code-quality]/[devil], detect consensus (2+ flag same issue), note disagreements
 
 Output: `# Adversarial Review Summary`
+
 - Sections by severity: Critical → High → Medium → Low
 - --team adds: Consensus (top), Disagreements (bottom)
 - Table: `| Severity | File:Line | Issue | Suggestion |`
@@ -116,7 +121,7 @@ Store consolidated findings in description:
 
 ## Step 5: Dispatch Fixes
 
-Spawn general-purpose agent (model: sonnet). Read references/prompts.md for fix dispatch prompt template.
+Spawn general-purpose agent. Read references/prompts.md for fix dispatch prompt template.
 
 Fix agent also applies polish: flatten unnecessary nesting (early returns), remove code-restating comments and contextless TODOs, remove unused imports and debug artifacts. Never change behavior.
 
@@ -144,12 +149,14 @@ Context-aware next-step prompt based on review outcome:
 **Clean review (no issues found):**
 
 Use AskUserQuestion:
+
 - "Approve + commit" (Recommended) — description: "Approve implementation work and create conventional commit"
 - "Done for now" — description: "Leave issues in review for later"
 
 **Issues found and fixed (fix loop completed):**
 
 Use AskUserQuestion:
+
 - "Re-review to verify fixes" (Recommended) — description: "Run review again to confirm fixes are clean (max 2 cycles)"
 - "Approve + commit" — description: "Fixes look good, approve and commit"
 - "Done for now" — description: "Leave issues in review for later"
@@ -157,10 +164,12 @@ Use AskUserQuestion:
 **Issues found but not all fixed:**
 
 Use AskUserQuestion:
+
 - "Continue fixing" (Recommended) — description: "Address remaining issues"
 - "Done for now" — description: "Leave issues in review for later"
 
 Skill invocations based on user selection:
+
 - "Approve + commit" → `work list --status review` → `work approve <id>` for each, then `Skill tool: skill="commit"`
 - "Re-review to verify fixes" → `Skill tool: skill="review"`
 - "Continue fixing" → Resume fix loop at Step 5

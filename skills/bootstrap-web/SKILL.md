@@ -1,5 +1,5 @@
 ---
-name: bootstrap-web
+name: bootstrap:web
 description: "Bootstrap a new web project with the preferred stack. Triggers: 'bootstrap web', 'new webapp', 'scaffold project', 'new web project'."
 argument-hint: "<project-name> [description]"
 user-invocable: true
@@ -41,7 +41,7 @@ These are non-negotiable — do not research alternatives:
 Register the project in the local subdomain routing system:
 
 ```
-Skill tool: bootstrap-caddy, args: "<project-name>"
+Skill tool: bootstrap:caddy, args: "<project-name>"
 ```
 
 This assigns a port and creates `https://<project>.localhost`. Use the
@@ -265,7 +265,7 @@ chosen component approach (tailwind-variants, shadcn pattern, etc.).
   CHALLENGE_SECRET=change-me-to-a-random-secret
   ```
 - **.env** (gitignored) — copy from .env.example, then set actual
-  values. The bootstrap-caddy skill will have already written
+  values. The bootstrap:caddy skill will have already written
   `DEV_PORT=<port>` here.
 - **Initial migration** — generate from ORM or write SQL manually
 

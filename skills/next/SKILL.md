@@ -1,13 +1,90 @@
 ---
 name: next
-description: "Discover and dispatch the next highest-priority unblocked work item. Triggers: 'next', 'what next', 'pick up next task', 'continue working'."
+description: "Context-aware dispatch: resumes branch work if on a feature branch, otherwise picks the next work item from the board. Triggers: 'next', 'what next', 'pick up next task', 'resume', 'where was I', 'continue working'."
+argument-hint: "[branch-name|PR#]"
 ---
 
 # Next
 
-Read the work board, find what's ready, dispatch the right skill.
+Figure out where you are, then either resume in-flight work or pick
+something new.
 
-## Instructions
+## Context
+
+Branch: !`git branch --show-current`
+Status: !`git status -sb 2>/dev/null`
+Recent commits: !`git log --oneline -5 2>/dev/null`
+
+## Step 0: Detect trunk
+
+```bash
+TRUNK=$(gt parent 2>/dev/null || gt trunk)
+CURRENT=$(git branch --show-current)
+```
+
+If `$CURRENT` equals `$TRUNK`, or the user passed an explicit
+branch/PR# argument, go to the appropriate path:
+
+- **On trunk, no argument** → Jump to [Trunk Path](#trunk-path)
+- **On feature branch** → Jump to [Feature Branch Path](#feature-branch-path)
+- **Explicit argument (branch name or PR#)** → Resolve the branch
+  first (PR# → `gh pr view <num> --json headRefName`), then follow
+  Feature Branch Path for that branch
+
+---
+
+## Feature Branch Path
+
+Resume in-flight work. Gather state, suggest next action.
+
+### 1. Gather branch state
+
+Already have branch name, status, and recent commits from Context.
+
+### 2. Gather PR context (if PR exists)
+
+- `gh pr view --json title,state,isDraft,reviewDecision,statusCheckRollup`
+- `gh pr checks`
+- PR review comments: `gh api repos/{owner}/{repo}/pulls/{num}/comments`
+
+### 3. Check for stale branches
+
+- List all local `luan/*` branches: `git branch --list 'luan/*' --format='%(refname:short)'`
+- Get active work issues: `work list --status active --format=json` and check for comments containing `Branch:`
+- Cross-reference: branches not referenced in any active issue's comments are potentially stale
+- Never auto-delete — only surface for user awareness
+
+### 4. Summarize
+
+```
+Branch: <name>
+Commits: last 3 messages
+PR: #N (draft/ready) — title
+Review: Approved | Changes requested | Pending
+CI: Passing | Failing (list failures)
+Comments: N unresolved (summarize)
+Work issues: N active, M open
+Stale branches: <list> (no matching active issues)
+```
+
+Only show "Stale branches" line if stale branches exist.
+
+### 5. Suggest next action (priority order)
+
+1. CI failing → "Fix checks"
+2. Changes requested → "Address N review comments"
+3. Unresolved comments → "Respond to feedback"
+4. Work issues active → "Continue: ..."
+5. Draft PR, all passing → "Mark ready"
+6. Ready PR, approved → "Merge"
+7. No PR → "Create with /commit then /graphite"
+8. All clear → "Wait for review"
+
+---
+
+## Trunk Path
+
+Read the board, find what's ready, dispatch the right skill.
 
 ### 1. Read the board
 
@@ -35,7 +112,7 @@ same priority (someone already started it — resume it).
 work show <id>
 ```
 
-### 4. Determine the action
+### 4. Classify the action
 
 Read the issue description and classify:
 
@@ -46,7 +123,6 @@ Read the issue description and classify:
 | Title starts with "Explore:" or description says "Needs explore" or "Explore first" | `/explore` |
 | Has design/plan but no children and isn't a leaf task | `/prepare` |
 | Has children or is a leaf task ready to build | `/implement` |
-| Status is `active` and has prior work context | `/resume-work` |
 
 **Tie-breaking:**
 - Feature with no "## Approach" or "## Design" section → `/explore`

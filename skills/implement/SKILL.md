@@ -105,12 +105,6 @@ for each phase_group (ordered by phase number):
   Spawn ALL tasks in this phase in SINGLE message (parallel).
   Workers = min(task_count, 4).
 
-  Per-task model selection:
-    For each task, `work show <id>` and evaluate against
-    mechanical criteria in rules/model-tiering.md.
-    Insufficient brief to evaluate → opus.
-    opus is the DEFAULT. sonnet is rare.
-
   Each worker (Task, subagent_type="general-purpose", mode="plan",
   team_name="<team>", name="worker-<n>"):
 
@@ -173,11 +167,10 @@ Use AskUserQuestion:
 - "Continue to /split-commit" (Recommended) — description: "Split WIP commit into clean, tested vertical commits, then /review"
 - "Continue to /review" — description: "Skip split-commit and review WIP commit directly"
 - "Review changes manually first" — description: "Inspect the diff before automated review"
-- "Done for now" — description: "Leave epic + tasks in review for later /resume-work"
+- "Done for now" — description: "Leave epic + tasks in review for later /next"
 
 If user selects "Continue to /split-commit":
-→ Determine base branch: `git log --oneline --first-parent | head -20` to find the merge base, or use `main` as default
-→ Invoke Skill tool: skill="split-commit", args="<base-branch>"
+→ Invoke Skill tool: skill="split-commit", args="!`gt parent 2>/dev/null || gt trunk`"
 If user selects "Continue to /review":
 → Invoke Skill tool: skill="review", args=""
 

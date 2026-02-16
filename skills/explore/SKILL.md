@@ -121,7 +121,7 @@ Next: /prepare <issue-id>
 Use AskUserQuestion:
 - "Continue to /prepare <issue-id>" (Recommended) — description: "Create epic + implementation tasks from findings"
 - "Re-explore with different focus" — description: "Investigate a different angle on the same topic"
-- "Done for now" — description: "Leave issue active for later /resume-work"
+- "Done for now" — description: "Leave issue active for later /next"
 
 If user selects "Continue to /prepare":
 → Invoke Skill tool: skill="prepare", args="<issue-id>"

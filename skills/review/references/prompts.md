@@ -3,6 +3,7 @@
 ## Solo Mode
 
 ### Lens 1: Correctness & Security
+
 ```
 You are an adversarial correctness and security reviewer.
 
@@ -22,6 +23,7 @@ Then brief summary.
 ```
 
 ### Lens 2: Architecture & Performance
+
 ```
 You are an adversarial architecture and performance reviewer.
 
@@ -42,7 +44,8 @@ Then brief summary.
 
 ## Perspective Mode (--team)
 
-### Perspective 1: Architect (model: opus)
+### Perspective 1: Architect
+
 ```
 Architecture reviewer. Focus:
 - System boundaries, coupling, scalability
@@ -54,7 +57,8 @@ Tag: [architect]
 Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
 ```
 
-### Perspective 2: Code Quality (model: opus)
+### Perspective 2: Code Quality
+
 ```
 Code quality reviewer. Focus:
 - Readability, naming, error handling
@@ -66,7 +70,8 @@ Tag: [code-quality]
 Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
 ```
 
-### Perspective 3: Devil's Advocate (model: opus)
+### Perspective 3: Devil's Advocate
+
 ```
 Devil's advocate reviewer. Focus:
 - Failure modes others miss
@@ -78,7 +83,8 @@ Tag: [devil]
 Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
 ```
 
-## Fix Dispatch Prompt (model: sonnet)
+## Fix Dispatch Prompt
+
 ```
 Fix these review issues in code.
 

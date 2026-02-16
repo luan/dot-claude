@@ -1,9 +1,10 @@
 ---
-name: pr-fix-comments
+name: pr:fix-comments
 description: "Fix unresolved PR review comments. Triggers: 'fix comments', 'fix PR comments', 'address review feedback'."
 user-invocable: true
+disable-model-invocation: true
 allowed-tools:
-  - "Bash(python3 ~/.claude/skills/pr-fix-comments/scripts/pr_threads.py *)"
+  - "Bash(scripts/pr_threads.py *)"
   - "Bash(gh pr view *)"
   - "Bash(gh pr list *)"
   - "Bash(git branch --show-current)"
@@ -32,7 +33,7 @@ Fix unresolved review comments from a PR.
 3. **Fetch and display comments**:
 
    ```bash
-   python3 ~/.claude/skills/pr-fix-comments/scripts/pr_threads.py fetch --pr <PR>
+   scripts/pr_threads.py --pr <PR>
    ```
 
    Display as numbered list with file:line, author, preview.
@@ -47,19 +48,8 @@ Fix unresolved review comments from a PR.
 
 7. **Push** (optional): Ask first, then `gt ss --update-only`
 
-8. **Resolve threads**: Show planned replies, ask confirmation, then:
-
-   ```bash
-   python3 ~/.claude/skills/pr-fix-comments/scripts/pr_threads.py reply --pr <PR> --comment-id <ID> --body "<message>"
-   python3 ~/.claude/skills/pr-fix-comments/scripts/pr_threads.py resolve --thread-id <THREAD_ID>
-   ```
-
-   Reply format:
-   - Exact fix: "Done [pr-fix-comments]"
-   - Custom fix: "{brief explanation} [pr-fix-comments]"
-
 ## Notes
 
 - User confirms plan before execution
-- NEVER post thread replies without showing user first
+- NEVER reply to or resolve threads — only fetch and fix locally
 - Be concise — don't over-explain trivial fixes

@@ -1,5 +1,5 @@
 ---
-name: bootstrap-caddy
+name: bootstrap:caddy
 description: "Register a project in the local dev routing system. Triggers: 'register project', 'add to caddy', 'bootstrap caddy', 'dev routing'."
 argument-hint: "<project-name> [port]"
 user-invocable: true
@@ -13,7 +13,7 @@ Register a project in the local subdomain routing system
 
 ## Step 1: Parse arguments
 
-The argument string is everything after `/bootstrap-caddy `.
+The argument string is everything after `/bootstrap:caddy `.
 - First word = project name
 - Optional second word = port number override
 
@@ -106,7 +106,7 @@ leaks into the repo. Bun auto-loads `.env`, so `process.env.DEV_PORT`
 is available in vite.config.ts.
 
 If the project directory doesn't exist, skip — report the port so
-bootstrap-web can set it up during scaffolding.
+bootstrap:web can set it up during scaffolding.
 
 ## Step 8: Reload Caddy
 

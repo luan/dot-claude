@@ -1,7 +1,7 @@
 ---
 name: split-commit
 description: "Collapse a branch into working tree and repackage as clean, tested, vertical commits. Triggers: 'split commits', 'repackage commits', 'reorganize commits', 'clean up branch history', 'consolidate commits into clean ones'"
-argument-hint: "<base-branch> [--test='command']"
+argument-hint: "[base-branch] [--test='command']"
 user-invocable: true
 allowed-tools:
   - Task
@@ -15,7 +15,7 @@ Repackage branch changes into clean vertical commits. Each commit compiles + pas
 
 ## Phase 1: Analyze
 
-Parse: `<base-branch>` (required), optional `--test='command'`.
+Parse: `<base-branch>` (default: !`gt parent 2>/dev/null || gt trunk`), optional `--test='command'`.
 
 Dispatch analysis subagent (general-purpose):
 
