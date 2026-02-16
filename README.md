@@ -44,7 +44,6 @@ explore → prepare → implement → review → commit
 | `/debugging` | Root-cause-first bug diagnosis |
 | `/fix <feedback>` | Convert feedback → one issue with phases |
 | `/resume-work` | Context recovery after a break |
-| `/reference-sync` | Check upstream for new patterns |
 
 ### Git & PRs
 
@@ -73,7 +72,6 @@ explore → prepare → implement → review → commit
 ├── skills/               # Slash command skills (SKILL.md each)
 ├── rules/                # Global rules (inherited by subagents)
 ├── hooks/                # Pre/post tool automation
-├── references/           # Upstream patterns (git submodule)
 ├── CLAUDE.md             # Core instructions
 ├── settings.json         # Permissions & environment
 └── README.md
