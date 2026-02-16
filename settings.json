@@ -37,5 +37,6 @@
   },
   "alwaysThinkingEnabled": true,
   "promptSuggestionEnabled": true,
-  "skipDangerousModePermissionPrompt": true
+  "skipDangerousModePermissionPrompt": true,
+  "effortLevel": "medium"
 }
