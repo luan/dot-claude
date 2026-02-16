@@ -1,0 +1,33 @@
+{
+  "transitions": {
+    "active": [
+      "done",
+      "cancelled",
+      "open",
+      "review"
+    ],
+    "cancelled": [
+      "open"
+    ],
+    "done": [
+      "open"
+    ],
+    "open": [
+      "active",
+      "done",
+      "cancelled"
+    ],
+    "review": [
+      "done",
+      "active"
+    ]
+  },
+  "default_state": "open",
+  "types": [
+    "feature",
+    "bug",
+    "chore"
+  ],
+  "default_type": "feature",
+  "id_length": 6
+}
