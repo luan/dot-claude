@@ -16,12 +16,14 @@ for AI-assisted development with work issue tracking.
 ## Pipeline
 
 ```
-explore → prepare → implement → review → commit
+brainstorm → explore → prepare → implement → split-commit → review → commit
 ```
 
+- **brainstorm**: Collaborative design for greenfield features
 - **explore**: Research codebase, produce phased design in issue
 - **prepare**: One subagent creates epic + task briefs (no code)
 - **implement**: Workers own TDD from briefs (auto solo/swarm)
+- **split-commit**: Repackage branch into clean, tested commits
 - **review**: Adversarial review with built-in fix loop + polish
 - **commit**: Conventional commit
 
@@ -29,40 +31,48 @@ explore → prepare → implement → review → commit
 
 ### Core Pipeline
 
-| Command | What it does |
-|---------|--------------|
-| `/explore <prompt>` | Deep research, stores design in issue |
-| `/prepare <issue-id>` | Design → epic + task briefs |
-| `/implement <epic-id>` | Execute tasks (auto solo/swarm) |
-| `/review [--team]` | Adversarial review (3-perspective with --team) |
-| `/commit` | Conventional commit |
+| Command                | What it does                                   |
+| ---------------------- | ---------------------------------------------- |
+| `/explore <prompt>`    | Deep research, stores design in issue          |
+| `/prepare <issue-id>`  | Design → epic + task briefs                    |
+| `/implement <epic-id>` | Execute tasks (auto solo/swarm)                |
+| `/review [--team]`     | Adversarial review (3-perspective with --team) |
+| `/commit`              | Conventional commit                            |
 
 ### Investigation & Planning
 
-| Command | What it does |
-|---------|--------------|
-| `/debugging` | Root-cause-first bug diagnosis |
+| Command           | What it does                             |
+| ----------------- | ---------------------------------------- |
+| `/brainstorm`     | Collaborative design for new ideas       |
+| `/debugging`      | Root-cause-first bug diagnosis           |
 | `/fix <feedback>` | Convert feedback → one issue with phases |
-| `/resume-work` | Context recovery after a break |
+| `/next`           | Resume branch work or dispatch next item |
 
 ### Git & PRs
 
-| Command | What it does |
-|---------|--------------|
-| `/start <desc>` | Create branch + link issue |
-| `/graphite` | Graphite stack operations |
-| `/split-commit` | Repackage branch into clean commits |
-| `/git-surgeon` | Hunk-level staging/unstaging |
-| `/pr-description` | Update PR title and body |
-| `/pr-fix-comments` | Address PR review feedback |
-| `/pr-fix-gha` | Fix failing CI/GitHub Actions |
-| `/pr-reviewers` | Smart reviewer recommendations |
+| Command            | What it does                        |
+| ------------------ | ----------------------------------- |
+| `/start <desc>`    | Create branch + link issue          |
+| `/graphite`        | Graphite stack operations           |
+| `/split-commit`    | Repackage branch into clean commits |
+| `/git-surgeon`     | Hunk-level staging/unstaging        |
+| `/pr-description`  | Update PR title and body            |
+| `/pr-fix-comments` | Address PR review feedback          |
+| `/pr-fix-gha`      | Fix failing CI/GitHub Actions       |
+| `/pr-reviewers`    | Smart reviewer recommendations      |
+
+### Scaffolding & UI
+
+| Command                       | What it does                            |
+| ----------------------------- | --------------------------------------- |
+| `/bootstrap:web <name>`       | Scaffold a new web project              |
+| `/bootstrap:caddy <name>`     | Register project in local dev routing   |
+| `/frontend-design`            | Production-grade frontend interfaces    |
 
 ### Utilities
 
-| Command | What it does |
-|---------|--------------|
-| `/compress-prompt` | Compress text for AI consumption |
+| Command           | What it does            |
+| ----------------- | ----------------------- |
 | `/writing-skills` | Create or verify skills |
 
 ## Directory Structure
@@ -71,6 +81,10 @@ explore → prepare → implement → review → commit
 ~/.claude/
 ├── skills/               # Slash command skills (SKILL.md each)
 ├── rules/                # Global rules (inherited by subagents)
+│   ├── test-quality.md   # Test standards + banned patterns
+│   ├── subagent-trust.md # Adversarial verification policy
+│   ├── rust.md, cargo.md # Language-specific rules
+│   └── ...
 ├── hooks/                # Pre/post tool automation
 ├── CLAUDE.md             # Core instructions
 ├── settings.json         # Permissions & environment
@@ -91,14 +105,6 @@ work start <id>                      # Mark active
 work review <id>                     # Submit for review
 work approve <id>                    # Mark done (after review)
 ```
-
-## Model Tiering
-
-| Tier | Model | When |
-|------|-------|------|
-| Deep | opus | Default — anything with ambiguity |
-| Standard | sonnet | Purely mechanical, zero ambiguity |
-| Fast | haiku | Commit messages, compression |
 
 ## License
 
