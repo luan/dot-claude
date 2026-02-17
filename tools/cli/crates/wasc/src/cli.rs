@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::plan;
 use crate::store::{Priority, SortOrder, Status, StatusFilter, Store, Task, TaskList};
 use clap::{CommandFactory, Parser, Subcommand};
@@ -622,21 +624,39 @@ pub fn run_plan_show(id: &str) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub fn run_projects(store: &Store, json: bool) -> Result<(), Box<dyn std::error::Error>> {
-    let mut projects = std::collections::BTreeSet::new();
+    // slug -> path (empty string for plan-subdir-only entries)
+    let mut projects: BTreeMap<String, String> = BTreeMap::new();
 
-    // Collect projects from tasks
+    // Source 1: tasks with a non-empty project field
     for list in store.list_task_lists() {
         for task in store.list_tasks(&list.id) {
             if !task.project.is_empty() {
-                projects.insert(task.project);
+                let slug = crate::planfile::project_name(&task.project);
+                projects.entry(slug).or_insert(task.project);
             }
         }
     }
 
-    // Collect projects from plans
+    // Source 2: plans with a non-empty project field
     for plan in plan::list_plans() {
         if !plan.project.is_empty() {
-            projects.insert(plan.project);
+            let slug = crate::planfile::project_name(&plan.project);
+            projects.entry(slug).or_insert(plan.project);
+        }
+    }
+
+    // Source 3: subdirectories of ~/.claude/plans/ (excluding "archive")
+    if let Ok(home) = std::env::var("HOME") {
+        let plans_base = std::path::PathBuf::from(home).join(".claude").join("plans");
+        if let Ok(entries) = std::fs::read_dir(&plans_base) {
+            for entry in entries.flatten() {
+                if entry.path().is_dir()
+                    && let Some(name) = entry.file_name().to_str()
+                    && name != "archive"
+                {
+                    projects.entry(name.to_string()).or_default();
+                }
+            }
         }
     }
 
@@ -646,11 +666,21 @@ pub fn run_projects(store: &Store, json: bool) -> Result<(), Box<dyn std::error:
     }
 
     if json {
-        let json_projects: Vec<_> = projects.iter().collect();
+        let json_projects: Vec<_> = projects
+            .iter()
+            .map(|(slug, path)| {
+                if path.is_empty() {
+                    serde_json::json!({ "slug": slug })
+                } else {
+                    serde_json::json!({ "slug": slug, "path": path })
+                }
+            })
+            .collect();
         println!("{}", serde_json::to_string_pretty(&json_projects)?);
     } else {
-        for project in &projects {
-            println!("{project}");
+        println!("{:<30} PATH", "SLUG");
+        for (slug, path) in &projects {
+            println!("{:<30} {path}", slug);
         }
     }
 
