@@ -159,7 +159,7 @@ pub fn cmd_create(args: &[String]) {
     }
 
     let s = if slug_flag.is_empty() {
-        claude_slug::slug(&topic)
+        crate::slug::slug(&topic)
     } else {
         slug_flag
     };

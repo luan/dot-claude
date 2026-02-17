@@ -2,9 +2,11 @@ mod ansi;
 mod app;
 mod cli;
 mod editor;
+mod gitcontext;
 mod phases;
 mod plan;
 mod planfile;
+mod slug;
 mod store;
 mod ui;
 
@@ -101,6 +103,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             cli::ToolAction::Slug { words } => cli::run_slug(words),
             cli::ToolAction::Phases { file } => phases::run_phases(file),
             cli::ToolAction::Completion { shell } => cli::run_completion(shell),
+            cli::ToolAction::Gitcontext {
+                base,
+                format,
+                max_total,
+                max_file,
+            } => gitcontext::run(base, format, max_total, max_file),
         },
     }
 }

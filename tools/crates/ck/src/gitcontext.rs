@@ -1,9 +1,8 @@
-use std::env;
 use std::process::{self, Command};
 
 struct Context {
     branch: String,
-    commits: Vec<(String, String)>, // (hash, subject)
+    commits: Vec<(String, String)>,
     files: Vec<String>,
     diff: String,
     truncated: bool,
@@ -28,10 +27,8 @@ fn git(args: &[&str]) -> Result<String, String> {
 }
 
 fn gather(base: &str, max_total: usize, max_file: usize) -> Context {
-    // Verify git repo
     git(&["rev-parse", "--git-dir"]).unwrap_or_else(|_| fatal("not in a git repository"));
 
-    // Verify base exists
     git(&["rev-parse", "--verify", base])
         .unwrap_or_else(|_| fatal(&format!("base branch \"{base}\" does not exist")));
 
@@ -176,7 +173,6 @@ fn print_json(ctx: &Context) {
     println!("{{");
     println!("  \"branch\": \"{}\",", json_str(&ctx.branch));
 
-    // commits
     println!("  \"commits\": [");
     for (i, (hash, subject)) in ctx.commits.iter().enumerate() {
         let comma = if i < ctx.commits.len() - 1 { "," } else { "" };
@@ -188,7 +184,6 @@ fn print_json(ctx: &Context) {
     }
     println!("  ],");
 
-    // files
     println!("  \"files\": [");
     for (i, f) in ctx.files.iter().enumerate() {
         let comma = if i < ctx.files.len() - 1 { "," } else { "" };
@@ -213,57 +208,15 @@ fn print_json(ctx: &Context) {
     println!("}}");
 }
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-
-    let mut base = "main".to_string();
-    let mut format = "text".to_string();
-    let mut max_total: usize = 3000;
-    let mut max_file: usize = 200;
-
-    let mut i = 1;
-    while i < args.len() {
-        match args[i].as_str() {
-            "--help" | "-h" => {
-                println!(
-                    "Usage: gitcontext [flags]\n\n\
-                     Gather branch context (diff, log, files) for Claude Code skills.\n\n\
-                     Flags:\n  \
-                     --base <branch>    Base branch for comparison (default: main)\n  \
-                     --format <fmt>     Output format: text or json (default: text)\n  \
-                     --max-total <n>    Max total diff lines before truncation (default: 3000)\n  \
-                     --max-file <n>     Per-file diff line threshold (default: 200)"
-                );
-                return;
-            }
-            "--base" => {
-                i += 1;
-                base = args.get(i).cloned().unwrap_or(base);
-            }
-            "--format" => {
-                i += 1;
-                format = args.get(i).cloned().unwrap_or(format);
-            }
-            "--max-total" => {
-                i += 1;
-                max_total = args
-                    .get(i)
-                    .and_then(|s| s.parse().ok())
-                    .unwrap_or(max_total);
-            }
-            "--max-file" => {
-                i += 1;
-                max_file = args.get(i).and_then(|s| s.parse().ok()).unwrap_or(max_file);
-            }
-            _ => {}
-        }
-        i += 1;
-    }
-
+pub fn run(
+    base: String,
+    format: String,
+    max_total: usize,
+    max_file: usize,
+) -> Result<(), Box<dyn std::error::Error>> {
     if format != "text" && format != "json" {
-        fatal(&format!(
-            "invalid format \"{format}\": must be \"text\" or \"json\""
-        ));
+        eprintln!("invalid format \"{format}\": must be \"text\" or \"json\"");
+        std::process::exit(1);
     }
 
     let ctx = gather(&base, max_total, max_file);
@@ -272,4 +225,6 @@ fn main() {
         "json" => print_json(&ctx),
         _ => print_text(&ctx),
     }
+
+    Ok(())
 }

@@ -158,6 +158,25 @@ pub enum ToolAction {
         #[arg(help = "Shell type (bash, zsh, fish, powershell, elvish)")]
         shell: Shell,
     },
+
+    #[command(about = "Gather branch context (diff, log, files) for skills")]
+    Gitcontext {
+        #[arg(long, default_value = "main", help = "Base branch for comparison")]
+        base: String,
+
+        #[arg(long, default_value = "text", help = "Output format: text or json", value_parser = ["text", "json"])]
+        format: String,
+
+        #[arg(
+            long,
+            default_value_t = 3000,
+            help = "Max total diff lines before truncation"
+        )]
+        max_total: usize,
+
+        #[arg(long, default_value_t = 200, help = "Per-file diff line threshold")]
+        max_file: usize,
+    },
 }
 
 #[derive(Subcommand)]
@@ -640,7 +659,7 @@ pub fn run_slug(words: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
     let input = words.join(" ");
-    let result = claude_slug::slug(&input);
+    let result = crate::slug::slug(&input);
     if !result.is_empty() {
         println!("{result}");
     }

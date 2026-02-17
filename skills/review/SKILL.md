@@ -76,7 +76,7 @@ If `--continue`: skip creation, find existing:
 
 ## Step 2: Gather Context
 
-1. Run `claude-gitcontext --base <base> --format json` where base is from Step 1 scope
+1. Run `ck tool gitcontext --base <base> --format json` where base is from Step 1 scope
    (default: `gt parent 2>/dev/null || gt trunk || echo main`).
    This returns branch, commits, files, diff (auto-truncated), and truncated_files list.
 2. If `--against`: `TaskGet(issueId)` for plan
