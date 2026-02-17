@@ -30,7 +30,7 @@ Random fixes waste time + create new bugs.
 
 1. Form single hypothesis: "X is root cause because Y"
 1b. **Oracle test (when applicable):** Compare current behavior against known-good baseline. Use available worktree from pool (`git worktree list` — detached HEAD = available), check out last green commit there, run same test, diff outputs. Creating new worktree is expensive — ask user first. Return to detached HEAD when done. Also consider: reference implementation as oracle, or reduced test case with known-correct output.
-2. **If you identify 3+ plausible hypotheses:** STOP — spawn parallel subagents (one per hypothesis) to investigate simultaneously. Each subagent traces one hypothesis, reports evidence for/against.
+2. **If you identify 3+ plausible hypotheses:** STOP — spawn parallel subagents (`model="sonnet"`, one per hypothesis) to investigate simultaneously. Each subagent traces one hypothesis, reports evidence for/against.
 3. SMALLEST possible change to test
 4. One variable at a time
 5. Worked → Phase 4. Didn't → NEW hypothesis (if this is your 3rd hypothesis, parallelize per step 2)

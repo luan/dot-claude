@@ -2,7 +2,7 @@
 name: codebase-researcher
 description: Exploration agent that accumulates project knowledge across sessions
 tools: Read, Grep, Glob, Bash
-model: opus
+model: sonnet
 memory: project
 permissionMode: dontAsk
 ---

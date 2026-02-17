@@ -42,7 +42,7 @@ by `metadata.parent_id`.
 
 ## Worker Prompt
 
-All modes dispatch work via Task subagent (`subagent_type="general-purpose"`).
+All modes dispatch work via Task subagent (`subagent_type="general-purpose"`, `model="sonnet"`).
 Two variants based on coordination needs:
 
 ### Standalone Variant

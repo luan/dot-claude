@@ -130,7 +130,7 @@ Store findings using `reviewId` as the task:
 
 ## Step 5: Dispatch Fixes
 
-Spawn general-purpose agent. Read references/prompts.md for fix dispatch prompt template.
+Spawn general-purpose agent (model="sonnet"). Read references/prompts.md for fix dispatch prompt template.
 
 Fix agent also applies polish: flatten unnecessary nesting (early returns), remove code-restating comments and contextless TODOs, remove unused imports and debug artifacts. Never change behavior.
 

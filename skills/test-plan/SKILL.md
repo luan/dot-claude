@@ -3,6 +3,7 @@ name: test-plan
 description: "Analyze current diff, classify changes by risk, and produce structured manual test plan. Triggers: 'test plan', 'what should I test', 'manual testing', 'verification steps', 'QA checklist'. Exits early for trivial changes."
 argument-hint: "[base..head | file-list | PR#]"
 user-invocable: true
+model: sonnet
 allowed-tools:
   - Bash
   - Read

@@ -2,6 +2,7 @@
 name: pr:description
 description: "Update PR title and description from branch context. Triggers: 'pr description', 'update PR', 'PR title', 'describe PR'."
 user-invocable: true
+model: sonnet
 disable-model-invocation: false
 allowed-tools:
   - "Bash(git status:*)"
