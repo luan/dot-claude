@@ -111,163 +111,32 @@ direction using AskUserQuestion. Ask about:
    casual? Or "you pick something distinctive."
 
 Use their answers to select fonts (Google Fonts), build the OKLCH
-palette, and shape the layout. Apply frontend-design principles:
-
-- Never Inter, Roboto, Arial, or system fonts
-- Cohesive OKLCH palette — dominant direction + sharp accents
-- Generous negative space, no cookie-cutter layouts
-- Dark-first: `<html class="dark">`
-- Match complexity to vision: maximalist needs elaborate code,
-  minimalist needs precision and restraint
+palette, and shape the layout. Apply `/frontend-design` principles.
 
 ## Scaffold Phase
 
-After research + design interview, create the project. NEVER hardcode
-package versions — always `bun add <package>` and let bun resolve
-latest.
+After research + design interview, create the project at `~/src/<project-name>`.
 
-### 1. Create project directory
+### Constraints
 
-```bash
-mkdir -p ~/src/<project-name>
-```
+- NEVER hardcode package versions — `bun add <package>` resolves latest
+- Write config files based on current docs from research phase, not templates
+- vite.config.ts MUST use `server: { port: Number(process.env.DEV_PORT) || undefined }` (port from gitignored `.env`)
+- Dark-first: `<html class="dark">`
+- WebAuthn: `rpID` = `localhost` (valid for `*.localhost`), origin from `$env/dynamic/private`
+- HMAC-signed challenges for WebAuthn (no DB challenge storage)
+- `.env.example` committed, `.env` gitignored
 
-### 2. Initialize
+### What to Build
 
-Either use the official SvelteKit CLI (if it supports non-interactive
-setup) or create package.json manually:
+Use research results to determine exact packages and APIs. Build:
 
-```json
-{
-  "name": "<project-name>",
-  "private": true,
-  "version": "0.0.1",
-  "type": "module",
-  "scripts": {
-    "dev": "vite dev",
-    "build": "vite build",
-    "preview": "vite preview",
-    "prepare": "svelte-kit sync || echo ''",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "test": "vitest run",
-    "test:watch": "vitest"
-  }
-}
-```
-
-Add DB scripts if using an ORM (e.g. `db:generate`, `db:push`).
-Add `"deploy": "bun run build && wrangler pages deploy"`.
-
-### 3. Install dependencies
-
-Use `bun add` and `bun add -d` without version specifiers. Group by
-purpose:
-
-```bash
-cd ~/src/<project-name>
-
-# Core (always)
-bun add -d svelte @sveltejs/kit @sveltejs/vite-plugin-svelte \
-  @sveltejs/adapter-cloudflare vite typescript svelte-check wrangler
-
-# Tailwind (always)
-bun add -d @tailwindcss/vite tailwindcss
-
-# Testing (always)
-bun add -d vitest <testing-library-if-needed> <dom-env-if-needed>
-
-# Icons (from research)
-bun add -d <icon-packages>
-
-# DB layer (from research)
-bun add <db-packages>
-
-# Auth (from research)
-bun add <auth-packages>
-
-# UI components (from research)
-bun add <ui-packages>
-
-# Utilities (from research)
-bun add <utility-packages>
-```
-
-### 4. Write config files
-
-Write these based on current docs (not hardcoded templates):
-
-- **vite.config.ts** — SvelteKit + Tailwind vite plugins + icon plugin.
-  MUST include `server: { port: Number(process.env.DEV_PORT) || undefined }`
-  so the port comes from the gitignored `.env` file, not hardcoded.
-- **svelte.config.js** — Cloudflare adapter, minimal CSP
-- **tsconfig.json** — strict, extends `.svelte-kit/tsconfig.json`
-- **vitest.config.ts** — jsdom/happy-dom, test include pattern
-- **wrangler.toml** — project name, D1 binding, placeholder DB id
-- **DB config** — if using ORM (schema location, sqlite dialect)
-- **components.json** — if using shadcn-svelte
-
-Write based on current docs for each package.
-
-### 5. Write app shell
-
-- **src/app.html** — dark class on html, viewport meta, favicon,
-  sveltekit placeholders
-- **src/app.css** — Tailwind v4 pattern:
-  1. `@import "tailwindcss"` + animation import if applicable
-  2. `@custom-variant dark (&:is(.dark *));`
-  3. `:root` + `.dark` with OKLCH design tokens (background, foreground,
-     primary, secondary, muted, accent, destructive, border, input, ring,
-     card, popover)
-  4. `@theme inline` mapping CSS vars to Tailwind color namespace
-  5. `@layer base` with border-border and bg-background defaults
-- **src/app.d.ts** — App.Locals (user, db), App.Platform (D1 env)
-
-### 6. Write lib files
-
-- **src/lib/utils.ts** — `cn()` helper (clsx + tailwind-merge)
-- **src/lib/db/schema** — users, passkeys, sessions tables
-- **src/lib/db/client** — dual-mode client (D1 prod, local dev)
-- **src/lib/server/auth** — WebAuthn registration + authentication
-  (HMAC-signed challenges, no DB challenge storage).
-  Set `rpID` to `localhost` (valid for all `*.localhost` subdomains).
-  Set origin from `$env/dynamic/private` WEBAUTHN_ORIGIN.
-- **src/lib/server/session** — create/validate/destroy sessions,
-  cookie helpers, 30-day duration
-
-### 7. Write UI primitives
-
-At minimum, a Button component with variant/size props using the
-chosen component approach (tailwind-variants, shadcn pattern, etc.).
-
-### 8. Write routes
-
-- **src/hooks.server.ts** — DB init, session validation, public path
-  allowlist, 401 for API / redirect for pages
-- **src/routes/+layout.svelte** — root layout, import app.css, header
-- **src/routes/+layout.server.ts** — pass user from locals
-- **src/routes/+page.svelte** — home page placeholder
-- **src/routes/auth/+page.svelte** — login/register with passkeys
-- **src/routes/auth/login/+server.ts** — GET options, POST verify
-- **src/routes/auth/register/+server.ts** — GET options, POST create
-- **src/routes/auth/logout/+server.ts** — POST destroy session
-
-### 9. Remaining files
-
-- **static/favicon.svg** — simple distinctive SVG for the project
-- **.gitignore** — node*modules, .svelte-kit, build, .wrangler, data,
-  .DS_Store, *.db, .env/.env.\_ (keep .env.example)
-- **.env.example** (committed):
-  ```
-  # DEV_PORT=5173
-  DATABASE_URL=data/<project-name>.db
-  WEBAUTHN_RP_ID=localhost
-  WEBAUTHN_ORIGIN=https://<project-name>.localhost
-  CHALLENGE_SECRET=change-me-to-a-random-secret
-  ```
-- **.env** (gitignored) — copy from .env.example, then set actual
-  values. The bootstrap:caddy skill will have already written
-  `DEV_PORT=<port>` here.
-- **Initial migration** — generate from ORM or write SQL manually
+1. **Config** — vite, svelte, typescript, vitest, wrangler, tailwind, DB ORM
+2. **App shell** — app.html, app.css (Tailwind v4 + OKLCH design tokens), app.d.ts
+3. **Lib** — cn() helper, DB schema+client, auth (WebAuthn), sessions
+4. **Routes** — hooks.server.ts, layout, home page, auth flow (register/login/logout)
+5. **UI** — at minimum a Button component with variant/size props
+6. **Static** — favicon, .gitignore, .env.example, initial migration
 
 ## Quality Gate
 

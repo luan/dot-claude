@@ -16,6 +16,7 @@ allowed-tools:
   - Glob
   - Grep
   - AskUserQuestion
+  - TaskList
 ---
 
 # Commit

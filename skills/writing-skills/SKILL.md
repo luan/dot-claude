@@ -1,6 +1,6 @@
 ---
 name: writing-skills
-description: "Use when creating new skills, editing existing skills, or verifying skills work before deployment"
+description: Create, improve, and troubleshoot Claude Code agent skills. Use when asked to make a new skill, write a SKILL.md file, improve skill discoverability, debug why a skill isn't activating, answer questions about skills, or review skill best practices.
 ---
 
 # Writing Skills
@@ -17,9 +17,10 @@ TDD for process docs. Write test (pressure scenario) → fail → write skill �
 
 ## Skill Types
 
-- **Technique:** concrete steps
-- **Pattern:** way of thinking
-- **Reference:** API docs, syntax
+- **Toolbox:** scripts that encapsulate complexity; SKILL.md teaches Claude when/how to invoke them
+- **Knowledge Injection:** valuable knowledge Claude didn't have before (CLI usage, domain expertise, nuanced workflows)
+- **Technique:** concrete steps for a repeatable process
+- **Reference:** API docs, syntax, lookup tables
 
 ## Locations
 
@@ -37,16 +38,13 @@ Priority: enterprise > personal > project. Plugin: `plugin:skill` namespace.
 skills/
   skill-name/
     SKILL.md              # Main reference (required)
-    template.md           # Template
-    examples/             # Example outputs
+    scripts/              # Automation (python + uv)
     references/           # Heavy reference material
-    assets/               # Static assets
-    scripts/              # Utilities
+    assets/               # Templates, samples, static data
+    examples/             # Example outputs
 ```
 
-Note: Never add README.md to skill folders — SKILL.md is the entry point.
-
-Keep `SKILL.md` <500 lines. Heavy reference → separate files.
+Never add README.md — SKILL.md is the entry point. Keep `SKILL.md` <500 lines; heavy reference → separate files.
 
 ## Frontmatter
 
@@ -64,16 +62,27 @@ agent: Explore # Subagent type
 ---
 ```
 
-**Restrictions:**
-- Name must NOT contain "claude" or "anthropic"
-- No XML tags in frontmatter values
-- Description must be <1024 characters
+**Restrictions:** name must NOT contain "claude" or "anthropic". No XML tags in values. Description <1024 chars, single line.
 
 | Field | Effect |
 |-------|--------|
 | `disable-model-invocation: true` | User-only |
 | `user-invocable: false` | Claude-only |
 | `context: fork` | Isolated subagent |
+
+## Description Field (Critical)
+
+The description is the **only thing Claude sees** before deciding to load a skill. Claude is too conservative — optimize for discoverability. A false positive (loaded but unused) is cheap. A false negative (not loaded, Claude spirals) ruins the session.
+
+**WHAT it does + WHEN to use. NEVER workflow details.** Don't rely on users saying magic words — think about what *situations* call for this skill, including ones Claude should decide to use on its own.
+
+```yaml
+# BAD: workflow details Claude will shortcut
+description: Use when executing plans - dispatches subagent per task with review
+
+# GOOD: what + when, broad trigger surface
+description: Handles SpeedReader server lifecycle (build, startup, shutdown) and web page rebuild/refresh. Use when you need to verify a web page works, view it, test UI interactions, or see how a page behaves. Also covers development tasks.
+```
 
 ## String Substitutions
 
@@ -85,10 +94,10 @@ agent: Explore # Subagent type
 
 ## Dynamic Context
 
-**!** + command in backticks → shell before Claude.
+**!** + command in backticks → shell executes before Claude sees content.
 
 ```
-Current branch: !\`git branch --show-current\`
+Current branch: !`git branch --show-current`
 ```
 
 ## SKILL.md Structure
@@ -117,37 +126,43 @@ Table for scanning.
 What fails + fixes.
 ```
 
-**Progressive disclosure:** Structure content in 3 levels:
-1. **Critical** — must-know rules (## Critical header)
-2. **Important** — common patterns (## Important header)
+**Progressive disclosure** — structure content in 3 levels:
+1. **Critical** — must-know rules (`## Critical` header)
+2. **Important** — common patterns (`## Important` header)
 3. **Reference** — lookup tables, edge cases
 
-Use `## Critical` / `## Important` headers so Claude prioritizes
-correctly under token pressure.
+## Principles
 
-## Description Field (Critical)
+### Valuable Knowledge
 
-**WHAT it does + WHEN to use. NEVER workflow details.**
+Don't fill skills with generated content that's already in Claude's probability space. Document only information that:
 
-Must be <1024 characters. Tells Claude what the skill does and when to
-invoke it — but not HOW it works internally.
+1. **Outside training data** — learned through research, experimentation, or experience
+2. **Context-specific** — Claude knows it now but won't after context clears
+3. **Aligns future Claude** — guides future behavior to match current intent
 
-```yaml
-# BAD: workflow details Claude will shortcut
-description: Use when executing plans - dispatches subagent per task with review
+Avoid **derived data**. Point Claude at sources rather than pre-digesting them. Before finalizing, do an editing pass to remove cruft that crept in during writing.
 
-# GOOD: what + when
-description: Use when executing implementation plans with independent tasks
-```
+### Automation (Toolbox Skills)
 
-**Why:** Claude shortcuts workflow summaries, skips actual content.
+Over long sessions, Claude **will** make mistakes on manual tasks. Push complexity into scripts.
+
+- **Single-touch** — one command does the whole job, including setup/teardown
+- **Clean primitives** — composable operations, simple API, `--help` on every script
+- **Repo-specific** — unique workflows and pain points are where automation pays off most
+
+Always use python with `uv` and inline dependencies. Run shell commands via `subprocess.run`. Be *extremely clear* in SKILL.md that scripts must be invoked with `uv` — Claude will default to `python3` otherwise.
+
+### Qualifications
+
+Claude can't write a skill for something it doesn't know how to do. Before creating a skill: research CLIs and libraries, experiment with workflows, try things out, see what works. Then write the skill from that experience. No speculation.
 
 ## Token Efficiency
 
-- getting-started: <150 words
+- Getting-started skills: <150 words
 - Frequently-loaded: <200 words
 - Other: <500 words
-- Move details to `--help`, cross-reference
+- Move details to `--help`, cross-reference files
 - One excellent example > many mediocre
 
 ## RED-GREEN-REFACTOR
@@ -163,7 +178,7 @@ New rationalization → add counter → re-test until bulletproof.
 
 ## Bulletproofing Discipline Skills
 
-For rule-enforcing (TDD, verification):
+For rule-enforcing skills (TDD, verification):
 
 1. **Close loopholes explicitly:**
    ```markdown
