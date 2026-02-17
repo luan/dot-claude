@@ -788,6 +788,109 @@ pub fn run_projects(store: &Store, json: bool) -> Result<(), Box<dyn std::error:
     Ok(())
 }
 
+pub fn run_project_show(store: &Store, slug: &str) -> Result<(), Box<dyn std::error::Error>> {
+    // Find project path by matching slug against known projects
+    let mut project_path = String::new();
+    for list in store.list_task_lists() {
+        for task in store.list_tasks(&list.id) {
+            if !task.project.is_empty() && crate::planfile::project_name(&task.project) == slug {
+                project_path = task.project.clone();
+                break;
+            }
+        }
+        if !project_path.is_empty() {
+            break;
+        }
+    }
+    if project_path.is_empty() {
+        for p in plan::list_plans() {
+            if !p.project.is_empty() && crate::planfile::project_name(&p.project) == slug {
+                project_path = p.project.clone();
+                break;
+            }
+        }
+    }
+
+    if project_path.is_empty() {
+        eprintln!("Project not found: {slug}");
+        std::process::exit(1);
+    }
+
+    // Header
+    println!("{}", ansi::bold(slug));
+    println!("{}", ansi::dim(&project_path));
+    println!();
+
+    // Tasks by status
+    let mut pending = 0u32;
+    let mut in_progress = 0u32;
+    let mut completed = 0u32;
+    let mut active_tasks: Vec<(String, String, String)> = Vec::new(); // (id, status, subject)
+
+    for list in store.list_task_lists() {
+        for task in store.list_tasks(&list.id) {
+            if task.project != project_path {
+                continue;
+            }
+            match task.status {
+                crate::store::Status::Pending => pending += 1,
+                crate::store::Status::InProgress => in_progress += 1,
+                crate::store::Status::Completed => completed += 1,
+                _ => {}
+            }
+            if task.status != crate::store::Status::Completed {
+                active_tasks.push((
+                    task.id.clone(),
+                    task.status.as_str().to_string(),
+                    task.subject.clone(),
+                ));
+            }
+        }
+    }
+
+    println!(
+        "{} {} pending, {} in progress, {} completed",
+        ansi::label("Tasks:"),
+        pending,
+        in_progress,
+        completed
+    );
+    println!();
+
+    if !active_tasks.is_empty() {
+        println!("{}", ansi::section("Active Tasks"));
+        for (id, status, subject) in &active_tasks {
+            let subj = truncate_at_char_boundary(subject, 60);
+            println!(
+                "  {} {} {}",
+                ansi::id(&format!("{:<5}", id)),
+                ansi::for_status(
+                    &crate::store::Status::from_str(status),
+                    &format!("{:<12}", status)
+                ),
+                subj
+            );
+        }
+        println!();
+    }
+
+    // Recent plans
+    let project_plans: Vec<_> = plan::list_plans()
+        .into_iter()
+        .filter(|p| p.project == project_path)
+        .take(5)
+        .collect();
+
+    if !project_plans.is_empty() {
+        println!("{}", ansi::section("Recent Plans"));
+        for p in &project_plans {
+            println!("  {} {}", ansi::dim(&p.name), p.title);
+        }
+    }
+
+    Ok(())
+}
+
 pub fn run_completion(shell: Shell) -> Result<(), Box<dyn std::error::Error>> {
     generate(shell, &mut Cli::command(), "ck", &mut std::io::stdout());
     Ok(())

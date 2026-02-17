@@ -95,8 +95,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 cli::run_projects(&store, json)
             }
             cli::ProjectAction::Show { slug } => {
-                println!("Project show not implemented yet: {slug}");
-                Ok(())
+                let (store, _) = store_and_cwd();
+                cli::run_project_show(&store, &slug)
             }
         },
         Some(cli::Command::Tool { action }) => match action {
