@@ -84,6 +84,9 @@ pub enum TaskAction {
 
         #[arg(long, help = "Output as JSON")]
         json: bool,
+
+        #[arg(long, help = "Display tasks as a tree grouped by parent")]
+        tree: bool,
     },
 
     #[command(about = "Show task details")]
@@ -103,7 +106,7 @@ pub enum TaskAction {
         #[arg(long, help = "Task description")]
         description: Option<String>,
 
-        #[arg(long, help = "Priority (1-5)")]
+        #[arg(long, help = "Priority (1-3)")]
         priority: Option<u8>,
 
         #[arg(long, help = "Parent task ID")]
@@ -263,6 +266,7 @@ pub fn run_list(
     status_arg: Option<String>,
     sort_arg: Option<String>,
     json: bool,
+    tree: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let lists = require_lists(store, cwd)?;
     let list_id = &lists[0].id;
@@ -311,39 +315,81 @@ pub fn run_list(
         println!(
             "{}",
             ansi::bold(&format!(
-                "{:<6} {:<12} {:<6} SUBJECT",
-                "ID", "STATUS", "PRI"
+                "{:<6} {:<12} {:<6} {:<10} {:<12} SUBJECT",
+                "ID", "STATUS", "PRI", "TYPE", "OWNER"
             ))
         );
-        println!("{}", ansi::dim(&"-".repeat(80)));
+        println!("{}", ansi::dim(&"-".repeat(100)));
 
-        for task in &filtered {
-            let status_str = match task.status {
-                crate::store::Status::Pending => "pending",
-                crate::store::Status::InProgress => "in_progress",
-                crate::store::Status::Completed => "completed",
-                crate::store::Status::Other(ref s) => s.as_str(),
-            };
+        let completed_ids: std::collections::HashSet<&str> = filtered
+            .iter()
+            .filter(|t| t.status == crate::store::Status::Completed)
+            .map(|t| t.id.as_str())
+            .collect();
 
-            let pri_str = task.priority.as_str();
-
-            let subject = if task.subject.len() > 60 {
-                format!("{}...", truncate_at_char_boundary(&task.subject, 57))
-            } else {
-                task.subject.clone()
-            };
-
-            println!(
-                "{} {} {} {}",
-                ansi::id(&format!("{:<6}", task.id)),
-                ansi::for_status(&task.status, &format!("{:<12}", status_str)),
-                ansi::for_priority(&task.priority, &format!("{:<6}", pri_str)),
-                subject
-            );
+        if tree {
+            let rows = crate::store::tree_order(&filtered);
+            for row in &rows {
+                let task = &row.task;
+                print_task_row(task, &crate::store::tree_prefix(row), &completed_ids);
+            }
+        } else {
+            for task in &filtered {
+                print_task_row(task, "", &completed_ids);
+            }
         }
     }
 
     Ok(())
+}
+
+fn print_task_row(task: &Task, prefix: &str, completed_ids: &std::collections::HashSet<&str>) {
+    let status_str = task.status.as_str();
+
+    let pri_str = task.priority.as_str();
+
+    let type_str = if task.task_type.is_empty() {
+        "--".to_string()
+    } else {
+        task.task_type.clone()
+    };
+
+    let owner_str = if task.owner.is_empty() {
+        "--".to_string()
+    } else if task.owner.len() > 10 {
+        format!("{}...", truncate_at_char_boundary(&task.owner, 7))
+    } else {
+        task.owner.clone()
+    };
+
+    let blocked = !task.blocked_by.is_empty()
+        && task
+            .blocked_by
+            .iter()
+            .any(|dep| !completed_ids.contains(dep.as_str()));
+
+    let subject_raw = format!("{prefix}{}", task.subject);
+    let subject = if subject_raw.chars().count() > 50 {
+        format!("{}...", truncate_at_char_boundary(&subject_raw, 47))
+    } else {
+        subject_raw
+    };
+
+    let status_col = if blocked {
+        ansi::blocked(&format!("{:<12}", "blocked"))
+    } else {
+        ansi::for_status(&task.status, &format!("{:<12}", status_str))
+    };
+
+    println!(
+        "{} {} {} {} {} {}",
+        ansi::id(&format!("{:<6}", task.id)),
+        status_col,
+        ansi::for_priority(&task.priority, &format!("{:<6}", pri_str)),
+        ansi::for_type(&task.task_type, &format!("{:<10}", type_str)),
+        ansi::dim(&format!("{:<12}", owner_str)),
+        subject
+    );
 }
 
 pub fn run_show(
@@ -381,6 +427,10 @@ pub fn run_show(
             ansi::label("Priority:"),
             ansi::for_priority(&task.priority, task.priority.as_str())
         );
+
+        if !task.owner.is_empty() {
+            println!("{} {}", ansi::label("Owner:"), task.owner);
+        }
 
         if !task.description.is_empty() {
             println!("\n{}", ansi::section("Description:"));
@@ -458,6 +508,7 @@ pub fn run_create(
         description: description.unwrap_or_default(),
         active_form: String::new(),
         status: Status::Pending,
+        owner: String::new(),
         blocks: Vec::new(),
         blocked_by: Vec::new(),
         priority: priority_enum,

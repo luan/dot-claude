@@ -38,7 +38,7 @@ Do NOT ask when the answer is obvious or covered by the task brief.
    - If arg matches a file path → use it directly
    - If arg looks like a task ID → `TaskGet(taskId)`, extract `metadata.design`
    - If no args → `ck plan latest` (finds most recent plan file for current project)
-   - If still none → `TaskList()` filtered by status=in_progress + metadata.status_detail==="review" + metadata.label in ["explore", "review", "fix", "brainstorm"], use first match, extract `metadata.design`
+   - If still none → `TaskList()` filtered by status=in_progress + metadata.status_detail==="review" + metadata.type in ["explore", "review", "fix"], use first match, extract `metadata.design` (note: brainstorm tasks use type="explore" and are found by this filter)
    - No plan found → suggest `/explore` or `/review`
 
 2. **Pre-check design quality:**
@@ -62,7 +62,8 @@ Do NOT ask when the answer is obvious or covered by the task brief.
      metadata:
        project: <repo root from git rev-parse --show-toplevel>
        slug: "<slug from ck tool slug>"
-       priority: 1
+       type: "epic"
+       priority: "P1"
    ```
 
 5. **Create all tasks** — dispatch ONE sonnet subagent (subagent_type="general-purpose", model=sonnet) to create ALL tasks.
@@ -92,11 +93,14 @@ Do NOT ask when the answer is obvious or covered by the task brief.
      activeForm: "Creating phase N task"
      metadata:
        project: <repo root from ## Project above>
-       type: "chore"
+       type: <infer from task content: "bug" if fixing broken behavior or correcting a defect, "feature" if adding new user-visible capability, "chore" for everything else (refactoring, cleanup, config, tests)>
+       priority: <inherit from epic, default "P2">
        parent_id: "<epic-id>"
 
-   4. Set dependencies — phase 2+ tasks:
-      TaskUpdate(taskId, addBlockedBy: [<previous-phase-task-ids>])
+   4. Set dependencies based on actual data/code dependencies between tasks:
+      TaskUpdate(taskId, addBlockedBy: [<ids of tasks that produce files, APIs, or state this task consumes>])
+      Heuristic: if task B modifies a file that task A creates, or task B imports/uses an API that task A defines, B is blocked by A. If two tasks modify different files, they are independent.
+      Independent tasks across phases should NOT block each other.
 
    5. Return all task IDs as a list: "Created: task-1, task-2, task-3"
 
@@ -120,7 +124,7 @@ Do NOT ask when the answer is obvious or covered by the task brief.
    back to subagent with specific feedback.
 
 7. **Finalize:**
-   - `TaskUpdate(epicId, status: "in_progress")`
+   - `TaskUpdate(epicId, status: "in_progress", owner: "prepare")`
    - If source was a task → `TaskUpdate(sourceId, status: "completed", metadata: {status_detail: null})`
 
 8. **Report:**

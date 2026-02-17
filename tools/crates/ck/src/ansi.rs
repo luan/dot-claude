@@ -76,3 +76,21 @@ pub fn for_priority(priority: &Priority, text: &str) -> String {
         Priority::None => dim(text),
     }
 }
+
+/// Type-colored text (matches ui/theme.rs type_color)
+pub fn for_type(type_str: &str, text: &str) -> String {
+    match type_str {
+        "epic" => rgb(180, 190, 254, text),    // lavender
+        "feature" => rgb(116, 199, 236, text), // accent_dim
+        "bug" => rgb(250, 179, 135, text),     // orange
+        "chore" => rgb(166, 173, 200, text),   // subtext
+        "explore" => rgb(137, 180, 250, text), // accent
+        "phase" => rgb(108, 112, 134, text),   // muted
+        _ => rgb(205, 214, 244, text),         // text
+    }
+}
+
+/// Blocked indicator
+pub fn blocked(text: &str) -> String {
+    rgb(243, 139, 168, text) // red
+}

@@ -37,12 +37,10 @@ If user references specific files, read those files.
 
 Break feedback ($ARGUMENTS) into individual findings:
 - Classify each: `bug`, `chore`, or `feature`
-- Set priority (P0-P4):
-  - P0: Critical bugs, blocking issues
-  - P1: Important bugs, high-priority features
+- Set priority (P1-P3):
+  - P1: Critical bugs, blocking issues, high-priority features
   - P2: Normal priority (default for most feedback)
-  - P3: Nice-to-have improvements
-  - P4: Low priority, future consideration
+  - P3: Nice-to-have improvements, low-priority items
 - Group findings by type for phase structure
 
 ### 3. Create Single Issue with Phased Design
@@ -73,11 +71,11 @@ TaskCreate:
   activeForm: "Creating fix task"
   metadata:
     project: <repo root from git rev-parse --show-toplevel>
-    label: "fix"
-    priority: 2
+    type: "fix"
+    priority: "P2"
 ```
 
-Mark active: `TaskUpdate(taskId, status: "in_progress")`
+Mark active: `TaskUpdate(taskId, status: "in_progress", owner: "fix")`
 
 **Store findings** — pass the full `description` field from the TaskCreate above (including Acceptance Criteria and all Phase sections) as the findings content:
 

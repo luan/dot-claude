@@ -22,7 +22,7 @@ Create branch + optionally link task.
 2. Normalize: prefix `luan/` if needed
 3. `gt create <branch-name>`
 4. If task ID:
-   - `TaskUpdate(taskId, status: "in_progress")`
+   - `TaskUpdate(taskId, status: "in_progress", owner: "start")`
    - `TaskUpdate(taskId, metadata: {branch: "<branch-name>"})`
 5. If no task ID:
    - AskUserQuestion: "Create task?"
@@ -32,11 +32,11 @@ Create branch + optionally link task.
        subject: "<branch-name>"
        activeForm: "Creating task"
        metadata:
-         project: <repo root>
+         project: <repo root from git rev-parse --show-toplevel>
          type: "chore"
-         priority: 2
+         priority: "P2"
      ```
-   - `TaskUpdate(taskId, status: "in_progress", metadata: {branch: "<branch-name>"})`
+   - `TaskUpdate(taskId, status: "in_progress", owner: "start", metadata: {branch: "<branch-name>"})`
 6. Report branch + issue, suggest `/explore` or `/implement`
 
 ## Error Handling

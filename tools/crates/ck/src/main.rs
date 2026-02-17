@@ -10,12 +10,21 @@ mod slug;
 mod store;
 mod ui;
 
+use std::io;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, mpsc};
+use std::time::Duration;
+
 use clap::{CommandFactory, Parser};
 use crossterm::event::{self, Event, KeyEventKind};
 use crossterm::execute;
 use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
-use std::io;
-use std::time::Duration;
+use notify::{RecursiveMode, Watcher};
+
+enum AppEvent {
+    Terminal(Event),
+    FsChange,
+}
 
 fn store_and_cwd() -> (store::Store, String) {
     let store = store::Store::new();
@@ -36,9 +45,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(cli::Command::Tui) => run_tui(),
         Some(cli::Command::Task { action }) => match action {
-            cli::TaskAction::List { status, sort, json } => {
+            cli::TaskAction::List {
+                status,
+                sort,
+                json,
+                tree,
+            } => {
                 let (store, cwd) = store_and_cwd();
-                cli::run_list(&store, &cwd, status, sort, json)
+                cli::run_list(&store, &cwd, status, sort, json, tree)
             }
             cli::TaskAction::Show { id, json } => {
                 let (store, cwd) = store_and_cwd();
@@ -142,7 +156,11 @@ fn run_tui() -> Result<(), Box<dyn std::error::Error>> {
     let backend = ratatui::backend::CrosstermBackend::new(stdout);
     let mut terminal = ratatui::Terminal::new(backend)?;
 
-    let result = run_loop(&mut terminal, &mut app, &editor_cmd);
+    let quit_flag = Arc::new(AtomicBool::new(false));
+    let result = run_loop(&mut terminal, &mut app, &editor_cmd, Arc::clone(&quit_flag));
+
+    // Signal the terminal reader thread to stop before tearing down raw mode
+    quit_flag.store(true, Ordering::Relaxed);
 
     // Terminal restore
     terminal::disable_raw_mode()?;
@@ -156,13 +174,51 @@ fn run_loop(
     terminal: &mut ratatui::Terminal<ratatui::backend::CrosstermBackend<io::Stdout>>,
     app: &mut app::App,
     editor_cmd: &str,
+    quit_flag: Arc<AtomicBool>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let (tx, rx) = mpsc::channel();
+
+    // Terminal event reader thread
+    let term_tx = tx.clone();
+    let reader_quit = Arc::clone(&quit_flag);
+    std::thread::spawn(move || {
+        loop {
+            if reader_quit.load(Ordering::Relaxed) {
+                break;
+            }
+            if event::poll(Duration::from_millis(100)).unwrap_or(false)
+                && let Ok(evt) = event::read()
+                && term_tx.send(AppEvent::Terminal(evt)).is_err()
+            {
+                break;
+            }
+        }
+    });
+
+    // Filesystem watcher on the tasks base directory
+    let fs_tx = tx;
+    let mut watcher = notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
+        if let Ok(evt) = res {
+            let dominated_by_json = evt.paths.iter().any(|p| {
+                p.extension().is_some_and(|ext| ext == "json")
+                    && !p
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .starts_with(".tmp-")
+            });
+            if dominated_by_json {
+                let _ = fs_tx.send(AppEvent::FsChange);
+            }
+        }
+    })?;
+    watcher.watch(app.tasks_base_path(), RecursiveMode::Recursive)?;
+
     loop {
         terminal.draw(|f| app.render(f))?;
 
         // Check for editor request
         if let Some(req) = app.editor_request.take() {
-            // Leave TUI, run editor, come back
             terminal::disable_raw_mode()?;
             execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
             terminal.show_cursor()?;
@@ -171,7 +227,6 @@ fn run_loop(
                 .arg(&req.path)
                 .status();
 
-            // Re-enter TUI
             execute!(terminal.backend_mut(), EnterAlternateScreen)?;
             terminal::enable_raw_mode()?;
             terminal.hide_cursor()?;
@@ -185,10 +240,37 @@ fn run_loop(
             continue;
         }
 
-        if event::poll(Duration::from_millis(100))?
-            && let Event::Key(key) = event::read()?
-            && key.kind == KeyEventKind::Press
-        {
+        // Collect events: wait for first, then drain pending
+        let mut had_fs_change = false;
+        let mut key_events = Vec::new();
+
+        match rx.recv_timeout(Duration::from_millis(50)) {
+            Ok(AppEvent::Terminal(Event::Key(key))) if key.kind == KeyEventKind::Press => {
+                key_events.push(key);
+            }
+            Ok(AppEvent::FsChange) => had_fs_change = true,
+            Ok(AppEvent::Terminal(_)) => {}
+            Err(mpsc::RecvTimeoutError::Timeout) => continue,
+            Err(mpsc::RecvTimeoutError::Disconnected) => return Ok(()),
+        }
+
+        // Drain any additional pending events
+        loop {
+            match rx.try_recv() {
+                Ok(AppEvent::Terminal(Event::Key(key))) if key.kind == KeyEventKind::Press => {
+                    key_events.push(key);
+                }
+                Ok(AppEvent::FsChange) => had_fs_change = true,
+                Ok(AppEvent::Terminal(_)) => {}
+                Err(_) => break,
+            }
+        }
+
+        if had_fs_change {
+            app.reload_tasks();
+        }
+
+        for key in key_events {
             app.handle_key(key);
             if app.should_quit {
                 return Ok(());

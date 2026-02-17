@@ -42,6 +42,14 @@ const SECTIONS: &[Section] = &[
         ],
     },
     Section {
+        title: "Tree view",
+        keys: &[
+            ("space/tab", "collapse / expand node"),
+            ("zM", "collapse all"),
+            ("zR", "expand all"),
+        ],
+    },
+    Section {
         title: "Other",
         keys: &[
             ("P", "browse plans"),

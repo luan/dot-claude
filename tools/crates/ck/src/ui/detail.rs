@@ -66,6 +66,9 @@ pub fn render_detail(f: &mut Frame, area: Rect, state: &DetailState) {
         theme::priority_style(&t.priority),
     ));
 
+    if !t.owner.is_empty() {
+        lines.push(field("Owner", &t.owner, theme::value_style()));
+    }
     if !t.task_type.is_empty() {
         lines.push(field(
             "Type",

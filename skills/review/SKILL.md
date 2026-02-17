@@ -61,16 +61,16 @@ TaskCreate:
   activeForm: "Creating review task"
   metadata:
     project: <repo root from git rev-parse --show-toplevel>
-    label: "review"
-    priority: 2
+    type: "review"
+    priority: "P2"
 
-TaskUpdate(taskId, status: "in_progress")
+TaskUpdate(taskId, status: "in_progress", owner: "review")
 ```
 
 If `--continue`: skip creation, find existing:
 
 - $ARGUMENTS matches task ID → use it
-- Else: `TaskList()` filtered by `metadata.label === "review"` and `status === "in_progress"`, use first result
+- Else: `TaskList()` filtered by `metadata.type === "review"` and `status === "in_progress"`, use first result
 - `TaskGet(taskId)` → extract `metadata.design`
 - Prepend to reviewers: "Previous findings:\n<metadata.design>\n\nContinue reviewing..."
 

@@ -22,7 +22,7 @@ If no prompt and no `--continue` → tell user:
 
 ## Resume (`--continue`)
 
-1. `TaskList()` → find task with `metadata.label == "vibe"` and
+1. `TaskList()` → find task with `metadata.vibe_stage` present and
    `status == "in_progress"`
 2. Read `metadata.vibe_stage` for resume point, `metadata.vibe_prompt`
    as prompt
@@ -36,9 +36,9 @@ TaskCreate(
   subject: "Vibe: <prompt (truncated 60 chars)>",
   description: "<full prompt>",
   activeForm: "Vibing",
-  metadata: { label: "vibe", vibe_prompt: "<full prompt>", vibe_stage: "started" }
+  metadata: { type: "epic", priority: "P2", vibe_prompt: "<full prompt>", vibe_stage: "started" }
 )
-TaskUpdate(taskId, status: "in_progress")
+TaskUpdate(taskId, status: "in_progress", owner: "vibe")
 ```
 
 ## Pipeline

@@ -45,10 +45,10 @@ TaskCreate:
   activeForm: "Creating brainstorm task"
   metadata:
     project: <repo root from git rev-parse --show-toplevel>
-    label: "brainstorm"
-    priority: 2
+    type: "explore"
+    priority: "P2"
 
-Then TaskUpdate(taskId, status: "in_progress")
+Then TaskUpdate(taskId, status: "in_progress", owner: "brainstorm")
 ```
 
 ### 2. Scan Project Context

@@ -4,10 +4,24 @@ use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 
+use std::collections::HashSet;
+use std::path::Path;
+
 use crate::editor;
 use crate::plan;
 use crate::store::{Status, Store, Task, TaskList};
 use crate::ui::{confirm, create, detail, help, list, plan_detail, plans, status, theme};
+
+fn truncate_at_char_boundary(s: &str, max_bytes: usize) -> &str {
+    if s.len() <= max_bytes {
+        return s;
+    }
+    let mut idx = max_bytes;
+    while idx > 0 && !s.is_char_boundary(idx) {
+        idx -= 1;
+    }
+    &s[..idx]
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Screen {
@@ -77,6 +91,10 @@ impl App {
         }
     }
 
+    pub fn tasks_base_path(&self) -> &Path {
+        self.store.tasks_base()
+    }
+
     pub fn handle_key(&mut self, key: KeyEvent) {
         // Clear status message on any key
         if !self.status_msg.is_empty() {
@@ -112,6 +130,29 @@ impl App {
     }
 
     fn handle_list_key(&mut self, key: KeyEvent) {
+        // Handle pending z-command (zM = collapse all, zR = expand all)
+        if self.list.pending_z {
+            self.list.pending_z = false;
+            match key.code {
+                KeyCode::Char('M') => {
+                    let parent_ids: HashSet<String> = self
+                        .list
+                        .tasks
+                        .iter()
+                        .filter(|t| !t.parent_id.is_empty())
+                        .map(|t| t.parent_id.clone())
+                        .collect();
+                    self.list.collapsed = parent_ids;
+                    return;
+                }
+                KeyCode::Char('R') => {
+                    self.list.collapsed.clear();
+                    return;
+                }
+                _ => {} // cancel pending_z, fall through
+            }
+        }
+
         // Search mode
         if self.list.searching {
             match key.code {
@@ -200,6 +241,18 @@ impl App {
                     .collect();
                 self.plans_state = Some(plans::PlansState::new(all_plans));
                 self.screen = Screen::Plans;
+            }
+            KeyCode::Char('z') if self.list.tree_view => {
+                self.list.pending_z = true;
+            }
+            KeyCode::Char(' ') | KeyCode::Tab if self.list.tree_view => {
+                if let Some(id) = self.list.selected_id() {
+                    if self.list.collapsed.contains(&id) {
+                        self.list.collapsed.remove(&id);
+                    } else {
+                        self.list.collapsed.insert(id);
+                    }
+                }
             }
             _ => {}
         }
@@ -312,6 +365,7 @@ impl App {
                     description,
                     active_form: String::new(),
                     status: Status::Pending,
+                    owner: String::new(),
                     blocks: Vec::new(),
                     blocked_by: Vec::new(),
                     priority,
@@ -559,7 +613,8 @@ impl App {
         self.screen = self.prev_screen;
     }
 
-    fn reload_tasks(&mut self) {
+    pub fn reload_tasks(&mut self) {
+        let selected_id = self.list.selected_id();
         let tasks = self.store.list_tasks(&self.active_list);
         let filters = (
             self.list.status_filter,
@@ -568,6 +623,7 @@ impl App {
             self.list.tree_view,
             self.list.query.clone(),
         );
+        let collapsed = std::mem::take(&mut self.list.collapsed);
         self.list = list::ListState::new(tasks);
         self.list.status_filter = filters.0;
         self.list.sort_order = filters.1;
@@ -575,7 +631,23 @@ impl App {
         self.list.tree_view = filters.3;
         self.list.query = filters.4.clone();
         self.list.search_input = filters.4;
+        self.list.collapsed = collapsed;
         self.list.rebuild();
+
+        // Restore selection by task ID
+        if let Some(id) = selected_id
+            && let Some(idx) = self.list.filtered.iter().position(|t| t.id == id)
+        {
+            self.list.table_state.select(Some(idx));
+        }
+
+        // Refresh detail if active
+        if self.screen == Screen::Detail
+            && let Some(d) = &self.detail
+        {
+            let task_id = d.task.id.clone();
+            self.refresh_detail(&task_id);
+        }
     }
 
     fn refresh_detail(&mut self, task_id: &str) {
@@ -630,8 +702,8 @@ impl App {
                     .detail
                     .as_ref()
                     .map(|d| {
-                        if d.task.subject.len() > 40 {
-                            format!("{}...", &d.task.subject[..37])
+                        if d.task.subject.chars().count() > 40 {
+                            format!("{}...", truncate_at_char_boundary(&d.task.subject, 37))
                         } else {
                             d.task.subject.clone()
                         }
@@ -690,8 +762,8 @@ impl App {
                         } else {
                             &pd.plan.title
                         };
-                        if t.len() > 40 {
-                            format!("{}...", &t[..37])
+                        if t.chars().count() > 40 {
+                            format!("{}...", truncate_at_char_boundary(t, 37))
                         } else {
                             t.clone()
                         }

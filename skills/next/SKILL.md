@@ -103,7 +103,7 @@ TaskList() filtered by metadata.project === repoRoot
 Split into: pending (open) and in_progress without status_detail (active)
 ```
 
-Sort by metadata.priority (lowest number first), then creation order.
+Sort by metadata.priority (P1 first, then P2, P3), then creation order.
 
 ### 2. Pick the top candidate
 

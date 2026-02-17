@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use serde_json::Value;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -84,6 +85,7 @@ pub struct Task {
     pub description: String,
     pub active_form: String,
     pub status: Status,
+    pub owner: String,
     pub blocks: Vec<String>,
     pub blocked_by: Vec<String>,
     pub priority: Priority,
@@ -103,6 +105,7 @@ struct RawTask {
     #[serde(rename = "activeForm")]
     active_form: Option<String>,
     status: Option<String>,
+    owner: Option<String>,
     blocks: Option<Vec<String>>,
     #[serde(rename = "blockedBy")]
     blocked_by: Option<Vec<String>>,
@@ -117,6 +120,7 @@ impl Task {
             description: None,
             active_form: None,
             status: None,
+            owner: None,
             blocks: None,
             blocked_by: None,
             metadata: None,
@@ -125,9 +129,18 @@ impl Task {
         let meta = raw.metadata.as_ref().and_then(|v| v.as_object());
         let meta_str = |key: &str| -> String {
             meta.and_then(|m| m.get(key))
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string()
+                .map(|v| {
+                    if let Some(s) = v.as_str() {
+                        s.to_string()
+                    } else if let Some(n) = v.as_u64() {
+                        n.to_string()
+                    } else if let Some(n) = v.as_i64() {
+                        n.to_string()
+                    } else {
+                        String::new()
+                    }
+                })
+                .unwrap_or_default()
         };
 
         Task {
@@ -136,6 +149,7 @@ impl Task {
             description: raw.description.unwrap_or_default(),
             active_form: raw.active_form.unwrap_or_default(),
             status: Status::from_str(raw.status.as_deref().unwrap_or("pending")),
+            owner: raw.owner.unwrap_or_default(),
             blocks: raw.blocks.unwrap_or_default(),
             blocked_by: raw.blocked_by.unwrap_or_default(),
             priority: Priority::from_str(&meta_str("priority")),
@@ -160,6 +174,12 @@ impl Task {
                 "description".into(),
                 Value::String(self.description.clone()),
             );
+
+            if self.owner.is_empty() {
+                obj.remove("owner");
+            } else {
+                obj.insert("owner".into(), Value::String(self.owner.clone()));
+            }
 
             let meta = obj
                 .entry("metadata")
@@ -199,6 +219,10 @@ impl Store {
         Self {
             base: home.join(".claude").join("tasks"),
         }
+    }
+
+    pub fn tasks_base(&self) -> &Path {
+        &self.base
     }
 
     pub fn list_task_lists(&self) -> Vec<TaskList> {
@@ -498,15 +522,37 @@ pub struct TreeRow {
     pub task: Task,
     pub depth: u8,
     pub is_last: bool,
+    pub ancestor_is_last: Vec<bool>,
+}
+
+pub fn tree_prefix(row: &TreeRow) -> String {
+    if row.depth == 0 {
+        return String::new();
+    }
+    let mut prefix = String::new();
+    for &ancestor_last in &row.ancestor_is_last {
+        if ancestor_last {
+            prefix.push_str("    ");
+        } else {
+            prefix.push_str("│   ");
+        }
+    }
+    if row.is_last {
+        prefix.push_str("└── ");
+    } else {
+        prefix.push_str("├── ");
+    }
+    prefix
 }
 
 pub fn tree_order(tasks: &[Task]) -> Vec<TreeRow> {
+    let task_ids: HashSet<&str> = tasks.iter().map(|t| t.id.as_str()).collect();
+
+    let mut children_map: HashMap<&str, Vec<&Task>> = HashMap::new();
     let mut roots: Vec<&Task> = Vec::new();
-    let mut children_map: std::collections::HashMap<&str, Vec<&Task>> =
-        std::collections::HashMap::new();
 
     for t in tasks {
-        if t.parent_id.is_empty() {
+        if t.parent_id.is_empty() || !task_ids.contains(t.parent_id.as_str()) {
             roots.push(t);
         } else {
             children_map
@@ -516,22 +562,65 @@ pub fn tree_order(tasks: &[Task]) -> Vec<TreeRow> {
         }
     }
 
-    let mut result = Vec::new();
-    for root in &roots {
+    const MAX_DEPTH: u8 = 64;
+
+    fn emit_subtree<'a>(
+        task: &'a Task,
+        depth: u8,
+        is_last: bool,
+        ancestor_is_last: Vec<bool>,
+        children_map: &HashMap<&str, Vec<&'a Task>>,
+        result: &mut Vec<TreeRow>,
+        visited: &mut HashSet<&'a str>,
+    ) {
+        if depth > MAX_DEPTH {
+            return;
+        }
+        if !visited.insert(task.id.as_str()) {
+            return;
+        }
+
         result.push(TreeRow {
-            task: (*root).clone(),
-            depth: 0,
-            is_last: false,
+            task: task.clone(),
+            depth,
+            is_last,
+            ancestor_is_last: ancestor_is_last.clone(),
         });
-        if let Some(kids) = children_map.get(root.id.as_str()) {
+
+        if let Some(kids) = children_map.get(task.id.as_str()) {
+            let len = kids.len();
             for (i, kid) in kids.iter().enumerate() {
-                result.push(TreeRow {
-                    task: (*kid).clone(),
-                    depth: 1,
-                    is_last: i == kids.len() - 1,
-                });
+                let kid_is_last = i == len - 1;
+                let mut kid_ancestors = ancestor_is_last.clone();
+                if depth >= 1 {
+                    kid_ancestors.push(is_last);
+                }
+                emit_subtree(
+                    kid,
+                    depth + 1,
+                    kid_is_last,
+                    kid_ancestors,
+                    children_map,
+                    result,
+                    visited,
+                );
             }
         }
+    }
+
+    let mut result = Vec::new();
+    let mut visited = HashSet::new();
+    let root_count = roots.len();
+    for (i, root) in roots.iter().enumerate() {
+        emit_subtree(
+            root,
+            0,
+            i == root_count - 1,
+            Vec::new(),
+            &children_map,
+            &mut result,
+            &mut visited,
+        );
     }
     result
 }

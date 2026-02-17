@@ -46,11 +46,11 @@ Do NOT ask when the answer is obvious or covered by the task brief.
      activeForm: "Creating exploration task"
      metadata:
        project: <repo root from git rev-parse --show-toplevel>
-       label: "explore"
-       priority: 2
+       type: "explore"
+       priority: "P2"
    ```
 
-2. Start task: `TaskUpdate(taskId, status: "in_progress")`
+2. Start task: `TaskUpdate(taskId, status: "in_progress", owner: "explore")`
 
 3. Dispatch via Task (subagent_type="codebase-researcher"):
 
@@ -115,7 +115,7 @@ Next: /prepare t<id>
 
 1. Resolve task ID:
    - If $ARGUMENTS matches a task ID → use it
-   - If --continue → `TaskList()` filtered by `metadata.label === "explore"` and either `metadata.status_detail === "review"` or `status === "in_progress"`, use first result
+   - If --continue → `TaskList()` filtered by `metadata.type === "explore"` and either `metadata.status_detail === "review"` or `status === "in_progress"`, use first result
 2. Load existing: `TaskGet(taskId)` → extract `metadata.design`
 3. Move back to active: `TaskUpdate(taskId, status: "in_progress", metadata: {status_detail: null})`
 4. Dispatch subagent with: "Previous findings:\n<metadata.design>\n\nContinue exploring: <new prompt>"

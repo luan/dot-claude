@@ -68,7 +68,7 @@ Implement task <task-id>.
 ## Rules
 - Never run git commands — orchestrator handles commits
 - Only modify files in your task scope
-- Bug found elsewhere → TaskCreate(subject: "Found: ...", metadata: {type: "bug"})
+- Bug found elsewhere → TaskCreate(subject: "Found: ...", metadata: {type: "bug", priority: "P2", project: "<repo root>"})
 ```
 
 ### Team-based Variant
@@ -100,12 +100,12 @@ Implement task <task-id>.
 - Only modify files in your task scope
 - File conflict or blocker → SendMessage to team lead, wait
 - Never run git commands
-- Bug found elsewhere → TaskCreate(subject: "Found: ...", metadata: {type: "bug"})
+- Bug found elsewhere → TaskCreate(subject: "Found: ...", metadata: {type: "bug", priority: "P2", project: "<repo root>"})
 ```
 
 ## Solo Mode
 
-1. `TaskUpdate(taskId, status: "in_progress")`
+1. `TaskUpdate(taskId, status: "in_progress", owner: "solo")`
 2. If has `metadata.parent_id` → `TaskGet(parentId)` for epic context
 3. Spawn single Task agent using **Standalone Worker Prompt**
 4. Verify via `TaskGet(taskId)` → status is completed
@@ -144,49 +144,47 @@ single-task waves.**
 5. Read team config `~/.claude/teams/impl-<slug>/config.json`
    → extract team lead name for worker prompts
 
-### Wave Loop
+### Rolling Scheduler
+
+Dispatch tasks as soon as their dependencies are met, not in
+batch waves. Up to 4 workers run concurrently at any time.
 
 ```
-while true:
-  ready = TaskList() filtered by:
-    metadata.parent_id == epicId AND
-    status == "pending" AND
-    blockedBy is empty
-  if empty → break
+# Initial dispatch
+ready = TaskList() filtered by:
+  metadata.parent_id == epicId AND
+  status == "pending" AND
+  blockedBy is empty
 
-  # Always dispatch via Task subagent, even for single-task waves.
-  if len(ready) == 1:
-    Spawn 1 Task agent using Standalone Worker Prompt
-    (no team messaging needed for single worker).
-  else:
-    Spawn ALL ready tasks using Team-based Worker Prompt.
-    Workers = min(task_count, 4).
+Spawn ready tasks (up to 4). Always use Team-based Worker Prompt
+when TeamCreate succeeded (swarm mode), Standalone Worker Prompt
+when no team exists.
 
-  Wait for completion (see Wave Completion below).
+active_count = len(spawned)
+dispatch_count = {}  # task_id → number of times dispatched
 
-  # Recover stuck tasks
-  stuck = TaskList() filtered by:
-    metadata.parent_id == epicId AND status == "in_progress"
-  for each stuck task not in just-completed set:
-    TaskUpdate(stuckId, status: "pending", owner: "")
+# Rolling loop
+while tasks remain incomplete:
+  Wait for ANY worker to complete (Task returns or SendMessage received).
 
-  # Shut down team-based wave workers only (not standalone)
-  if len(ready) > 1:
-    Shut down wave workers (SendMessage shutdown_request).
-  Report: "Wave N: M completed, K stuck"
+  On each completion:
+    1. If worker completed its task → active_count--
+       If Standalone worker returned without completing → check TaskList():
+         task still in_progress → stuck, TaskUpdate(id, status: "pending", owner: ""), active_count--
+    2. Shut down completed team-based workers (SendMessage shutdown_request)
+    3. newly_ready = TaskList() filtered by:
+         metadata.parent_id == epicId AND
+         status == "pending" AND
+         blockedBy is empty
+    4. Skip any task where dispatch_count[task_id] >= 2 (mark as failed, report to user)
+    5. slots = 4 - active_count
+    6. Spawn min(len(newly_ready), slots) tasks → active_count += spawned, dispatch_count[id]++
+    7. If active_count == 0 and no pending tasks remain → break
+
+  Report progress: "N completed, M active, K pending, F failed"
 ```
 
-### Wave Completion Detection
-
-1. Track spawned_count = N, completed_count = 0
-2. Worker sends completion message → completed_count++
-3. completed_count == N → wave done
-4. Worker goes idle WITHOUT completion message:
-   - `TaskList()` → if task still in_progress → stuck
-   - Decrement expected count
-   - All non-stuck done → proceed
-
-### Verify (after final wave)
+### Verify (after all tasks complete)
 
 1. Full test suite
 2. Green → continue

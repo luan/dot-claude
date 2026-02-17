@@ -1,6 +1,6 @@
 ---
 name: writing-skills
-description: Create, improve, and troubleshoot Claude Code agent skills. Use when asked to make a new skill, write a SKILL.md file, improve skill discoverability, debug why a skill isn't activating, answer questions about skills, or review skill best practices.
+description: Create, edit, improve, and troubleshoot Claude Code agent skills. Use when making a new skill, editing SKILL.md files, modifying skill metadata (types, priority, labels, owner), refactoring skill instructions, improving skill discoverability, debugging why a skill isn't activating, answering questions about skills, or reviewing skill best practices. Triggers: 'new skill', 'edit skill', 'update skill', 'fix skill', 'skill not working', 'SKILL.md', 'skill metadata', 'skill consistency'.
 ---
 
 # Writing Skills
