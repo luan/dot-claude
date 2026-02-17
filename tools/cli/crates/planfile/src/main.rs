@@ -10,12 +10,41 @@ fn fatal(msg: &str) -> ! {
     process::exit(1);
 }
 
+fn project_name(project_path: &str) -> String {
+    let path = Path::new(project_path);
+    let components: Vec<&str> = path
+        .components()
+        .filter_map(|c| c.as_os_str().to_str())
+        .collect();
+
+    // Walk backwards looking for a `.git` directory component.
+    // If found, use `{repo}-{remaining}` so worktrees get unique names.
+    // e.g. /src/arc.git/wt1 → "arc-wt1", /src/arc.git/wt2 → "arc-wt2"
+    for (i, comp) in components.iter().enumerate() {
+        if comp.ends_with(".git") {
+            let stem = comp.strip_suffix(".git").unwrap_or(comp);
+            let rest: Vec<&str> = components[i + 1..].to_vec();
+            if rest.is_empty() {
+                return stem.to_string();
+            }
+            return format!("{}-{}", stem, rest.join("-"));
+        }
+    }
+
+    // No .git parent — use the last component as before.
+    path.file_name()
+        .unwrap_or_else(|| fatal("invalid project path"))
+        .to_string_lossy()
+        .to_string()
+}
+
 fn plans_dir(project_path: &str) -> PathBuf {
     let home = env::var("HOME").unwrap_or_else(|_| fatal("cannot determine home directory"));
-    let base = Path::new(project_path)
-        .file_name()
-        .unwrap_or_else(|| fatal("invalid project path"));
-    PathBuf::from(home).join(".claude").join("plans").join(base)
+    let base = project_name(project_path);
+    PathBuf::from(home)
+        .join(".claude")
+        .join("plans")
+        .join(base)
 }
 
 fn yaml_quote(s: &str) -> String {
@@ -358,5 +387,46 @@ fn main() {
         _ => fatal(&format!(
             "unknown command: {cmd}\nRun 'planfile --help' for usage."
         )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn worktree_path_gets_repo_prefix() {
+        assert_eq!(
+            project_name("/Users/me/src/arc.git/wt1"),
+            "arc-wt1"
+        );
+        assert_eq!(
+            project_name("/Users/me/src/arc.git/wt2"),
+            "arc-wt2"
+        );
+    }
+
+    #[test]
+    fn bare_git_dir_uses_stem() {
+        assert_eq!(
+            project_name("/Users/me/src/arc.git"),
+            "arc"
+        );
+    }
+
+    #[test]
+    fn nested_worktree_joins_all_segments() {
+        assert_eq!(
+            project_name("/Users/me/src/mono.git/apps/web"),
+            "mono-apps-web"
+        );
+    }
+
+    #[test]
+    fn normal_path_uses_last_component() {
+        assert_eq!(
+            project_name("/Users/me/src/chromium/src/arc"),
+            "arc"
+        );
     }
 }
