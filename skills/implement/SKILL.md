@@ -109,7 +109,7 @@ Implement task <task-id>.
 2. If has `metadata.parent_id` → `TaskGet(parentId)` for epic context
 3. Spawn single Task agent using **Standalone Worker Prompt**
 4. Verify via `TaskGet(taskId)` → status is completed
-5. → Continuation Prompt
+5. → Stage Changes, then Continuation Prompt
 
 ## Parallel Mode
 
@@ -124,7 +124,7 @@ All tasks independent — fire and forget, no team overhead.
    with epic context injected.
 5. Wait for all to return. Check `TaskList()` for any incomplete.
 6. Incomplete tasks → spawn another batch (max 2 retries per task)
-7. → Verify, then Continuation Prompt
+7. → Verify, Stage Changes, then Continuation Prompt
 
 ## Swarm Mode
 
@@ -197,7 +197,15 @@ while true:
 
 1. `TaskUpdate(epicId, status: "completed")`
 2. TeamDelete
-3. → Continuation Prompt
+3. → Stage Changes, then Continuation Prompt
+
+## Stage Changes
+
+Run after all workers complete, before prompting the user:
+
+1. `git add -u` — stage all tracked modifications and deletions
+2. `git status --short` — check for untracked files. If any exist, ask the user whether to stage them (e.g., new test fixtures, generated files).
+3. `git diff --cached --stat` — show the staged summary to the user so they can see what will be committed.
 
 ## Continuation Prompt
 

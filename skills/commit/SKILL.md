@@ -12,6 +12,7 @@ allowed-tools:
   - "Bash(git add:*)"
   - "Bash(git commit:*)"
   - "Bash(git notes:*)"
+  - "Bash(ck plan archive:*)"
   - "Bash(git branch:*)"
   - "Bash(git rev-parse:*)"
   - Read
@@ -53,12 +54,11 @@ Recent commits: !`git log --oneline -5 2>/dev/null`
    )"
    ```
 
-5. **Plan note**: if an in-progress task (from step 2) has `plan_file` in its metadata,
-   attach it as a git note on the new commit:
+5. **Plan archive**: if an in-progress task (from step 2) has `plan_file` in its metadata,
+   archive the plan (stores content as git note on HEAD + moves to archive/):
    ```bash
-   git notes --ref=plans add -m "<plan_file path>" HEAD
+   ck plan archive <plan_file path>
    ```
-   If a note already exists on HEAD (amend case), use `add -f` to overwrite.
    Skip silently if no task or no `plan_file` metadata.
 
 ## Hook failures

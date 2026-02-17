@@ -121,7 +121,6 @@ Do NOT ask when the answer is obvious or covered by the task brief.
 
 7. **Finalize:**
    - `TaskUpdate(epicId, status: "in_progress")`
-   - If source was a plan file AND all tasks created successfully → archive it: `ck plan archive <filepath>`
    - If source was a task → `TaskUpdate(sourceId, status: "completed", metadata: {status_detail: null})`
 
 8. **Report:**
