@@ -59,8 +59,9 @@ Already have branch name, status, and recent commits from Context.
 ### 3. Check for stale branches
 
 - List all local `luan/*` branches: `git branch --list 'luan/*' --format='%(refname:short)'`
-- Get active work issues: `work list --status active --format=json` and check for comments containing `Branch:`
-- Cross-reference: branches not referenced in any active issue's comments are potentially stale
+- Get active tasks: `TaskList()` filtered by status === "in_progress" and metadata.project === repoRoot
+- Check `metadata.branch` field on each task
+- Cross-reference: branches not referenced in any in_progress task's `metadata.branch` are potentially stale
 - Never auto-delete — only surface for user awareness
 
 ### 4. Summarize
