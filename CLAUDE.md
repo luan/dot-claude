@@ -1,6 +1,6 @@
 ## Non-Negotiable
 
-1. Never `work approve` without explicit user consent.
+1. Never complete a review-status task without explicit user consent.
 2. Never external actions without explicit request (PR comments, GitHub issues, Slack, email, Notion).
 
 ## Code Style
@@ -62,10 +62,10 @@ After explore: `/prepare <id>`. After prepare: `/implement <epic-id>`.
 
 ## Session End
 
-- File remaining work as issues. Run quality gates if code changed.
+- File remaining work as tasks. Run quality gates if code changed.
 - Commit. Push only when user explicitly requests.
 
-## Work Issues
+## Tasks
 
-All plans, notes, state live in work issues. No filesystem documents.
-Lifecycle: open → active → review → done / cancelled
+All plans, notes, state live in native Tasks. No filesystem documents.
+Lifecycle: pending → in_progress → review (metadata) → completed

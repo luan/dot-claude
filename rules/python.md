@@ -1,6 +1,7 @@
 ---
 paths:
   - "**/*.py"
+  - "skills/**/*.md
   - "**/pyproject.toml"
 ---
 
