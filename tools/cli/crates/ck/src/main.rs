@@ -1,3 +1,4 @@
+mod ansi;
 mod app;
 mod cli;
 mod editor;
@@ -32,46 +33,48 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         }
         Some(cli::Command::Tui) => run_tui(),
-        Some(cli::Command::List { status, sort, json }) => {
-            let (store, cwd) = store_and_cwd();
-            cli::run_list(&store, &cwd, status, sort, json)
-        }
-        Some(cli::Command::Show { id, json }) => {
-            let (store, cwd) = store_and_cwd();
-            cli::run_show(&store, &cwd, &id, json)
-        }
-        Some(cli::Command::Create {
-            subject,
-            description,
-            priority,
-            parent,
-        }) => {
-            let (store, cwd) = store_and_cwd();
-            cli::run_create(&store, &cwd, subject, description, priority, parent)
-        }
-        Some(cli::Command::Edit {
-            id,
-            subject,
-            status,
-            priority,
-        }) => {
-            let (store, cwd) = store_and_cwd();
-            cli::run_edit(&store, &cwd, &id, subject, status, priority)
-        }
-        Some(cli::Command::Status { id, status }) => {
-            let (store, cwd) = store_and_cwd();
-            cli::run_status(&store, &cwd, &id, &status)
-        }
-        Some(cli::Command::Plans {
-            json,
-            all,
-            project,
-            archived,
-        }) => {
-            let (_, cwd) = store_and_cwd();
-            cli::run_plans(&cwd, json, all, project, archived)
-        }
+        Some(cli::Command::Task { action }) => match action {
+            cli::TaskAction::List { status, sort, json } => {
+                let (store, cwd) = store_and_cwd();
+                cli::run_list(&store, &cwd, status, sort, json)
+            }
+            cli::TaskAction::Show { id, json } => {
+                let (store, cwd) = store_and_cwd();
+                cli::run_show(&store, &cwd, &id, json)
+            }
+            cli::TaskAction::Create {
+                subject,
+                description,
+                priority,
+                parent,
+            } => {
+                let (store, cwd) = store_and_cwd();
+                cli::run_create(&store, &cwd, subject, description, priority, parent)
+            }
+            cli::TaskAction::Edit {
+                id,
+                subject,
+                status,
+                priority,
+            } => {
+                let (store, cwd) = store_and_cwd();
+                cli::run_edit(&store, &cwd, &id, subject, status, priority)
+            }
+            cli::TaskAction::Status { id, status } => {
+                let (store, cwd) = store_and_cwd();
+                cli::run_status(&store, &cwd, &id, &status)
+            }
+        },
         Some(cli::Command::Plan { action }) => match action {
+            cli::PlanAction::List {
+                json,
+                all,
+                project,
+                archived,
+            } => {
+                let (_, cwd) = store_and_cwd();
+                cli::run_plans(&cwd, json, all, project, archived)
+            }
             cli::PlanAction::Create {
                 topic,
                 project,
@@ -84,13 +87,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             cli::PlanAction::Archive { file } => cli::run_plan_archive(file),
             cli::PlanAction::Show { id } => cli::run_plan_show(&id),
         },
-        Some(cli::Command::Projects { json }) => {
-            let (store, _) = store_and_cwd();
-            cli::run_projects(&store, json)
-        }
-        Some(cli::Command::Completion { shell }) => cli::run_completion(shell),
-        Some(cli::Command::Slug { words }) => cli::run_slug(words),
-        Some(cli::Command::Phases { file }) => phases::run_phases(file),
+        Some(cli::Command::Project { action }) => match action {
+            cli::ProjectAction::List { json } => {
+                let (store, _) = store_and_cwd();
+                cli::run_projects(&store, json)
+            }
+            cli::ProjectAction::Show { slug } => {
+                println!("Project show not implemented yet: {slug}");
+                Ok(())
+            }
+        },
+        Some(cli::Command::Tool { action }) => match action {
+            cli::ToolAction::Slug { words } => cli::run_slug(words),
+            cli::ToolAction::Phases { file } => phases::run_phases(file),
+            cli::ToolAction::Completion { shell } => cli::run_completion(shell),
+        },
     }
 }
 

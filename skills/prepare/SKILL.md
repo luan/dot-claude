@@ -37,7 +37,7 @@ Do NOT ask when the answer is obvious or covered by the task brief.
 1. **Find plan source:**
    - If arg matches a file path → use it directly
    - If arg looks like a task ID → `TaskGet(taskId)`, extract `metadata.design`
-   - If no args → `wasc plan latest` (finds most recent plan file for current project)
+   - If no args → `ck plan latest` (finds most recent plan file for current project)
    - If still none → `TaskList()` filtered by status=in_progress + metadata.status_detail==="review" + metadata.label in ["explore", "review", "fix", "brainstorm"], use first match, extract `metadata.design`
    - No plan found → suggest `/explore` or `/review`
 
@@ -46,13 +46,13 @@ Do NOT ask when the answer is obvious or covered by the task brief.
    - Missing file paths or vague descriptions → suggest re-running `/explore` with more detail, STOP
 
 3. **Parse plan:**
-   - If source is a plan file: `wasc phases <file>` → JSON array of `{phase, title, tasks, deps}`
-   - If source is task metadata.design: write to temp file, run `wasc phases <tmpfile>`
+   - If source is a plan file: `ck tool phases <file>` → JSON array of `{phase, title, tasks, deps}`
+   - If source is task metadata.design: write to temp file, run `ck tool phases <tmpfile>`
    - Extract title from first heading or the plan file's frontmatter topic
 
 4. **Create epic (parent task):**
 
-   Generate slug: `wasc slug "<title>"` → kebab-case, max 50 chars.
+   Generate slug: `ck tool slug "<title>"` → kebab-case, max 50 chars.
 
    ```
    TaskCreate:
@@ -61,7 +61,7 @@ Do NOT ask when the answer is obvious or covered by the task brief.
      activeForm: "Creating epic"
      metadata:
        project: <repo root from git rev-parse --show-toplevel>
-       slug: "<slug from wasc slug>"
+       slug: "<slug from ck tool slug>"
        priority: 1
    ```
 
@@ -121,7 +121,7 @@ Do NOT ask when the answer is obvious or covered by the task brief.
 
 7. **Finalize:**
    - `TaskUpdate(epicId, status: "in_progress")`
-   - If source was a plan file AND all tasks created successfully → archive it: `wasc plan archive <filepath>`
+   - If source was a plan file AND all tasks created successfully → archive it: `ck plan archive <filepath>`
    - If source was a task → `TaskUpdate(sourceId, status: "completed", metadata: {status_detail: null})`
 
 8. **Report:**

@@ -194,7 +194,10 @@ impl App {
             }
             KeyCode::Char('L') => self.cycle_task_list(),
             KeyCode::Char('P') => {
-                let all_plans = plan::list_plans();
+                let all_plans: Vec<_> = plan::list_plans()
+                    .into_iter()
+                    .filter(|p| !p.project.is_empty())
+                    .collect();
                 self.plans_state = Some(plans::PlansState::new(all_plans));
                 self.screen = Screen::Plans;
             }
@@ -512,7 +515,7 @@ impl App {
         };
 
         let content = editor::marshal_task(&task);
-        let tmp_path = format!("/tmp/wasc-task-{}.md", task.id);
+        let tmp_path = format!("/tmp/ck-task-{}.md", task.id);
         if std::fs::write(&tmp_path, &content).is_err() {
             self.status_msg = "Failed to write temp file".to_string();
             return;
@@ -709,7 +712,7 @@ impl App {
     }
 
     fn render_header(&self, f: &mut Frame, area: Rect, title: &str) {
-        let left = " wasc ".to_string();
+        let left = " ck ".to_string();
         let list_tag = format!(" {} ", self.active_list);
         let right = format!(" {title} ");
 

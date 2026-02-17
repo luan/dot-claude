@@ -115,7 +115,7 @@ After each section, ask: "Does this look right, or should we adjust?"
 
 Once all sections approved, store the design:
 
-1. `echo "<findings>" | wasc plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "brainstorm"`
+1. `echo "<findings>" | ck plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "brainstorm"`
 2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "<filename from stdout>", status_detail: "review"}, description: "Brainstorm: <topic> — findings in plan file and metadata.design")`
 
 The design format below is the findings content:

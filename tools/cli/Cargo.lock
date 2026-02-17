@@ -164,6 +164,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
+name = "ck"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "clap_complete",
+ "claude-slug",
+ "crossterm 0.28.1",
+ "dirs",
+ "ratatui",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "clap"
 version = "4.5.59"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1625,20 +1639,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d9b2acfb050df409c972a37d3b8e08cdea3bddb0c09db9d53137e504cfabed0"
 dependencies = [
  "utf8parse",
-]
-
-[[package]]
-name = "wasc"
-version = "0.1.0"
-dependencies = [
- "clap",
- "clap_complete",
- "claude-slug",
- "crossterm 0.28.1",
- "dirs",
- "ratatui",
- "serde",
- "serde_json",
 ]
 
 [[package]]

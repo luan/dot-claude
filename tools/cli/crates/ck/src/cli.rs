@@ -1,12 +1,13 @@
 use std::collections::BTreeMap;
 
+use crate::ansi;
 use crate::plan;
 use crate::store::{Priority, SortOrder, Status, StatusFilter, Store, Task, TaskList};
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::{Shell, generate};
 
 #[derive(Parser)]
-#[command(name = "wasc")]
+#[command(name = "ck")]
 #[command(about = "Task management CLI and TUI", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
@@ -46,6 +47,33 @@ pub enum Command {
     #[command(about = "Launch the interactive TUI")]
     Tui,
 
+    #[command(visible_alias = "t", about = "Task operations")]
+    Task {
+        #[command(subcommand)]
+        action: TaskAction,
+    },
+
+    #[command(visible_alias = "p", about = "Plan file operations")]
+    Plan {
+        #[command(subcommand)]
+        action: PlanAction,
+    },
+
+    #[command(visible_alias = "j", about = "Project operations")]
+    Project {
+        #[command(subcommand)]
+        action: ProjectAction,
+    },
+
+    #[command(visible_alias = "o", about = "Utility tools")]
+    Tool {
+        #[command(subcommand)]
+        action: ToolAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum TaskAction {
     #[command(about = "List tasks")]
     List {
         #[arg(long, help = "Filter by status (pending, in_progress, completed)", value_parser = ["pending", "in_progress", "completed", "active", "all"])]
@@ -105,40 +133,10 @@ pub enum Command {
         #[arg(help = "New status (pending, in_progress, completed)", value_parser = ["pending", "in_progress", "completed"])]
         status: String,
     },
+}
 
-    #[command(about = "List execution plans for the current project")]
-    Plans {
-        #[arg(long, help = "Output as JSON")]
-        json: bool,
-
-        #[arg(long, help = "Show plans from all projects")]
-        all: bool,
-
-        #[arg(short, long, help = "Filter by project path")]
-        project: Option<String>,
-
-        #[arg(long, help = "Show archived plans instead of active")]
-        archived: bool,
-    },
-
-    #[command(about = "Plan file operations")]
-    Plan {
-        #[command(subcommand)]
-        action: PlanAction,
-    },
-
-    #[command(about = "List known projects")]
-    Projects {
-        #[arg(long, help = "Output as JSON")]
-        json: bool,
-    },
-
-    #[command(about = "Generate shell completion scripts")]
-    Completion {
-        #[arg(help = "Shell type (bash, zsh, fish, powershell, elvish)")]
-        shell: Shell,
-    },
-
+#[derive(Subcommand)]
+pub enum ToolAction {
     #[command(about = "Generate URL-safe slug from text")]
     Slug {
         #[arg(
@@ -154,10 +152,46 @@ pub enum Command {
         #[arg(help = "Plan file to parse (or stdin if omitted)")]
         file: Option<String>,
     },
+
+    #[command(about = "Generate shell completion scripts")]
+    Completion {
+        #[arg(help = "Shell type (bash, zsh, fish, powershell, elvish)")]
+        shell: Shell,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ProjectAction {
+    #[command(about = "List known projects")]
+    List {
+        #[arg(long, help = "Output as JSON")]
+        json: bool,
+    },
+
+    #[command(about = "Show project details")]
+    Show {
+        #[arg(help = "Project slug")]
+        slug: String,
+    },
 }
 
 #[derive(Subcommand)]
 pub enum PlanAction {
+    #[command(about = "List execution plans for the current project")]
+    List {
+        #[arg(long, help = "Output as JSON")]
+        json: bool,
+
+        #[arg(long, help = "Show plans from all projects")]
+        all: bool,
+
+        #[arg(short, long, help = "Filter by project path")]
+        project: Option<String>,
+
+        #[arg(long, help = "Show archived plans instead of active")]
+        archived: bool,
+    },
+
     #[command(about = "Create a new plan file")]
     Create {
         #[arg(long, help = "Plan topic")]
@@ -251,12 +285,18 @@ pub fn run_list(
         println!("{}", serde_json::to_string_pretty(&json_tasks)?);
     } else {
         if filtered.is_empty() {
-            println!("No tasks found.");
+            println!("{}", ansi::dim("No tasks found."));
             return Ok(());
         }
 
-        println!("{:<6} {:<12} {:<6} SUBJECT", "ID", "STATUS", "PRI");
-        println!("{}", "-".repeat(80));
+        println!(
+            "{}",
+            ansi::bold(&format!(
+                "{:<6} {:<12} {:<6} SUBJECT",
+                "ID", "STATUS", "PRI"
+            ))
+        );
+        println!("{}", ansi::dim(&"-".repeat(80)));
 
         for task in &filtered {
             let status_str = match task.status {
@@ -275,8 +315,11 @@ pub fn run_list(
             };
 
             println!(
-                "{:<6} {:<12} {:<6} {}",
-                task.id, status_str, pri_str, subject
+                "{} {} {} {}",
+                ansi::id(&format!("{:<6}", task.id)),
+                ansi::for_status(&task.status, &format!("{:<12}", status_str)),
+                ansi::for_priority(&task.priority, &format!("{:<6}", pri_str)),
+                subject
             );
         }
     }
@@ -300,53 +343,69 @@ pub fn run_show(
     if json {
         println!("{}", serde_json::to_string_pretty(&task.to_json())?);
     } else {
-        println!("ID:          {}", task.id);
-        println!("Subject:     {}", task.subject);
+        let status_str = match task.status {
+            crate::store::Status::Pending => "pending",
+            crate::store::Status::InProgress => "in_progress",
+            crate::store::Status::Completed => "completed",
+            crate::store::Status::Other(ref s) => s.as_str(),
+        };
+
+        println!("{} {}", ansi::label("ID:"), ansi::id(&task.id));
+        println!("{} {}", ansi::label("Subject:"), task.subject);
         println!(
-            "Status:      {}",
-            match task.status {
-                crate::store::Status::Pending => "pending",
-                crate::store::Status::InProgress => "in_progress",
-                crate::store::Status::Completed => "completed",
-                crate::store::Status::Other(ref s) => s.as_str(),
-            }
+            "{} {}",
+            ansi::label("Status:"),
+            ansi::for_status(&task.status, status_str)
         );
-        println!("Priority:    {}", task.priority.as_str());
+        println!(
+            "{} {}",
+            ansi::label("Priority:"),
+            ansi::for_priority(&task.priority, task.priority.as_str())
+        );
 
         if !task.description.is_empty() {
-            println!("\nDescription:\n{}", task.description);
+            println!("\n{}", ansi::section("Description:"));
+            println!("{}", task.description);
         }
 
         if !task.active_form.is_empty() {
-            println!("\nActive Form: {}", task.active_form);
+            println!("\n{} {}", ansi::label("Active Form:"), task.active_form);
         }
 
         if !task.blocks.is_empty() {
-            println!("\nBlocks:      {}", task.blocks.join(", "));
+            println!("\n{} {}", ansi::label("Blocks:"), task.blocks.join(", "));
         }
 
         if !task.blocked_by.is_empty() {
-            println!("Blocked By:  {}", task.blocked_by.join(", "));
+            println!(
+                "{} {}",
+                ansi::label("Blocked By:"),
+                task.blocked_by.join(", ")
+            );
         }
 
         if !task.task_type.is_empty() {
-            println!("\nType:        {}", task.task_type);
+            println!("\n{} {}", ansi::label("Type:"), task.task_type);
         }
 
         if !task.parent_id.is_empty() {
-            println!("Parent ID:   {}", task.parent_id);
+            println!(
+                "{} {}",
+                ansi::label("Parent ID:"),
+                ansi::id(&task.parent_id)
+            );
         }
 
         if !task.branch.is_empty() {
-            println!("Branch:      {}", task.branch);
+            println!("{} {}", ansi::label("Branch:"), task.branch);
         }
 
         if !task.status_detail.is_empty() {
-            println!("Status Detail: {}", task.status_detail);
+            println!("{} {}", ansi::label("Status Detail:"), task.status_detail);
         }
 
         if !task.project.is_empty() {
-            println!("Project:     {}", task.project);
+            println!("{} {}", ansi::label("Project:"), ansi::id(&task.project));
         }
     }
 
@@ -392,7 +451,7 @@ pub fn run_create(
     };
 
     let created = store.create_task(list_id, &task)?;
-    println!("Created task t{}: {}", created.id, created.subject);
+    println!("{}", ansi::id(&format!("t{}", created.id)));
 
     Ok(())
 }
@@ -428,7 +487,7 @@ pub fn run_edit(
     }
 
     store.save_task(&list_id, &task)?;
-    println!("Updated task t{}", task.id);
+    println!("Updated {}", ansi::id(&format!("t{}", task.id)));
 
     Ok(())
 }
@@ -449,10 +508,15 @@ pub fn run_status(
     task.status = Status::from_str(new_status);
     let new_status_str = task.status.as_str();
 
+    let old_colored = ansi::for_status(&Status::from_str(&old_status), &old_status);
+    let new_colored = ansi::for_status(&task.status, new_status_str);
     store.save_task(&list_id, &task)?;
     println!(
-        "Task t{} status: {} → {}",
-        task.id, old_status, new_status_str
+        "{}: {} {} {}",
+        ansi::id(&format!("t{}", task.id)),
+        old_colored,
+        ansi::arrow(),
+        new_colored
     );
 
     Ok(())
@@ -471,17 +535,23 @@ pub fn run_plans(
         plan::list_plans()
     };
 
+    // Always exclude plans without a project
+    plans.retain(|p| !p.project.is_empty());
+
     if let Some(ref proj) = project {
         plans.retain(|p| p.project.contains(proj.as_str()));
     } else if !all {
-        plans.retain(|p| !p.project.is_empty() && cwd.contains(&p.project));
+        plans.retain(|p| cwd.contains(&p.project));
     }
 
     if plans.is_empty() {
         if all {
-            eprintln!("No plans found in ~/.claude/plans/");
+            eprintln!("{}", ansi::dim("No plans found in ~/.claude/plans/"));
         } else {
-            eprintln!("No plans found for current project. Use --all to show all plans.");
+            eprintln!(
+                "{}",
+                ansi::dim("No plans found for current project. Use --all to show all plans.")
+            );
         }
         return Ok(());
     }
@@ -493,6 +563,7 @@ pub fn run_plans(
                 serde_json::json!({
                     "name": p.name,
                     "title": p.title,
+                    "project": crate::planfile::project_name(&p.project),
                     "modified": plan::format_date(p.mod_time),
                     "size": plan::format_size(p.size),
                 })
@@ -500,28 +571,38 @@ pub fn run_plans(
             .collect();
         println!("{}", serde_json::to_string_pretty(&json_plans)?);
     } else {
-        println!("{:<30} {:<50} {:<12} SIZE", "NAME", "TITLE", "MODIFIED");
-        println!("{}", "-".repeat(100));
+        println!(
+            "{}",
+            ansi::bold(&format!(
+                "{:<12} {:<30} {:<42} {:<12} SIZE",
+                "PROJECT", "NAME", "TITLE", "MODIFIED"
+            ))
+        );
+        println!("{}", ansi::dim(&"-".repeat(100)));
 
         for p in &plans {
+            let proj = crate::planfile::project_name(&p.project);
+
             let name = if p.name.len() > 28 {
                 format!("{}...", truncate_at_char_boundary(&p.name, 25))
             } else {
                 p.name.clone()
             };
 
-            let title = if p.title.len() > 48 {
-                format!("{}...", truncate_at_char_boundary(&p.title, 45))
+            let title = if p.title.len() > 40 {
+                format!("{}...", truncate_at_char_boundary(&p.title, 37))
             } else {
                 p.title.clone()
             };
 
+            let title_col = format!("{:<42}", title);
             println!(
-                "{:<30} {:<50} {:<12} {}",
-                name,
-                title,
-                plan::format_date(p.mod_time),
-                plan::format_size(p.size)
+                "{} {} {} {} {}",
+                ansi::id(&format!("{:<12}", proj)),
+                ansi::dim(&format!("{:<30}", name)),
+                title_col,
+                ansi::dim(&format!("{:<12}", plan::format_date(p.mod_time))),
+                ansi::dim(&plan::format_size(p.size))
             );
         }
     }
@@ -533,7 +614,7 @@ pub fn run_plan(id: &str) -> Result<(), Box<dyn std::error::Error>> {
     let plans = plan::list_plans();
 
     if plans.is_empty() {
-        eprintln!("No plans found in ~/.claude/plans/");
+        eprintln!("{}", ansi::dim("No plans found in ~/.claude/plans/"));
         return Ok(());
     }
 
@@ -661,7 +742,7 @@ pub fn run_projects(store: &Store, json: bool) -> Result<(), Box<dyn std::error:
     }
 
     if projects.is_empty() {
-        eprintln!("No projects found.");
+        eprintln!("{}", ansi::dim("No projects found."));
         return Ok(());
     }
 
@@ -678,9 +759,10 @@ pub fn run_projects(store: &Store, json: bool) -> Result<(), Box<dyn std::error:
             .collect();
         println!("{}", serde_json::to_string_pretty(&json_projects)?);
     } else {
-        println!("{:<30} PATH", "SLUG");
+        println!("{}", ansi::bold(&format!("{:<30} PATH", "SLUG")));
+        println!("{}", ansi::dim(&"-".repeat(80)));
         for (slug, path) in &projects {
-            println!("{:<30} {path}", slug);
+            println!("{} {}", ansi::id(&format!("{:<30}", slug)), ansi::dim(path));
         }
     }
 
@@ -688,6 +770,6 @@ pub fn run_projects(store: &Store, json: bool) -> Result<(), Box<dyn std::error:
 }
 
 pub fn run_completion(shell: Shell) -> Result<(), Box<dyn std::error::Error>> {
-    generate(shell, &mut Cli::command(), "wasc", &mut std::io::stdout());
+    generate(shell, &mut Cli::command(), "ck", &mut std::io::stdout());
     Ok(())
 }

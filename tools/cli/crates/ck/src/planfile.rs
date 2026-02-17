@@ -351,20 +351,58 @@ pub fn cmd_archive(args: &[String]) {
         fatal(&format!("file not found: {file_path}"));
     }
 
+    let content = fs::read_to_string(path).unwrap_or_else(|e| fatal(&format!("reading file: {e}")));
+
+    // Extract project path from frontmatter to locate the git repo
+    let (yaml, _) = parse_frontmatter(&content);
+    let project = yaml
+        .map(|y| {
+            parse_yaml_map(y)
+                .into_iter()
+                .find(|(k, _)| k == "project")
+                .map(|(_, v)| v)
+                .unwrap_or_default()
+        })
+        .unwrap_or_default();
+
+    if project.is_empty() {
+        fatal("plan has no project field — cannot determine git repo");
+    }
+
+    // Find the git toplevel for the project
+    let git_dir = process::Command::new("git")
+        .args(["-C", &project, "rev-parse", "--show-toplevel"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_else(|| fatal(&format!("not a git repository: {project}")));
+
+    // Store plan content as a git note on HEAD under refs/notes/plans
+    let note_status = process::Command::new("git")
+        .args(["-C", &git_dir, "notes", "--ref=plans", "append", "-F"])
+        .arg(path)
+        .arg("HEAD")
+        .status()
+        .unwrap_or_else(|e| fatal(&format!("running git notes: {e}")));
+
+    if !note_status.success() {
+        fatal("git notes append failed — plan file preserved");
+    }
+
+    // Note stored successfully — move to archive/ subfolder
     let parent = path
         .parent()
         .unwrap_or_else(|| fatal("cannot determine parent directory"));
     let archive_dir = parent.join("archive");
     fs::create_dir_all(&archive_dir)
         .unwrap_or_else(|e| fatal(&format!("cannot create archive directory: {e}")));
-
     let file_name = path
         .file_name()
         .unwrap_or_else(|| fatal("cannot determine file name"));
     let dest = archive_dir.join(file_name);
-
     fs::rename(path, &dest).unwrap_or_else(|e| fatal(&format!("archiving file: {e}")));
-    eprintln!("Archived: {file_path} → {}", dest.display());
+    eprintln!("Archived: {file_path} → git notes + {}", dest.display());
 }
 
 #[cfg(test)]

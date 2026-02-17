@@ -5,6 +5,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Cell, Row, Table, TableState};
 
 use crate::plan::{self, Plan};
+use crate::planfile;
 use crate::ui::theme;
 
 pub struct PlansState {
@@ -41,7 +42,11 @@ impl PlansState {
                 .plans
                 .iter()
                 .filter(|p| {
-                    p.title.to_lowercase().contains(&q) || p.name.to_lowercase().contains(&q)
+                    p.title.to_lowercase().contains(&q)
+                        || p.name.to_lowercase().contains(&q)
+                        || planfile::project_name(&p.project)
+                            .to_lowercase()
+                            .contains(&q)
                 })
                 .cloned()
                 .collect();
@@ -99,7 +104,7 @@ impl PlansState {
 }
 
 pub fn render_plans(f: &mut Frame, area: Rect, state: &mut PlansState) {
-    let header = Row::new(vec!["Date", "Size", "Title"])
+    let header = Row::new(vec!["Project", "Date", "Size", "Title"])
         .style(
             Style::default()
                 .fg(theme::SUBTEXT)
@@ -116,7 +121,9 @@ pub fn render_plans(f: &mut Frame, area: Rect, state: &mut PlansState) {
             } else {
                 &p.title
             };
+            let proj = planfile::project_name(&p.project);
             Row::new(vec![
+                Cell::from(Span::styled(proj, theme::muted_style())),
                 Cell::from(Span::styled(
                     plan::format_date(p.mod_time),
                     theme::muted_style(),
@@ -131,6 +138,7 @@ pub fn render_plans(f: &mut Frame, area: Rect, state: &mut PlansState) {
         .collect();
 
     let widths = [
+        Constraint::Length(12),
         Constraint::Length(12),
         Constraint::Length(6),
         Constraint::Fill(1),
