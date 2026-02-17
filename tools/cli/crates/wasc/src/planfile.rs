@@ -10,7 +10,7 @@ fn fatal(msg: &str) -> ! {
     process::exit(1);
 }
 
-fn project_name(project_path: &str) -> String {
+pub fn project_name(project_path: &str) -> String {
     let path = Path::new(project_path);
     let components: Vec<&str> = path
         .components()
@@ -38,13 +38,10 @@ fn project_name(project_path: &str) -> String {
         .to_string()
 }
 
-fn plans_dir(project_path: &str) -> PathBuf {
+pub fn plans_dir(project_path: &str) -> PathBuf {
     let home = env::var("HOME").unwrap_or_else(|_| fatal("cannot determine home directory"));
     let base = project_name(project_path);
-    PathBuf::from(home)
-        .join(".claude")
-        .join("plans")
-        .join(base)
+    PathBuf::from(home).join(".claude").join("plans").join(base)
 }
 
 fn yaml_quote(s: &str) -> String {
@@ -78,7 +75,7 @@ fn yaml_quote(s: &str) -> String {
     }
 }
 
-fn parse_frontmatter(content: &str) -> (Option<&str>, &str) {
+pub fn parse_frontmatter(content: &str) -> (Option<&str>, &str) {
     let delim = "---\n";
     if !content.starts_with(delim) {
         return (None, content);
@@ -96,7 +93,7 @@ fn parse_frontmatter(content: &str) -> (Option<&str>, &str) {
     }
 }
 
-fn parse_yaml_map(yaml: &str) -> Vec<(String, String)> {
+pub fn parse_yaml_map(yaml: &str) -> Vec<(String, String)> {
     yaml.lines()
         .filter_map(|line| {
             let line = line.trim();
@@ -119,7 +116,7 @@ fn parse_yaml_map(yaml: &str) -> Vec<(String, String)> {
         .collect()
 }
 
-fn cmd_create(args: &[String]) {
+pub fn cmd_create(args: &[String]) {
     let mut topic = String::new();
     let mut project = String::new();
     let mut slug_flag = String::new();
@@ -237,7 +234,7 @@ fn chrono_rfc3339() -> String {
     format!("{year:04}-{m:02}-{d:02}T{hours:02}:{minutes:02}:{seconds:02}Z")
 }
 
-fn cmd_read(args: &[String]) {
+pub fn cmd_read(args: &[String]) {
     let mut frontmatter_mode = false;
     let mut file_path = String::new();
 
@@ -280,7 +277,7 @@ fn cmd_read(args: &[String]) {
     }
 }
 
-fn cmd_latest(args: &[String]) {
+pub fn cmd_latest(args: &[String]) {
     let mut project = String::new();
 
     let mut i = 0;
@@ -343,51 +340,31 @@ fn cmd_latest(args: &[String]) {
     }
 }
 
-fn cmd_delete(args: &[String]) {
+pub fn cmd_archive(args: &[String]) {
     let file_path = args
         .iter()
         .find(|a| !a.starts_with('-'))
-        .unwrap_or_else(|| fatal("usage: planfile delete <file>"));
+        .unwrap_or_else(|| fatal("usage: planfile archive <file>"));
 
-    if !Path::new(file_path).exists() {
+    let path = Path::new(file_path);
+    if !path.exists() {
         fatal(&format!("file not found: {file_path}"));
     }
 
-    fs::remove_file(file_path).unwrap_or_else(|e| fatal(&format!("deleting file: {e}")));
-    eprintln!("Deleted: {file_path}");
-}
+    let parent = path
+        .parent()
+        .unwrap_or_else(|| fatal("cannot determine parent directory"));
+    let archive_dir = parent.join("archive");
+    fs::create_dir_all(&archive_dir)
+        .unwrap_or_else(|e| fatal(&format!("cannot create archive directory: {e}")));
 
-const USAGE: &str = "Usage: planfile <command> [options]
+    let file_name = path
+        .file_name()
+        .unwrap_or_else(|| fatal("cannot determine file name"));
+    let dest = archive_dir.join(file_name);
 
-Commands:
-  create    Create a new plan file
-  read      Read plan file body or frontmatter
-  latest    Find most recently modified plan file
-  delete    Delete a plan file
-
-Run 'planfile <command> --help' for details.";
-
-fn main() {
-    let args: Vec<String> = env::args().collect();
-
-    if args.len() < 2 {
-        println!("{USAGE}");
-        process::exit(1);
-    }
-
-    let cmd = &args[1];
-    let rest = &args[2..];
-
-    match cmd.as_str() {
-        "create" => cmd_create(rest),
-        "read" => cmd_read(rest),
-        "latest" => cmd_latest(rest),
-        "delete" => cmd_delete(rest),
-        "--help" | "-h" | "help" => println!("{USAGE}"),
-        _ => fatal(&format!(
-            "unknown command: {cmd}\nRun 'planfile --help' for usage."
-        )),
-    }
+    fs::rename(path, &dest).unwrap_or_else(|e| fatal(&format!("archiving file: {e}")));
+    eprintln!("Archived: {file_path} → {}", dest.display());
 }
 
 #[cfg(test)]
@@ -396,22 +373,13 @@ mod tests {
 
     #[test]
     fn worktree_path_gets_repo_prefix() {
-        assert_eq!(
-            project_name("/Users/me/src/arc.git/wt1"),
-            "arc-wt1"
-        );
-        assert_eq!(
-            project_name("/Users/me/src/arc.git/wt2"),
-            "arc-wt2"
-        );
+        assert_eq!(project_name("/Users/me/src/arc.git/wt1"), "arc-wt1");
+        assert_eq!(project_name("/Users/me/src/arc.git/wt2"), "arc-wt2");
     }
 
     #[test]
     fn bare_git_dir_uses_stem() {
-        assert_eq!(
-            project_name("/Users/me/src/arc.git"),
-            "arc"
-        );
+        assert_eq!(project_name("/Users/me/src/arc.git"), "arc");
     }
 
     #[test]
@@ -424,9 +392,6 @@ mod tests {
 
     #[test]
     fn normal_path_uses_last_component() {
-        assert_eq!(
-            project_name("/Users/me/src/chromium/src/arc"),
-            "arc"
-        );
+        assert_eq!(project_name("/Users/me/src/chromium/src/arc"), "arc");
     }
 }

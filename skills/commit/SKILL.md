@@ -11,12 +11,15 @@ allowed-tools:
   - "Bash(git log:*)"
   - "Bash(git add:*)"
   - "Bash(git commit:*)"
+  - "Bash(git notes:*)"
   - "Bash(git branch:*)"
+  - "Bash(git rev-parse:*)"
   - Read
   - Glob
   - Grep
   - AskUserQuestion
   - TaskList
+  - TaskGet
 ---
 
 # Commit
@@ -49,6 +52,14 @@ Recent commits: !`git log --oneline -5 2>/dev/null`
    EOF
    )"
    ```
+
+5. **Plan note**: if an in-progress task (from step 2) has `plan_file` in its metadata,
+   attach it as a git note on the new commit:
+   ```bash
+   git notes --ref=plans add -m "<plan_file path>" HEAD
+   ```
+   If a note already exists on HEAD (amend case), use `add -f` to overwrite.
+   Skip silently if no task or no `plan_file` metadata.
 
 ## Hook failures
 

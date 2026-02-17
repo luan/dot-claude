@@ -81,7 +81,7 @@ Mark active: `TaskUpdate(taskId, status: "in_progress")`
 
 **Store findings** — pass the full `description` field from the TaskCreate above (including Acceptance Criteria and all Phase sections) as the findings content:
 
-1. `echo "<findings>" | claude-planfile create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "fix"`
+1. `echo "<findings>" | wasc plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "fix"`
 2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "<filename from stdout>", status_detail: "review"}, description: "Fix: <topic> — findings in plan file and metadata.design")`
 
 **Phase grouping rules:**

@@ -48,7 +48,7 @@ Run stages sequentially. After each succeeds, update
 
 ### Branch (skip if `--no-branch` or already on non-main branch)
 
-Generate slug: `claude-slug "<prompt>"` (outputs kebab-case, max 50 chars).
+Generate slug: `wasc slug "<prompt>"` (outputs kebab-case, max 50 chars).
 
 ```
 Skill("start", args="luan/<slug>")
@@ -63,7 +63,7 @@ Skill("start", args="luan/<slug>")
 Skill("explore", args="<prompt>")
 ```
 
-**Verify**: `claude-planfile latest` succeeds (plan file exists).
+**Verify**: `wasc plan latest` succeeds (plan file exists).
 **Update**: `vibe_stage: "explore"`
 
 ### Prepare

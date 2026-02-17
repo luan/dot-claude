@@ -58,6 +58,15 @@ impl Priority {
         }
     }
 
+    pub fn from_u8(v: u8) -> Self {
+        match v {
+            1 => Self::P1,
+            2 => Self::P2,
+            3 => Self::P3,
+            _ => Self::None,
+        }
+    }
+
     pub fn sort_key(&self) -> u8 {
         match self {
             Self::P1 => 1,
@@ -365,7 +374,11 @@ fn is_uuid(s: &str) -> bool {
 
 fn atomic_write(path: &Path, content: &str) -> Result<(), String> {
     let dir = path.parent().ok_or("no parent directory")?;
-    let tmp = dir.join(format!(".tmp-{}", std::process::id()));
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let tmp = dir.join(format!(".tmp-{}-{}", std::process::id(), nanos));
     fs::write(&tmp, content).map_err(|e| format!("write tmp: {e}"))?;
     fs::rename(&tmp, path).map_err(|e| format!("rename: {e}"))
 }

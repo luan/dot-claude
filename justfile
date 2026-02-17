@@ -5,8 +5,12 @@ check:
     cd tools/cli && cargo fmt --check && cargo clippy -- -W clippy::all && cargo test
 
 install:
-    cd tools/cli && cargo install --path crates/slug && cargo install --path crates/planfile && cargo install --path crates/phases && cargo install --path crates/gitcontext && cargo install --path crates/wasc
+    cd tools/cli && cargo install --path crates/gitcontext && cargo install --path crates/wasc
 
-setup: install
-    @echo "Installed: claude-slug, claude-planfile, claude-phases, claude-gitcontext, wasc"
-    @echo "Verify: claude-slug 'hello world'"
+completions:
+    mkdir -p ~/.config/fish/completions
+    wasc completion fish > ~/.config/fish/completions/wasc.fish
+
+setup: install completions
+    @echo "Installed: claude-gitcontext, wasc (fish completions → ~/.config/fish/completions/wasc.fish)"
+    @echo "Verify: wasc slug 'hello world'"

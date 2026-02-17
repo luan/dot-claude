@@ -24,6 +24,5 @@
   },
   "alwaysThinkingEnabled": true,
   "promptSuggestionEnabled": true,
-  "skipDangerousModePermissionPrompt": true,
-  "effortLevel": "medium"
+  "skipDangerousModePermissionPrompt": true
 }

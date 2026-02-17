@@ -1,14 +1,12 @@
-use std::env;
 use std::fs;
 use std::io::{self, IsTerminal, Read};
-use std::process;
 
 #[derive(Debug)]
-struct Phase {
-    phase: u32,
-    title: String,
-    tasks: Vec<String>,
-    deps: Vec<u32>,
+pub struct Phase {
+    pub phase: u32,
+    pub title: String,
+    pub tasks: Vec<String>,
+    pub deps: Vec<u32>,
 }
 
 fn strip_frontmatter(content: &str) -> &str {
@@ -72,7 +70,7 @@ fn is_independent(text: &str) -> bool {
     lower.contains("independent of") || lower.contains("no dependency")
 }
 
-fn parse_phases(content: &str) -> Vec<Phase> {
+pub fn parse_phases(content: &str) -> Vec<Phase> {
     let body = strip_frontmatter(content);
     let lines: Vec<&str> = body.lines().collect();
 
@@ -132,7 +130,7 @@ fn parse_phases(content: &str) -> Vec<Phase> {
     phases
 }
 
-fn to_json(phases: &[Phase]) -> String {
+pub fn to_json(phases: &[Phase]) -> String {
     let mut out = String::from("[\n");
     for (i, p) in phases.iter().enumerate() {
         if i > 0 {
@@ -163,41 +161,19 @@ fn to_json(phases: &[Phase]) -> String {
     out
 }
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-
-    if args.get(1).is_some_and(|a| a == "--help" || a == "-h") {
-        println!(
-            "Usage: phases [FILE]\n\n\
-             Parse phase markers from a plan markdown file and output JSON.\n\n\
-             Reads from FILE if given, or stdin if piped. Recognizes:\n  \
-             **Phase N: Description**    (bold inline)\n  \
-             ### Phase N: Description    (heading level 3)\n\n\
-             Collects numbered list items as tasks under each phase.\n\
-             Detects dependency keywords (\"independent of\", \"no dependency\")\n\
-             to override the default sequential dependency chain.\n\n\
-             Output: JSON array of phases with number, title, tasks, and deps."
-        );
-        return;
-    }
-
-    let content = if let Some(file) = args.get(1) {
-        fs::read_to_string(file).unwrap_or_else(|e| {
-            eprintln!("phases: {e}");
-            process::exit(1);
-        })
+pub fn run_phases(file_arg: Option<String>) -> Result<(), Box<dyn std::error::Error>> {
+    let content = if let Some(file) = file_arg {
+        fs::read_to_string(file)?
     } else if !io::stdin().is_terminal() {
         let mut buf = String::new();
-        io::stdin().read_to_string(&mut buf).unwrap_or_else(|e| {
-            eprintln!("phases: reading stdin: {e}");
-            process::exit(1);
-        });
+        io::stdin().read_to_string(&mut buf)?;
         buf
     } else {
         println!("[]");
-        return;
+        return Ok(());
     };
 
     let phases = parse_phases(&content);
     println!("{}", to_json(&phases));
+    Ok(())
 }

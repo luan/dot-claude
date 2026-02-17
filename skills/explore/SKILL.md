@@ -90,7 +90,7 @@ of cross-cutting concerns, return: "ESCALATE: team — <reason>"
    If echo suspected or key claims fail → send targeted follow-up.
 
 5. **Store findings:**
-   1. `echo "<findings>" | claude-planfile create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "explore"`
+   1. `echo "<findings>" | wasc plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "explore"`
    2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "<filename from stdout>", status_detail: "review"}, description: "Explore: <topic> — findings in plan file and metadata.design")`
 
 6. Output summary:
@@ -120,7 +120,7 @@ Next: /prepare t<id>
 3. Move back to active: `TaskUpdate(taskId, status: "in_progress", metadata: {status_detail: null})`
 4. Dispatch subagent with: "Previous findings:\n<metadata.design>\n\nContinue exploring: <new prompt>"
 5. Update plan file and task, updating existing file at `<metadata.plan_file>`:
-   1. `echo "<findings>" | claude-planfile create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "explore"`
+   1. `echo "<findings>" | wasc plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "explore"`
    2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "<filename from stdout>", status_detail: "review"}, description: "Explore: <topic> — findings in plan file and metadata.design")`
 6. Output updated summary → See Continuation Prompt below.
 

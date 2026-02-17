@@ -125,7 +125,7 @@ Output: `# Adversarial Review Summary`
 
 Store findings using `reviewId` as the task:
 
-1. `echo "<findings>" | claude-planfile create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "review"`
+1. `echo "<findings>" | wasc plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "review"`
 2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "<filename from stdout>", status_detail: "review"}, description: "Review: <topic> — findings in plan file and metadata.design")`
 
 ## Step 5: Dispatch Fixes
