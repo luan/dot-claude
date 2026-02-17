@@ -1,32 +1,45 @@
 ---
 name: start
-description: "Create a new Graphite branch and optionally link to a work issue. Triggers: 'start', 'start new branch', 'begin work on'."
-argument-hint: "<branch-name> [work-issue-id]"
+description: "Create a new Graphite branch and optionally link to a task. Triggers: 'start', 'start new branch', 'begin work on'."
+argument-hint: "<branch-name> [task-id]"
 user-invocable: true
 allowed-tools:
   - Bash
   - AskUserQuestion
+  - TaskCreate
+  - TaskUpdate
+  - TaskList
+  - TaskGet
 ---
 
 # Start
 
-Create branch + optionally link work issue.
+Create branch + optionally link task.
 
 ## Steps
 
-1. Parse args: branch name + optional work ID
+1. Parse args: branch name + optional task ID
 2. Normalize: prefix `luan/` if needed
 3. `gt create <branch-name>`
-4. If work ID:
-   - `work start <id>`
-   - `work comment <id> "Branch: <branch-name>"`
-5. If no work ID:
-   - AskUserQuestion: "Create work issue?"
-   - If yes: `work create "<branch-name>" --type chore --priority 2`
-   - `work start <id>`
+4. If task ID:
+   - `TaskUpdate(taskId, status: "in_progress")`
+   - `TaskUpdate(taskId, metadata: {branch: "<branch-name>"})`
+5. If no task ID:
+   - AskUserQuestion: "Create task?"
+   - If yes:
+     ```
+     TaskCreate:
+       subject: "<branch-name>"
+       activeForm: "Creating task"
+       metadata:
+         project: <repo root>
+         type: "chore"
+         priority: 2
+     ```
+   - `TaskUpdate(taskId, status: "in_progress", metadata: {branch: "<branch-name>"})`
 6. Report branch + issue, suggest `/explore` or `/implement`
 
 ## Error Handling
 - `gt create` fails → check if branch exists (`git branch -a | grep <name>`), suggest alternate name
-- `work` command fails → verify issue ID exists with `work show <id>`, report if missing
+- `TaskUpdate` fails → verify task ID exists with `TaskGet`, report if missing
 - Not on expected parent branch → warn user, suggest `gt checkout` first

@@ -9,6 +9,8 @@ allowed-tools:
   - Glob
   - Grep
   - AskUserQuestion
+  - TaskList
+  - TaskGet
 ---
 
 # Next
@@ -70,7 +72,7 @@ PR: #N (draft/ready) — title
 Review: Approved | Changes requested | Pending
 CI: Passing | Failing (list failures)
 Comments: N unresolved (summarize)
-Work issues: N active, M open
+Tasks: N active, M pending
 Stale branches: <list> (no matching active issues)
 ```
 
@@ -81,7 +83,7 @@ Only show "Stale branches" line if stale branches exist.
 1. CI failing → "Fix checks"
 2. Changes requested → "Address N review comments"
 3. Unresolved comments → "Respond to feedback"
-4. Work issues active → "Continue: ..."
+4. Tasks active → "Continue: ..."
 5. Draft PR, all passing → "Mark ready"
 6. Ready PR, approved → "Merge"
 7. No PR → "Create with /commit then /graphite"
@@ -95,28 +97,27 @@ Read the board, find what's ready, dispatch the right skill.
 
 ### 1. Read the board
 
-```bash
-work list --format json --status open
-work list --format json --status active
+```
+TaskList() filtered by metadata.project === repoRoot
+Split into: pending (open) and in_progress without status_detail (active)
 ```
 
-Merge results. Sort by priority (1 highest), then by created date
-(oldest first).
+Sort by metadata.priority (lowest number first), then creation order.
 
 ### 2. Pick the top candidate
 
 Select the highest-priority item that is NOT blocked. Skip:
-- Items with status `done` or `cancelled`
-- Items with status `review` (waiting on human)
+- Items with status `completed` or `deleted`
+- Items with status_detail === 'review' (waiting on human)
 - Items whose description says "blocked by" an open issue
 
-If an item has status `active`, prefer it over `open` items at the
+If an item has status `in_progress`, prefer it over `pending` items at the
 same priority (someone already started it — resume it).
 
 ### 3. Read the candidate
 
-```bash
-work show <id>
+```
+TaskGet(taskId)
 ```
 
 ### 4. Classify the action
@@ -128,13 +129,14 @@ Read the issue description and classify:
 | Type is `bug` | `/debugging` |
 | Title starts with "Brainstorm:" or description says "Needs brainstorm" | `/brainstorm` |
 | Title starts with "Explore:" or description says "Needs explore" or "Explore first" | `/explore` |
-| Has design/plan but no children and isn't a leaf task | `/prepare` |
-| Has children or is a leaf task ready to build | `/implement` |
+| Has design/plan but no children yet (TaskList shows no tasks with metadata.parent_id === taskId) | `/prepare` |
+| Has children (TaskList shows tasks with metadata.parent_id === taskId), or is a leaf task ready to build | `/implement` |
+
+**Default:** If no signal matches → `/explore` (cheapest to course-correct)
 
 **Tie-breaking:**
 - Feature with no "## Approach" or "## Design" section → `/explore`
 - Feature with approach but no concrete phases → `/brainstorm`
-- When genuinely ambiguous → `/explore` (cheaper to course-correct)
 
 ### 5. Present to user
 
@@ -168,5 +170,5 @@ If user chose "Skip", go back to step 2 with the next candidate.
 
 - Never dispatch without showing the user what you picked and why
 - Never skip reading the issue — the description drives classification
-- If `work list` returns nothing actionable, say so plainly
+- If TaskList returns no matching tasks actionable, say so plainly
 - Don't create issues — this skill discovers, it doesn't plan

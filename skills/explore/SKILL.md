@@ -1,25 +1,30 @@
 ---
 name: explore
-description: "Triggers: 'explore', 'how does X work', 'understand', 'research', 'plan a feature', 'figure out', 'investigate', 'design', 'architect'"
+description: "Research, investigate, and design via subagent dispatch with auto-escalation for complex work. Triggers: 'explore', 'how does X work', 'understand', 'research', 'plan a feature', 'figure out', 'investigate', 'design', 'architect', 'best way to', 'state of the art', 'which lib/tool'. Also use when an implementation request contains an unresolved technology choice."
 argument-hint: "<prompt> [--continue]"
 user-invocable: true
 allowed-tools:
   - Task
+  - TaskCreate
+  - TaskUpdate
+  - TaskList
+  - TaskGet
   - Skill
   - AskUserQuestion
   - Bash
+  - Write
 ---
 
 # Explore
 
-Research, investigate, design. Findings stored in issue description.
+Research, investigate, design. Findings stored via plan-storage.
 Auto-escalates to team for complex multi-system work.
 
 **IMMEDIATELY dispatch to subagent.** Never explore on main thread.
 
 ## Context
 
-Active parent issues: !`work list --status active --roots --format short 2>/dev/null`
+Active parent issues: Use TaskList() to view current tasks.
 
 ## Mid-Skill Interviewing
 
@@ -33,29 +38,29 @@ Do NOT ask when the answer is obvious or covered by the task brief.
 
 ### New Exploration
 
-1. Create work issue:
-   ```bash
-   work create "Explore: <topic>" --type chore --priority 2 \
-     --labels explore \
-     --description "$(cat <<'EOF'
-   ## Acceptance Criteria
-   - Findings stored in issue description
-   - Structured as Current State, Recommendation, and phased Next Steps
-   - Each phase includes file paths and is independently actionable
-   EOF
-   )"
+1. Create exploration task:
    ```
-2. `work start <id>`
+   TaskCreate:
+     subject: "Explore: <topic>"
+     description: "## Acceptance Criteria\n- Findings stored in task description\n- Structured as Current State, Recommendation, and phased Next Steps\n- Each phase includes file paths and is independently actionable"
+     activeForm: "Creating exploration task"
+     metadata:
+       project: <repo root from git rev-parse --show-toplevel>
+       label: "explore"
+       priority: 2
+   ```
+
+2. Start task: `TaskUpdate(taskId, status: "in_progress")`
 
 3. Dispatch via Task (subagent_type="codebase-researcher"):
 
 ```
 Research <topic> thoroughly. Return COMPLETE findings as text
-(do NOT write files, do NOT create work issues).
+(do NOT write files, do NOT create tasks).
 
 ## Job
 1. Explore codebase
-4. Design approach — 2-3 options, choose best
+2. Design approach — 2-3 options, choose best
 
 ## Output Structure
 
@@ -73,18 +78,24 @@ Approach: <what to change and why>
 
 Each phase must include file paths and approach hints —
 downstream task creation depends on this detail.
+
+## Escalation
+If the problem spans 3+ independent subsystems, has 3+ viable
+approaches with unclear tradeoffs, or needs adversarial analysis
+of cross-cutting concerns, return: "ESCALATE: team — <reason>"
 ```
 
 4. **Validate findings** (subagent-trust.md): spot-check ALL
    architectural claims + 50% of file/behavioral claims before storing.
    If echo suspected or key claims fail → send targeted follow-up.
 
-5. Store findings: `work edit <id> --description "<full-findings>"`
-6. Submit for review: `work review <id>`
+5. **Store findings:**
+   1. `echo "<findings>" | claude-planfile create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "explore"`
+   2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "<filename from stdout>", status_detail: "review"}, description: "Explore: <topic> — findings in plan file and metadata.design")`
 
-7. Output summary:
+6. Output summary:
 ```
-Explore: <issue-id> — <topic>
+Explore: <task-id> — <topic>
 Problem: <1 sentence>
 Recommendation: <1 sentence>
 
@@ -95,36 +106,33 @@ Phases:
 Key decisions:
 - <why this approach>
 
-Next: /prepare <issue-id>
+Next: /prepare <task-id>
 ```
 
-8. → See Continuation Prompt below.
+7. → See Continuation Prompt below.
 
 ### Continuation (--continue flag)
 
-1. Resolve issue ID:
-   - If $ARGUMENTS matches a work ID → use it
-   - If --continue → `work list --status review --label explore`
-     or `work list --status active --label explore`, use first result
-2. Load existing: `work show <id> --format=json` → extract description
-3. Move back to active: `work start <id>`
-4. Dispatch subagent with: "Previous findings:\n<description>\n\n
-   Continue exploring: <new prompt>"
-5. Update: `work edit <id> --description "<combined>"`
-6. Submit for review: `work review <id>`
-7. Output updated summary
-
-8. → See Continuation Prompt below.
+1. Resolve task ID:
+   - If $ARGUMENTS matches a task ID → use it
+   - If --continue → `TaskList()` filtered by `metadata.label === "explore"` and either `metadata.status_detail === "review"` or `status === "in_progress"`, use first result
+2. Load existing: `TaskGet(taskId)` → extract `metadata.design`
+3. Move back to active: `TaskUpdate(taskId, status: "in_progress", metadata: {status_detail: null})`
+4. Dispatch subagent with: "Previous findings:\n<metadata.design>\n\nContinue exploring: <new prompt>"
+5. Update plan file and task, updating existing file at `<metadata.plan_file>`:
+   1. `echo "<findings>" | claude-planfile create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "explore"`
+   2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "<filename from stdout>", status_detail: "review"}, description: "Explore: <topic> — findings in plan file and metadata.design")`
+6. Output updated summary → See Continuation Prompt below.
 
 ### Continuation Prompt
 
 Use AskUserQuestion:
-- "Continue to /prepare <issue-id>" (Recommended) — description: "Create epic + implementation tasks from findings"
+- "Continue to /prepare <task-id>" (Recommended) — description: "Create epic + implementation tasks from findings"
 - "Re-explore with different focus" — description: "Investigate a different angle on the same topic"
-- "Done for now" — description: "Leave issue active for later /next"
+- "Done for now" — description: "Leave task active for later /next"
 
 If user selects "Continue to /prepare":
-→ Invoke Skill tool: skill="prepare", args="<issue-id>"
+→ Invoke Skill tool: skill="prepare", args="<task-id>"
 
 If user selects "Re-explore":
 → Ask what to focus on, then re-run from step 3 with updated prompt
@@ -149,5 +157,5 @@ Escalation triggers:
 ## Key Rules
 
 - Main thread does NOT explore — subagent does
-- Findings stored in issue description
+- Findings stored via plan-storage (plan file + task metadata)
 - Next Steps must include file paths (prepare depends on it)

@@ -62,13 +62,9 @@ If diff is large, use `--stat` first and read key files. If context is unclear f
 
 ## Step 3: Generate Title
 
-Format: `type(scope): description`
-
-- Max 72 chars, lowercase, no period, imperative mood
-- Types: feat|fix|refactor|perf|docs|test|style|build|ci|chore|revert
-- Scope: primary area (auth, api, ui, db) or omit if global
-- Good: `feat(search): add fuzzy matching for better UX`
-- Bad: `updated files`, `fix bug`, `Add new feature for search`
+Use conventional commit format — `type(scope): description`, max 72 chars, lowercase, no period, imperative mood.
+Types: feat|fix|refactor|perf|docs|test|style|build|ci|chore|revert. Scope: primary area or omit if global.
+Multi-line: blank line then body wrapping at 72 chars explaining motivation not mechanics.
 
 ## Step 4: Generate Body
 

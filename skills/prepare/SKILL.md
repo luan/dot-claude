@@ -1,7 +1,7 @@
 ---
 name: prepare
 description: "Convert exploration or review findings into epic + phased child tasks. Triggers: 'prepare', 'prepare work', 'create tasks from plan'."
-argument-hint: "[work-issue-id]"
+argument-hint: "[task-id]"
 user-invocable: true
 allowed-tools:
   - Task
@@ -11,14 +11,18 @@ allowed-tools:
   - Grep
   - AskUserQuestion
   - Skill
+  - TaskCreate
+  - TaskUpdate
+  - TaskList
+  - TaskGet
 ---
 
 # Prepare
 
 Findings → epic + phased tasks with design briefs.
-Reads issue description, creates implementable task hierarchy.
+Reads task description, creates implementable task hierarchy.
 
-**IMMEDIATELY dispatch to subagent.** Never prepare on main thread.
+**Dispatch task creation to subagent.** Main thread handles plan lookup and epic creation (steps 1-4), subagent creates child tasks (step 5).
 
 ## Mid-Skill Interviewing
 
@@ -31,36 +35,34 @@ Do NOT ask when the answer is obvious or covered by the task brief.
 ## Steps
 
 1. **Find plan source:**
-   - If arg is work ID → `work show <id> --format=json`, extract description
-   - Otherwise → try labels in order (review status first, then active):
-     `work list --status review --label explore`, then
-     `work list --status review --label review`, then
-     `work list --status review --label fix`, then
-     `work list --status active --label explore` — use first result
+   - If arg matches a file path → use it directly
+   - If arg looks like a task ID → `TaskGet(taskId)`, extract `metadata.design`
+   - If no args → `claude-planfile latest` (finds most recent plan file for current project)
+   - If still none → `TaskList()` filtered by status=in_progress + metadata.status_detail==="review" + metadata.label in ["explore", "review", "fix", "brainstorm"], use first match, extract `metadata.design`
    - No plan found → suggest `/explore` or `/review`
 
 2. **Pre-check design quality:**
-   - Description must have "Phase" sections with file paths
+   - Must have structured sections (Phase, Step, or numbered groups) with file paths
    - Missing file paths or vague descriptions → suggest re-running `/explore` with more detail, STOP
 
-3. **Parse plan from description:**
-   - Extract title from first heading or recommendation
-   - Find "Next Steps" or "Phase" sections
-   - Parse phases: `**Phase N: Description**`
-   - Extract files + approach per phase
+3. **Parse plan:**
+   - If source is a plan file: `claude-phases <file>` → JSON array of `{phase, title, tasks, deps}`
+   - If source is task metadata.design: write to temp file, run `claude-phases <tmpfile>`
+   - Extract title from first heading or the plan file's frontmatter topic
 
-4. **Generate group label:**
-   Derive kebab-case label from plan title (e.g., "Add user auth" → `add-user-auth`).
-   This label connects parent + children for easy querying.
-
-5. **Create epic (parent issue):**
-   ```bash
-   work create "<title>" --type feature --priority 1 \
-     --labels <group-label> \
-     --description "## Problem\n<from design>\n\n## Solution\n<from design>\n\n## Acceptance Criteria\n- [ ] All phases complete\n- [ ] <criteria from design>"
+4. **Create epic (parent task):**
+   ```
+   TaskCreate:
+     subject: "<title>"
+     description: "## Problem\n<from design>\n\n## Solution\n<from design>\n\n## Acceptance Criteria\n- [ ] All phases complete\n- [ ] <criteria>"
+     activeForm: "Creating epic"
+     metadata:
+       project: <repo root from git rev-parse --show-toplevel>
+       priority: 1
    ```
 
-6. **Create all tasks** — dispatch ONE sonnet subagent (subagent_type="general-purpose", model=sonnet) to create ALL tasks:
+5. **Create all tasks** — dispatch ONE sonnet subagent (subagent_type="general-purpose", model=sonnet) to create ALL tasks.
+   The subagent needs TaskCreate, TaskUpdate, TaskGet in its allowed-tools (specify in the Task dispatch).
 
    ```
    Create implementation tasks for all phases
@@ -71,44 +73,28 @@ Do NOT ask when the answer is obvious or covered by the task brief.
    ## Epic
    <epic-id>
 
-   ## Group Label
-   <group-label>
+   ## Project
+   <repo root from git rev-parse --show-toplevel>
 
    ## Job
    For each phase:
    1. Read referenced files to understand current structure
    2. Design exact changes needed
-   3. Create work issue with design brief:
+   3. Create task with design brief:
 
-   work create "Phase N: <task-title>" --type chore \
-     --parent <epic-id> --labels <group-label> --description "$(cat <<'EOF'
-   ## Context
-   Epic: <epic-id>
+   TaskCreate:
+     subject: "Phase N: <task-title>"
+     description: "## Context\nEpic: <epic-id>\n\n## Goal\n[what needs to be implemented + why]\n\n## Files\n- Read: exact/path/to/file (why: understand current X)\n- Modify: exact/path/to/file (why: add Y)\n- Create: exact/path/to/test (why: verify Z)\n\n## Approach\n[how to implement: patterns to use, key decisions, implementation strategy]\n\n## Acceptance Criteria\n- [ ] [testable criterion 1]\n- [ ] [testable criterion 2]\n- [ ] No regressions\n\n## Assumptions\n- [what must be true about file structure]\n- [what must be true about imports/exports]\n- [what must be true about dependencies]"
+     activeForm: "Creating phase N task"
+     metadata:
+       project: <repo root from ## Project above>
+       type: "chore"
+       parent_id: "<epic-id>"
 
-   ## Goal
-   [what needs to be implemented + why]
+   4. Set dependencies — phase 2+ tasks:
+      TaskUpdate(taskId, addBlockedBy: [<previous-phase-task-ids>])
 
-   ## Files
-   - Read: exact/path/to/file (why: understand current X)
-   - Modify: exact/path/to/file (why: add Y)
-   - Create: exact/path/to/test (why: verify Z)
-
-   ## Approach
-   [how to implement: patterns to use, key decisions, implementation strategy]
-
-   ## Acceptance Criteria
-   - [ ] [testable criterion 1]
-   - [ ] [testable criterion 2]
-   - [ ] No regressions
-
-   ## Assumptions
-   - [what must be true about file structure]
-   - [what must be true about imports/exports]
-   - [what must be true about dependencies]
-   EOF
-   )"
-
-   4. Return task ID
+   5. Return all task IDs as a list: "Created: task-1, task-2, task-3"
 
    ## Quality Requirements
    - Exact file paths with Read/Modify/Create labels
@@ -123,18 +109,18 @@ Do NOT ask when the answer is obvious or covered by the task brief.
 
    Process all phases in one dispatch (subagent has epic-id for all).
 
-7. **Validate task quality** (subagent-trust.md): spot-check that
+6. **Validate task quality** (subagent-trust.md): spot-check that
    created tasks have real file paths (Read 1-2 referenced files),
    acceptance criteria are testable, and approach is specific enough
    for a worker to implement without guessing. Vague tasks → send
    back to subagent with specific feedback.
 
-8. **Finalize:**
-   - `work start <epic-id>`
-   - Approve source: `work comment <source-id> "Converted to epic <epic-id>"`
-   - `work approve <source-id>`
+7. **Finalize:**
+   - `TaskUpdate(epicId, status: "in_progress")`
+   - If source was a plan file AND all tasks created successfully → delete it: `claude-planfile delete <filepath>`
+   - If source was a task → `TaskUpdate(sourceId, status: "completed", metadata: {status_detail: null})`
 
-9. **Report:**
+8. **Report:**
    ```
    Epic: <epic-id> — <title>
    Phases: N tasks created
@@ -142,16 +128,16 @@ Do NOT ask when the answer is obvious or covered by the task brief.
    Next: /implement <epic-id>
    ```
 
-10. **Continuation prompt:**
+9. **Continuation prompt:**
    Use AskUserQuestion:
    - "Continue to /implement <epic-id>" (Recommended) — description: "Execute implementation tasks"
    - "Review tasks first" — description: "Inspect the created tasks before implementing"
-   - "Done for now" — description: "Leave issue active for later /next"
+   - "Done for now" — description: "Leave task active for later /next"
 
    If user selects "Continue to /implement":
    → Invoke Skill tool: skill="implement", args="<epic-id>"
 
 ## Error Handling
 - No description content → "Run `/explore` first to generate a design", stop
-- `work create` fails for epic → check work CLI available, report error
+- TaskCreate fails for epic → check Task tools available, report error
 - Subagent fails on phase → report which phase, continue others, note gap in report

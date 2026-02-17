@@ -11,6 +11,11 @@ allowed-tools:
   - Read
   - Glob
   - Grep
+  - Write
+  - TaskCreate
+  - TaskUpdate
+  - TaskList
+  - TaskGet
 ---
 
 # Brainstorm
@@ -22,10 +27,6 @@ investigate — use `/explore` instead when researching existing systems.
 **This skill runs on the main thread.** Interactive dialogue can't be
 delegated. Context scanning uses a subagent.
 
-## Context
-
-Active parent issues: !`work list --status active --roots --format short 2>/dev/null`
-
 ## Hard Gate
 
 Do NOT invoke any implementation skill, write any code, or take any
@@ -35,19 +36,19 @@ has approved it. This applies regardless of perceived simplicity.
 
 ## Instructions
 
-### 1. Create Work Issue
+### 1. Create Work Task
 
-```bash
-work create "Brainstorm: <topic>" --type chore --priority 2 \
-  --labels brainstorm \
-  --description "$(cat <<'EOF'
-## Acceptance Criteria
-- Design stored in issue description
-- Structured as Problem, Approaches, Chosen Design, Next Steps
-- User approved each design section before storing
-EOF
-)"
-work start <id>
+```
+TaskCreate:
+  subject: "Brainstorm: <topic>"
+  description: "## Acceptance Criteria\n- Design stored in task description\n- Structured as Problem, Approaches, Chosen Design, Next Steps\n- User approved each design section before storing"
+  activeForm: "Creating brainstorm task"
+  metadata:
+    project: <repo root from git rev-parse --show-toplevel>
+    label: "brainstorm"
+    priority: 2
+
+Then TaskUpdate(taskId, status: "in_progress")
 ```
 
 ### 2. Scan Project Context
@@ -112,14 +113,13 @@ After each section, ask: "Does this look right, or should we adjust?"
 
 ### 6. Store Design
 
-Once all sections approved:
+Once all sections approved, store the design:
 
-```bash
-work edit <id> --description "<full-design>"
-work review <id>
-```
+1. `echo "<findings>" | claude-planfile create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "brainstorm"`
+2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "<filename from stdout>", status_detail: "review"}, description: "Brainstorm: <topic> — findings in plan file and metadata.design")`
 
-Design field format:
+The design format below is the findings content:
+
 ```
 ## Problem
 <from interview>
@@ -141,7 +141,7 @@ Approach: <what to build and why>
 ### 7. Output Summary
 
 ```
-Brainstorm: <issue-id> — <topic>
+Brainstorm: <task-id> — <topic>
 Problem: <1 sentence>
 Approach: <1 sentence>
 
@@ -149,21 +149,21 @@ Phases:
 1. <title> — <key files>
 2. <title> — <key files>
 
-Next: /prepare <issue-id>
+Next: /prepare <task-id>
 ```
 
 ### 8. Continuation Prompt
 
 Use AskUserQuestion:
-- "Continue to /prepare <issue-id>" (Recommended) — description:
+- "Continue to /prepare <task-id>" (Recommended) — description:
   "Create epic + implementation tasks from design"
 - "Refine design" — description: "Revisit a section or explore
   a different angle"
-- "Done for now" — description: "Leave issue active for later
+- "Done for now" — description: "Leave task active for later
   /next"
 
 If user selects "Continue to /prepare":
-→ Invoke Skill tool: skill="prepare", args="<issue-id>"
+→ Invoke Skill tool: skill="prepare", args="<task-id>"
 
 ## Key Principles
 
@@ -177,6 +177,6 @@ If user selects "Continue to /prepare":
 ## Key Rules
 
 - Main thread handles dialogue — subagent only for context scan
-- Findings stored in issue description (not filesystem)
+- Findings stored via plan-storage (plan file + task metadata)
 - Next Steps must include file paths (prepare depends on it)
 - YAGNI: if user describes scope creep, push back

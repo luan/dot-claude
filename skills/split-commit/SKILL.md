@@ -103,11 +103,19 @@ git status          # should be clean
 git log --oneline <base>..HEAD   # N clean commits
 ```
 
-Dirty tree after last commit → dispatch final subagent for cleanup commit.
+Dirty tree after last commit → dispatch final sonnet subagent:
+```
+Create cleanup commit for remaining unstaged changes.
+1. `git-surgeon hunks` — list remaining hunks
+2. `git-surgeon stage <all-ids>`
+3. Run tests: <test-commands>
+4. `git commit -m "chore: clean up remaining changes"`
+5. `git diff --stat` — confirm clean
+```
 
 ## Key Rules
 
-- **No work issues** — pure git operation, one-shot
+- **No tasks** — pure git operation, one-shot
 - **Subagents for everything** — analysis + each commit in own subagent
 - **git-surgeon always** — hunk-level precision, never plain git add
 - **Every commit compiles** — fix test failures by staging missing deps

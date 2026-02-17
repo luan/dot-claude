@@ -1,6 +1,6 @@
 ---
 name: fix
-description: "Convert user feedback into work issues. Does NOT implement fixes. Triggers: 'fix', 'create issues from feedback', 'file bugs from feedback'."
+description: "Convert user feedback or review findings into phased tasks. Does NOT implement fixes. Triggers: 'fix', 'create issues from feedback', 'file bugs from feedback'."
 argument-hint: "<feedback-text>"
 user-invocable: true
 allowed-tools:
@@ -8,11 +8,15 @@ allowed-tools:
   - Read
   - Glob
   - Grep
+  - TaskCreate
+  - TaskUpdate
+  - Write
+  - AskUserQuestion
 ---
 
 # Fix
 
-Convert user feedback into ONE work issue with phased design in
+Convert user feedback into ONE task with phased design in
 description — directly consumable by `/prepare`.
 Does NOT implement — creates actionable work items for later scheduling.
 
@@ -43,35 +47,42 @@ Break feedback ($ARGUMENTS) into individual findings:
 
 ### 3. Create Single Issue with Phased Design
 
-Create ONE work issue containing all findings:
+Create ONE task containing all findings using TaskCreate:
 
-```bash
-work create "Fix: <brief-summary-of-feedback>" --type chore --priority 2 \
-  --labels fix \
-  --description "$(cat <<'EOF'
-## Acceptance Criteria
-- All feedback items addressed
-- Findings stored as phased structure in description
-- Consumable by /prepare for epic creation
+```
+TaskCreate:
+  subject: "Fix: <brief-summary-of-feedback>"
+  description: |
+    ## Acceptance Criteria
+    - All feedback items addressed
+    - Findings stored as phased structure in description
+    - Consumable by /prepare for epic creation
 
-## Feedback Analysis
+    ## Feedback Analysis
 
-**Phase 1: Bug Fixes**
-1. Fix X in file.ts:123 — description of bug
-2. Fix Y in module.ts:45 — description of bug
+    **Phase 1: Bug Fixes**
+    1. Fix X in file.ts:123 — description of bug
+    2. Fix Y in module.ts:45 — description of bug
 
-**Phase 2: Improvements**
-3. Update Z configuration — description of improvement
-4. Add W feature — description of feature
+    **Phase 2: Improvements**
+    3. Update Z configuration — description of improvement
+    4. Add W feature — description of feature
 
-Each phase groups findings by type (bugs first, then tasks,
-then features). Skip empty phases.
-EOF
-)"
+    Each phase groups findings by type (bugs first, then tasks,
+    then features). Skip empty phases.
+  activeForm: "Creating fix task"
+  metadata:
+    project: <repo root from git rev-parse --show-toplevel>
+    label: "fix"
+    priority: 2
 ```
 
-Mark active: `work start <id>`
-After populating description: `work review <id>`
+Mark active: `TaskUpdate(taskId, status: "in_progress")`
+
+**Store findings** — pass the full `description` field from the TaskCreate above (including Acceptance Criteria and all Phase sections) as the findings content:
+
+1. `echo "<findings>" | claude-planfile create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "fix"`
+2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "<filename from stdout>", status_detail: "review"}, description: "Fix: <topic> — findings in plan file and metadata.design")`
 
 **Phase grouping rules:**
 - Phase 1: Bugs (highest priority first)
@@ -88,10 +99,9 @@ Output format:
 
 **Findings**: N items (X bugs, Y tasks, Z features)
 
-**Next**: `work edit <id>` to review findings, `/prepare <id>` to create epic with tasks.
+**Next**: Use TaskUpdate to modify findings if needed, `/prepare <id>` to create epic with tasks.
 ```
 
 ## Error Handling
-- No work CLI → tell user to install, stop
-- `work create` fails → show error, retry once, then report
+- TaskCreate fails → show error, retry once, then report
 - Ambiguous feedback → AskUserQuestion for clarification before creating issues

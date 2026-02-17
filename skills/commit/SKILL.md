@@ -27,7 +27,6 @@ Create conventional commits explaining WHY changes made.
 Status: !`git status -sb 2>/dev/null`
 Staged diff: !`git diff --cached --stat 2>/dev/null`
 Recent commits: !`git log --oneline -5 2>/dev/null`
-Active work issues: !`work list --status active --format short 2>/dev/null`
 
 **Context:** Main thread / foreground only. Workers never commit.
 
@@ -35,11 +34,10 @@ Active work issues: !`work list --status active --format short 2>/dev/null`
 
 1. **Analyze**: review context above. If nothing staged, read full `git diff`. If staged, read `git diff --cached` for details.
 
-2. **Message**: `type(scope): description`
-   - Max 72 chars, lowercase, no period, imperative
-   - Types: feat|fix|refactor|perf|docs|test|style|build|ci|chore|revert
-   - Scope: primary area (auth, api, ui, db) or omit if global
-   - If work issue active (`work list --status active --format short`), append ID: `fix(auth): handle token expiry (work-abc123)`
+2. **Message**: use conventional commit format — `type(scope): description`, max 72 chars, lowercase, no period, imperative mood.
+   Types: feat|fix|refactor|perf|docs|test|style|build|ci|chore|revert. Scope: primary area or omit if global.
+   Multi-line: blank line then body wrapping at 72 chars explaining motivation not mechanics.
+   If task active (TaskList, filter by project + status=in_progress), append ID: `fix(auth): handle token expiry (task-<id>)`
 
 3. **Confirm** via AskUserQuestion: "Commit with this message?"
 
@@ -68,7 +66,3 @@ Hooks fail: show error, suggest fix, let user decide.
 - Multiple unrelated changes → use **git-surgeon** to split
 - Clean tree → "No changes to commit"
 
-## Good vs bad
-
-Good: `feat(search): add fuzzy matching for better UX`
-Bad: `updated files`, `fix bug`, `WIP`

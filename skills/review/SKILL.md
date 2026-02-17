@@ -9,6 +9,11 @@ allowed-tools:
   - AskUserQuestion
   - Read
   - Bash
+  - TaskCreate
+  - TaskUpdate
+  - TaskList
+  - TaskGet
+  - Write
 ---
 
 # Adversarial Review
@@ -28,7 +33,7 @@ Do NOT ask when the answer is obvious or covered by the task brief.
 
 Parse $ARGUMENTS:
 
-- `--against <issue-id>`: work issue for plan adherence
+- `--against <task-id>`: task for plan adherence
 - `--team`: force 3-perspective mode
 - Remaining args:
 
@@ -49,32 +54,34 @@ Choose mode:
 
 ## Step 1b: Create Review Issue
 
-```bash
-work create "Review: <scope-summary>" --type chore --priority 2 \
-  --labels review
-work start <id>
+```
+TaskCreate:
+  subject: "Review: <scope-summary>"
+  description: "Adversarial review of <scope-details>"
+  activeForm: "Creating review task"
+  metadata:
+    project: <repo root from git rev-parse --show-toplevel>
+    label: "review"
+    priority: 2
+
+TaskUpdate(taskId, status: "in_progress")
 ```
 
 If `--continue`: skip creation, find existing:
 
-- $ARGUMENTS matches work ID → use it
-- Else: `work list --status active --label review`, use first result
-- `work show <id> --format=json` → read description
-- Prepend to reviewers: "Previous findings:\n<description>\n\nContinue reviewing..."
+- $ARGUMENTS matches task ID → use it
+- Else: `TaskList()` filtered by `metadata.label === "review"` and `status === "in_progress"`, use first result
+- `TaskGet(taskId)` → extract `metadata.design`
+- Prepend to reviewers: "Previous findings:\n<metadata.design>\n\nContinue reviewing..."
 
 ## Step 2: Gather Context
 
-1. Get diff
-2. If `--against`: `work show <issue-id>` for plan
-3. List changed files
-4. Read all changed files in parallel
-
-### Large Diff Handling
-
-If total diff exceeds 3000 lines: for each file with >200 lines
-of diff, truncate to first 50 + last 50 lines in the prompt
-passed to subagents. Note truncations so reviewers know to
-`Read` full files when needed.
+1. Run `claude-gitcontext --base <base> --format json` where base is from Step 1 scope
+   (default: `gt parent 2>/dev/null || gt trunk || echo main`).
+   This returns branch, commits, files, diff (auto-truncated), and truncated_files list.
+2. If `--against`: `TaskGet(issueId)` for plan
+3. Read all changed files in parallel
+4. If `truncated_files` is non-empty, note them so reviewers know to `Read` full files.
 
 ## Step 3: Dispatch Reviewers
 
@@ -102,7 +109,7 @@ If `--against`: append "Check plan adherence: implementation match plan? Missing
    specific file:line claims from each reviewer before consolidating.
    If a claimed issue doesn't exist at that location → discard it.
 1. Deduplicate (same issue from multiple lenses → highest severity)
-2. Sort by severity. **NEVER truncate.** Output EVERY finding.
+2. Sort by severity. **NEVER truncate validated findings.** Output EVERY finding that survived validation.
 3. --team only: tag [architect]/[code-quality]/[devil], detect consensus (2+ flag same issue), note disagreements
 
 Output: `# Adversarial Review Summary`
@@ -110,14 +117,16 @@ Output: `# Adversarial Review Summary`
 - Sections by severity: Critical → High → Medium → Low
 - --team adds: Consensus (top), Disagreements (bottom)
 - Table: `| Severity | File:Line | Issue | Suggestion |`
-- Footer: Verdict (APPROVE/COMMENTS/CHANGES), Blocking count, Review issue-id, "Clean review → /commit", "New work discovered → /prepare <issue-id>"
+- Footer: Verdict (APPROVE/COMMENTS/CHANGES), Blocking count, Review task-id, "Clean review → /commit", "New work discovered → /prepare <task-id>"
 
 !`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Return findings to caller. Don't fix." || echo "Use AskUserQuestion: Fix all / Fix critical+high only / Fix critical only / Skip fixes"`
 
 ## Step 4b: Store Findings
 
-Store consolidated findings in description:
-`work edit <review-id> --description "<full-consolidated-output>"`
+Store findings using `reviewId` as the task:
+
+1. `echo "<findings>" | claude-planfile create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "review"`
+2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "<filename from stdout>", status_detail: "review"}, description: "Review: <topic> — findings in plan file and metadata.design")`
 
 ## Step 5: Dispatch Fixes
 
@@ -129,19 +138,20 @@ Fix agent also applies polish: flatten unnecessary nesting (early returns), remo
 
 Re-run Step 3 after fixes. Loop until clean or user stops.
 
-## Step 6b: Close Review Issue + Approve Implementation
+## Step 6b: Close Review Issue
 
 After review complete (user approves or skips fixes):
-`work review <review-id>`
-`work approve <review-id>`
+```
+TaskUpdate(reviewId, status: "completed")
+```
 
-Do NOT auto-approve implementation work. User must explicitly request approval.
+Review issues can be directly completed since the user is present. Do NOT auto-approve implementation work — user must explicitly request approval.
 
 ## Step 7: Interactive Continuation
 
 Note: Fix selection happens in Step 4 above. This step handles pipeline continuation after review completes.
 
-Check for implementation issues in review: `work list --status review`
+Check for implementation issues in review: `TaskList()` filtered by tasks with `metadata.status_detail === "review"`
 If any exist, note them in the prompt so the user knows approval is pending.
 
 Context-aware next-step prompt based on review outcome:
@@ -151,7 +161,7 @@ Context-aware next-step prompt based on review outcome:
 Use AskUserQuestion:
 
 - "Approve + commit" (Recommended) — description: "Approve implementation work and create conventional commit"
-- "Done for now" — description: "Leave issues in review for later"
+- "Done for now" — description: "Leave tasks in review for later"
 
 **Issues found and fixed (fix loop completed):**
 
@@ -159,21 +169,21 @@ Use AskUserQuestion:
 
 - "Re-review to verify fixes" (Recommended) — description: "Run review again to confirm fixes are clean (max 2 cycles)"
 - "Approve + commit" — description: "Fixes look good, approve and commit"
-- "Done for now" — description: "Leave issues in review for later"
+- "Done for now" — description: "Leave tasks in review for later"
 
 **Issues found but not all fixed:**
 
 Use AskUserQuestion:
 
 - "Continue fixing" (Recommended) — description: "Address remaining issues"
-- "Done for now" — description: "Leave issues in review for later"
+- "Done for now" — description: "Leave tasks in review for later"
 
 Skill invocations based on user selection:
 
-- "Approve + commit" → `work list --status review` → `work approve <id>` for each, then `Skill tool: skill="commit"`
+- "Approve + commit" → `TaskList()` filtered by `metadata.project === repoRoot` and `status_detail === "review"` → `TaskUpdate(id, status: "completed", metadata: {status_detail: null})` for each, then `Skill tool: skill="commit"`
 - "Re-review to verify fixes" → `Skill tool: skill="review"`
 - "Continue fixing" → Resume fix loop at Step 5
-- "Done for now" → Exit skill (issues stay in review)
+- "Done for now" → Exit skill (tasks stay in review)
 
 ## Receiving Feedback
 

@@ -1,6 +1,6 @@
 ---
 name: implement
-description: "Execute a work epic or task — auto-detects solo vs swarm mode, dispatches subagents to implement. Triggers: \"implement\", \"execute the plan\", \"build this\", \"code this plan\", \"start implementing\", \"ready to implement\", work issue/epic ID."
+description: "Execute an epic or task — auto-detects solo vs swarm mode, dispatches subagents to implement. Triggers: \"implement\", \"execute the plan\", \"build this\", \"code this plan\", \"start implementing\", \"ready to implement\", epic/task ID."
 argument-hint: "[epic-id|task-id] [--solo]"
 user-invocable: true
 allowed-tools:
@@ -15,173 +15,175 @@ allowed-tools:
   - TaskGet
   - AskUserQuestion
   - Read
-  - Glob
-  - Grep
   - Bash
 ---
 
 # Implement
 
-Detects solo vs swarm automatically. Handles both single-agent + multi-agent parallel execution.
-
 **IMMEDIATELY dispatch.** Never implement on main thread.
 
-## Mid-Skill Interviewing
+## Step 1: Find Work
 
-Use AskUserQuestion when facing genuine ambiguity during execution:
-- Design decisions not covered in brief → surface to user before implementing
-- Test strategy unclear (integration vs unit, what to mock) → ask approach
+- ID in `$ARGUMENTS` → use it
+- Else: `TaskList()` → first in_progress epic (`metadata.label == "epic"`)
+- Else: first pending epic
+- Else: first in_progress or pending task with empty blockedBy
+- Nothing → suggest `/explore` then `/prepare`, stop
 
-Do NOT ask when the answer is obvious or covered by the task brief.
+## Step 2: Classify
 
-## Step 1: Classify Work
+`TaskGet(taskId)` to inspect. Children = `TaskList()` filtered
+by `metadata.parent_id`.
 
-1. `work show <id> --format=json` (from $ARGUMENTS)
-2. Check for children: does `work show <id>` list children?
-3. Choose mode:
-   - `--solo` flag → **Solo Mode**
-   - Single task (no children) → **Solo Mode**
-   - Has children, fewer than 3 open → **Solo Mode**
-   - Has children, 3+ open → **Swarm Mode**
+- Single task (no children) → **Solo**
+- Multiple children, all independent (no blockedBy) → **Parallel**
+- Multiple children with blockedBy dependencies → **Swarm**
 
 ## Solo Mode
 
-Dispatch via Task (subagent_type="general-purpose"):
+1. `TaskUpdate(taskId, status: "in_progress")`
+2. If has `metadata.parent_id` → `TaskGet(parentId)` for epic context
+3. Spawn single Task agent (`subagent_type="general-purpose"`):
 
 ```
-Implement: $ARGUMENTS
+Implement task <task-id>.
 
-## Job
-1. **Pre-flight:** `work show <epic-id>` — no children or tasks lack acceptance criteria or file paths → STOP, return "prepare phase incomplete — no implementable tasks". Do NOT create tasks.
-2. `work list --status open --parent <epic-id>` or `work show <id>`
-3. Per task:
-   - `work show <task-id>` + `work start <task-id>` + `work edit <task-id> --assignee solo`
-   - **Step 0 — Understand:** Read EVERY file listed in task. Note indent style (tabs vs spaces + width). Verify assumptions from task description. Investigate current structure.
-   - **Indentation pre-flight:** Before first Edit to any file: read file, identify indent char + width. Use EXACTLY that in all edits to that file.
-   - Implement using TDD from brief: failing test first → minimal implementation → verify passes
-   - **Completion gate (before work review):**
-     1. Detect build cmd: justfile/Makefile/package.json/CLAUDE.md
-     2. Run build. Exit != 0 → trace error to root cause, fix (max 3 attempts)
-     3. Run tests: new + existing touching modified files
-     4. **Polish pass:** flatten unnecessary nesting (early returns), remove code-restating comments and contextless TODOs, remove unused imports and debug artifacts (console.log, print). Never change behavior.
-     5. ALL green → `work review <task-id>`. ANY red after 3 attempts → report error output, do NOT review
-   - **Fix methodology:** Read error → trace to root cause → ONE targeted fix. No guess-and-patch. >10 tool calls on single fix → checkpoint findings + escalate to caller.
-   - **Never run git commands.** Orchestrator handles commits. You: edits + build gate only.
-   - `work review <task-id>`
-4. Done → report completion to caller
+## Task
+<task description from TaskGet>
 
-## Task Atomicity
-NEVER stop mid-task. Finish before any PR ops.
+## Epic Context (if applicable)
+<epic subject + metadata.design summary>
 
-## Side Quests
-Bug found? `work create "Found: ..." --type bug`
+## Protocol
+1. TaskUpdate(taskId, status: "in_progress", owner: "solo")
+2. Read every file in scope. Implement from brief.
+3. Build + test. All green → continue. 3 failures → report, stop.
+4. TaskUpdate(taskId, status: "completed")
+
+## Rules
+- Never run git commands — orchestrator handles commits
+- Only modify files in your task scope
+- Bug found elsewhere → TaskCreate(subject: "Found: ...", metadata: {type: "bug"})
 ```
 
-5. **Orchestrator** creates single WIP commit: `git add . && git diff --staged --quiet || git commit -m 'wip: implement <epic-title> (<id>)'`
-6. → See Continuation Prompt below.
+4. Verify via `TaskGet(taskId)` → status is completed
+5. → Continuation Prompt
+
+## Parallel Mode
+
+All tasks independent — fire and forget, no team overhead.
+
+1. `TaskGet(epicId)` → subject + `metadata.design` as epic context
+2. `TaskList()` filtered by `metadata.parent_id == epicId` → children
+3. **Pre-flight:** children exist and have descriptions → continue.
+   Empty or no children → stop, suggest `/prepare`
+4. Spawn ALL children as Task agents in a SINGLE message
+   (up to 4, queue remainder). Use the Solo worker prompt for each,
+   injecting epic context.
+5. Wait for all to return. Check `TaskList()` for any incomplete.
+6. Incomplete tasks → spawn another batch (max 2 retries per task)
+7. → Verify, then Continuation Prompt
 
 ## Swarm Mode
 
-Orchestrate parallel workers grouped by phase number.
+Used when tasks have dependency waves (blockedBy relationships).
 
 ### Setup
 
-1. `work show <epic-id>` — get title + description
-2. `work list --status open --parent <epic-id> --format=json` — get children
-3. **Group by phase number:** Parse "Phase N:" from each child's
-   title. Group into phases. Tasks without phase numbers → last phase.
-   Sort phases numerically.
-4. Create team:
-   ```
-   TeamCreate:
-     team_name: "impl-<short-desc>"
-     description: "Implementing <epic summary>"
-   ```
+1. `TaskGet(epicId)` → subject + `metadata.design` as epic context
+2. `TaskList()` filtered by `metadata.parent_id == epicId` → children
+3. **Pre-flight:** children exist and have descriptions → continue.
+   Empty or no children → stop, suggest `/prepare`
+4. `TeamCreate(team_name="impl-<epicId>")`
+   If fails → fall back to Parallel Mode (process waves via
+   Task agents without team coordination).
+5. Read team config `~/.claude/teams/impl-<epicId>/config.json`
+   → extract team lead name for worker prompts
 
-### Phase Loop
+### Wave Loop
 
 ```
-for each phase_group (ordered by phase number):
-  Spawn ALL tasks in this phase in SINGLE message (parallel).
+while true:
+  ready = TaskList() filtered by:
+    metadata.parent_id == epicId AND
+    status == "pending" AND
+    blockedBy is empty
+  if empty → break
+
+  Spawn ALL ready tasks in SINGLE message (parallel).
   Workers = min(task_count, 4).
 
-  Each worker (Task, subagent_type="general-purpose", mode="plan",
-  team_name="<team>", name="worker-<n>"):
+  Wait for completion (see Wave Completion below).
 
-  """
-  Worker-<n> implementing <task-id>.
+  # Recover stuck tasks
+  stuck = TaskList() filtered by:
+    metadata.parent_id == epicId AND status == "in_progress"
+  for each stuck task not in just-completed set:
+    TaskUpdate(stuckId, status: "pending", owner: "")
 
-  ## Your Task
-  <issue description from work show>
-
-  ## Protocol
-  1. `work start <task-id>` + `work edit <task-id> --assignee worker-<n>`
-  2. **Understand first:** Read every file in task. Note indent
-     (char + width). Verify assumptions from brief.
-  3. Failing test FIRST → minimal implementation
-  4. **Build gate (max 3 attempts):**
-     a. Build cmd from justfile/Makefile/package.json/CLAUDE.md
-     b. Build + tests. All green → continue. Red → root-cause, ONE fix.
-     c. 3 fails → report error, do NOT submit for review.
-     d. >10 tool calls on one fix → checkpoint + escalate.
-     e. Failure traces to another worker's file → message team
-        lead, wait.
-  5. **Polish pass:** flatten unnecessary nesting (early returns), remove code-restating comments and contextless TODOs, remove unused imports and debug artifacts. Never change behavior.
-  6. `work review <task-id>`
-  6. Send completion message to team lead via SendMessage
-  7. Wait for shutdown or next assignment.
-
-  ## File Boundaries (HARD RULE)
-  NEVER edit files outside your task scope.
-  Need change in another worker's file → MESSAGE team lead.
-
-  ## Git Operations
-  **Never run git commands.** Orchestrator handles commits.
-  """
-
-  Wait for all workers in this phase to complete.
-  If any worker reported escalation or >2 tasks failed build gate
-  → PAUSE. Report status to user before continuing next phase.
-
-  Shut down phase workers (SendMessage shutdown_request).
-  Orchestrator commits phase: `git add . && git diff --staged --quiet || git commit -m 'wip: implement phase <N> (<brief-summary>)'`
+  Shut down wave workers (SendMessage shutdown_request).
+  Report: "Wave N: M completed, K stuck"
 ```
 
-### Verify (after final phase)
+### Worker Prompt
+
+```
+Implement task <task-id>.
+
+## Task
+<task description from TaskGet>
+
+## Epic Context
+<epic subject + design summary>
+
+## Protocol
+1. TaskUpdate(taskId, status: "in_progress", owner: "worker-<taskId>")
+   If fails → someone else claimed it. Report and stop.
+2. Read full context, implement the work.
+3. Build + test. All green → continue. 3 failures → report, stop.
+4. TaskUpdate(taskId, status: "completed")
+5. SendMessage(type="message", recipient="<team-lead-name>",
+     content="Completed <task-id>: <summary>",
+     summary="Completed <task-id>")
+6. Wait for shutdown request. Approve it.
+
+## Rules
+- Only modify files in your task scope
+- File conflict or blocker → SendMessage to team lead, wait
+- Never run git commands
+- Bug found elsewhere → TaskCreate(subject: "Found: ...", metadata: {type: "bug"})
+```
+
+### Wave Completion Detection
+
+1. Track spawned_count = N, completed_count = 0
+2. Worker sends completion message → completed_count++
+3. completed_count == N → wave done
+4. Worker goes idle WITHOUT completion message:
+   - `TaskList()` → if task still in_progress → stuck
+   - Decrement expected count
+   - All non-stuck done → proceed
+
+### Verify (after final wave)
 
 1. Full test suite
-2. **Green** → continue
-3. **Red** → spawn fix agent targeting failures (max 2 cycles)
-4. 2 failed → escalate to user
+2. Green → continue
+3. Red → spawn fix agent (max 2 cycles)
+4. Still red → escalate to user
 
 ### Teardown
 
-1. `work review <epic-id>` — marks implementation complete, NOT approved
+1. `TaskUpdate(epicId, status: "completed")`
 2. TeamDelete
-3. Report completion to caller
-4. → See Continuation Prompt below.
+3. → Continuation Prompt
 
 ## Continuation Prompt
 
-Use AskUserQuestion:
-- "Continue to /split-commit" (Recommended) — description: "Split WIP commit into clean, tested vertical commits, then /review"
-- "Continue to /review" — description: "Skip split-commit and review WIP commit directly"
-- "Review changes manually first" — description: "Inspect the diff before automated review"
-- "Done for now" — description: "Leave epic + tasks in review for later /next"
+AskUserQuestion:
+- "Continue to /review" (Recommended) — "Review changes before committing"
+- "Implement next task" — "Pick up the next pending task"
+- "Review changes manually first" — "Inspect the diff before automated review"
+- "Done for now" — "Leave for later /next"
 
-If user selects "Continue to /split-commit":
-→ Invoke Skill tool: skill="split-commit", args="!`gt parent 2>/dev/null || gt trunk`"
-If user selects "Continue to /review":
-→ Invoke Skill tool: skill="review", args=""
-
-## Key Rules
-
-- Main thread does NOT implement — subagent/team does
-- Workers own implementation — briefs give direction, not code
-- Task atomicity — never stop mid-task
-- Pre-flight required — bail if no implementable tasks
-- No branch creation — implement assumes branch already exists (use /start)
-- Single WIP commit after all work — orchestrator only, workers never git. Use /split-commit to repackage before review.
-- Swarm: spawn ALL wave workers in single message
-- Fix cycles capped at 2 → escalate to user
-- Workers submit `work review` — NO `work approve` anywhere in implement. Approval only after user-driven /review or explicit request.
+If /review → `Skill("review")`
+If next task → `Skill("implement")`
