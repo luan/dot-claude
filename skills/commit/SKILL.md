@@ -13,6 +13,7 @@ allowed-tools:
   - "Bash(git commit:*)"
   - "Bash(git notes:*)"
   - "Bash(ck plan archive:*)"
+  - "Bash(ck plan list:*)"
   - "Bash(git branch:*)"
   - "Bash(git rev-parse:*)"
   - Read
@@ -54,12 +55,15 @@ Recent commits: !`git log --oneline -5 2>/dev/null`
    )"
    ```
 
-5. **Plan archive**: if an in-progress task (from step 2) has `plan_file` in its metadata,
-   archive the plan (stores content as git note on HEAD + moves to archive/):
+5. **Plan archive**: after successful commit, archive all active plans for the current project.
+   Each `ck plan archive` stores the plan content as a git note on HEAD (under `refs/notes/plans`)
+   and moves the file to `archive/`.
    ```bash
-   ck plan archive <plan_file path>
+   ck plan list --json
+   # For each plan in output:
+   ck plan archive ~/.claude/plans/<name>.md
    ```
-   Skip silently if no task or no `plan_file` metadata.
+   Skip silently if no active plans.
 
 ## Hook failures
 
