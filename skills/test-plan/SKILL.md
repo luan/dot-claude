@@ -4,6 +4,8 @@ description: "Analyze current diff, classify changes by risk, and produce struct
 argument-hint: "[base..head | file-list | PR#]"
 user-invocable: true
 model: sonnet
+context: fork
+agent: general-purpose
 allowed-tools:
   - Bash
   - Read

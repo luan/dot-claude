@@ -76,28 +76,34 @@ If `--continue`: skip creation, find existing:
 
 ## Step 2: Gather Context
 
-1. Run `ck tool gitcontext --base <base> --format json` where base is from Step 1 scope
-   (default: `gt parent 2>/dev/null || gt trunk || echo main`).
-   This returns branch, commits, files, diff (auto-truncated), and truncated_files list.
-2. If `--against`: `TaskGet(issueId)` for plan
-3. Read all changed files in parallel
-4. If `truncated_files` is non-empty, note them so reviewers know to `Read` full files.
+1. Resolve base ref: `BASE=$(gt parent 2>/dev/null || gt trunk || echo main)`
+2. Run in parallel:
+   <!-- Three lightweight commands instead of gitcontext to avoid pulling the full diff onto the main thread. -->
+   - `git diff --stat $BASE...HEAD` → file list with change summary
+   - `git diff --name-only $BASE...HEAD` → clean file list for mode selection and splitting
+   - `git log --oneline $BASE..HEAD` → commit summary
+3. If `--against`: `TaskGet(issueId)` for plan
+4. Pass `BASE` ref to reviewer subagents — they fetch their own diff.
 
 ## Step 3: Dispatch Reviewers
 
+When constructing reviewer prompts from references/prompts.md, replace `{base_ref}` with the resolved BASE value and `{files}` with the file list for the group.
+
 ### Solo Mode (2 lenses)
 
-Spawn 2 Task agents (persistent-reviewer) in SINGLE message. Each gets full diff + changed file contents.
+Spawn 2 Task agents (persistent-reviewer) in SINGLE message. Pass BASE ref. Reviewer gathers its own diff.
 
 Read references/prompts.md for Solo Mode lens prompt templates.
 
 ### File-Split Mode (>15 files)
 
-Split files into groups of ~8. Spawn parallel Task agents, one per group. Each gets full diff for its group. Use same 2-lens prompt combined.
+Split files into groups of ~8. Spawn parallel Task agents, one per group. Pass BASE ref and file group.
+
+Read references/prompts.md for File-Split Mode prompt template.
 
 ### Perspective Mode (--team)
 
-Spawn EXACTLY 3 Task agents in SINGLE message. Each gets FULL changeset (no splitting).
+Spawn EXACTLY 3 Task agents in SINGLE message. Pass BASE ref. Each perspective gathers its own diff (no splitting).
 
 Read references/prompts.md for Perspective Mode prompt templates.
 
