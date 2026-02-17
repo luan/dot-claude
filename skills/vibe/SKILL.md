@@ -72,8 +72,8 @@ Skill("explore", args="<prompt>")
 Skill("prepare")
 ```
 
-**Verify**: `TaskList()` → epic task exists with children.
-**Update**: `vibe_stage: "prepare"`, `vibe_epic: "<epicId>"`
+**Verify**: `TaskList()` → epic task exists with children and `metadata.slug`.
+**Update**: `vibe_stage: "prepare"`, `vibe_epic: "<epicId>"`, `vibe_slug: "<slug>"`
 
 If `--dry-run` → stop here. Report plan and epic, suggest
 `/implement` or `/vibe --continue`.

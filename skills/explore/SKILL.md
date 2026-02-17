@@ -95,7 +95,7 @@ of cross-cutting concerns, return: "ESCALATE: team — <reason>"
 
 6. Output summary:
 ```
-Explore: <task-id> — <topic>
+Explore: t<id> — <topic>
 Problem: <1 sentence>
 Recommendation: <1 sentence>
 
@@ -106,7 +106,7 @@ Phases:
 Key decisions:
 - <why this approach>
 
-Next: /prepare <task-id>
+Next: /prepare t<id>
 ```
 
 7. → See Continuation Prompt below.
@@ -127,7 +127,7 @@ Next: /prepare <task-id>
 ### Continuation Prompt
 
 Use AskUserQuestion:
-- "Continue to /prepare <task-id>" (Recommended) — description: "Create epic + implementation tasks from findings"
+- "Continue to /prepare t<id>" (Recommended) — description: "Create epic + implementation tasks from findings"
 - "Re-explore with different focus" — description: "Investigate a different angle on the same topic"
 - "Done for now" — description: "Leave task active for later /next"
 

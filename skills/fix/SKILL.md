@@ -95,11 +95,11 @@ Mark active: `TaskUpdate(taskId, status: "in_progress")`
 
 Output format:
 ```
-## Fix Issue: #<id>
+## Fix: t<id>
 
 **Findings**: N items (X bugs, Y tasks, Z features)
 
-**Next**: Use TaskUpdate to modify findings if needed, `/prepare <id>` to create epic with tasks.
+**Next**: Use TaskUpdate to modify findings if needed, `/prepare t<id>` to create epic with tasks.
 ```
 
 ## Error Handling

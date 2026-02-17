@@ -65,3 +65,4 @@ usage-data
 plugins/*
 !plugins/config.json
 !plugins/bootstrap/
+tools/cli/target

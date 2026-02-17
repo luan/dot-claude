@@ -1,7 +1,7 @@
 ---
 name: implement
 description: "Execute an epic or task — auto-detects solo vs swarm mode, dispatches subagents to implement. Triggers: \"implement\", \"execute the plan\", \"build this\", \"code this plan\", \"start implementing\", \"ready to implement\", epic/task ID."
-argument-hint: "[epic-id|task-id] [--solo]"
+argument-hint: "[<epic-slug>|t<id>|<id>] [--solo]"
 user-invocable: true
 allowed-tools:
   - Task
@@ -24,11 +24,12 @@ allowed-tools:
 
 ## Step 1: Find Work
 
-- ID in `$ARGUMENTS` → use it
-- Else: `TaskList()` → first in_progress epic (`metadata.label == "epic"`)
-- Else: first pending epic
-- Else: first in_progress or pending task with empty blockedBy
-- Nothing → suggest `/explore` then `/prepare`, stop
+Resolve argument:
+- Slug (non-numeric, e.g. `reopen-windows`) → `TaskList()`, find task where `metadata.slug` matches
+- `t<N>` → strip prefix, `TaskGet(N)`
+- Bare number `N` → `TaskGet(N)`
+- No argument → `TaskList()` → first in_progress epic, else first pending epic, else first unblocked task
+- Nothing found → suggest `/explore` then `/prepare`, stop
 
 ## Step 2: Classify
 
@@ -94,10 +95,10 @@ Used when tasks have dependency waves (blockedBy relationships).
 2. `TaskList()` filtered by `metadata.parent_id == epicId` → children
 3. **Pre-flight:** children exist and have descriptions → continue.
    Empty or no children → stop, suggest `/prepare`
-4. `TeamCreate(team_name="impl-<epicId>")`
+4. `TeamCreate(team_name="impl-<slug>")`  (fall back to `impl-<epicId>` if no slug)
    If fails → fall back to Parallel Mode (process waves via
    Task agents without team coordination).
-5. Read team config `~/.claude/teams/impl-<epicId>/config.json`
+5. Read team config `~/.claude/teams/impl-<slug>/config.json`
    → extract team lead name for worker prompts
 
 ### Wave Loop

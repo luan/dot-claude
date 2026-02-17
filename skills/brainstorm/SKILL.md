@@ -141,7 +141,7 @@ Approach: <what to build and why>
 ### 7. Output Summary
 
 ```
-Brainstorm: <task-id> — <topic>
+Brainstorm: t<id> — <topic>
 Problem: <1 sentence>
 Approach: <1 sentence>
 
@@ -149,13 +149,13 @@ Phases:
 1. <title> — <key files>
 2. <title> — <key files>
 
-Next: /prepare <task-id>
+Next: /prepare t<id>
 ```
 
 ### 8. Continuation Prompt
 
 Use AskUserQuestion:
-- "Continue to /prepare <task-id>" (Recommended) — description:
+- "Continue to /prepare t<id>" (Recommended) — description:
   "Create epic + implementation tasks from design"
 - "Refine design" — description: "Revisit a section or explore
   a different angle"

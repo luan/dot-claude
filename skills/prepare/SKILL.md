@@ -1,7 +1,7 @@
 ---
 name: prepare
 description: "Convert exploration or review findings into epic + phased child tasks. Triggers: 'prepare', 'prepare work', 'create tasks from plan'."
-argument-hint: "[task-id]"
+argument-hint: "[t<id>|<task-id>]"
 user-invocable: true
 allowed-tools:
   - Task
@@ -51,6 +51,9 @@ Do NOT ask when the answer is obvious or covered by the task brief.
    - Extract title from first heading or the plan file's frontmatter topic
 
 4. **Create epic (parent task):**
+
+   Generate slug: `claude-slug "<title>"` → kebab-case, max 50 chars.
+
    ```
    TaskCreate:
      subject: "<title>"
@@ -58,6 +61,7 @@ Do NOT ask when the answer is obvious or covered by the task brief.
      activeForm: "Creating epic"
      metadata:
        project: <repo root from git rev-parse --show-toplevel>
+       slug: "<slug from claude-slug>"
        priority: 1
    ```
 
@@ -122,20 +126,28 @@ Do NOT ask when the answer is obvious or covered by the task brief.
 
 8. **Report:**
    ```
-   Epic: <epic-id> — <title>
-   Phases: N tasks created
+   Epic: <slug> — <title>
+   Phases: N tasks created (t<first>–t<last>)
 
-   Next: /implement <epic-id>
+   ┌────┬──────────────────────────────────┬────────────┐
+   │    │ Task                             │ Blocked by │
+   ├────┼──────────────────────────────────┼────────────┤
+   │ p1 │ t<id>: <title>                   │ —          │
+   │ p2 │ t<id>: <title>                   │ p1         │
+   │ …  │ …                                │ …          │
+   └────┴──────────────────────────────────┴────────────┘
+
+   Next: /implement <slug>
    ```
 
 9. **Continuation prompt:**
    Use AskUserQuestion:
-   - "Continue to /implement <epic-id>" (Recommended) — description: "Execute implementation tasks"
+   - "Continue to /implement <slug>" (Recommended) — description: "Execute implementation tasks"
    - "Review tasks first" — description: "Inspect the created tasks before implementing"
    - "Done for now" — description: "Leave task active for later /next"
 
    If user selects "Continue to /implement":
-   → Invoke Skill tool: skill="implement", args="<epic-id>"
+   → Invoke Skill tool: skill="implement", args="<slug>"
 
 ## Error Handling
 - No description content → "Run `/explore` first to generate a design", stop
