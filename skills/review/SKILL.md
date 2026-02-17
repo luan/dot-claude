@@ -161,6 +161,7 @@ Context-aware next-step prompt based on review outcome:
 Use AskUserQuestion:
 
 - "Approve + commit" (Recommended) — description: "Approve implementation work and create conventional commit"
+- "Generate test plan" — description: "Create manual verification steps for reviewer"
 - "Done for now" — description: "Leave tasks in review for later"
 
 **Issues found and fixed (fix loop completed):**
@@ -169,6 +170,7 @@ Use AskUserQuestion:
 
 - "Re-review to verify fixes" (Recommended) — description: "Run review again to confirm fixes are clean (max 2 cycles)"
 - "Approve + commit" — description: "Fixes look good, approve and commit"
+- "Generate test plan" — description: "Create manual verification steps for reviewer"
 - "Done for now" — description: "Leave tasks in review for later"
 
 **Issues found but not all fixed:**
@@ -176,6 +178,7 @@ Use AskUserQuestion:
 Use AskUserQuestion:
 
 - "Continue fixing" (Recommended) — description: "Address remaining issues"
+- "Generate test plan" — description: "Create manual verification steps for reviewer"
 - "Done for now" — description: "Leave tasks in review for later"
 
 Skill invocations based on user selection:
@@ -183,6 +186,7 @@ Skill invocations based on user selection:
 - "Approve + commit" → `TaskList()` filtered by `metadata.project === repoRoot` and `status_detail === "review"` → `TaskUpdate(id, status: "completed", metadata: {status_detail: null})` for each, then `Skill tool: skill="commit"`
 - "Re-review to verify fixes" → `Skill tool: skill="review"`
 - "Continue fixing" → Resume fix loop at Step 5
+- "Generate test plan" → `Skill tool: skill="test-plan"`, then re-present the same AskUserQuestion block
 - "Done for now" → Exit skill (tasks stay in review)
 
 ## Receiving Feedback

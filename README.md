@@ -28,7 +28,7 @@ brainstorm|explore → prepare → implement → split-commit → review → com
 - **review**: Adversarial review with built-in fix loop + polish
 - **commit**: Conventional commit
 
-Other skills: `/fix`, `/debugging`, `/next`, `/start`,
+Other skills: `/test-plan`, `/fix`, `/debugging`, `/next`, `/start`,
 `/split-commit`, `/graphite`, `/git-surgeon`, `/pr-description`,
 `/pr-fix-comments`, `/pr-fix-gha`, `/pr-reviewers`,
 `/bootstrap:web`, `/bootstrap:caddy`, `/frontend-design`,
