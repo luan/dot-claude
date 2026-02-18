@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Modifier, Style};
-use ratatui::text::{Line, Span};
+use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Cell, Row, Table, TableState};
 
 use crate::store::{
@@ -23,13 +23,14 @@ pub struct ListState {
     pub query: String,
     pub search_input: String,
     pub collapsed: HashSet<String>,
+    pub expanded_ids: HashSet<String>,
     pub pending_z: bool,
     pub visible_count: usize,
 }
 
 impl ListState {
     pub fn new(tasks: Vec<Task>) -> Self {
-        let filtered = filter_and_sort(&tasks, StatusFilter::Active, SortOrder::Id, false, "");
+        let filtered = filter_and_sort(&tasks, StatusFilter::All, SortOrder::Id, false, "");
         let visible_count = filtered.len();
         let mut table_state = TableState::default();
         if !filtered.is_empty() {
@@ -39,7 +40,7 @@ impl ListState {
             tasks,
             filtered,
             table_state,
-            status_filter: StatusFilter::Active,
+            status_filter: StatusFilter::All,
             sort_order: SortOrder::Id,
             show_closed: false,
             tree_view: false,
@@ -47,6 +48,7 @@ impl ListState {
             query: String::new(),
             search_input: String::new(),
             collapsed: HashSet::new(),
+            expanded_ids: HashSet::new(),
             pending_z: false,
             visible_count,
         }
@@ -117,7 +119,8 @@ pub fn render_list(f: &mut Frame, area: Rect, state: &mut ListState) {
         .map(|t| t.id.as_str())
         .collect();
 
-    let (display_tasks, dim_ids) = if state.tree_view {
+    let tree_view = state.tree_view;
+    let (display_tasks, dim_ids) = if tree_view {
         build_tree_display(&state.tasks, &state.filtered, &state.collapsed)
     } else {
         (state.filtered.clone(), HashSet::new())
@@ -143,13 +146,17 @@ pub fn render_list(f: &mut Frame, area: Rect, state: &mut ListState) {
         )
         .bottom_margin(0);
 
+    let expanded_ids = &state.expanded_ids;
     let rows: Vec<Row> = display_tasks
         .iter()
         .map(|t| {
-            let blocked = !t.blocked_by.is_empty()
-                && t.blocked_by
-                    .iter()
-                    .any(|dep| !completed_ids.contains(dep.as_str()));
+            let active_blocker_ids: Vec<&str> = t
+                .blocked_by
+                .iter()
+                .filter(|dep| !completed_ids.contains(dep.as_str()))
+                .map(|s| s.as_str())
+                .collect();
+            let blocked = !active_blocker_ids.is_empty();
             let dim = dim_ids.contains(&t.id);
 
             let id_style = if dim {
@@ -185,8 +192,38 @@ pub fn render_list(f: &mut Frame, area: Rect, state: &mut ListState) {
                 Style::default()
             };
 
-            Row::new(vec![
-                Cell::from(Span::styled(&*t.id, id_style)),
+            let has_desc = !t.description.is_empty();
+            let is_expanded = has_desc && expanded_ids.contains(&t.id);
+
+            let subject_cell = if is_expanded {
+                let desc_preview: String = t.description.chars().take(80).collect();
+                Cell::from(Text::from(vec![
+                    Line::from(Span::styled(format!("+ {}", t.subject), subject_style)),
+                    Line::from(Span::styled(desc_preview, theme::muted_style())),
+                ]))
+            } else if tree_view && blocked {
+                Cell::from(Line::from(vec![
+                    Span::styled(
+                        if has_desc {
+                            format!("+ {}", t.subject)
+                        } else {
+                            t.subject.clone()
+                        },
+                        subject_style,
+                    ),
+                    Span::styled(
+                        format!(" ← {}", active_blocker_ids.join(", ")),
+                        Style::default().fg(theme::ORANGE),
+                    ),
+                ]))
+            } else if has_desc {
+                Cell::from(Span::styled(format!("+ {}", t.subject), subject_style))
+            } else {
+                Cell::from(Span::styled(t.subject.as_str(), subject_style))
+            };
+
+            let row = Row::new(vec![
+                Cell::from(Span::styled(t.id.as_str(), id_style)),
                 Cell::from(Span::styled(t.status.as_str(), status_style)),
                 Cell::from(Span::styled(t.priority.as_str(), pri_style)),
                 Cell::from(Span::styled(
@@ -201,8 +238,10 @@ pub fn render_list(f: &mut Frame, area: Rect, state: &mut ListState) {
                     if t.owner.is_empty() { "" } else { &t.owner },
                     owner_style,
                 )),
-                Cell::from(Span::styled(&t.subject, subject_style)),
-            ])
+                subject_cell,
+            ]);
+
+            if is_expanded { row.height(2) } else { row }
         })
         .collect();
 

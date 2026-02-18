@@ -24,6 +24,12 @@ fn truncate_at_char_boundary(s: &str, max_bytes: usize) -> &str {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+enum Tab {
+    Tasks,
+    Plans,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum Screen {
     List,
     Detail,
@@ -42,6 +48,7 @@ pub struct App {
     list_idx: usize,
     screen: Screen,
     prev_screen: Screen,
+    active_tab: Tab,
     list: list::ListState,
     detail: Option<detail::DetailState>,
     status_picker: Option<status::StatusPickerState>,
@@ -71,6 +78,10 @@ impl App {
             .iter()
             .position(|l| l.id == active_list)
             .unwrap_or(0);
+        let all_plans: Vec<_> = plan::list_plans()
+            .into_iter()
+            .filter(|p| !p.project.is_empty())
+            .collect();
         Self {
             store,
             active_list,
@@ -78,12 +89,13 @@ impl App {
             list_idx,
             screen: Screen::List,
             prev_screen: Screen::List,
+            active_tab: Tab::Tasks,
             list: list::ListState::new(tasks),
             detail: None,
             status_picker: None,
             confirm: None,
             create_form: None,
-            plans_state: None,
+            plans_state: Some(plans::PlansState::new(all_plans)),
             plan_detail: None,
             status_msg: String::new(),
             should_quit: false,
@@ -234,23 +246,36 @@ impl App {
                 self.status_msg = "Reloaded".to_string();
             }
             KeyCode::Char('L') => self.cycle_task_list(),
-            KeyCode::Char('P') => {
-                let all_plans: Vec<_> = plan::list_plans()
-                    .into_iter()
-                    .filter(|p| !p.project.is_empty())
-                    .collect();
-                self.plans_state = Some(plans::PlansState::new(all_plans));
-                self.screen = Screen::Plans;
-            }
+            KeyCode::Tab | KeyCode::Char('2') => self.switch_tab(Tab::Plans),
+            KeyCode::Char('1') => self.switch_tab(Tab::Tasks),
             KeyCode::Char('z') if self.list.tree_view => {
                 self.list.pending_z = true;
             }
-            KeyCode::Char(' ') | KeyCode::Tab if self.list.tree_view => {
+            KeyCode::Char(' ') if self.list.tree_view => {
                 if let Some(id) = self.list.selected_id() {
                     if self.list.collapsed.contains(&id) {
                         self.list.collapsed.remove(&id);
                     } else {
                         self.list.collapsed.insert(id);
+                    }
+                }
+            }
+            KeyCode::Char('>') if self.list.tree_view => {
+                if let Some(id) = self.list.selected_id() {
+                    self.list.collapsed.remove(&id);
+                }
+            }
+            KeyCode::Char('<') if self.list.tree_view => {
+                if let Some(id) = self.list.selected_id() {
+                    self.list.collapsed.insert(id);
+                }
+            }
+            KeyCode::Char('x') => {
+                if let Some(id) = self.list.selected_id() {
+                    if self.list.expanded_ids.contains(&id) {
+                        self.list.expanded_ids.remove(&id);
+                    } else {
+                        self.list.expanded_ids.insert(id);
                     }
                 }
             }
@@ -285,6 +310,14 @@ impl App {
             KeyCode::Char('s') => self.open_status_picker(),
             KeyCode::Char('e') => self.open_editor(),
             KeyCode::Char('D') => self.open_confirm(),
+            KeyCode::Char('p') => {
+                let project = self.detail.as_ref().map(|d| d.task.project.clone());
+                if let Some(ps) = &mut self.plans_state {
+                    ps.project_filter = project.filter(|p| !p.is_empty());
+                    ps.reload_plans();
+                }
+                self.switch_tab(Tab::Plans);
+            }
             _ => {}
         }
     }
@@ -427,11 +460,13 @@ impl App {
 
         match key.code {
             KeyCode::Char('q') => self.should_quit = true,
-            KeyCode::Esc => self.screen = Screen::List,
+            KeyCode::Tab | KeyCode::Char('1') => self.switch_tab(Tab::Tasks),
+            KeyCode::Char('2') => self.switch_tab(Tab::Plans),
             KeyCode::Char('j') | KeyCode::Down => ps.next(),
             KeyCode::Char('k') | KeyCode::Up => ps.prev(),
             KeyCode::Char('g') => ps.home(),
             KeyCode::Char('G') => ps.end(),
+            KeyCode::Char('A') => ps.toggle_archived(),
             KeyCode::Char('/') => {
                 ps.searching = true;
                 ps.search_input.clear();
@@ -473,6 +508,14 @@ impl App {
             }
             _ => {}
         }
+    }
+
+    fn switch_tab(&mut self, tab: Tab) {
+        self.active_tab = tab;
+        self.screen = match tab {
+            Tab::Tasks => Screen::List,
+            Tab::Plans => Screen::Plans,
+        };
     }
 
     // Actions
@@ -624,6 +667,7 @@ impl App {
             self.list.query.clone(),
         );
         let collapsed = std::mem::take(&mut self.list.collapsed);
+        let expanded_ids = std::mem::take(&mut self.list.expanded_ids);
         self.list = list::ListState::new(tasks);
         self.list.status_filter = filters.0;
         self.list.sort_order = filters.1;
@@ -632,6 +676,7 @@ impl App {
         self.list.query = filters.4.clone();
         self.list.search_input = filters.4;
         self.list.collapsed = collapsed;
+        self.list.expanded_ids = expanded_ids;
         self.list.rebuild();
 
         // Restore selection by task ID
@@ -677,7 +722,8 @@ impl App {
     // Rendering
 
     pub fn render(&mut self, f: &mut Frame) {
-        let [header_area, body_area, footer_area] = Layout::vertical([
+        let [header_area, filter_bar_area, body_area, footer_area] = Layout::vertical([
+            Constraint::Length(1),
             Constraint::Length(1),
             Constraint::Fill(1),
             Constraint::Length(1),
@@ -686,15 +732,13 @@ impl App {
 
         match self.screen {
             Screen::List => {
-                self.render_header(f, header_area, "tasks");
-                let [filter_area, table_area] =
-                    Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]).areas(body_area);
-                list::render_filter_bar(f, filter_area, &self.list);
-                list::render_list(f, table_area, &mut self.list);
+                self.render_tab_header(f, header_area);
+                list::render_filter_bar(f, filter_bar_area, &self.list);
+                list::render_list(f, body_area, &mut self.list);
                 self.render_footer(
                     f,
                     footer_area,
-                    "?:help  n:new  s:status  P:plans  /:search  q:quit",
+                    "j/k:move  enter:detail  n:new  s:status  p/a/d:quick-status  e:edit  D:delete  f:filter  T:tree  /:search  R:reload  L:list  tab/2:plans  ?:help  q:quit",
                 );
             }
             Screen::Detail => {
@@ -710,13 +754,19 @@ impl App {
                     })
                     .unwrap_or_default();
                 self.render_header(f, header_area, &title);
+                let _ = filter_bar_area;
                 if let Some(d) = &self.detail {
                     detail::render_detail(f, body_area, d);
                 }
-                self.render_footer(f, footer_area, "?:help  esc:back  s:status  e:edit  q:quit");
+                self.render_footer(
+                    f,
+                    footer_area,
+                    "j/k:scroll  space/b:page  s:status  e:edit  D:delete  p:plans  esc:back  q:quit",
+                );
             }
             Screen::Status => {
                 self.render_header(f, header_area, "change status");
+                let _ = filter_bar_area;
                 if let Some(sp) = &self.status_picker {
                     status::render_status_picker(f, body_area, sp);
                 }
@@ -724,32 +774,32 @@ impl App {
             }
             Screen::Confirm => {
                 self.render_header(f, header_area, "confirm");
+                let _ = filter_bar_area;
                 if let Some(c) = &self.confirm {
                     confirm::render_confirm(f, body_area, c);
                 }
-                self.render_footer(f, footer_area, "");
+                self.render_footer(f, footer_area, "y:confirm  n/esc:cancel");
             }
             Screen::Create => {
                 self.render_header(f, header_area, "new task");
+                let _ = filter_bar_area;
                 if let Some(form) = &self.create_form {
                     create::render_create(f, body_area, form);
                 }
-                self.render_footer(f, footer_area, "");
+                self.render_footer(f, footer_area, "tab:next-field  ctrl+d:save  esc:cancel");
             }
             Screen::Plans => {
-                self.render_header(f, header_area, "plans");
-                let [filter_area, table_area] =
-                    Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]).areas(body_area);
+                self.render_tab_header(f, header_area);
                 if let Some(ps) = &self.plans_state {
-                    plans::render_plans_filter_bar(f, filter_area, ps);
+                    plans::render_plans_filter_bar(f, filter_bar_area, ps);
                 }
                 if let Some(ps) = &mut self.plans_state {
-                    plans::render_plans(f, table_area, ps);
+                    plans::render_plans(f, body_area, ps);
                 }
                 self.render_footer(
                     f,
                     footer_area,
-                    "?:help  enter:open  /:search  esc:back  q:quit",
+                    "j/k:move  enter:open  /:search  A:archived  tab/1:tasks  q:quit",
                 );
             }
             Screen::PlanDetail => {
@@ -770,17 +820,44 @@ impl App {
                     })
                     .unwrap_or_default();
                 self.render_header(f, header_area, &title);
+                let _ = filter_bar_area;
                 if let Some(pd) = &self.plan_detail {
                     plan_detail::render_plan_detail(f, body_area, pd);
                 }
-                self.render_footer(f, footer_area, "esc:back  q:quit");
+                self.render_footer(f, footer_area, "j/k:scroll  space/b:page  esc:back  q:quit");
             }
             Screen::Help => {
                 self.render_header(f, header_area, "help");
+                let _ = filter_bar_area;
                 help::render_help(f, body_area);
-                self.render_footer(f, footer_area, "");
+                self.render_footer(f, footer_area, "?:close");
             }
         }
+    }
+
+    fn render_tab_header(&self, f: &mut Frame, area: Rect) {
+        let brand = " ck ";
+        let tasks_label = "[ 1 Tasks ]";
+        let plans_label = "[ 2 Plans ]";
+        let sep = "  ";
+
+        let brand_width = brand.len() as u16;
+        let tabs_width = (tasks_label.len() + sep.len() + plans_label.len()) as u16;
+        let gap = area.width.saturating_sub(brand_width + tabs_width);
+
+        let (tasks_style, plans_style) = match self.active_tab {
+            Tab::Tasks => (theme::header_style(), theme::header_dim_style()),
+            Tab::Plans => (theme::header_dim_style(), theme::header_style()),
+        };
+
+        let line = Line::from(vec![
+            Span::styled(brand, theme::header_style()),
+            Span::styled(" ".repeat(gap as usize), Style::default().bg(theme::ACCENT)),
+            Span::styled(tasks_label, tasks_style),
+            Span::styled(sep, Style::default().bg(theme::ACCENT)),
+            Span::styled(plans_label, plans_style),
+        ]);
+        f.render_widget(line, area);
     }
 
     fn render_header(&self, f: &mut Frame, area: Rect, title: &str) {

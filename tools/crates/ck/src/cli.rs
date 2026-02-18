@@ -331,11 +331,11 @@ pub fn run_list(
             let rows = crate::store::tree_order(&filtered);
             for row in &rows {
                 let task = &row.task;
-                print_task_row(task, &crate::store::tree_prefix(row), &completed_ids);
+                print_task_row(task, &crate::store::tree_prefix(row), &completed_ids, true);
             }
         } else {
             for task in &filtered {
-                print_task_row(task, "", &completed_ids);
+                print_task_row(task, "", &completed_ids, false);
             }
         }
     }
@@ -343,7 +343,7 @@ pub fn run_list(
     Ok(())
 }
 
-fn print_task_row(task: &Task, prefix: &str, completed_ids: &std::collections::HashSet<&str>) {
+fn print_task_row(task: &Task, prefix: &str, completed_ids: &std::collections::HashSet<&str>, tree: bool) {
     let status_str = task.status.as_str();
 
     let pri_str = task.priority.as_str();
@@ -373,6 +373,17 @@ fn print_task_row(task: &Task, prefix: &str, completed_ids: &std::collections::H
         format!("{}...", truncate_at_char_boundary(&subject_raw, 47))
     } else {
         subject_raw
+    };
+    let subject = if tree && blocked {
+        let active_ids: Vec<&str> = task
+            .blocked_by
+            .iter()
+            .filter(|dep| !completed_ids.contains(dep.as_str()))
+            .map(|s| s.as_str())
+            .collect();
+        format!("{subject} [← {}]", active_ids.join(", "))
+    } else {
+        subject
     };
 
     let status_col = if blocked {

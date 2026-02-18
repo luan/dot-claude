@@ -4,20 +4,28 @@ use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Paragraph, Wrap};
 
+use crate::plan::{self, Plan};
 use crate::store::Task;
 use crate::ui::theme;
 
 pub struct DetailState {
     pub task: Task,
     pub children: Vec<Task>,
+    pub related_plans: Vec<Plan>,
     pub scroll: u16,
 }
 
 impl DetailState {
     pub fn new(task: Task, children: Vec<Task>) -> Self {
+        let related_plans: Vec<Plan> = plan::list_plans()
+            .into_iter()
+            .filter(|p| !p.project.is_empty() && p.project == task.project)
+            .take(3)
+            .collect();
         Self {
             task,
             children,
+            related_plans,
             scroll: 0,
         }
     }
@@ -137,6 +145,28 @@ pub fn render_detail(f: &mut Frame, area: Rect, state: &DetailState) {
                 ),
                 Span::raw("  "),
                 Span::styled(&c.subject, theme::value_style()),
+            ]));
+        }
+    }
+
+    if !state.related_plans.is_empty() {
+        lines.push(Line::raw(""));
+        lines.push(Line::from(vec![
+            Span::raw("  "),
+            Span::styled("Related Plans", theme::section_style()),
+        ]));
+        lines.push(Line::from(vec![
+            Span::raw("  "),
+            Span::styled("─".repeat(60), Style::default().fg(theme::OVERLAY)),
+        ]));
+        lines.push(Line::raw(""));
+        for p in &state.related_plans {
+            let title = if p.title.is_empty() { &p.name } else { &p.title };
+            lines.push(Line::from(vec![
+                Span::raw("  "),
+                Span::styled(plan::format_date(p.mod_time), theme::muted_style()),
+                Span::raw("  "),
+                Span::styled(title.clone(), theme::value_style()),
             ]));
         }
     }

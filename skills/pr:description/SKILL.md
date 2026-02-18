@@ -65,7 +65,7 @@ If diff is large, use `--stat` first and read key files. If context is unclear f
 
 Use conventional commit format — `type(scope): description`, max 72 chars, lowercase, no period, imperative mood.
 Types: feat|fix|refactor|perf|docs|test|style|build|ci|chore|revert. Scope: primary area or omit if global.
-Multi-line: blank line then body wrapping at 72 chars explaining motivation not mechanics.
+Multi-line: blank line then body using github flavored markdown. Body explains motivation and approach.
 
 ## Step 4: Generate Body
 

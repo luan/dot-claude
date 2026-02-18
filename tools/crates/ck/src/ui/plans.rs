@@ -15,6 +15,8 @@ pub struct PlansState {
     pub searching: bool,
     pub query: String,
     pub search_input: String,
+    pub archived: bool,
+    pub project_filter: Option<String>,
 }
 
 impl PlansState {
@@ -30,7 +32,28 @@ impl PlansState {
             searching: false,
             query: String::new(),
             search_input: String::new(),
+            archived: false,
+            project_filter: None,
         }
+    }
+
+    pub fn reload_plans(&mut self) {
+        let raw = if self.archived {
+            plan::list_archived_plans()
+        } else {
+            plan::list_plans()
+        };
+        self.plans = if let Some(ref proj) = self.project_filter {
+            raw.into_iter().filter(|p| &p.project == proj).collect()
+        } else {
+            raw
+        };
+        self.filter();
+    }
+
+    pub fn toggle_archived(&mut self) {
+        self.archived = !self.archived;
+        self.reload_plans();
     }
 
     pub fn filter(&mut self) {
@@ -163,6 +186,19 @@ pub fn render_plans_filter_bar(f: &mut Frame, area: Rect, state: &PlansState) {
     } else if !state.query.is_empty() {
         spans.push(Span::styled(
             format!(" search:{} ", state.query),
+            theme::filter_tag_style(),
+        ));
+        spans.push(Span::raw(" "));
+    }
+
+    if state.archived {
+        spans.push(Span::styled(" archived ", theme::filter_tag_style()));
+        spans.push(Span::raw(" "));
+    }
+
+    if let Some(ref proj) = state.project_filter {
+        spans.push(Span::styled(
+            format!(" project:{} ", planfile::project_name(proj)),
             theme::filter_tag_style(),
         ));
         spans.push(Span::raw(" "));
