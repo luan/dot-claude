@@ -67,3 +67,4 @@ plugins/*
 !plugins/bootstrap/
 tools/target
 target
+backups

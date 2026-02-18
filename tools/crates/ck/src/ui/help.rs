@@ -14,20 +14,36 @@ const SECTIONS: &[Section] = &[
     Section {
         title: "Navigation",
         keys: &[
-            ("j/k", "up / down"),
-            ("enter", "open task"),
+            ("j/k", "move up / down"),
+            ("enter", "open task detail"),
             ("esc", "back"),
             ("q", "quit"),
         ],
     },
     Section {
-        title: "Actions",
+        title: "Tabs",
+        keys: &[
+            ("tab / 2", "switch to Plans tab"),
+            ("1", "switch to Tasks tab"),
+        ],
+    },
+    Section {
+        title: "Actions (list / detail)",
         keys: &[
             ("s", "change status"),
-            ("p/a/d", "pending / active / done"),
+            ("p / a / d", "pending / active / done"),
             ("e", "edit in $EDITOR"),
             ("n", "new task"),
             ("D", "delete task"),
+            ("x", "expand / collapse description"),
+        ],
+    },
+    Section {
+        title: "Detail",
+        keys: &[
+            ("j/k", "scroll"),
+            ("space / b", "page down / up"),
+            ("p", "browse plans for project"),
         ],
     },
     Section {
@@ -37,22 +53,32 @@ const SECTIONS: &[Section] = &[
             ("A", "toggle completed"),
             ("o", "cycle sort order"),
             ("T", "toggle tree view"),
-            ("F", "clear filters"),
+            ("F", "clear all filters"),
             ("/", "search by subject"),
         ],
     },
     Section {
         title: "Tree view",
         keys: &[
-            ("space/tab", "collapse / expand node"),
+            ("space", "toggle collapse / expand"),
+            (">", "expand selected node"),
+            ("<", "collapse selected node"),
             ("zM", "collapse all"),
             ("zR", "expand all"),
         ],
     },
     Section {
+        title: "Plans tab",
+        keys: &[
+            ("j/k", "move up / down"),
+            ("enter", "open plan"),
+            ("A", "toggle archived"),
+            ("/", "search"),
+        ],
+    },
+    Section {
         title: "Other",
         keys: &[
-            ("P", "browse plans"),
             ("L", "switch task list"),
             ("R", "reload from disk"),
             ("?", "toggle this help"),
