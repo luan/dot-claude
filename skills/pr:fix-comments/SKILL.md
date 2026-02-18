@@ -2,7 +2,7 @@
 name: pr:fix-comments
 description: "Fix unresolved PR review comments. Triggers: 'fix comments', 'fix PR comments', 'address review feedback'."
 user-invocable: true
-disable-model-invocation: true
+disable-model-invocation: false
 allowed-tools:
   - "Bash(scripts/pr_threads.py *)"
   - "Bash(gh pr view *)"

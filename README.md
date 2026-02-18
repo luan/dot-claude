@@ -29,7 +29,7 @@ brainstorm|explore → prepare → implement → split-commit → review → com
 - **commit**: Conventional commit
 
 Other skills: `/test-plan`, `/fix`, `/debugging`, `/next`, `/start`,
-`/split-commit`, `/graphite`, `/git-surgeon`, `/pr-description`,
+`/split-commit`, `/gt`, `/git-surgeon`, `/pr-description`,
 `/pr-fix-comments`, `/pr-fix-gha`, `/pr-reviewers`,
 `/bootstrap:web`, `/bootstrap:caddy`, `/frontend-design`,
 `/writing-skills`
