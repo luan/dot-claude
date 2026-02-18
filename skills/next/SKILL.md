@@ -87,7 +87,7 @@ Only show "Stale branches" line if stale branches exist.
 4. Tasks active → "Continue: ..."
 5. Draft PR, all passing → "Mark ready"
 6. Ready PR, approved → "Merge"
-7. No PR → "Create with /commit then /graphite"
+7. No PR → "Create with /commit then /gt"
 8. All clear → "Wait for review"
 
 ---

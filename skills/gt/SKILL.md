@@ -1,10 +1,14 @@
 ---
-name: graphite
-description: Manage Graphite stacked PRs — create, sync, modify, submit, push, rebase branches and PRs. Triggers: gt commands, "stack", "branch", "PR", "push", "submit", "create PR", "push changes", "rebase".
+name: gt
+description: >
+  Wrap Graphite CLI for stacked branch management — create, navigate, modify, sync, restack,
+  submit, and push stacked PRs. Triggers: /gt, gt commands, "stack", "branch", "PR", "push",
+  "submit", "rebase", "restack", "sync branches".
 user-invocable: true
 allowed-tools:
   - "Bash(gt:*)"
   - "Bash(git status)"
+argument-hint: "[log|restack|sync|info|amend|up|down|top|bottom|submit|create|...] [flags]"
 ---
 
 # Graphite
