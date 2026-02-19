@@ -35,6 +35,8 @@ Do NOT ask when the answer is obvious or covered by the task brief.
 
 ## Step 2: Read All Files in Parallel
 
+Read all identified files using parallel Read tool calls.
+
 ## Step 3: Apply Refinements
 
 ### Simplify Complexity

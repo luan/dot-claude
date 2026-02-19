@@ -6,6 +6,7 @@
 ## Code Style
 
 - Three similar lines > premature abstraction.
+- Clarity over brevity. No clever one-liners that obscure intent, no over-combining concerns.
 - No dead code, commented-out code, "just in case" code. Delete old code completely — no deprecation, versioned names, migration code.
 - Comments for WHY / edge cases / surprising only. No docstrings unless project convention. No comments on code you didn't write.
 
@@ -56,7 +57,7 @@ TDD default. Standards in `rules/test-quality.md`.
 ## Skill Flow
 
 explore → prepare → implement → test-plan (manual QA) → commit
-Optional: brainstorm (before explore), split-commit (repackage messy WIP), review (adversarial), refine (polish before commit).
+Optional: brainstorm (before explore), split-commit (repackage messy WIP), review (adversarial), refine (polish code).
 After explore: `/prepare <id>`. After prepare: `/implement <epic-id>`.
 
 ## Branch Naming
