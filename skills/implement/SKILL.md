@@ -147,8 +147,9 @@ single-task waves.**
 3. **Pre-flight:** children exist and have descriptions → continue.
    Empty or no children → stop, suggest `/prepare`
 4. `TeamCreate(team_name="impl-<slug>")`  (fall back to `impl-<epicId>` if no slug)
-   If fails → fall back to Parallel Mode — dispatch waves via
-   Task agents using **Standalone Worker Prompt** (no team coordination).
+   If fails → fall back to sequential wave dispatch using **Standalone Worker Prompt**:
+   dispatch unblocked tasks (up to 4), wait for completion, then dispatch
+   newly unblocked tasks. Same rolling logic as Swarm but without team messaging.
 5. Read team config `~/.claude/teams/impl-<slug>/config.json`
    → extract team lead name for worker prompts
 

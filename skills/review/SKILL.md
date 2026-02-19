@@ -129,8 +129,8 @@ Output: `# Adversarial Review Summary`
 
 Store findings using `reviewId` as the task:
 
-1. `echo "<findings>" | ck plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "review"`
-2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "<filename from stdout>", status_detail: "review"}, description: "Review: <topic> — findings in plan file and metadata.design")`
+1. `PLAN_FILE=$(echo "<findings>" | ck plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "review" 2>/dev/null)` — if command fails or `$PLAN_FILE` is empty, warn user: "Plan file creation failed — findings stored in task metadata only."
+2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "$PLAN_FILE" (omit key if empty), status_detail: "review"}, description: "Review: <topic> — findings in plan file and metadata.design")`
 
 ## Step 5: Dispatch Fixes
 
@@ -140,11 +140,11 @@ After fix agent returns, invoke `Skill("refine")` on changed files.
 
 ## Step 6: Re-review
 
-Re-run Step 3 after fixes. Track iteration count (max 4 total review cycles).
+Re-run Step 3 after fixes. Track iteration count starting at 1 (max 4 re-review iterations; the initial review doesn't count).
 
 Before re-running:
-- Maintain `fixed_issues` set: file:line identifiers of issues fixed in previous iterations
-- When consolidating new findings in Step 4: skip any finding whose file:line is in `fixed_issues`
+- Maintain `fixed_issues` set: `(file, issue-description)` pairs from previous iterations (not file:line — line numbers shift after fixes)
+- When consolidating new findings in Step 4: skip any finding matching a `fixed_issues` entry
 
 On each iteration: announce "Re-review iteration N/4"
 
@@ -191,9 +191,9 @@ If any exist, note them in the prompt so the user knows approval is pending.
 
 Present next step based on review outcome — use AskUserQuestion only when there's a genuine choice:
 
-- **Clean review** → proceed to `Skill("commit")` (approve tasks first)
-- **Issues found and fixed** → confirm: "Re-review to verify?" or "Approve + commit"
-- **Issues found but not all fixed** → confirm: "Continue fixing?" or "Approve as-is"
+- **Clean review** → "Approve + commit" or "Refine before commit" or "Test plan"
+- **Issues found and fixed** → "Re-review to verify?" or "Approve + commit" or "Refine before commit"
+- **Issues found but not all fixed** → "Continue fixing?" or "Approve as-is" or "Refine before commit"
 
 Skill dispatch:
 - Approve + commit → `TaskList()` filtered by `metadata.project === repoRoot` and `status_detail === "review"` → `TaskUpdate(id, status: "completed", metadata: {status_detail: null})` for each, then `Skill("commit")`

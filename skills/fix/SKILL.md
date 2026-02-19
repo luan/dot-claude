@@ -79,8 +79,8 @@ Mark active: `TaskUpdate(taskId, status: "in_progress", owner: "fix")`
 
 **Store findings** — pass the full `description` field from the TaskCreate above (including Acceptance Criteria and all Phase sections) as the findings content:
 
-1. `echo "<findings>" | ck plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "fix"`
-2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "<filename from stdout>", status_detail: "review"}, description: "Fix: <topic> — findings in plan file and metadata.design")`
+1. `PLAN_FILE=$(echo "<findings>" | ck plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "fix" 2>/dev/null)` — if command fails or `$PLAN_FILE` is empty, warn user: "Plan file creation failed — findings stored in task metadata only."
+2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "$PLAN_FILE" (omit key if empty), status_detail: "review"}, description: "Fix: <topic> — findings in plan file and metadata.design")`
 
 **Phase grouping rules:**
 - Phase 1: Bugs (highest priority first)
