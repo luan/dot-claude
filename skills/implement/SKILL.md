@@ -61,11 +61,12 @@ Implement task <task-id>.
 
 ## Protocol
 1. TaskUpdate(taskId, status: "in_progress", owner: "solo")
-2. Read every file in scope. Implement from brief.
+2. Read every file in scope. Follow TDD per rules/test-quality.md: write failing tests, confirm red, implement until green. No test infra → note in report, implement directly.
 3. Build + test. All green → continue. 3 failures → report, stop.
 4. TaskUpdate(taskId, status: "completed")
 
 ## Rules
+- TDD: test first. Standards: rules/test-quality.md
 - Never run git commands — orchestrator handles commits
 - Only modify files in your task scope
 - Bug found elsewhere → TaskCreate(subject: "Found: ...", metadata: {type: "bug", priority: "P2", project: "<repo root>"})
@@ -88,7 +89,7 @@ Implement task <task-id>.
 ## Protocol
 1. TaskUpdate(taskId, status: "in_progress", owner: "worker-<taskId>")
    If fails → someone else claimed it. Report and stop.
-2. Read full context, implement the work.
+2. Read every file in scope. Follow TDD per rules/test-quality.md: write failing tests, confirm red, implement until green. No test infra → note in report, implement directly.
 3. Build + test. All green → continue. 3 failures → report, stop.
 4. TaskUpdate(taskId, status: "completed")
 5. SendMessage(type="message", recipient="<team-lead-name>",
@@ -97,6 +98,7 @@ Implement task <task-id>.
 6. Wait for shutdown request. Approve it.
 
 ## Rules
+- TDD: test first. Standards: rules/test-quality.md
 - Only modify files in your task scope
 - File conflict or blocker → SendMessage to team lead, wait
 - Never run git commands

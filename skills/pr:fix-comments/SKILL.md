@@ -44,9 +44,11 @@ Fix unresolved review comments from a PR.
 
 5. **Execute**: Apply fixes, summarize changes.
 
-6. **Commit**: Use `Skill tool: commit` to generate message and commit.
+6. **Run tests**: Run the project test suite (or relevant subset if large). Fix any failures caused by your changes. If 3+ test failures persist after fixes, report and stop.
 
-7. **Push** (optional): Ask first, then `gt ss --update-only`
+7. **Commit**: Use `Skill tool: commit` to generate message and commit.
+
+8. **Push** (optional): Ask first, then `gt ss --update-only`
 
 ## Notes
 

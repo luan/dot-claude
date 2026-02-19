@@ -5,6 +5,19 @@
 Every test must answer: **"What bug would this catch?"** No
 realistic bug scenario = delete test.
 
+## TDD Workflow
+
+1. Write a failing test for the requirement
+2. Run the test — confirm it fails (red)
+3. Write the minimum implementation to make it pass
+4. Run the test — confirm it passes (green)
+5. Refactor if needed — tests must stay green
+
+Escape hatch: if no test infrastructure exists in the project (no
+test runner configured, no test framework dependency, no existing
+test files), note it in the implementation report and proceed with
+implementation only.
+
 ## Banned Patterns
 
 - **Tautology** — mock returns what you told it

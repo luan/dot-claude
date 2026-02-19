@@ -11,6 +11,14 @@ Use this preamble in Solo and Perspective prompts:
 3. If `truncated_files` is non-empty, `Read` those files in full
 ```
 
+## Shared: Testing Gaps
+
+Use this block in Perspective prompts (Phase 3):
+
+```
+For Phase 3 (Testing Gaps): identify new/changed logic with no test coverage, boundary conditions not exercised by tests, and error paths that are untested.
+```
+
 ## Solo Mode
 
 ### Lens 1: Correctness & Security
@@ -28,6 +36,7 @@ Focus:
 - Off-by-one, logic inversions
 - Injection (SQL, command, XSS, template)
 - Auth/authz gaps, data exposure, cryptographic misuse
+- Missing tests for new or changed behavior, untested edge cases
 
 Output: table with Severity | File:Line | Issue | Suggestion
 Then brief summary.
@@ -68,6 +77,8 @@ Focus:
 - Dependency direction, module cohesion
 - Could this be simpler or more maintainable?
 
+[Use Shared: Testing Gaps]
+
 Tag: [architect]
 Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
 ```
@@ -85,6 +96,8 @@ Focus:
 - Consistency with surrounding code
 - Resource leaks, missing cleanup
 
+[Use Shared: Testing Gaps]
+
 Tag: [code-quality]
 Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
 ```
@@ -101,6 +114,8 @@ Focus:
 - Security: injection, auth gaps, data exposure
 - Bad assumptions, race conditions
 - What breaks under load, bad input, or partial failure?
+
+[Use Shared: Testing Gaps]
 
 Tag: [devil]
 Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
@@ -128,6 +143,7 @@ Focus (Correctness & Security):
 - Off-by-one, logic inversions
 - Injection (SQL, command, XSS, template)
 - Auth/authz gaps, data exposure, cryptographic misuse
+- Missing tests for new or changed behavior, untested edge cases
 
 Focus (Architecture & Performance):
 - Incomplete refactors, dead code, unused params
@@ -152,7 +168,7 @@ Fix these review issues in code.
 
 ## Your Job
 1. Fix each listed issue
-2. Verify fixes (syntax check, tests if quick)
+2. Verify fixes (syntax check, run tests to confirm no regressions)
 3. Report what you fixed
 
 Do NOT: fix unlisted things, refactor beyond needed, add features

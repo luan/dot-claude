@@ -53,7 +53,8 @@ TDD default. Standards in `rules/test-quality.md`.
 
 ## Skill Flow
 
-brainstorm|explore → prepare → implement → split-commit → review → commit
+explore → prepare → implement → test-plan (manual QA) → commit
+Optional: brainstorm (before explore), split-commit (repackage messy WIP), review (adversarial).
 After explore: `/prepare <id>`. After prepare: `/implement <epic-id>`.
 
 ## Branch Naming
