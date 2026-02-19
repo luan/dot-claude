@@ -17,8 +17,7 @@ allowed-tools:
 
 # Explore
 
-Research, investigate, design. Findings stored via plan-storage.
-Auto-escalates to team for complex multi-system work.
+Research, investigate, design. Findings stored via plan-storage. Auto-escalates to team for complex multi-system work.
 
 **IMMEDIATELY dispatch to subagent.** Never explore on main thread.
 
@@ -83,9 +82,7 @@ approaches with unclear tradeoffs, or needs adversarial analysis
 of cross-cutting concerns, return: "ESCALATE: team — <reason>"
 ```
 
-4. **Validate findings** (subagent-trust.md): spot-check ALL
-   architectural claims + 50% of file/behavioral claims before storing.
-   If echo suspected or key claims fail → send targeted follow-up.
+4. **Validate findings** (subagent-trust.md): spot-check ALL architectural claims + 50% of file/behavioral claims before storing. If echo suspected or key claims fail → send targeted follow-up.
 
 5. **Store findings:**
    1. `PLAN_FILE=$(echo "<findings>" | ck plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "explore" 2>/dev/null)` — if command fails or `$PLAN_FILE` is empty, warn user: "Plan file creation failed — findings stored in task metadata only."
@@ -124,7 +121,7 @@ Next: /prepare t<id>
 
 ### After Completion
 
-After outputting the summary, proceed: Invoke Skill tool: skill="prepare", args="<task-id>"
+Stop after outputting the summary. The user reviews findings before proceeding — do not auto-invoke prepare.
 
 ### Escalation
 
@@ -135,8 +132,7 @@ Spawn 2-3 Task agents in parallel:
 - **Architect** (model: opus): design analysis, tradeoffs
 - **Devil's Advocate** (model: opus): challenges assumptions
 
-Each investigates independently, returns findings text.
-Synthesize into unified findings, store in description.
+Each investigates independently, returns findings text. Synthesize into unified findings, store in description.
 
 Escalation triggers:
 - 3+ viable approaches, unclear tradeoffs
