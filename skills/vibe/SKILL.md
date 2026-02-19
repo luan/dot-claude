@@ -22,10 +22,8 @@ If no prompt and no `--continue` → tell user:
 
 ## Resume (`--continue`)
 
-1. `TaskList()` → find task with `metadata.vibe_stage` present and
-   `status == "in_progress"`
-2. Read `metadata.vibe_stage` for resume point, `metadata.vibe_prompt`
-   as prompt
+1. `TaskList()` → find task with `metadata.vibe_stage` present and `status == "in_progress"`
+2. Read `metadata.vibe_stage` for resume point, `metadata.vibe_prompt` as prompt
 3. Skip to the stage after `vibe_stage`
 4. Not found → tell user no pipeline to resume, stop
 
@@ -54,8 +52,7 @@ Generate slug: `ck tool slug "<prompt>"` (outputs kebab-case, max 50 chars).
 Skill("start", args="luan/<slug>")
 ```
 
-**Verify**: `git branch --show-current` returns new branch.
-**Update**: `vibe_stage: "branch"`
+**Verify**: `git branch --show-current` returns new branch. **Update**: `vibe_stage: "branch"`
 
 ### Explore
 
@@ -63,8 +60,7 @@ Skill("start", args="luan/<slug>")
 Skill("explore", args="<prompt>")
 ```
 
-**Verify**: `ck plan latest` succeeds (plan file exists).
-**Update**: `vibe_stage: "explore"`
+**Verify**: `ck plan latest` succeeds (plan file exists). **Update**: `vibe_stage: "explore"`
 
 ### Prepare
 
@@ -72,11 +68,9 @@ Skill("explore", args="<prompt>")
 Skill("prepare")
 ```
 
-**Verify**: `TaskList()` → epic task exists with children and `metadata.slug`.
-**Update**: `vibe_stage: "prepare"`, `vibe_epic: "<epicId>"`, `vibe_slug: "<slug>"`
+**Verify**: `TaskList()` → epic task exists with children and `metadata.slug`. **Update**: `vibe_stage: "prepare"`, `vibe_epic: "<epicId>"`, `vibe_slug: "<slug>"`
 
-If `--dry-run` → stop here. Report plan and epic, suggest
-`/implement` or `/vibe --continue`.
+If `--dry-run` → stop here. Report plan and epic, suggest `/implement` or `/vibe --continue`.
 
 ### Implement
 
@@ -87,8 +81,7 @@ Skill("implement")
 **Verify**: all children of epic completed.
 **Update**: `vibe_stage: "implement"`
 
-If some tasks failed, continue to commit if `git diff --stat`
-is non-empty.
+If some tasks failed, continue to commit if `git diff --stat` is non-empty.
 
 ### Test Plan
 
@@ -118,8 +111,7 @@ Skill("commit")
 TaskUpdate(trackerId, status: "completed")
 ```
 
-Report summary with one line per stage showing what happened.
-Include test plan output if captured.
+Report summary with one line per stage showing what happened. Include test plan output if captured.
 
 ## Error Handling
 

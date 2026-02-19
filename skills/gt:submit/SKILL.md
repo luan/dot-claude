@@ -38,5 +38,4 @@ Default is `gt ss -u` (stack, update-only) — avoids accidentally creating PRs 
    # or gt submit / gt ss depending on mode
    ```
 
-3. **Report**: list Graphite URLs (`app.graphite.com/...`) for updated PRs.
-   Never report GitHub URLs.
+3. **Report**: list Graphite URLs (`app.graphite.com/...`) for updated PRs. Never report GitHub URLs.

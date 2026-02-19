@@ -28,8 +28,7 @@ gh pr list --author @me --state merged --limit 10 --json reviews
 gh api graphql -f query='{ search(query:"is:pr is:open review-requested:<username>", type:ISSUE) { issueCount } }'
 ```
 
-**CODEOWNERS**: check `.github/CODEOWNERS` or `CODEOWNERS`.
-Skip if absent — don't error.
+**CODEOWNERS**: check `.github/CODEOWNERS` or `CODEOWNERS`. Skip if absent — don't error.
 
 ## Scoring Weights
 

@@ -32,16 +32,9 @@ Recommend reviewers based on code expertise while spreading load.
 
 1. **Detect PR**: `gh pr view --json number,headRefName,author -q '.number'`
 2. **Get changed files**: `gh pr view <PR> --json files -q '.files[].path'`
-   - Separate into **existing** vs **new** files (additions where
-     `deletions == 0` and `status == "added"`)
-   - **Exclude generated files**: drop paths matching common generated
-     patterns — `*.generated.*`, `*.pb.go`, `*.pb.swift`,
-     `*_generated.rs`, `*.g.dart`, `package-lock.json`,
-     `yarn.lock`, `Pods/`, `*.xcodeproj/`, `*.pbxproj`,
-     `vendor/`, `node_modules/`, `*.min.js`, `*.min.css`,
-     `*.snap`, `__snapshots__/`, `*.lock`.
-     Also check for `@generated` marker in first 5 lines of file.
-     Generated files skew blame toward whoever ran the generator.
+   - Separate into **existing** vs **new** files (additions where `deletions == 0` and `status == "added"`)
+   - **Exclude generated files**: drop paths matching common generated patterns — `*.generated.*`, `*.pb.go`, `*.pb.swift`, `*_generated.rs`, `*.g.dart`, `package-lock.json`, `yarn.lock`, `Pods/`, `*.xcodeproj/`, `*.pbxproj`, `vendor/`, `node_modules/`, `*.min.js`, `*.min.css`, `*.snap`, `__snapshots__/`, `*.lock`.
+     Also check for `@generated` marker in first 5 lines of file. Generated files skew blame toward whoever ran the generator.
 
 3. **Gather candidates** (parallel): Read references/scoring.md for candidate gathering commands, scoring weights, and penalty multipliers.
 
@@ -51,11 +44,9 @@ Recommend reviewers based on code expertise while spreading load.
 
 6. **Present results**:
 
-   Show **up to 3** candidates. If fewer than 3 exist, show what you
-   have — don't pad. For each:
+   Show **up to 3** candidates. If fewer than 3 exist, show what you have — don't pad. For each:
    - Score breakdown with concrete numbers
-   - CODE EXPERTISE reason: "Owns 60% of changed lines",
-     "12 commits to these files", "CODEOWNERS for src/auth/"
+   - CODE EXPERTISE reason: "Owns 60% of changed lines", "12 commits to these files", "CODEOWNERS for src/auth/"
    - If penalized for load: "(currently reviewing 6 PRs)"
 
    **Never say**: "Reviewed your recent PRs" as a positive signal.

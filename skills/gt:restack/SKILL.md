@@ -27,10 +27,7 @@ Rebase Graphite stack onto updated parents and resolve any merge conflicts.
 2. **If clean**: report which branches were restacked. Done.
 
 3. **If conflicts**: loop until resolved —
-   a. Read each conflicted file **in full** before editing
-   b. Identify **all** conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) in the file
-   c. Resolve **every** conflict region in a **single edit** — never leave partial markers
-   d. `git add <file>` each resolved file
+   a. Read each conflicted file **in full** before editing b. Identify **all** conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) in the file c. Resolve **every** conflict region in a **single edit** — never leave partial markers d. `git add <file>` each resolved file
    e. `gt continue 2>&1`
    f. If new conflicts appear (next branch in stack), repeat from (a)
 
