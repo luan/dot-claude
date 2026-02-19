@@ -50,6 +50,8 @@ TDD default. Standards in `rules/test-quality.md`.
 - `gt submit` for PRs, never `gh pr create`. Always draft.
 - Return `app.graphite.com/...` URLs, not GitHub.
 - Review scope: diff vs stack parent (`gt log`), not trunk.
+- Never offer `git push` on Graphite branches. Use `/gt:submit`.
+- Restack with conflicts: always delegate to `/gt:restack` (subagent with full tools).
 
 ## Skill Flow
 
