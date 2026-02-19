@@ -65,6 +65,11 @@ Recent commits: !`git log --oneline -5 2>/dev/null`
    ```
    Skip silently if no active plans.
 
+## Post-commit
+
+After successful commit, check if on a Graphite branch (`gt log --stack 2>/dev/null`).
+If yes, suggest `/gt:submit` — never offer `git push`.
+
 ## Hook failures
 
 Hooks modify files: `git add -u && git commit --amend --no-edit`
