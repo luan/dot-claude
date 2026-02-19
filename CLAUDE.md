@@ -46,13 +46,12 @@
 
 TDD default. Standards in `rules/test-quality.md`.
 
-## PR Workflow
+## Graphite & PR Workflow
 
-- `gt submit` for PRs, never `gh pr create`. Always draft.
+- All branch operations go through `/gt`. Never raw `git rebase`, `git push`, `git branch -d`, `git checkout -b`.
+- Push → `/gt:submit`. Restack → `/gt:restack`. Commit → `/commit`.
 - Return `app.graphite.com/...` URLs, not GitHub.
 - Review scope: diff vs stack parent (`gt log`), not trunk.
-- Never offer `git push` on Graphite branches. Use `/gt:submit`.
-- Restack with conflicts: always delegate to `/gt:restack` (subagent with full tools).
 
 ## Skill Flow
 
@@ -71,5 +70,4 @@ After explore: `/prepare <id>`. After prepare: `/implement <epic-id>`.
 
 ## Tasks
 
-All plans, notes, state live in native Tasks. No filesystem documents.
-Lifecycle: pending → in_progress → review (metadata) → completed
+All plans, notes, state live in native Tasks. No filesystem documents. Lifecycle: pending → in_progress → review (metadata) → completed
