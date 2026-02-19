@@ -1,10 +1,10 @@
 ---
-name: pr:fix-comments
+name: pr:comments
 description: "Fix unresolved PR review comments. Triggers: 'fix comments', 'fix PR comments', 'address review feedback'."
 user-invocable: true
 disable-model-invocation: false
 allowed-tools:
-  - "Bash(scripts/pr_threads.py *)"
+  - "Bash(scripts/fetch_threads.py *)"
   - "Bash(gh pr view *)"
   - "Bash(gh pr list *)"
   - "Bash(git branch --show-current)"
@@ -33,14 +33,12 @@ Fix unresolved review comments from a PR.
 3. **Fetch and display comments**:
 
    ```bash
-   scripts/pr_threads.py --pr <PR>
+   scripts/fetch_threads.py --pr <PR>
    ```
 
-   Display as numbered list with file:line, author, preview.
-   Ask "Which comment(s) to fix?" with options: "Fix all" / "Other"
+   Display as numbered list with file:line, author, preview. Ask "Which comment(s) to fix?" with options: "Fix all" / "Other"
 
-4. **Plan fixes**: For each comment, read code, create one-line fix description.
-   Ask "Ready to execute?"
+4. **Plan fixes**: For each comment, read code, create one-line fix description. Ask "Ready to execute?"
 
 5. **Execute**: Apply fixes, summarize changes.
 
@@ -48,7 +46,7 @@ Fix unresolved review comments from a PR.
 
 7. **Commit**: Use `Skill tool: commit` to generate message and commit.
 
-8. **Push** (optional): Ask first, then `gt ss --update-only`
+8. **Push** (optional): Ask first, then use `/gt:submit`
 
 ## Notes
 

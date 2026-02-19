@@ -1,5 +1,5 @@
 ---
-name: pr:fix-gha
+name: pr:ci
 description: "Fix failing CI/GitHub Actions checks. Triggers: 'fix CI', 'fix GHA', 'build failing', 'tests failing in CI', 'checks red'."
 user-invocable: true
 disable-model-invocation: true
@@ -52,7 +52,7 @@ Fix failed GitHub Actions checks.
 
 7. **Commit**: Ask first, suggest message like `fix: resolve CI failures`
 
-8. **Push** (optional): Ask first, then `gt ss --update-only`
+8. **Push** (optional): Ask first, then use `/gt:submit`
 
 ## Common failures
 
