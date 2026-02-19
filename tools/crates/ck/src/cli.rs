@@ -343,7 +343,12 @@ pub fn run_list(
     Ok(())
 }
 
-fn print_task_row(task: &Task, prefix: &str, completed_ids: &std::collections::HashSet<&str>, tree: bool) {
+fn print_task_row(
+    task: &Task,
+    prefix: &str,
+    completed_ids: &std::collections::HashSet<&str>,
+    tree: bool,
+) {
     let status_str = task.status.as_str();
 
     let pri_str = task.priority.as_str();

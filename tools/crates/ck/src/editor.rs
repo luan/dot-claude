@@ -6,78 +6,140 @@ pub fn marshal_task(task: &Task) -> String {
     let mut b = String::new();
     writeln!(b, "Subject: {}", task.subject).unwrap();
     writeln!(b, "Status: {}", task.status.as_str()).unwrap();
-    writeln!(b, "Priority: {}", task.priority.as_str()).unwrap();
-    writeln!(b, "Type: {}", task.task_type).unwrap();
-    writeln!(b, "Branch: {}", task.branch).unwrap();
-    writeln!(b, "Parent: {}", task.parent_id).unwrap();
+    if !task.active_form.is_empty() {
+        writeln!(b, "ActiveForm: {}", task.active_form).unwrap();
+    }
+
+    // Show all metadata fields
+    if let Some(meta) = task.raw.get("metadata").and_then(|v| v.as_object()) {
+        writeln!(b).unwrap();
+        writeln!(b, "## Metadata").unwrap();
+        let mut keys: Vec<&String> = meta.keys().collect();
+        keys.sort();
+        for key in keys {
+            let val = match &meta[key] {
+                Value::String(s) => s.clone(),
+                Value::Null => continue,
+                other => other.to_string(),
+            };
+            writeln!(b, "{key}: {val}").unwrap();
+        }
+    }
+
     writeln!(b).unwrap();
+    writeln!(b, "## Description").unwrap();
     if !task.description.is_empty() {
         writeln!(b, "{}", task.description).unwrap();
     }
+
     writeln!(b).unwrap();
-    write!(b, "# ID: {}", task.id).unwrap();
-    if !task.active_form.is_empty() {
-        write!(b, " | ActiveForm: {}", task.active_form).unwrap();
-    }
-    writeln!(b).unwrap();
-    writeln!(b, "# Lines starting with '#' are ignored.").unwrap();
+    writeln!(b, "# ID: {}", task.id).unwrap();
     writeln!(
         b,
-        "# Edit the fields above and the description below the blank line."
+        "# Edit fields above. Lines starting with '#' are ignored."
+    )
+    .unwrap();
+    writeln!(
+        b,
+        "# Empty metadata values are removed. Use -- to explicitly clear."
     )
     .unwrap();
     b
 }
 
 pub fn unmarshal_task(text: &str, original: &Task) -> Result<Task, String> {
-    let mut header_lines = Vec::new();
-    let mut body_lines = Vec::new();
-    let mut past_header = false;
+    let mut subject = String::new();
+    let mut status_str = String::new();
+    let mut active_form = String::new();
+    let mut metadata = serde_json::Map::new();
+    let mut description_lines = Vec::new();
+
+    #[derive(PartialEq)]
+    enum Section {
+        Header,
+        Metadata,
+        Description,
+    }
+    let mut section = Section::Header;
 
     for line in text.lines() {
-        if line.starts_with('#') {
+        if line.starts_with('#') && !line.starts_with("## ") {
             continue;
         }
-        if !past_header {
-            if line.is_empty() {
-                past_header = true;
-            } else {
-                header_lines.push(line);
+
+        // Section transitions
+        if line.trim() == "## Metadata" {
+            section = Section::Metadata;
+            continue;
+        }
+        if line.trim() == "## Description" {
+            section = Section::Description;
+            continue;
+        }
+
+        match section {
+            Section::Header => {
+                if line.is_empty() {
+                    continue;
+                }
+                if let Some((key, val)) = line.split_once(':') {
+                    let key = key.trim();
+                    let val = val.trim();
+                    match key {
+                        "Subject" => subject = val.to_string(),
+                        "Status" => status_str = val.to_string(),
+                        "ActiveForm" => active_form = val.to_string(),
+                        _ => {}
+                    }
+                }
             }
-        } else {
-            body_lines.push(line);
+            Section::Metadata => {
+                if line.is_empty() {
+                    continue;
+                }
+                if let Some((key, val)) = line.split_once(':') {
+                    let key = key.trim().to_string();
+                    let val = val.trim();
+                    if val.is_empty() || val == "--" {
+                        metadata.insert(key, Value::Null); // mark for deletion
+                    } else {
+                        metadata.insert(key, Value::String(val.to_string()));
+                    }
+                }
+            }
+            Section::Description => {
+                description_lines.push(line);
+            }
         }
     }
 
-    let mut headers = std::collections::HashMap::new();
-    for line in &header_lines {
-        if let Some((key, val)) = line.split_once(':') {
-            headers.insert(key.trim().to_string(), val.trim().to_string());
-        }
-    }
-
-    let subject = headers.get("Subject").cloned().unwrap_or_default();
     if subject.is_empty() {
         return Err("subject is required".to_string());
     }
 
     let mut task = original.clone();
     task.subject = subject;
-    task.description = body_lines.join("\n").trim().to_string();
-
-    if let Some(s) = headers.get("Status")
-        && !s.is_empty()
-    {
-        task.status = Status::from_str(s);
+    task.description = description_lines.join("\n").trim().to_string();
+    if !status_str.is_empty() {
+        task.status = Status::from_str(&status_str);
     }
-    if let Some(p) = headers.get("Priority") {
+    task.active_form = active_form;
+
+    // Sync derived fields from metadata
+    if let Some(Value::String(p)) = metadata.get("priority") {
         task.priority = Priority::from_str(p);
     }
-    task.task_type = headers.get("Type").cloned().unwrap_or_default();
-    task.branch = headers.get("Branch").cloned().unwrap_or_default();
-    task.parent_id = headers.get("Parent").cloned().unwrap_or_default();
+    if let Some(Value::String(t)) = metadata.get("type") {
+        task.task_type = t.clone();
+    }
+    if let Some(Value::String(b)) = metadata.get("branch") {
+        task.branch = b.clone();
+    }
+    if let Some(Value::String(p)) = metadata.get("parent_id") {
+        task.parent_id = p.clone();
+    }
 
-    // Merge back into raw JSON preserving unknown fields
+    // Merge metadata into raw JSON
     let mut raw = original.raw.clone();
     if let Some(obj) = raw.as_object_mut() {
         obj.insert("subject".to_string(), Value::String(task.subject.clone()));
@@ -89,25 +151,27 @@ pub fn unmarshal_task(text: &str, original: &Task) -> Result<Task, String> {
             "description".to_string(),
             Value::String(task.description.clone()),
         );
-        let meta = obj
+        if !task.active_form.is_empty() {
+            obj.insert(
+                "activeForm".to_string(),
+                Value::String(task.active_form.clone()),
+            );
+        }
+
+        let raw_meta = obj
             .entry("metadata")
             .or_insert_with(|| Value::Object(serde_json::Map::new()));
-        if let Some(m) = meta.as_object_mut() {
-            set_or_delete(m, "priority", task.priority.as_str());
-            set_or_delete(m, "type", &task.task_type);
-            set_or_delete(m, "branch", &task.branch);
-            set_or_delete(m, "parent_id", &task.parent_id);
+        if let Some(m) = raw_meta.as_object_mut() {
+            for (key, val) in &metadata {
+                if val.is_null() {
+                    m.remove(key);
+                } else {
+                    m.insert(key.clone(), val.clone());
+                }
+            }
         }
     }
     task.raw = raw;
 
     Ok(task)
-}
-
-fn set_or_delete(map: &mut serde_json::Map<String, Value>, key: &str, value: &str) {
-    if value.is_empty() || value == "--" {
-        map.remove(key);
-    } else {
-        map.insert(key.to_string(), Value::String(value.to_string()));
-    }
 }
