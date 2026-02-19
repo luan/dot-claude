@@ -24,13 +24,11 @@ Reads task description, creates implementable task hierarchy.
 
 **Dispatch task creation to subagent.** Main thread handles plan lookup and epic creation (steps 1-4), subagent creates child tasks (step 5).
 
-## Mid-Skill Interviewing
+## Interviewing
 
-Use AskUserQuestion when facing genuine ambiguity during execution:
+See rules/skill-interviewing.md. Skill-specific triggers:
 - Unclear task boundaries (should X and Y be one task or two?) → ask splitting preference
 - Dependency ambiguity (can tasks run parallel or must they serialize?) → confirm with user
-
-Do NOT ask when the answer is obvious or covered by the task brief.
 
 ## Steps
 
@@ -143,14 +141,7 @@ Do NOT ask when the answer is obvious or covered by the task brief.
    Next: /implement <slug>
    ```
 
-9. **Continuation prompt:**
-   Use AskUserQuestion:
-   - "Continue to /implement <slug>" (Recommended) — description: "Execute implementation tasks"
-   - "Review tasks first" — description: "Inspect the created tasks before implementing"
-   - "Done for now" — description: "Leave task active for later /next"
-
-   If user selects "Continue to /implement":
-   → Invoke Skill tool: skill="implement", args="<slug>"
+9. After outputting the summary, proceed: Invoke Skill tool: skill="implement", args="<slug>"
 
 ## Error Handling
 - No description content → "Run `/explore` first to generate a design", stop

@@ -20,14 +20,11 @@ allowed-tools:
 
 Three modes: solo (default), file-split (auto for large diffs), perspective (--team). All consolidate findings into phase-structured output.
 
-## Mid-Skill Interviewing
+## Interviewing
 
-Use AskUserQuestion when facing genuine ambiguity during execution:
-
+See rules/skill-interviewing.md. Skill-specific triggers:
 - Severity judgment borderline (medium vs high) → ask user's priority
 - Pattern violation unclear (style preference vs correctness issue) → clarify importance
-
-Do NOT ask when the answer is obvious or covered by the task brief.
 
 ## Step 1: Scope + Mode
 
@@ -120,12 +117,13 @@ If `--against`: append "Check plan adherence: implementation match plan? Missing
 
 Output: `# Adversarial Review Summary`
 
-- Sections by severity: Critical → High → Medium → Low
-- --team adds: Consensus (top), Disagreements (bottom)
-- Table: `| Severity | File:Line | Issue | Suggestion |`
+- **FIX items** (sorted by severity): table with Severity | File:Line | Issue | Suggestion
+- **IGNORE items** (grouped by category, one line each): collapsed summary
+- **DEFER items** (listed last — most visible to user): table with Severity | File:Line | Issue | Suggestion
+- --team adds: Consensus (top, above FIX items), Disagreements (bottom, after DEFER items)
 - Footer: Verdict (APPROVE/COMMENTS/CHANGES), Blocking count, Review task-id, "Clean review → /commit", "New work discovered → /prepare <task-id>"
 
-!`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Return findings to caller. Don't fix." || echo "Use AskUserQuestion: Fix all / Fix critical+high only / Fix critical only / Skip fixes"`
+!`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Return findings to caller. Don't fix." || echo "Use AskUserQuestion: Fix all FIX items / Fix critical+high FIX items only / Fix critical FIX items only / Skip fixes"`
 
 ## Step 4b: Store Findings
 
@@ -138,11 +136,42 @@ Store findings using `reviewId` as the task:
 
 Spawn general-purpose agent (model="sonnet"). Read references/prompts.md for fix dispatch prompt template.
 
-Fix agent also applies polish: flatten unnecessary nesting (early returns), remove code-restating comments and contextless TODOs, remove unused imports and debug artifacts. Never change behavior.
+After fix agent returns, invoke `Skill("refine")` on changed files.
 
 ## Step 6: Re-review
 
-Re-run Step 3 after fixes. Loop until clean or user stops.
+Re-run Step 3 after fixes. Track iteration count (max 4 total review cycles).
+
+Before re-running:
+- Maintain `fixed_issues` set: file:line identifiers of issues fixed in previous iterations
+- When consolidating new findings in Step 4: skip any finding whose file:line is in `fixed_issues`
+
+On each iteration: announce "Re-review iteration N/4"
+
+If a DEFER item from a previous round no longer appears:
+- Do NOT assume resolved — investigate first
+- Line deleted entirely → resolved, remove from DEFER list
+- Code changed but concern persists → keep as DEFER
+
+Loop exits when:
+- All FIX items resolved (no new FIX findings survive consolidation)
+- OR user selects "Stop fixing"
+- OR iteration count reaches 4 (report remaining FIX items as unresolved)
+
+## Step 6a: Review Summary
+
+Output structured summary before closing:
+
+### Fixes Applied (N)
+- [file:line] Description of fix
+
+### Ignored Issues (N)
+- [Severity] Description (grouped by type)
+
+### Deferred Issues (N)
+- [Severity] [file:line] Description
+
+Store summary in `metadata.design` via TaskUpdate.
 
 ## Step 6b: Close Review Issue
 
@@ -160,40 +189,18 @@ Note: Fix selection happens in Step 4 above. This step handles pipeline continua
 Check for implementation issues in review: `TaskList()` filtered by tasks with `metadata.status_detail === "review"`
 If any exist, note them in the prompt so the user knows approval is pending.
 
-Context-aware next-step prompt based on review outcome:
+Present next step based on review outcome — use AskUserQuestion only when there's a genuine choice:
 
-**Clean review (no issues found):**
+- **Clean review** → proceed to `Skill("commit")` (approve tasks first)
+- **Issues found and fixed** → confirm: "Re-review to verify?" or "Approve + commit"
+- **Issues found but not all fixed** → confirm: "Continue fixing?" or "Approve as-is"
 
-Use AskUserQuestion:
-
-- "Approve + commit" (Recommended) — description: "Approve implementation work and create conventional commit"
-- "Generate test plan" — description: "Create manual verification steps for reviewer"
-- "Done for now" — description: "Leave tasks in review for later"
-
-**Issues found and fixed (fix loop completed):**
-
-Use AskUserQuestion:
-
-- "Re-review to verify fixes" (Recommended) — description: "Run review again to confirm fixes are clean (max 2 cycles)"
-- "Approve + commit" — description: "Fixes look good, approve and commit"
-- "Generate test plan" — description: "Create manual verification steps for reviewer"
-- "Done for now" — description: "Leave tasks in review for later"
-
-**Issues found but not all fixed:**
-
-Use AskUserQuestion:
-
-- "Continue fixing" (Recommended) — description: "Address remaining issues"
-- "Generate test plan" — description: "Create manual verification steps for reviewer"
-- "Done for now" — description: "Leave tasks in review for later"
-
-Skill invocations based on user selection:
-
-- "Approve + commit" → `TaskList()` filtered by `metadata.project === repoRoot` and `status_detail === "review"` → `TaskUpdate(id, status: "completed", metadata: {status_detail: null})` for each, then `Skill tool: skill="commit"`
-- "Re-review to verify fixes" → `Skill tool: skill="review"`
-- "Continue fixing" → Resume fix loop at Step 5
-- "Generate test plan" → `Skill tool: skill="test-plan"`, then re-present the same AskUserQuestion block
-- "Done for now" → Exit skill (tasks stay in review)
+Skill dispatch:
+- Approve + commit → `TaskList()` filtered by `metadata.project === repoRoot` and `status_detail === "review"` → `TaskUpdate(id, status: "completed", metadata: {status_detail: null})` for each, then `Skill("commit")`
+- Re-review → `Skill("review")`
+- Continue fixing → Resume fix loop at Step 5
+- Refine → `Skill("refine")`
+- Test plan → `Skill("test-plan")`
 
 ## Receiving Feedback
 

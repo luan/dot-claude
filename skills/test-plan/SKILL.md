@@ -18,14 +18,11 @@ allowed-tools:
 
 Analyze changes, classify by risk, produce structured manual test plan. Auto-exits for trivial changes (docs-only, config formatting, comment edits).
 
-## Mid-Skill Interviewing
+## Interviewing
 
-Use AskUserQuestion when facing genuine ambiguity during execution:
-
+See rules/skill-interviewing.md. Skill-specific triggers:
 - Risk classification unclear (e.g., config change that might affect runtime) → ask user's assessment
 - Testing environment ambiguous (e.g., requires specific device/OS) → clarify setup
-
-Do NOT ask when the answer is obvious or covered by the diff context.
 
 ## Step 1: Scope
 
@@ -151,12 +148,4 @@ Present the test plan.
 
 If `$CLAUDE_NON_INTERACTIVE` is set, output the plan and stop. Do not present AskUserQuestion.
 
-Offer next steps via AskUserQuestion:
-
-- "Looks good, done" (Recommended) — description: "Accept test plan as-is"
-- "Expand a section" — description: "Add more detail to a specific risk area"
-- "Regenerate with different focus" — description: "Re-analyze with adjusted risk assessment"
-
-If user selects "Expand a section": ask which section, then regenerate that section with more granular steps.
-
-If user selects "Regenerate": ask what to adjust, then re-run from Step 2 with updated classification.
+Present the test plan and stop. User will ask for refinements if needed.
