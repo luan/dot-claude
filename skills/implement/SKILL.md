@@ -41,13 +41,11 @@ Resolve argument:
 
 ## Worker Prompt
 
-All modes dispatch work via Task subagent (`subagent_type="general-purpose"`, `model="sonnet"`).
-Two variants based on coordination needs:
+All modes dispatch work via Task subagent (`subagent_type="general-purpose"`, `model="sonnet"`). Two variants based on coordination needs:
 
 ### Standalone Variant
 
-Used by Solo and Parallel modes, and as TeamCreate fallback. No team
-messaging — worker completes and returns.
+Used by Solo and Parallel modes, and as TeamCreate fallback. No team messaging — worker completes and returns.
 
 ```
 Implement task <task-id>.
@@ -76,8 +74,7 @@ Implement task <task-id>.
 
 ### Team-based Variant
 
-Used by Swarm mode when TeamCreate succeeded. Adds team lead
-messaging and shutdown handshake.
+Used by Swarm mode when TeamCreate succeeded. Adds team lead messaging and shutdown handshake.
 
 ```
 Implement task <task-id>.
@@ -124,38 +121,27 @@ All tasks independent — fire and forget, no team overhead.
 
 1. `TaskGet(epicId)` → subject + `metadata.design` as epic context
 2. `TaskList()` filtered by `metadata.parent_id == epicId` → children
-3. **Pre-flight:** children exist and have descriptions → continue.
-   Empty or no children → stop, suggest `/prepare`
-4. Spawn ALL children as Task agents in a SINGLE message
-   (up to 4, queue remainder). Each uses **Standalone Worker Prompt**
-   with epic context injected.
+3. **Pre-flight:** children exist and have descriptions → continue. Empty or no children → stop, suggest `/prepare`
+4. Spawn ALL children as Task agents in a SINGLE message (up to 4, queue remainder). Each uses **Standalone Worker Prompt** with epic context injected.
 5. Wait for all to return. Check `TaskList()` for any incomplete.
 6. Incomplete tasks → spawn another batch (max 2 retries per task)
 7. → Verify, Stage Changes, then Continuation Prompt
 
 ## Swarm Mode
 
-Used when tasks have dependency waves (blockedBy relationships).
-**Every task in every wave dispatches via Task subagent, including
-single-task waves.**
+Used when tasks have dependency waves (blockedBy relationships). **Every task in every wave dispatches via Task subagent, including single-task waves.**
 
 ### Setup
 
 1. `TaskGet(epicId)` → subject + `metadata.design` as epic context
 2. `TaskList()` filtered by `metadata.parent_id == epicId` → children
-3. **Pre-flight:** children exist and have descriptions → continue.
-   Empty or no children → stop, suggest `/prepare`
-4. `TeamCreate(team_name="impl-<slug>")`  (fall back to `impl-<epicId>` if no slug)
-   If fails → fall back to sequential wave dispatch using **Standalone Worker Prompt**:
-   dispatch unblocked tasks (up to 4), wait for completion, then dispatch
-   newly unblocked tasks. Same rolling logic as Swarm but without team messaging.
-5. Read team config `~/.claude/teams/impl-<slug>/config.json`
-   → extract team lead name for worker prompts
+3. **Pre-flight:** children exist and have descriptions → continue. Empty or no children → stop, suggest `/prepare`
+4. `TeamCreate(team_name="impl-<slug>")`  (fall back to `impl-<epicId>` if no slug) If fails → fall back to sequential wave dispatch using **Standalone Worker Prompt**: dispatch unblocked tasks (up to 4), wait for completion, then dispatch newly unblocked tasks. Same rolling logic as Swarm but without team messaging.
+5. Read team config `~/.claude/teams/impl-<slug>/config.json` → extract team lead name for worker prompts
 
 ### Rolling Scheduler
 
-Dispatch tasks as soon as their dependencies are met, not in
-batch waves. Up to 4 workers run concurrently at any time.
+Dispatch tasks as soon as their dependencies are met, not in batch waves. Up to 4 workers run concurrently at any time.
 
 ```
 # Initial dispatch

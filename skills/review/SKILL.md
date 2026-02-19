@@ -108,9 +108,7 @@ If `--against`: append "Check plan adherence: implementation match plan? Missing
 
 ## Step 4: Consolidate + Present
 
-0. **Validate reviewer output** (subagent-trust.md): spot-check 1-2
-   specific file:line claims from each reviewer before consolidating.
-   If a claimed issue doesn't exist at that location → discard it.
+0. **Validate reviewer output** (subagent-trust.md): spot-check 1-2 specific file:line claims from each reviewer before consolidating. If a claimed issue doesn't exist at that location → discard it.
 1. Deduplicate (same issue from multiple lenses → highest severity)
 2. Sort by severity. **NEVER truncate validated findings.** Output EVERY finding that survived validation.
 3. --team only: tag [architect]/[code-quality]/[devil], detect consensus (2+ flag same issue), note disagreements
@@ -169,9 +167,22 @@ Output structured summary before closing:
 - [Severity] Description (grouped by type)
 
 ### Deferred Issues (N)
-- [Severity] [file:line] Description
+- [Severity] [file:line] Description → task-ID
 
-Store summary in `metadata.design` via TaskUpdate.
+For each DEFER finding, create a task:
+```
+TaskCreate:
+  subject: "[DEFER] <one-line issue description>"
+  description: "From review <reviewId>.\n\nFile: <file:line>\nSeverity: <severity>\n\n<full issue description + suggestion>"
+  activeForm: "Creating deferred issue task"
+  metadata:
+    project: <repoRoot>
+    type: "deferred-review"
+    source_review: "<reviewId>"
+    priority: "<P2 for high/critical, P3 for medium/low>"
+```
+
+Append created task IDs to the Deferred Issues list. Store summary in `metadata.design` via TaskUpdate.
 
 ## Step 6b: Close Review Issue
 
@@ -186,8 +197,7 @@ Review issues can be directly completed since the user is present. Do NOT auto-a
 
 Note: Fix selection happens in Step 4 above. This step handles pipeline continuation after review completes.
 
-Check for implementation issues in review: `TaskList()` filtered by tasks with `metadata.status_detail === "review"`
-If any exist, note them in the prompt so the user knows approval is pending.
+Check for implementation issues in review: `TaskList()` filtered by tasks with `metadata.status_detail === "review"` If any exist, note them in the prompt so the user knows approval is pending.
 
 Present next step based on review outcome — use AskUserQuestion only when there's a genuine choice:
 
