@@ -245,6 +245,9 @@ pub enum PlanAction {
     Latest {
         #[arg(long, help = "Project path (defaults to git root or cwd)")]
         project: Option<String>,
+
+        #[arg(long, help = "Resolve this file directly instead of mtime heuristic")]
+        task_file: Option<String>,
     },
 
     #[command(about = "Move a plan file to archive/ subfolder")]
@@ -771,11 +774,18 @@ pub fn run_plan_read(file: String, frontmatter: bool) -> Result<(), Box<dyn std:
     Ok(())
 }
 
-pub fn run_plan_latest(project: Option<String>) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run_plan_latest(
+    project: Option<String>,
+    task_file: Option<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut args = vec![];
     if let Some(p) = project {
         args.push("--project".to_string());
         args.push(p);
+    }
+    if let Some(tf) = task_file {
+        args.push("--task-file".to_string());
+        args.push(tf);
     }
     crate::planfile::cmd_latest(&args);
     Ok(())

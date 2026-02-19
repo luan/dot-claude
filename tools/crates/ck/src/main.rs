@@ -99,7 +99,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 body,
             } => cli::run_plan_create(topic, project, slug, prefix, body),
             cli::PlanAction::Read { file, frontmatter } => cli::run_plan_read(file, frontmatter),
-            cli::PlanAction::Latest { project } => cli::run_plan_latest(project),
+            cli::PlanAction::Latest { project, task_file } => {
+                cli::run_plan_latest(project, task_file)
+            }
             cli::PlanAction::Archive { file } => cli::run_plan_archive(file),
             cli::PlanAction::Show { id } => cli::run_plan_show(&id),
         },
