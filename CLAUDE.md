@@ -26,6 +26,7 @@
 ## Safety
 
 - Never `git checkout` to "restore" — make targeted edits. Ask before discarding uncommitted work.
+- Never drop, revert, or modify things you don't recognize (commits, files, branches, config). If something unexpected appears, **stop and ask** — it's the user's work.
 - `replace_all: true` only for simple renames. Never for config surgery.
 - Don't close/delete PRs, issues, comments — update in place.
 - Shared/visible systems: additive fixes > destructive.
