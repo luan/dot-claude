@@ -26,13 +26,11 @@ Auto-escalates to team for complex multi-system work.
 
 Active parent issues: Use TaskList() to view current tasks.
 
-## Mid-Skill Interviewing
+## Interviewing
 
-Use AskUserQuestion when facing genuine ambiguity during execution:
+See rules/skill-interviewing.md. Skill-specific triggers:
 - Multiple viable approaches with unclear tradeoffs → ask which direction to pursue
 - Domain ambiguity (business logic interpretation) → clarify with user before deep-diving
-
-Do NOT ask when the answer is obvious or covered by the task brief.
 
 ## Instructions
 
@@ -109,7 +107,7 @@ Key decisions:
 Next: /prepare t<id>
 ```
 
-7. → See Continuation Prompt below.
+7. → See After Completion below.
 
 ### Continuation (--continue flag)
 
@@ -122,20 +120,11 @@ Next: /prepare t<id>
 5. Update plan file and task, updating existing file at `<metadata.plan_file>`:
    1. `echo "<findings>" | ck plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "explore"`
    2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "<filename from stdout>", status_detail: "review"}, description: "Explore: <topic> — findings in plan file and metadata.design")`
-6. Output updated summary → See Continuation Prompt below.
+6. Output updated summary → See After Completion below.
 
-### Continuation Prompt
+### After Completion
 
-Use AskUserQuestion:
-- "Continue to /prepare t<id>" (Recommended) — description: "Create epic + implementation tasks from findings"
-- "Re-explore with different focus" — description: "Investigate a different angle on the same topic"
-- "Done for now" — description: "Leave task active for later /next"
-
-If user selects "Continue to /prepare":
-→ Invoke Skill tool: skill="prepare", args="<task-id>"
-
-If user selects "Re-explore":
-→ Ask what to focus on, then re-run from step 3 with updated prompt
+After outputting the summary, proceed: Invoke Skill tool: skill="prepare", args="<task-id>"
 
 ### Escalation
 

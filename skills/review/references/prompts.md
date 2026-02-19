@@ -38,7 +38,12 @@ Focus:
 - Auth/authz gaps, data exposure, cryptographic misuse
 - Missing tests for new or changed behavior, untested edge cases
 
-Output: table with Severity | File:Line | Issue | Suggestion
+Disposition per finding:
+- FIX: correctness bugs, security issues, test gaps — should be auto-fixed
+- IGNORE: style preferences, subjective, low-signal noise — skip
+- DEFER: valid concern but out-of-scope for this change (tech debt, future refactor) — surface to user
+
+Output: table with Severity | Disposition | File:Line | Issue | Suggestion
 Then brief summary.
 ```
 
@@ -58,7 +63,12 @@ Focus:
 - I/O (blocking calls, N+1 queries)
 - Concurrency (thread safety, deadlock, contention)
 
-Output: table with Severity | File:Line | Issue | Suggestion
+Disposition per finding:
+- FIX: correctness bugs, security issues, test gaps — should be auto-fixed
+- IGNORE: style preferences, subjective, low-signal noise — skip
+- DEFER: valid concern but out-of-scope for this change (tech debt, future refactor) — surface to user
+
+Output: table with Severity | Disposition | File:Line | Issue | Suggestion
 Then brief summary.
 ```
 
@@ -79,8 +89,14 @@ Focus:
 
 [Use Shared: Testing Gaps]
 
+Disposition per finding:
+- FIX: correctness bugs, security issues, test gaps — should be auto-fixed
+- IGNORE: style preferences, subjective, low-signal noise — skip
+- DEFER: valid concern but out-of-scope for this change (tech debt, future refactor) — surface to user
+
 Tag: [architect]
 Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
+Each finding: table with Severity | Disposition | File:Line | Issue | Suggestion
 ```
 
 ### Perspective 2: Code Quality
@@ -98,8 +114,14 @@ Focus:
 
 [Use Shared: Testing Gaps]
 
+Disposition per finding:
+- FIX: correctness bugs, security issues, test gaps — should be auto-fixed
+- IGNORE: style preferences, subjective, low-signal noise — skip
+- DEFER: valid concern but out-of-scope for this change (tech debt, future refactor) — surface to user
+
 Tag: [code-quality]
 Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
+Each finding: table with Severity | Disposition | File:Line | Issue | Suggestion
 ```
 
 ### Perspective 3: Devil's Advocate
@@ -117,8 +139,14 @@ Focus:
 
 [Use Shared: Testing Gaps]
 
+Disposition per finding:
+- FIX: correctness bugs, security issues, test gaps — should be auto-fixed
+- IGNORE: style preferences, subjective, low-signal noise — skip
+- DEFER: valid concern but out-of-scope for this change (tech debt, future refactor) — surface to user
+
 Tag: [devil]
 Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
+Each finding: table with Severity | Disposition | File:Line | Issue | Suggestion
 ```
 
 ## File-Split Mode
@@ -154,7 +182,12 @@ Focus (Architecture & Performance):
 - I/O (blocking calls, N+1 queries)
 - Concurrency (thread safety, deadlock, contention)
 
-Output: table with Severity | File:Line | Issue | Suggestion
+Disposition per finding:
+- FIX: correctness bugs, security issues, test gaps — should be auto-fixed
+- IGNORE: style preferences, subjective, low-signal noise — skip
+- DEFER: valid concern but out-of-scope for this change (tech debt, future refactor) — surface to user
+
+Output: table with Severity | Disposition | File:Line | Issue | Suggestion
 Then brief summary.
 ```
 
@@ -164,12 +197,12 @@ Then brief summary.
 Fix these review issues in code.
 
 ## Issues to Fix
-{issues with file:line refs}
+{FIX-classified issues with file:line refs}
 
 ## Your Job
 1. Fix each listed issue
 2. Verify fixes (syntax check, run tests to confirm no regressions)
-3. Report what you fixed
+3. Report what you fixed with file:line for each fix
 
 Do NOT: fix unlisted things, refactor beyond needed, add features
 ```

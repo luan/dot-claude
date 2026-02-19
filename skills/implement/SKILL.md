@@ -61,9 +61,12 @@ Implement task <task-id>.
 
 ## Protocol
 1. TaskUpdate(taskId, status: "in_progress", owner: "solo")
-2. Read every file in scope. Follow TDD per rules/test-quality.md: write failing tests, confirm red, implement until green. No test infra → note in report, implement directly.
-3. Build + test. All green → continue. 3 failures → report, stop.
+2. Read every file in scope. Read 2-3 existing test files in the same module/directory to learn conventions (imports, framework, base classes, assertion patterns, naming, fixtures). Match their style. No nearby tests → use rules/test-quality.md defaults.
+   Follow TDD: write failing tests, confirm red, implement until green. No test infra → note in report, implement directly.
+3. Build + test. All green → continue.
+   On failure: deduplicate errors (strip paths/line numbers). Same root error 2x → stop, report with context. 3 distinct errors → report all, stop.
 4. TaskUpdate(taskId, status: "completed")
+5. Run `Skill("refine")` on changed files. No changes needed → skip.
 
 ## Rules
 - TDD: test first. Standards: rules/test-quality.md
@@ -89,13 +92,16 @@ Implement task <task-id>.
 ## Protocol
 1. TaskUpdate(taskId, status: "in_progress", owner: "worker-<taskId>")
    If fails → someone else claimed it. Report and stop.
-2. Read every file in scope. Follow TDD per rules/test-quality.md: write failing tests, confirm red, implement until green. No test infra → note in report, implement directly.
-3. Build + test. All green → continue. 3 failures → report, stop.
+2. Read every file in scope. Read 2-3 existing test files in the same module/directory to learn conventions (imports, framework, base classes, assertion patterns, naming, fixtures). Match their style. No nearby tests → use rules/test-quality.md defaults.
+   Follow TDD: write failing tests, confirm red, implement until green. No test infra → note in report, implement directly.
+3. Build + test. All green → continue.
+   On failure: deduplicate errors (strip paths/line numbers). Same root error 2x → stop, report with context. 3 distinct errors → report all, stop.
 4. TaskUpdate(taskId, status: "completed")
-5. SendMessage(type="message", recipient="<team-lead-name>",
+5. Run `Skill("refine")` on changed files. No changes needed → skip.
+6. SendMessage(type="message", recipient="<team-lead-name>",
      content="Completed <task-id>: <summary>",
      summary="Completed <task-id>")
-6. Wait for shutdown request. Approve it.
+7. Wait for shutdown request. Approve it.
 
 ## Rules
 - TDD: test first. Standards: rules/test-quality.md
@@ -207,13 +213,6 @@ Run after all workers complete, before prompting the user:
 2. `git status --short` — check for untracked files. If any exist, ask the user whether to stage them (e.g., new test fixtures, generated files).
 3. `git diff --cached --stat` — show the staged summary to the user so they can see what will be committed.
 
-## Continuation Prompt
+## After Completion
 
-AskUserQuestion:
-- "Continue to /review" (Recommended) — "Review changes before committing"
-- "Implement next task" — "Pick up the next pending task"
-- "Review changes manually first" — "Inspect the diff before automated review"
-- "Done for now" — "Leave for later /next"
-
-If /review → `Skill("review")`
-If next task → `Skill("implement")`
+After staging and showing the summary, proceed: `Skill("review")`

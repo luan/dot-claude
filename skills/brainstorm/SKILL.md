@@ -152,18 +152,9 @@ Phases:
 Next: /prepare t<id>
 ```
 
-### 8. Continuation Prompt
+### 8. After Completion
 
-Use AskUserQuestion:
-- "Continue to /prepare t<id>" (Recommended) — description:
-  "Create epic + implementation tasks from design"
-- "Refine design" — description: "Revisit a section or explore
-  a different angle"
-- "Done for now" — description: "Leave task active for later
-  /next"
-
-If user selects "Continue to /prepare":
-→ Invoke Skill tool: skill="prepare", args="<task-id>"
+After outputting the summary, proceed: Invoke Skill tool: skill="prepare", args="<task-id>"
 
 ## Key Principles
 
