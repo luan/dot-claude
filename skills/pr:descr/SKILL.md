@@ -1,5 +1,5 @@
 ---
-name: pr:description
+name: pr:descr
 description: "Update PR title and description from branch context. Triggers: 'pr description', 'update PR', 'PR title', 'describe PR'."
 user-invocable: true
 model: sonnet
@@ -21,7 +21,7 @@ allowed-tools:
 
 Update an existing PR's title and description from branch context.
 
-**Assumes PR already exists.** Use `gt submit` to create PRs.
+**Assumes PR already exists.** This skill NEVER pushes or submits.
 
 ## Step 1: Get Context
 
@@ -63,14 +63,11 @@ If diff is large, use `--stat` first and read key files. If context is unclear f
 
 ## Step 3: Generate Title
 
-Use conventional commit format — `type(scope): description`, max 72 chars, lowercase, no period, imperative mood.
-Types: feat|fix|refactor|perf|docs|test|style|build|ci|chore|revert. Scope: primary area or omit if global.
-Multi-line: blank line then body using github flavored markdown. Body explains motivation and approach.
+Use conventional commit format — `type(scope): description`, max 72 chars, lowercase, no period, imperative mood. Types: feat|fix|refactor|perf|docs|test|style|build|ci|chore|revert. Scope: primary area or omit if global. Multi-line: blank line then body using github flavored markdown. Body explains motivation and approach.
 
 ## Step 4: Generate Body
 
-Explain WHY the change is being made, with high-level HOW.
-Keep concise. Don't list changes obvious from diff.
+Explain WHY the change is being made, with high-level HOW. Keep concise. Don't list changes obvious from diff.
 
 Format:
 
