@@ -43,8 +43,12 @@ pub fn project_name(project_path: &str) -> String {
 
 pub fn plans_dir(project_path: &str) -> PathBuf {
     let home = env::var("HOME").unwrap_or_else(|_| fatal("cannot determine home directory"));
-    let base = project_name(project_path);
-    PathBuf::from(home).join(".claude").join("plans").join(base)
+    plans_dir_with_base(project_path, Path::new(&home))
+}
+
+pub fn plans_dir_with_base(project_path: &str, base: &Path) -> PathBuf {
+    let name = project_name(project_path);
+    base.join(".claude").join("plans").join(name)
 }
 
 fn yaml_quote(s: &str) -> String {
@@ -195,7 +199,6 @@ pub fn cmd_create(args: &[String]) {
     buf.push_str(&format!("topic: {}\n", yaml_quote(&topic)));
     buf.push_str(&format!("project: {}\n", yaml_quote(&project)));
     buf.push_str(&format!("created: {now}\n"));
-    buf.push_str("status: draft\n");
     buf.push_str("---\n");
     if !body.is_empty() {
         buf.push_str(&body);
@@ -280,45 +283,21 @@ pub fn cmd_read(args: &[String]) {
     }
 }
 
-pub fn cmd_latest(args: &[String]) {
-    let mut project = String::new();
-
-    let mut i = 0;
-    while i < args.len() {
-        if args[i] == "--project" {
-            i += 1;
-            project = args.get(i).cloned().unwrap_or_default();
+/// Core logic for `ck plan latest`, extracted for testability.
+/// Returns `Ok(path)` on success or `Err(message)` on failure.
+pub fn latest_plan(task_file: Option<&str>, project: &str) -> Result<PathBuf, String> {
+    // --task-file short-circuits the mtime heuristic entirely.
+    if let Some(tf) = task_file {
+        let p = PathBuf::from(tf);
+        if p.exists() {
+            return Ok(p);
         }
-        i += 1;
+        return Err(format!("task-file not found: {tf}"));
     }
 
-    if project.is_empty() {
-        // Try git root
-        let output = process::Command::new("git")
-            .args(["rev-parse", "--show-toplevel"])
-            .output();
-        match output {
-            Ok(o) if o.status.success() => {
-                project = String::from_utf8_lossy(&o.stdout).trim().to_string();
-            }
-            _ => {
-                project = env::current_dir()
-                    .map(|p| p.to_string_lossy().to_string())
-                    .unwrap_or_else(|_| fatal("cannot determine working directory"));
-            }
-        }
-    }
-
-    let dir = plans_dir(&project);
-    let entries = fs::read_dir(&dir).unwrap_or_else(|_| {
-        fatal(&format!(
-            "no plans found for project {}",
-            Path::new(&project)
-                .file_name()
-                .unwrap_or_default()
-                .to_string_lossy()
-        ))
-    });
+    let dir = plans_dir(project);
+    let entries = fs::read_dir(&dir)
+        .map_err(|e| format!("cannot read plans directory {}: {e}", dir.display()))?;
 
     let mut latest_path: Option<PathBuf> = None;
     let mut latest_time = SystemTime::UNIX_EPOCH;
@@ -337,9 +316,49 @@ pub fn cmd_latest(args: &[String]) {
         }
     }
 
-    match latest_path {
-        Some(p) => println!("{}", p.display()),
-        None => fatal(&format!("no plan files found in {}", dir.display())),
+    latest_path.ok_or_else(|| format!("no plan files found in {}", dir.display()))
+}
+
+pub fn cmd_latest(args: &[String]) {
+    let mut project = String::new();
+    let mut task_file: Option<String> = None;
+
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--project" => {
+                i += 1;
+                project = args.get(i).cloned().unwrap_or_default();
+            }
+            "--task-file" => {
+                i += 1;
+                task_file = args.get(i).cloned();
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+
+    if project.is_empty() && task_file.is_none() {
+        // Try git root
+        let output = process::Command::new("git")
+            .args(["rev-parse", "--show-toplevel"])
+            .output();
+        match output {
+            Ok(o) if o.status.success() => {
+                project = String::from_utf8_lossy(&o.stdout).trim().to_string();
+            }
+            _ => {
+                project = env::current_dir()
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_else(|_| fatal("cannot determine working directory"));
+            }
+        }
+    }
+
+    match latest_plan(task_file.as_deref(), &project) {
+        Ok(p) => println!("{}", p.display()),
+        Err(e) => fatal(&e),
     }
 }
 
@@ -411,7 +430,6 @@ pub fn cmd_archive(args: &[String]) {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn worktree_path_gets_repo_prefix() {
         assert_eq!(project_name("/Users/me/src/arc.git/wt1"), "arc-wt1");
@@ -434,5 +452,70 @@ mod tests {
     #[test]
     fn normal_path_uses_last_component() {
         assert_eq!(project_name("/Users/me/src/chromium/src/arc"), "arc");
+    }
+
+    #[test]
+    fn task_file_returns_specified_path() {
+        let tmp = env::temp_dir().join(format!("ck-latest-test-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let plan = tmp.join("my-plan.md");
+        std::fs::write(&plan, "# plan\n").unwrap();
+
+        let result = latest_plan(Some(plan.to_str().unwrap()), "");
+        assert!(result.is_ok(), "expected Ok, got {result:?}");
+        assert_eq!(
+            result.unwrap().canonicalize().unwrap(),
+            plan.canonicalize().unwrap(),
+            "--task-file should return the specified path"
+        );
+
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn task_file_flag_errors_when_file_missing() {
+        let result = latest_plan(Some("/nonexistent/path/plan.md"), "");
+        assert!(result.is_err(), "expected Err for missing task-file");
+        let msg = result.unwrap_err();
+        assert!(
+            msg.contains("task-file not found"),
+            "error message should mention task-file, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn cmd_create_frontmatter_has_no_status_field() {
+        let tmp = env::temp_dir().join(format!("ck-test-{}", std::process::id()));
+        let project_path = "/some/project";
+
+        // Use plans_dir_with_base to get the expected directory without mutating HOME.
+        let project_dir = plans_dir_with_base(project_path, &tmp);
+        std::fs::create_dir_all(&project_dir).unwrap();
+
+        let slug = crate::slug::slug("Test Topic");
+        let file_path = project_dir.join(format!("{slug}.md"));
+
+        let now = chrono_rfc3339();
+        let mut buf = String::new();
+        buf.push_str("---\n");
+        buf.push_str(&format!("topic: {}\n", yaml_quote("Test Topic")));
+        buf.push_str(&format!("project: {}\n", yaml_quote(project_path)));
+        buf.push_str(&format!("created: {now}\n"));
+        buf.push_str("---\n");
+        std::fs::write(&file_path, &buf).unwrap();
+
+        let content = std::fs::read_to_string(&file_path).unwrap();
+
+        // Confirm frontmatter does NOT contain a status field.
+        let (yaml, _) = parse_frontmatter(&content);
+        let yaml = yaml.expect("frontmatter must be present");
+        let keys: Vec<_> = parse_yaml_map(yaml).into_iter().map(|(k, _)| k).collect();
+        assert!(
+            !keys.contains(&"status".to_string()),
+            "frontmatter must not contain a 'status' field, got keys: {keys:?}"
+        );
+
+        std::fs::remove_dir_all(&tmp).ok();
     }
 }

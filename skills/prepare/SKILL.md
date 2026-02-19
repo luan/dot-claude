@@ -34,7 +34,7 @@ See rules/skill-interviewing.md. Skill-specific triggers:
 
 1. **Find plan source:**
    - If arg matches a file path → use it directly
-   - If arg looks like a task ID → `TaskGet(taskId)`, extract `metadata.design`
+   - If arg looks like a task ID → `TaskGet(taskId)`, extract `metadata.design`; if `metadata.plan_file` is set, run `ck plan latest --task-file <metadata.plan_file>` to resolve the plan file deterministically, otherwise fall through to bare `ck plan latest`
    - If no args → `ck plan latest` (finds most recent plan file for current project)
    - If still none → `TaskList()` filtered by status=in_progress + metadata.status_detail==="review" + metadata.type in ["explore", "review", "fix"], use first match, extract `metadata.design` (note: brainstorm tasks use type="explore" and are found by this filter)
    - No plan found → suggest `/explore` or `/review`
