@@ -56,6 +56,7 @@ pub struct App {
     create_form: Option<create::CreateState>,
     plans_state: Option<plans::PlansState>,
     plan_detail: Option<plan_detail::PlanDetailState>,
+    help_scroll: u16,
     status_msg: String,
     pub should_quit: bool,
     pub editor_request: Option<EditorRequest>,
@@ -97,6 +98,7 @@ impl App {
             create_form: None,
             plans_state: Some(plans::PlansState::new(all_plans)),
             plan_detail: None,
+            help_scroll: 0,
             status_msg: String::new(),
             should_quit: false,
             editor_request: None,
@@ -120,12 +122,24 @@ impl App {
             && !self.plans_state.as_ref().is_some_and(|p| p.searching)
         {
             self.prev_screen = self.screen;
+            self.help_scroll = 0;
             self.screen = Screen::Help;
             return;
         }
         if self.screen == Screen::Help {
-            // Any key closes help
-            self.screen = self.prev_screen;
+            match key.code {
+                KeyCode::Char('?') | KeyCode::Esc => self.screen = self.prev_screen,
+                KeyCode::Char('q') => self.should_quit = true,
+                KeyCode::Char('j') | KeyCode::Down => {
+                    self.help_scroll = self.help_scroll.saturating_add(1)
+                }
+                KeyCode::Char('k') | KeyCode::Up => {
+                    self.help_scroll = self.help_scroll.saturating_sub(1)
+                }
+                KeyCode::Char('g') => self.help_scroll = 0,
+                KeyCode::Char('G') => self.help_scroll = u16::MAX,
+                _ => {}
+            }
             return;
         }
 
@@ -466,7 +480,18 @@ impl App {
             KeyCode::Char('k') | KeyCode::Up => ps.prev(),
             KeyCode::Char('g') => ps.home(),
             KeyCode::Char('G') => ps.end(),
-            KeyCode::Char('A') => ps.toggle_archived(),
+            KeyCode::Char('A') => ps.cycle_source(),
+            KeyCode::Char('e') if ps.source == plans::PlanSource::Active => {
+                if let Some(p) = ps.selected_plan().cloned() {
+                    let path = p.path.to_string_lossy().to_string();
+                    self.prev_screen = self.screen;
+                    self.editor_request = Some(EditorRequest {
+                        path,
+                        task_id: String::new(), // empty = plan edit
+                        list_id: String::new(),
+                    });
+                }
+            }
             KeyCode::Char('/') => {
                 ps.searching = true;
                 ps.search_input.clear();
@@ -695,6 +720,13 @@ impl App {
         }
     }
 
+    pub fn reload_plans(&mut self) {
+        if let Some(ps) = &mut self.plans_state {
+            ps.reload_plans();
+        }
+        self.screen = self.prev_screen;
+    }
+
     fn refresh_detail(&mut self, task_id: &str) {
         if let Some(task) = self.store.load_task(&self.active_list, task_id) {
             let children: Vec<Task> = self
@@ -799,7 +831,7 @@ impl App {
                 self.render_footer(
                     f,
                     footer_area,
-                    "j/k:move  enter:open  /:search  A:archived  tab/1:tasks  q:quit",
+                    "j/k:move  enter:open  e:edit  /:search  A:source  tab/1:tasks  q:quit",
                 );
             }
             Screen::PlanDetail => {
@@ -829,8 +861,10 @@ impl App {
             Screen::Help => {
                 self.render_header(f, header_area, "help");
                 let _ = filter_bar_area;
-                help::render_help(f, body_area);
-                self.render_footer(f, footer_area, "?:close");
+                let plans_ctx =
+                    self.prev_screen == Screen::Plans || self.prev_screen == Screen::PlanDetail;
+                self.help_scroll = help::render_help(f, body_area, self.help_scroll, plans_ctx);
+                self.render_footer(f, footer_area, "j/k:scroll  g/G:top/bottom  ?/esc:close");
             }
         }
     }

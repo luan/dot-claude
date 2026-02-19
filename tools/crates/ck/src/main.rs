@@ -233,8 +233,13 @@ fn run_loop(
             terminal.clear()?;
 
             if status.is_ok() {
-                app.handle_editor_result(&req.task_id, &req.path, &req.list_id);
-            } else {
+                if req.task_id.is_empty() {
+                    // Plan edit — file was edited in place, just reload plans
+                    app.reload_plans();
+                } else {
+                    app.handle_editor_result(&req.task_id, &req.path, &req.list_id);
+                }
+            } else if !req.task_id.is_empty() {
                 let _ = std::fs::remove_file(&req.path);
             }
             continue;

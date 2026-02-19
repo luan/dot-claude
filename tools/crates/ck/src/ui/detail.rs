@@ -161,7 +161,11 @@ pub fn render_detail(f: &mut Frame, area: Rect, state: &DetailState) {
         ]));
         lines.push(Line::raw(""));
         for p in &state.related_plans {
-            let title = if p.title.is_empty() { &p.name } else { &p.title };
+            let title = if p.title.is_empty() {
+                &p.name
+            } else {
+                &p.title
+            };
             lines.push(Line::from(vec![
                 Span::raw("  "),
                 Span::styled(plan::format_date(p.mod_time), theme::muted_style()),

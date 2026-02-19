@@ -11,6 +11,9 @@ fn fatal(msg: &str) -> ! {
 }
 
 pub fn project_name(project_path: &str) -> String {
+    if project_path.is_empty() {
+        return String::from("(no project)");
+    }
     let path = Path::new(project_path);
     let components: Vec<&str> = path
         .components()

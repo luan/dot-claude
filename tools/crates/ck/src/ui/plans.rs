@@ -8,6 +8,31 @@ use crate::plan::{self, Plan};
 use crate::planfile;
 use crate::ui::theme;
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum PlanSource {
+    Active,
+    Archived,
+    GitNotes,
+}
+
+impl PlanSource {
+    pub fn next(self) -> Self {
+        match self {
+            Self::Active => Self::Archived,
+            Self::Archived => Self::GitNotes,
+            Self::GitNotes => Self::Active,
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Active => "active",
+            Self::Archived => "archived",
+            Self::GitNotes => "git notes",
+        }
+    }
+}
+
 pub struct PlansState {
     pub plans: Vec<Plan>,
     pub filtered: Vec<Plan>,
@@ -15,7 +40,7 @@ pub struct PlansState {
     pub searching: bool,
     pub query: String,
     pub search_input: String,
-    pub archived: bool,
+    pub source: PlanSource,
     pub project_filter: Option<String>,
 }
 
@@ -32,27 +57,31 @@ impl PlansState {
             searching: false,
             query: String::new(),
             search_input: String::new(),
-            archived: false,
+            source: PlanSource::Active,
             project_filter: None,
         }
     }
 
     pub fn reload_plans(&mut self) {
-        let raw = if self.archived {
-            plan::list_archived_plans()
-        } else {
-            plan::list_plans()
+        let raw = match self.source {
+            PlanSource::Active => plan::list_plans(),
+            PlanSource::Archived => plan::list_archived_plans(),
+            PlanSource::GitNotes => plan::list_git_notes_plans_all(),
         };
-        self.plans = if let Some(ref proj) = self.project_filter {
-            raw.into_iter().filter(|p| &p.project == proj).collect()
-        } else {
-            raw
-        };
+        self.plans = raw
+            .into_iter()
+            .filter(|p| !p.project.is_empty())
+            .filter(|p| {
+                self.project_filter
+                    .as_ref()
+                    .is_none_or(|proj| &p.project == proj)
+            })
+            .collect();
         self.filter();
     }
 
-    pub fn toggle_archived(&mut self) {
-        self.archived = !self.archived;
+    pub fn cycle_source(&mut self) {
+        self.source = self.source.next();
         self.reload_plans();
     }
 
@@ -191,8 +220,11 @@ pub fn render_plans_filter_bar(f: &mut Frame, area: Rect, state: &PlansState) {
         spans.push(Span::raw(" "));
     }
 
-    if state.archived {
-        spans.push(Span::styled(" archived ", theme::filter_tag_style()));
+    if state.source != PlanSource::Active {
+        spans.push(Span::styled(
+            format!(" {} ", state.source.label()),
+            theme::filter_tag_style(),
+        ));
         spans.push(Span::raw(" "));
     }
 
