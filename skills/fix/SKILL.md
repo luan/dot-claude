@@ -16,8 +16,7 @@ allowed-tools:
 
 # Fix
 
-Convert user feedback into ONE task with phased design in
-description — directly consumable by `/prepare`.
+Convert user feedback into ONE task with phased design in description — directly consumable by `/prepare`.
 Does NOT implement — creates actionable work items for later scheduling.
 
 ## Workflow

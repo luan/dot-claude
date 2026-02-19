@@ -15,8 +15,7 @@ allowed-tools:
 
 # Next
 
-Figure out where you are, then either resume in-flight work or pick
-something new.
+Figure out where you are, then either resume in-flight work or pick something new.
 
 ## Context
 
@@ -31,14 +30,11 @@ TRUNK=$(gt parent 2>/dev/null || gt trunk)
 CURRENT=$(git branch --show-current)
 ```
 
-If `$CURRENT` equals `$TRUNK`, or the user passed an explicit
-branch/PR# argument, go to the appropriate path:
+If `$CURRENT` equals `$TRUNK`, or the user passed an explicit branch/PR# argument, go to the appropriate path:
 
 - **On trunk, no argument** → Jump to [Trunk Path](#trunk-path)
 - **On feature branch** → Jump to [Feature Branch Path](#feature-branch-path)
-- **Explicit argument (branch name or PR#)** → Resolve the branch
-  first (PR# → `gh pr view <num> --json headRefName`), then follow
-  Feature Branch Path for that branch
+- **Explicit argument (branch name or PR#)** → Resolve the branch first (PR# → `gh pr view <num> --json headRefName`), then follow Feature Branch Path for that branch
 
 ---
 
@@ -112,8 +108,7 @@ Select the highest-priority item that is NOT blocked. Skip:
 - Items with status_detail === 'review' (waiting on human)
 - Items whose description says "blocked by" an open issue
 
-If an item has status `in_progress`, prefer it over `pending` items at the
-same priority (someone already started it — resume it).
+If an item has status `in_progress`, prefer it over `pending` items at the same priority (someone already started it — resume it).
 
 ### 3. Read the candidate
 

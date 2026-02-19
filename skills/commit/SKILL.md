@@ -40,10 +40,7 @@ Recent commits: !`git log --oneline -5 2>/dev/null`
 
 1. **Analyze**: review context above. If nothing staged, read full `git diff`. If staged, read `git diff --cached` for details.
 
-2. **Message**: use conventional commit format — `type(scope): description`, max 72 chars, lowercase, no period, imperative mood.
-   Types: feat|fix|refactor|perf|docs|test|style|build|ci|chore|revert. Scope: primary area or omit if global.
-   Multi-line: blank line then body wrapping at 72 chars explaining motivation not mechanics.
-   If task active (TaskList, filter by project + status=in_progress), append ID: `fix(auth): handle token expiry (task-<id>)`
+2. **Message**: use conventional commit format — `type(scope): description`, max 72 chars, lowercase, no period, imperative mood. Types: feat|fix|refactor|perf|docs|test|style|build|ci|chore|revert. Scope: primary area or omit if global. Multi-line: blank line then body wrapping at 72 chars explaining motivation not mechanics. If task active (TaskList, filter by project + status=in_progress), append ID: `fix(auth): handle token expiry (task-<id>)`
 
 3. **Confirm** via AskUserQuestion: "Commit with this message?"
 
@@ -55,9 +52,7 @@ Recent commits: !`git log --oneline -5 2>/dev/null`
    )"
    ```
 
-5. **Plan archive**: after successful commit, archive all active plans for the current project.
-   Each `ck plan archive` stores the plan content as a git note on HEAD (under `refs/notes/plans`)
-   and moves the file to `archive/`.
+5. **Plan archive**: after successful commit, archive all active plans for the current project. Each `ck plan archive` stores the plan content as a git note on HEAD (under `refs/notes/plans`) and moves the file to `archive/`.
    ```bash
    ck plan list --json
    # For each plan in output:
@@ -67,13 +62,11 @@ Recent commits: !`git log --oneline -5 2>/dev/null`
 
 ## Post-commit
 
-After successful commit, check if on a Graphite branch (`gt log --stack 2>/dev/null`).
-If yes, suggest `/gt:submit` — never offer `git push`.
+After successful commit, check if on a Graphite branch (`gt log --stack 2>/dev/null`). If yes, suggest `/gt:submit` — never offer `git push`.
 
 ## Hook failures
 
-Hooks modify files: `git add -u && git commit --amend --no-edit`
-Hooks fail: show error, suggest fix, let user decide.
+Hooks modify files: `git add -u && git commit --amend --no-edit` Hooks fail: show error, suggest fix, let user decide.
 
 ## Special ops
 

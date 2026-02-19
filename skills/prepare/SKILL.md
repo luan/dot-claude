@@ -64,8 +64,7 @@ See rules/skill-interviewing.md. Skill-specific triggers:
        priority: "P1"
    ```
 
-5. **Create all tasks** — dispatch ONE sonnet subagent (subagent_type="general-purpose", model=sonnet) to create ALL tasks.
-   The subagent needs TaskCreate, TaskUpdate, TaskGet in its allowed-tools (specify in the Task dispatch).
+5. **Create all tasks** — dispatch ONE sonnet subagent (subagent_type="general-purpose", model=sonnet) to create ALL tasks. The subagent needs TaskCreate, TaskUpdate, TaskGet in its allowed-tools (specify in the Task dispatch).
 
    ```
    Create implementation tasks for all phases
@@ -110,16 +109,11 @@ See rules/skill-interviewing.md. Skill-specific triggers:
    - Each task = one logical unit (one feature/fix/change)
    ```
 
-   Task titles MUST start with "Phase N:" — implement uses this
-   for sequencing. Number matches the phase from the design.
+   Task titles MUST start with "Phase N:" — implement uses this for sequencing. Number matches the phase from the design.
 
    Process all phases in one dispatch (subagent has epic-id for all).
 
-6. **Validate task quality** (subagent-trust.md): spot-check that
-   created tasks have real file paths (Read 1-2 referenced files),
-   acceptance criteria are testable, and approach is specific enough
-   for a worker to implement without guessing. Vague tasks → send
-   back to subagent with specific feedback.
+6. **Validate task quality** (subagent-trust.md): spot-check that created tasks have real file paths (Read 1-2 referenced files), acceptance criteria are testable, and approach is specific enough for a worker to implement without guessing. Vague tasks → send back to subagent with specific feedback.
 
 7. **Finalize:**
    - `TaskUpdate(epicId, status: "in_progress", owner: "prepare")`

@@ -33,8 +33,7 @@ Resolve argument:
 
 ## Step 2: Classify
 
-`TaskGet(taskId)` to inspect. Children = `TaskList()` filtered
-by `metadata.parent_id`.
+`TaskGet(taskId)` to inspect. Children = `TaskList()` filtered by `metadata.parent_id`.
 
 - Single task (no children) → **Solo**
 - Multiple children, all independent (no blockedBy) → **Parallel**

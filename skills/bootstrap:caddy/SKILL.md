@@ -8,8 +8,7 @@ disable-model-invocation: true
 
 # Bootstrap Caddy
 
-Register a project in the local subdomain routing system
-(`https://<project>.localhost` via Caddy + dnsmasq).
+Register a project in the local subdomain routing system (`https://<project>.localhost` via Caddy + dnsmasq).
 
 ## Step 1: Parse arguments
 
@@ -23,8 +22,7 @@ The argument string is everything after `/bootstrap:caddy `.
 AskUserQuestion: "What project name should be registered?"
 ```
 
-Do NOT infer the project name from conversation context, working
-directory, or any other source. Only use the explicit argument.
+Do NOT infer the project name from conversation context, working directory, or any other source. Only use the explicit argument.
 
 ## Step 2: Check prerequisites
 
@@ -43,8 +41,7 @@ Do NOT continue. Do NOT attempt to create the infrastructure.
 
 ## Step 3: Read port registry
 
-Read `~/.config/dev-routing/ports.json` with the Read tool.
-Parse the JSON. It has this shape:
+Read `~/.config/dev-routing/ports.json` with the Read tool. Parse the JSON. It has this shape:
 
 ```json
 {"nextPort": 5200, "projects": {"name": 5200, ...}}
@@ -58,15 +55,12 @@ Check if the project name from Step 1 exists as a key in `projects`.
 
 ## Step 4: Assign port
 
-- If user provided a port number in args → use that. Check no other
-  project in `projects` already has that port.
+- If user provided a port number in args → use that. Check no other project in `projects` already has that port.
 - If no port specified → use the `nextPort` value from ports.json.
 
 ## Step 5: Update port registry
 
-Add the project to `projects` with the assigned port. If using
-auto-assigned port, increment `nextPort`. Write the updated JSON back
-to `~/.config/dev-routing/ports.json` using the Write tool.
+Add the project to `projects` with the assigned port. If using auto-assigned port, increment `nextPort`. Write the updated JSON back to `~/.config/dev-routing/ports.json` using the Write tool.
 
 ## Step 6: Create Caddy site config
 
@@ -84,29 +78,18 @@ Check if `~/src/<project>` exists.
 
 If the project directory exists:
 
-1. **vite.config.ts** — ensure it reads port from env. The server
-   config should use `Number(process.env.DEV_PORT) || undefined` so
-   it falls back to Vite's default when DEV_PORT is not set. Read the
-   file first. If it already has this pattern, skip. If it has a
-   hardcoded port, replace with the env var pattern. If it has no
-   server block, add one. Example:
+1. **vite.config.ts** — ensure it reads port from env. The server config should use `Number(process.env.DEV_PORT) || undefined` so it falls back to Vite's default when DEV_PORT is not set. Read the file first. If it already has this pattern, skip. If it has a hardcoded port, replace with the env var pattern. If it has no server block, add one. Example:
    ```typescript
    server: { port: Number(process.env.DEV_PORT) || undefined }
    ```
 
-2. **.env** (gitignored) — append `DEV_PORT=<port>` if not already
-   present. If `.env` doesn't exist, create it with just this line.
-   Do NOT overwrite existing content.
+2. **.env** (gitignored) — append `DEV_PORT=<port>` if not already present. If `.env` doesn't exist, create it with just this line. Do NOT overwrite existing content.
 
-3. **.env.example** (committed) — append `# DEV_PORT=5173` if not
-   already present, so team members know the variable exists.
+3. **.env.example** (committed) — append `# DEV_PORT=5173` if not already present, so team members know the variable exists.
 
-This keeps the port mapping in gitignored `.env` — nothing local
-leaks into the repo. Bun auto-loads `.env`, so `process.env.DEV_PORT`
-is available in vite.config.ts.
+This keeps the port mapping in gitignored `.env` — nothing local leaks into the repo. Bun auto-loads `.env`, so `process.env.DEV_PORT` is available in vite.config.ts.
 
-If the project directory doesn't exist, skip — report the port so
-bootstrap:web can set it up during scaffolding.
+If the project directory doesn't exist, skip — report the port so bootstrap:web can set it up during scaffolding.
 
 ## Step 8: Reload Caddy
 
@@ -117,10 +100,8 @@ caddy reload --config ~/.config/dev-routing/Caddyfile 2>&1 || caddy start --conf
 ## Port Lookup (for other skills)
 
 When any skill needs a project's dev port or URL:
-1. Read `~/.config/dev-routing/ports.json` — project key matches
-   directory name under `~/src/`
-2. Fallback: check `vite.config.ts` for `server.port`, then Vite
-   dev server output
+1. Read `~/.config/dev-routing/ports.json` — project key matches directory name under `~/src/`
+2. Fallback: check `vite.config.ts` for `server.port`, then Vite dev server output
 3. Never assume port 5173
 4. Canonical URL: `https://<project>.localhost`
 
