@@ -53,8 +53,10 @@ fi
 title="${tmux_session:-Claude Code}"
 subtitle="${hook_title:-$hook_message}"
 message="${hook_message:-Claude Code}"
-# Don't repeat subtitle in message
-[[ "$subtitle" == "$message" ]] && message=""
+# Don't repeat subtitle in message; grrr requires a message arg
+if [[ "$subtitle" == "$message" ]]; then
+  message=" "
+fi
 
 # Dock bounce
 printf '\a' > /dev/tty 2>/dev/null
