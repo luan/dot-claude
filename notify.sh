@@ -30,8 +30,9 @@ fi
 # Map notification type to sound and symbol
 case "$hook_type" in
   permission_prompt) sound="Frog";  symbol="lock" ;;
-  idle_prompt)       sound="Frog";  symbol="chat" ;;
-  *)                 sound="Hero";  symbol="check" ;;
+  idle_prompt)            sound="Frog";  symbol="chat" ;;
+  elicitation_dialog)    sound="Frog";  symbol="question" ;;
+  *)                     sound="Hero";  symbol="check" ;;
 esac
 
 # Capture tmux context

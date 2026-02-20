@@ -20,6 +20,7 @@ if !symbol.isEmpty {
     case "check": sfName = "checkmark"
     case "lock": sfName = "lock.fill"
     case "chat": sfName = "bubble.left.fill"
+    case "question": sfName = "questionmark"
     default: sfName = symbol
     }
     if let sfImage = NSImage(systemSymbolName: sfName, accessibilityDescription: nil) {
