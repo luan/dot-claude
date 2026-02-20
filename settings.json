@@ -22,6 +22,18 @@
     "rust-analyzer-lsp@claude-plugins-official": true,
     "swift-lsp@claude-plugins-official": true
   },
+  "hooks": {
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/notify.sh"
+          }
+        ]
+      }
+    ]
+  },
   "alwaysThinkingEnabled": true,
   "promptSuggestionEnabled": true,
   "skipDangerousModePermissionPrompt": true
