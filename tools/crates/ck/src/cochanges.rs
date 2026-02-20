@@ -71,6 +71,9 @@ pub fn calculate_file_associations(
     let mut file_pair_count: HashMap<String, HashMap<String, usize>> = HashMap::new();
 
     for commit_files in commits {
+        if commit_files.len() > 100 {
+            continue;
+        }
         for file in commit_files {
             *file_commit_count.entry(file.clone()).or_default() += 1;
             for other_file in commit_files {
@@ -125,13 +128,14 @@ pub fn get_changed_files(base: &str) -> Result<HashSet<String>, String> {
         })
 }
 
-fn file_exists_on_branch(path: &str, base: &str) -> bool {
-    let spec = format!("{base}:{path}");
-    Command::new("git")
-        .args(["cat-file", "-e", &spec])
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+fn get_files_on_branch(base: &str) -> HashSet<String> {
+    git(&["ls-tree", "--name-only", "-r", base])
+        .unwrap_or_default()
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .map(String::from)
+        .collect()
 }
 
 pub fn output_changed_associations(
@@ -140,6 +144,8 @@ pub fn output_changed_associations(
     max_files: Option<usize>,
     base: &str,
 ) {
+    let base_files = get_files_on_branch(base);
+
     let mut max_fractions: HashMap<String, f64> = HashMap::new();
 
     for file_path in changed_files {
@@ -166,7 +172,7 @@ pub fn output_changed_associations(
         if count >= limit {
             break;
         }
-        if !Path::new(path).exists() && !file_exists_on_branch(path, base) {
+        if !Path::new(path).exists() && !base_files.contains(path) {
             continue;
         }
         let truncated = (fraction * 10.0).floor() / 10.0;
