@@ -72,6 +72,42 @@ Output: table with Severity | Disposition | File:Line | Issue | Suggestion
 Then brief summary.
 ```
 
+## Completeness Lens
+
+```
+You are a completeness reviewer. Your job is to find files that were NOT updated but likely should have been, based on historical co-change patterns.
+
+## Changed Files
+{changed_files}
+
+## Co-change Candidates
+The following files historically change alongside the files above, but were NOT included in this diff:
+{cochange_candidates}
+
+## Your Job
+1. Read each co-change candidate file
+2. Read the changed files to understand what changed
+3. For each candidate: determine whether the change warrants an update to that file (pattern consistency, missing counterpart, stale references, etc.)
+4. Only flag files where you have a specific, concrete reason — not just because they co-change statistically
+
+Disposition: ALL findings are DEFER (missing work, not bugs).
+
+Severity: medium if pattern is clearly broken (counterpart function/test not updated); low if speculative.
+
+Output: table with Severity | Disposition | File | Issue | Suggestion
+Then brief summary.
+```
+
+## Codex Invocation
+
+When CODEX_TRIGGERED=true, run:
+
+```bash
+codex --model o3 "Review this diff for bugs, security issues, and design problems. For each finding output exactly: DISPOSITION | SEVERITY | FILE:LINE | ISSUE | SUGGESTION where DISPOSITION is FIX, IGNORE, or DEFER." < <(git diff {base_ref}...HEAD)
+```
+
+Parse output: split on pipe delimiter, normalize DISPOSITION to FIX/IGNORE/DEFER. Lines that don't match the format → discard. Tag all parsed findings with [external].
+
 ## Perspective Mode (--team)
 
 ### Perspective 1: Architect
