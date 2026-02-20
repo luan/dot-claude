@@ -73,7 +73,7 @@ If `--continue`: skip creation, find existing:
 
 ## Step 2: Gather Context
 
-1. Resolve base ref: `BASE=$(gt parent 2>/dev/null || gt trunk || echo main)`
+1. Resolve base ref — already expanded at load: !`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`
 2. Run in parallel:
    <!-- Three lightweight commands instead of gitcontext to avoid pulling the full diff onto the main thread. -->
    - `git diff --stat $BASE...HEAD` → file list with change summary

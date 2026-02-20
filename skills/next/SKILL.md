@@ -25,12 +25,9 @@ Recent commits: !`git log --oneline -5 2>/dev/null`
 
 ## Step 0: Detect trunk
 
-```bash
-TRUNK=$(gt parent 2>/dev/null || gt trunk)
-CURRENT=$(git branch --show-current)
-```
+Trunk: !`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`
 
-If `$CURRENT` equals `$TRUNK`, or the user passed an explicit branch/PR# argument, go to the appropriate path:
+If current branch equals trunk, or the user passed an explicit branch/PR# argument, go to the appropriate path:
 
 - **On trunk, no argument** → Jump to [Trunk Path](#trunk-path)
 - **On feature branch** → Jump to [Feature Branch Path](#feature-branch-path)
