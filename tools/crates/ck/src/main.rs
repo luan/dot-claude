@@ -1,6 +1,7 @@
 mod ansi;
 mod app;
 mod cli;
+mod cochanges;
 mod editor;
 mod gitcontext;
 mod phases;
@@ -125,6 +126,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 max_total,
                 max_file,
             } => gitcontext::run(base, format, max_total, max_file),
+            cli::ToolAction::Cochanges {
+                base,
+                threshold,
+                min_commits,
+                max_files,
+                num_commits,
+            } => cli::run_cochanges(base, threshold, min_commits, max_files, num_commits),
         },
     }
 }

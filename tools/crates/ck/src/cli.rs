@@ -180,6 +180,24 @@ pub enum ToolAction {
         #[arg(long, default_value_t = 200, help = "Per-file diff line threshold")]
         max_file: usize,
     },
+
+    #[command(about = "Find files frequently changed together with current changes")]
+    Cochanges {
+        #[arg(long, default_value = "main", help = "Base branch/ref for changed-file detection")]
+        base: String,
+
+        #[arg(long, default_value_t = 0.3, help = "Min co-change fraction 0.0-1.0")]
+        threshold: f64,
+
+        #[arg(long, default_value_t = 5, help = "Min commits a file must appear in")]
+        min_commits: usize,
+
+        #[arg(long, default_value = "20", help = "Max output files (integer or 'all')")]
+        max_files: String,
+
+        #[arg(long, default_value_t = 10000, help = "How many recent commits to analyze")]
+        num_commits: usize,
+    },
 }
 
 #[derive(Subcommand)]
@@ -971,4 +989,25 @@ pub fn run_project_show(store: &Store, slug: &str) -> Result<(), Box<dyn std::er
 pub fn run_completion(shell: Shell) -> Result<(), Box<dyn std::error::Error>> {
     generate(shell, &mut Cli::command(), "ck", &mut std::io::stdout());
     Ok(())
+}
+
+pub fn run_cochanges(
+    base: String,
+    threshold: f64,
+    min_commits: usize,
+    max_files_str: String,
+    num_commits: usize,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let max_files = if max_files_str.to_lowercase() == "all" {
+        None
+    } else {
+        let n: usize = max_files_str
+            .parse()
+            .map_err(|_| format!("invalid max-files: {max_files_str}"))?;
+        if n == 0 {
+            return Err("max-files must be positive or 'all'".into());
+        }
+        Some(n)
+    };
+    crate::cochanges::run(base, threshold, min_commits, max_files, num_commits)
 }
