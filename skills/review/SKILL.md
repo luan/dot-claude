@@ -49,6 +49,9 @@ Choose mode:
 - 15+ files, no `--team` → **File-Split Mode**
 - Otherwise → **Solo Mode** (2 lenses)
 
+Size check: from the `git diff --stat` output already gathered, count changed files and total lines (+/-).
+Set CODEX_TRIGGERED=true if: file_count >= 5 OR total_lines >= 200.
+
 ## Step 1b: Create Review Issue
 
 ```
@@ -75,10 +78,11 @@ If `--continue`: skip creation, find existing:
 
 1. Resolve base ref — already expanded at load: !`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`
 2. Run in parallel:
-   <!-- Three lightweight commands instead of gitcontext to avoid pulling the full diff onto the main thread. -->
+   <!-- Lightweight commands instead of gitcontext to avoid pulling the full diff onto the main thread. -->
    - `git diff --stat $BASE...HEAD` → file list with change summary
    - `git diff --name-only $BASE...HEAD` → clean file list for mode selection and splitting
    - `git log --oneline $BASE..HEAD` → commit summary
+   - `ck tool cochanges --base $BASE` → cochange candidates; store as COCHANGES (empty output or command failure → skip completeness lens silently)
 3. If `--against`: `TaskGet(issueId)` for plan
 4. Pass `BASE` ref to reviewer subagents — they fetch their own diff.
 
@@ -86,11 +90,13 @@ If `--continue`: skip creation, find existing:
 
 When constructing reviewer prompts from references/prompts.md, replace `{base_ref}` with the resolved BASE value and `{files}` with the file list for the group.
 
-### Solo Mode (2 lenses)
+### Solo Mode (2 or 3 lenses)
 
 Spawn 2 Task agents (persistent-reviewer) in SINGLE message. Pass BASE ref. Reviewer gathers its own diff.
 
-Read references/prompts.md for Solo Mode lens prompt templates.
+If COCHANGES is non-empty, spawn a third Task agent (persistent-reviewer) in the same message using the Completeness Lens prompt, passing `{changed_files}` = the file list and `{cochange_candidates}` = the cochange output.
+
+Read references/prompts.md for Solo Mode and Completeness Lens prompt templates.
 
 ### File-Split Mode (>15 files)
 
@@ -100,18 +106,24 @@ Read references/prompts.md for File-Split Mode prompt template.
 
 ### Perspective Mode (--team)
 
-Spawn EXACTLY 3 Task agents in SINGLE message. Pass BASE ref. Each perspective gathers its own diff (no splitting).
+Spawn EXACTLY 3 Task agents in SINGLE message (4 if COCHANGES non-empty). Pass BASE ref. Each perspective gathers its own diff (no splitting).
 
-Read references/prompts.md for Perspective Mode prompt templates.
+If COCHANGES is non-empty, spawn a 4th Task agent (persistent-reviewer) in the same message using the Completeness Lens prompt, passing `{changed_files}` = the file list and `{cochange_candidates}` = the cochange output.
+
+Read references/prompts.md for Perspective Mode and Completeness Lens prompt templates.
 
 If `--against`: append "Check plan adherence: implementation match plan? Missing/unplanned features? Deviations justified? Plan: {issue description}"
+
+If CODEX_TRIGGERED=true, run the Codex invocation from references/prompts.md via Bash. This runs synchronously on the main thread — wait for output before proceeding to Step 4. If `codex` command fails or is not found, log a warning and skip; do not abort the review.
 
 ## Step 4: Consolidate + Present
 
 0. **Validate reviewer output** (subagent-trust.md): spot-check 1-2 specific file:line claims from each reviewer before consolidating. If a claimed issue doesn't exist at that location → discard it.
+   For [external] findings from codex: spot-check ALL file:line claims before including. If a codex finding duplicates a human reviewer finding, keep the human version. [external] tag persists through to output.
 1. Deduplicate (same issue from multiple lenses → highest severity)
 2. Sort by severity. **NEVER truncate validated findings.** Output EVERY finding that survived validation.
 3. --team only: tag [architect]/[code-quality]/[devil], detect consensus (2+ flag same issue), note disagreements
+4. Completeness findings are always DEFER regardless of what the reviewer classifies them as. They appear in the DEFER section of the output table.
 
 Output: `# Adversarial Review Summary`
 
