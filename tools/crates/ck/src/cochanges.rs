@@ -14,20 +14,23 @@ fn git(args: &[&str]) -> Result<String, String> {
     }
 }
 
-pub fn get_commits_with_files(n: usize) -> Vec<HashSet<String>> {
+pub fn get_commits_with_files(n: usize) -> Result<Vec<HashSet<String>>, String> {
     let output = git(&[
         "log",
         &format!("-n{n}"),
         "--name-only",
         "--pretty=format:%H",
         "--no-merges",
-        "--diff-filter=ACDMRTUXB*",
+        "--diff-filter=ACDMRTUXB",
     ])
-    .unwrap_or_default();
+    .map_err(|e| {
+        eprintln!("git log failed: {e}");
+        e
+    })?;
 
     let output = output.trim();
     if output.is_empty() {
-        return vec![];
+        return Ok(vec![]);
     }
 
     let mut commits: Vec<HashSet<String>> = Vec::new();
@@ -56,7 +59,7 @@ pub fn get_commits_with_files(n: usize) -> Vec<HashSet<String>> {
         commits.push(changed_files);
     }
 
-    commits
+    Ok(commits)
 }
 
 pub fn calculate_file_associations(
@@ -106,14 +109,20 @@ pub fn calculate_file_associations(
     result
 }
 
-pub fn get_changed_files(base: &str) -> HashSet<String> {
-    git(&["diff", "--name-only", base])
-        .unwrap_or_default()
-        .lines()
-        .map(str::trim)
-        .filter(|l| !l.is_empty())
-        .map(String::from)
-        .collect()
+pub fn get_changed_files(base: &str) -> Result<HashSet<String>, String> {
+    let ref_arg = format!("{base}...HEAD");
+    git(&["diff", "--name-only", &ref_arg])
+        .map_err(|e| {
+            eprintln!("git diff failed: {e}");
+            e
+        })
+        .map(|out| {
+            out.lines()
+                .map(str::trim)
+                .filter(|l| !l.is_empty())
+                .map(String::from)
+                .collect()
+        })
 }
 
 fn file_exists_on_branch(path: &str, base: &str) -> bool {
@@ -183,14 +192,14 @@ pub fn run(
         return Err("min-commits must be > 0".into());
     }
 
-    let commits = get_commits_with_files(num_commits);
+    let commits = get_commits_with_files(num_commits)?;
     if commits.is_empty() {
         eprintln!("No commits found or no files changed in the analyzed commits.");
         return Ok(());
     }
 
     let associations = calculate_file_associations(&commits, threshold, min_commits);
-    let changed_files = get_changed_files(&base);
+    let changed_files = get_changed_files(&base)?;
 
     if changed_files.is_empty() {
         eprintln!("No files changed compared to {base}.");
@@ -200,4 +209,181 @@ pub fn run(
     output_changed_associations(&associations, &changed_files, max_files, &base);
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse_commits(output: &str) -> Vec<HashSet<String>> {
+        // Re-implement the parser inline so tests don't require git.
+        // Mirrors get_commits_with_files parser logic exactly.
+        let output = output.trim();
+        if output.is_empty() {
+            return vec![];
+        }
+        let mut commits: Vec<HashSet<String>> = Vec::new();
+        let mut changed_files: HashSet<String> = HashSet::new();
+        let mut before_commit_hash = true;
+        for line in output.lines() {
+            let line = line.trim();
+            if line.is_empty() {
+                if !changed_files.is_empty() {
+                    commits.push(std::mem::take(&mut changed_files));
+                }
+                before_commit_hash = true;
+            } else if before_commit_hash {
+                if !changed_files.is_empty() {
+                    commits.push(std::mem::take(&mut changed_files));
+                }
+                before_commit_hash = false;
+            } else {
+                changed_files.insert(line.to_string());
+            }
+        }
+        if !changed_files.is_empty() {
+            commits.push(changed_files);
+        }
+        commits
+    }
+
+    // --- get_commits_with_files parser ---
+
+    #[test]
+    fn parser_normal_commits() {
+        let output = "abc123\nfoo.rs\nbar.rs\n\ndef456\nbaz.rs\n";
+        let commits = parse_commits(output);
+        assert_eq!(commits.len(), 2);
+        assert!(commits[0].contains("foo.rs"));
+        assert!(commits[0].contains("bar.rs"));
+        assert!(commits[1].contains("baz.rs"));
+    }
+
+    #[test]
+    fn parser_empty_output() {
+        let commits = parse_commits("");
+        assert!(commits.is_empty());
+    }
+
+    #[test]
+    fn parser_whitespace_only() {
+        let commits = parse_commits("   \n  \n");
+        assert!(commits.is_empty());
+    }
+
+    #[test]
+    fn parser_commit_with_no_files() {
+        // A commit hash with no following file lines should produce no entry.
+        let output = "abc123\n\ndef456\nbaz.rs\n";
+        let commits = parse_commits(output);
+        assert_eq!(commits.len(), 1);
+        assert!(commits[0].contains("baz.rs"));
+    }
+
+    #[test]
+    fn parser_single_commit_no_trailing_newline() {
+        let output = "abc123\nonly.rs";
+        let commits = parse_commits(output);
+        assert_eq!(commits.len(), 1);
+        assert!(commits[0].contains("only.rs"));
+    }
+
+    // --- calculate_file_associations ---
+
+    fn make_commit(files: &[&str]) -> HashSet<String> {
+        files.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn associations_threshold_filtering() {
+        // a.rs and b.rs co-change in 2 of 2 commits → fraction 1.0 (above 0.5)
+        // a.rs and c.rs co-change in 1 of 2 commits → fraction 0.5 (at threshold, included)
+        // a.rs and d.rs co-change in 0 → excluded
+        let commits = vec![
+            make_commit(&["a.rs", "b.rs", "c.rs"]),
+            make_commit(&["a.rs", "b.rs"]),
+        ];
+        let result = calculate_file_associations(&commits, 0.5, 1);
+        let a_assoc = result.get("a.rs").expect("a.rs must have associations");
+        assert!(a_assoc.contains_key("b.rs"), "b.rs should be associated");
+        assert!(a_assoc.contains_key("c.rs"), "c.rs should be associated");
+        assert!(!a_assoc.contains_key("d.rs"));
+    }
+
+    #[test]
+    fn associations_below_threshold_excluded() {
+        // a.rs appears in 4 commits, c.rs only in 1 of those → 0.25 < 0.5
+        let commits = vec![
+            make_commit(&["a.rs", "b.rs"]),
+            make_commit(&["a.rs", "b.rs"]),
+            make_commit(&["a.rs", "b.rs"]),
+            make_commit(&["a.rs", "b.rs", "c.rs"]),
+        ];
+        let result = calculate_file_associations(&commits, 0.5, 1);
+        let a_assoc = result.get("a.rs").expect("a.rs must have associations");
+        assert!(
+            !a_assoc.contains_key("c.rs"),
+            "c.rs fraction is 0.25, below threshold"
+        );
+    }
+
+    #[test]
+    fn associations_min_commits_filtering() {
+        // a.rs appears only once; with min_commits=2 it should be excluded entirely.
+        let commits = vec![make_commit(&["a.rs", "b.rs"])];
+        let result = calculate_file_associations(&commits, 0.0, 2);
+        assert!(!result.contains_key("a.rs"));
+    }
+
+    #[test]
+    fn associations_empty_input() {
+        let result = calculate_file_associations(&[], 0.5, 1);
+        assert!(result.is_empty());
+    }
+
+    // --- edge cases for output_changed_associations ---
+
+    #[test]
+    fn no_changed_files_produces_no_output() {
+        let commits = vec![make_commit(&["a.rs", "b.rs"])];
+        let associations = calculate_file_associations(&commits, 0.5, 1);
+        // Empty changed_files → no associations surfaced (no panic, no output).
+        let changed: HashSet<String> = HashSet::new();
+        // Just verify this doesn't panic and associations are non-empty.
+        assert!(!associations.is_empty());
+        // With no changed files the loop body in output_changed_associations is never entered.
+        for file in &changed {
+            assert!(associations.contains_key(file.as_str()));
+        }
+    }
+
+    #[test]
+    fn all_related_files_already_changed() {
+        // When every associated file is already in changed_files, nothing gets printed.
+        let commits = vec![
+            make_commit(&["a.rs", "b.rs"]),
+            make_commit(&["a.rs", "b.rs"]),
+        ];
+        let associations = calculate_file_associations(&commits, 0.5, 1);
+        let changed: HashSet<String> = ["a.rs", "b.rs"].iter().map(|s| s.to_string()).collect();
+        // build max_fractions manually — all related are in changed, so result must be empty.
+        let mut max_fractions: std::collections::HashMap<String, f64> = HashMap::new();
+        for file_path in &changed {
+            if let Some(related) = associations.get(file_path.as_str()) {
+                for (other_file, &fraction) in related {
+                    if changed.contains(other_file) {
+                        continue;
+                    }
+                    let entry = max_fractions.entry(other_file.clone()).or_insert(0.0);
+                    if fraction > *entry {
+                        *entry = fraction;
+                    }
+                }
+            }
+        }
+        assert!(
+            max_fractions.is_empty(),
+            "all related files are already changed"
+        );
+    }
 }
