@@ -183,7 +183,11 @@ pub enum ToolAction {
 
     #[command(about = "Find files frequently changed together with current changes")]
     Cochanges {
-        #[arg(long, default_value = "main", help = "Base branch/ref for changed-file detection")]
+        #[arg(
+            long,
+            default_value = "main",
+            help = "Base branch/ref for changed-file detection"
+        )]
         base: String,
 
         #[arg(long, default_value_t = 0.3, help = "Min co-change fraction 0.0-1.0")]
@@ -192,10 +196,18 @@ pub enum ToolAction {
         #[arg(long, default_value_t = 5, help = "Min commits a file must appear in")]
         min_commits: usize,
 
-        #[arg(long, default_value = "20", help = "Max output files (integer or 'all')")]
+        #[arg(
+            long,
+            default_value = "20",
+            help = "Max output files (integer or 'all')"
+        )]
         max_files: String,
 
-        #[arg(long, default_value_t = 10000, help = "How many recent commits to analyze")]
+        #[arg(
+            long,
+            default_value_t = 10000,
+            help = "How many recent commits to analyze"
+        )]
         num_commits: usize,
     },
 }
