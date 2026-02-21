@@ -22,7 +22,7 @@ pub fn project_name(project_path: &str) -> String {
 
     // Walk backwards looking for a `.git` directory component.
     // If found, use `{repo}-{remaining}` so worktrees get unique names.
-    // e.g. /src/arc.git/wt1 → "arc-wt1", /src/arc.git/wt2 → "arc-wt2"
+    // e.g. /src/repo.git/wt1 → "repo-wt1", /src/repo.git/wt2 → "repo-wt2"
     for (i, comp) in components.iter().enumerate() {
         if comp.ends_with(".git") {
             let stem = comp.strip_suffix(".git").unwrap_or(comp);
@@ -432,13 +432,13 @@ mod tests {
     use super::*;
     #[test]
     fn worktree_path_gets_repo_prefix() {
-        assert_eq!(project_name("/Users/me/src/arc.git/wt1"), "arc-wt1");
-        assert_eq!(project_name("/Users/me/src/arc.git/wt2"), "arc-wt2");
+        assert_eq!(project_name("/Users/me/src/repo.git/wt1"), "repo-wt1");
+        assert_eq!(project_name("/Users/me/src/repo.git/wt2"), "repo-wt2");
     }
 
     #[test]
     fn bare_git_dir_uses_stem() {
-        assert_eq!(project_name("/Users/me/src/arc.git"), "arc");
+        assert_eq!(project_name("/Users/me/src/repo.git"), "repo");
     }
 
     #[test]
@@ -451,7 +451,7 @@ mod tests {
 
     #[test]
     fn normal_path_uses_last_component() {
-        assert_eq!(project_name("/Users/me/src/chromium/src/arc"), "arc");
+        assert_eq!(project_name("/Users/me/src/myapp/src/core"), "core");
     }
 
     #[test]
