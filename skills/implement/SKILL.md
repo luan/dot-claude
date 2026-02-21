@@ -31,6 +31,22 @@ Resolve argument:
 - No argument → `TaskList()` → first in_progress epic, else first pending epic, else first unblocked task
 - Nothing found → suggest `/explore` then `/prepare`, stop
 
+## Recovery
+
+Before classifying, check for orphaned work:
+
+1. `TaskList()` → find any epic where `metadata.impl_team` is set AND `status == "in_progress"`
+2. If none found → proceed to Step 2: Classify normally
+
+**If orphaned epic found:**
+
+3. Read `~/.claude/teams/<impl_team>/config.json`
+4. **Config exists** (team is alive) → extract team lead name, re-enter Rolling Scheduler using current metadata counters (`impl_completed`, `impl_active`, `impl_pending`) as starting state. Shut down any workers that didn't send completion messages, re-dispatch their tasks as pending.
+5. **Config missing** (team died) → clear `impl_team` from metadata (`TaskUpdate(epicId, metadata: {impl_team: null})`). Dispatch remaining pending children sequentially using **Standalone Worker Prompt**, up to 4 at a time, until all complete. Then proceed to Verify.
+6. After recovery completes → continue to Teardown (do not re-run Setup)
+
+**Note:** If the argument passed to `/implement` specifies a different epic/task than the orphaned one, prioritize the argument. Only auto-recover when no explicit target is given (no-argument invocation).
+
 ## Step 2: Classify
 
 `TaskGet(taskId)` to inspect. Children = `TaskList()` filtered by `metadata.parent_id`.
@@ -63,11 +79,12 @@ Implement task <task-id>.
 3. Build + test. All green → continue.
    On failure: deduplicate errors (strip paths/line numbers). Same root error 2x → stop, report with context. 3 distinct errors → report all, stop.
 4. TaskUpdate(taskId, status: "completed")
-5. Run `Skill("refine")` on changed files. No changes needed → skip.
+5. Run `Skill("refine")` on changed files. No changes needed → skip. **When refine asks about committing, select "Done for now" — orchestrator handles commits.**
 
 ## Rules
 - TDD: test first. Standards: rules/test-quality.md
 - Never run git commands — orchestrator handles commits
+- Never invoke Skill("commit") — orchestrator handles commits
 - Only modify files in your task scope
 - Bug found elsewhere → TaskCreate(subject: "Found: ...", metadata: {type: "bug", priority: "P2", project: "<repo root>"})
 ```
@@ -93,7 +110,7 @@ Implement task <task-id>.
 3. Build + test. All green → continue.
    On failure: deduplicate errors (strip paths/line numbers). Same root error 2x → stop, report with context. 3 distinct errors → report all, stop.
 4. TaskUpdate(taskId, status: "completed")
-5. Run `Skill("refine")` on changed files. No changes needed → skip.
+5. Run `Skill("refine")` on changed files. No changes needed → skip. **When refine asks about committing, select "Done for now" — orchestrator handles commits.**
 6. SendMessage(type="message", recipient="<team-lead-name>",
      content="Completed <task-id>: <summary>",
      summary="Completed <task-id>")
@@ -104,6 +121,7 @@ Implement task <task-id>.
 - Only modify files in your task scope
 - File conflict or blocker → SendMessage to team lead, wait
 - Never run git commands
+- Never invoke Skill("commit") — orchestrator handles commits
 - Bug found elsewhere → TaskCreate(subject: "Found: ...", metadata: {type: "bug", priority: "P2", project: "<repo root>"})
 ```
 
@@ -120,12 +138,14 @@ Implement task <task-id>.
 All tasks independent — fire and forget, no team overhead.
 
 1. `TaskGet(epicId)` → subject + `metadata.design` as epic context
+   `TaskUpdate(epicId, metadata: {impl_mode: "parallel"})`
 2. `TaskList()` filtered by `metadata.parent_id == epicId` → children
 3. **Pre-flight:** children exist and have descriptions → continue. Empty or no children → stop, suggest `/prepare`
 4. Spawn ALL children as Task agents in a SINGLE message (up to 4, queue remainder). Each uses **Standalone Worker Prompt** with epic context injected.
 5. Wait for all to return. Check `TaskList()` for any incomplete.
 6. Incomplete tasks → spawn another batch (max 2 retries per task)
-7. → Verify, Stage Changes, then Continuation Prompt
+7. `TaskUpdate(epicId, metadata: {impl_mode: null})`
+8. → Verify, Stage Changes, then Continuation Prompt
 
 ## Swarm Mode
 
@@ -136,8 +156,9 @@ Used when tasks have dependency waves (blockedBy relationships). **Every task in
 1. `TaskGet(epicId)` → subject + `metadata.design` as epic context
 2. `TaskList()` filtered by `metadata.parent_id == epicId` → children
 3. **Pre-flight:** children exist and have descriptions → continue. Empty or no children → stop, suggest `/prepare`
-4. `TeamCreate(team_name="impl-<slug>")`  (fall back to `impl-<epicId>` if no slug) If fails → fall back to sequential wave dispatch using **Standalone Worker Prompt**: dispatch unblocked tasks (up to 4), wait for completion, then dispatch newly unblocked tasks. Same rolling logic as Swarm but without team messaging.
+4. `TeamCreate(team_name="impl-<slug>")`  (fall back to `impl-<epicId>` if no slug) If fails → fall back to sequential wave dispatch using **Standalone Worker Prompt**: dispatch unblocked tasks (up to 4), wait for completion, then dispatch newly unblocked tasks. Same rolling logic as Swarm but without team messaging. On failure: `TaskUpdate(epicId, metadata: {impl_mode: "standalone-fallback"})`
 5. Read team config `~/.claude/teams/impl-<slug>/config.json` → extract team lead name for worker prompts
+   `TaskUpdate(epicId, metadata: {impl_team: "impl-<slug>", impl_mode: "swarm"})`
 
 ### Rolling Scheduler
 
@@ -165,6 +186,11 @@ while tasks remain incomplete:
     1. If worker completed its task → active_count--
        If Standalone worker returned without completing → check TaskList():
          task still in_progress → stuck, TaskUpdate(id, status: "pending", owner: ""), active_count--
+       TaskUpdate(epicId, metadata: {
+         impl_completed: <count of completed children>,
+         impl_active: active_count,
+         impl_pending: <count of pending children>
+       })
     2. Shut down completed team-based workers (SendMessage shutdown_request)
     3. newly_ready = TaskList() filtered by:
          metadata.parent_id == epicId AND
@@ -187,9 +213,10 @@ while tasks remain incomplete:
 
 ### Teardown
 
-1. `TaskUpdate(epicId, status: "completed")`
-2. TeamDelete
-3. → Stage Changes, then Continuation Prompt
+1. `TaskUpdate(epicId, metadata: {impl_team: null, impl_mode: null, impl_completed: null, impl_active: null, impl_pending: null})`
+2. `TaskUpdate(epicId, status: "completed")`
+3. TeamDelete
+4. → Stage Changes, then Continuation Prompt
 
 ## Stage Changes
 
