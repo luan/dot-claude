@@ -36,8 +36,8 @@ Resolve argument:
 `TaskGet(taskId)` to inspect. Children = `TaskList()` filtered by `metadata.parent_id`.
 
 - Single task (no children) → **Solo**
-- Multiple children, all independent (no blockedBy) → **Parallel**
-- Multiple children with blockedBy dependencies → **Swarm**
+- 2-3 independent children (no blockedBy) → **Parallel**
+- 4+ children (regardless of dependencies) OR children with blockedBy dependencies → **Swarm**
 
 ## Worker Prompt
 

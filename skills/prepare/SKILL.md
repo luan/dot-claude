@@ -42,6 +42,7 @@ See rules/skill-interviewing.md. Skill-specific triggers:
 2. **Pre-check design quality:**
    - Must have structured sections (Phase, Step, or numbered groups) with file paths
    - Missing file paths or vague descriptions → suggest re-running `/explore` with more detail, STOP
+   - If plan has a standalone testing/test phase → merge its test items into the implementation phases they cover before proceeding (TDD: tests live with the code they verify, not in a later phase)
 
 3. **Parse plan:**
    - If source is a plan file: `ck tool phases <file>` → JSON array of `{phase, title, tasks, deps}`
@@ -107,6 +108,7 @@ See rules/skill-interviewing.md. Skill-specific triggers:
    - Testable acceptance criteria
    - Explicit assumptions about file structure
    - Each task = one logical unit (one feature/fix/change)
+   - **TDD is per-task, never a separate phase.** Every implementation task includes writing tests as part of its workflow (red-green-refactor). If the source plan has a dedicated "testing" or "add tests" phase, fold those tests into the implementation tasks they verify. Never create a task whose sole purpose is writing tests for work done in earlier tasks.
    ```
 
    Task titles MUST start with "Phase N:" — implement uses this for sequencing. Number matches the phase from the design.
