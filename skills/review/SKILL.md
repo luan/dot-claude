@@ -23,8 +23,18 @@ Three modes: solo (default), file-split (auto for large diffs), perspective (--t
 ## Interviewing
 
 See rules/skill-interviewing.md. Skill-specific triggers:
+
 - Severity judgment borderline (medium vs high) → ask user's priority
 - Pattern violation unclear (style preference vs correctness issue) → clarify importance
+
+## Constants
+
+Expanded at load:
+
+- BASE=!`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`
+- REPO_ROOT=!`git rev-parse --show-toplevel 2>/dev/null`
+- CODEX_AVAILABLE=!`which codex >/dev/null 2>&1 && echo "true" || echo "false"`
+- NON_INTERACTIVE=!`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "true" || echo "false"`
 
 ## Step 1: Scope + Mode
 
@@ -32,12 +42,12 @@ Parse $ARGUMENTS:
 
 - `--against <task-id>`: task for plan adherence
 - `--team`: force 3-perspective mode
-- Remaining args:
+- Remaining args override BASE:
 
 | Input        | Diff source                             |
 | ------------ | --------------------------------------- |
-| (none)       | `git diff HEAD`                         |
-| `main..HEAD` | `git diff main..HEAD`                   |
+| (none)       | `git diff $BASE...HEAD`                 |
+| `main..HEAD` | BASE=main                               |
 | file list    | `git diff HEAD -- <files>` + read files |
 | `#123`       | `gh pr diff 123`                        |
 
@@ -49,8 +59,8 @@ Choose mode:
 - 15+ files, no `--team` → **File-Split Mode**
 - Otherwise → **Solo Mode** (2 lenses)
 
-Size check: from the `git diff --stat` output already gathered, count changed files and total lines (+/-).
-Set CODEX_TRIGGERED=true if: file_count >= 5 OR total_lines >= 200.
+Size check: from `git diff --stat` output, count changed files and total lines (+/-).
+Set CODEX_TRIGGERED=true if: (file_count >= 5 OR total_lines >= 200) AND CODEX_AVAILABLE.
 
 ## Step 1b: Create Review Issue
 
@@ -60,7 +70,7 @@ TaskCreate:
   description: "Adversarial review of <scope-details>"
   activeForm: "Creating review task"
   metadata:
-    project: <repo root from git rev-parse --show-toplevel>
+    project: REPO_ROOT
     type: "review"
     priority: "P2"
 
@@ -76,149 +86,350 @@ If `--continue`: skip creation, find existing:
 
 ## Step 2: Gather Context
 
-1. Resolve base ref — already expanded at load: !`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`
-2. Run in parallel:
-   <!-- Lightweight commands instead of gitcontext to avoid pulling the full diff onto the main thread. -->
-   - `git diff --stat $BASE...HEAD` → file list with change summary
-   - `git diff --name-only $BASE...HEAD` → clean file list for mode selection and splitting
-   - `git log --oneline $BASE..HEAD` → commit summary
-   - `ck tool cochanges --base $BASE` → cochange candidates; store as COCHANGES (empty output or command failure → skip completeness lens silently)
-3. If `--against`: `TaskGet(issueId)` for plan
-4. Pass `BASE` ref to reviewer subagents — they fetch their own diff.
+<!-- Lightweight commands — reviewers fetch their own full diff via gitcontext -->
+Run in parallel:
+- `git diff --stat $BASE...HEAD` → file list with change summary
+- `git diff --name-only $BASE...HEAD` → CHANGED_FILES
+- `git log --oneline $BASE..HEAD` → commit summary
+- `ck tool cochanges --base $BASE` → COCHANGES (empty output or command failure → skip completeness lens silently)
+
+If `--against`: `TaskGet(issueId)` for plan.
+
+## Prompt Components
+
+Substituted into Step 3 prompts via `{name}` markers.
+
+**{context_preamble}:**
+```
+## Gather Context
+1. Run: `ck tool gitcontext --base {base_ref} --format json`
+2. Read all changed files from the output
+3. If `truncated_files` is non-empty, `Read` those files in full
+```
+
+**{disposition_block}:**
+```
+Classify each finding:
+- FIX: correctness bugs, security issues, test gaps — will be auto-fixed
+- IGNORE: style preferences, subjective, low-signal, out-of-scope tech debt — skip
+```
 
 ## Step 3: Dispatch Reviewers
 
-When constructing reviewer prompts from references/prompts.md, replace `{base_ref}` with the resolved BASE value and `{files}` with the file list for the group.
+Substitute `{base_ref}` → BASE, `{files}` → file list, `{changed_files}` → CHANGED_FILES, `{cochange_candidates}` → COCHANGES, and prompt components.
 
-### Solo Mode (2 or 3 lenses)
+All reviewers are persistent-reviewer Task agents. Spawn all agents for the chosen mode in a SINGLE message.
 
-Spawn 2 Task agents (persistent-reviewer) in SINGLE message. Pass BASE ref. Reviewer gathers its own diff.
+If `--against`: append to every reviewer prompt: "Also check plan adherence: does implementation match plan? Missing/unplanned features? Deviations justified? Plan: {issue description}"
 
-If COCHANGES is non-empty, spawn a third Task agent (persistent-reviewer) in the same message using the Completeness Lens prompt, passing `{changed_files}` = the file list and `{cochange_candidates}` = the cochange output.
+### Solo Mode
 
-Read references/prompts.md for Solo Mode and Completeness Lens prompt templates.
+**Agent 1 — Correctness & Security:**
+```
+You are an adversarial correctness and security reviewer.
 
-### File-Split Mode (>15 files)
+{context_preamble}
 
-Split files into groups of ~8. Spawn parallel Task agents, one per group. Pass BASE ref and file group.
+Focus:
+- Edge cases (empty, null, overflow, concurrent access)
+- Invalid states, race conditions
+- Resource leaks (unclosed handles, missing cleanup)
+- Silent failures, swallowed errors
+- Off-by-one, logic inversions
+- Injection (SQL, command, XSS, template)
+- Auth/authz gaps, data exposure, cryptographic misuse
+- Missing tests for new or changed behavior, untested edge cases
 
-Read references/prompts.md for File-Split Mode prompt template.
+{disposition_block}
+
+Output: table with Severity | Disposition | File:Line | Issue | Suggestion
+Then brief summary.
+```
+
+**Agent 2 — Architecture & Performance:**
+```
+You are an adversarial architecture and performance reviewer.
+
+{context_preamble}
+
+Focus:
+- Incomplete refactors, dead code, unused params
+- Unnecessary abstractions, coupling
+- Could this be simpler?
+- O(n^2) in loops, unnecessary allocations
+- Memory (retained refs, unbounded growth)
+- I/O (blocking calls, N+1 queries)
+- Concurrency (thread safety, deadlock, contention)
+
+{disposition_block}
+
+Output: table with Severity | Disposition | File:Line | Issue | Suggestion
+Then brief summary.
+```
+
+### File-Split Mode
+
+Split CHANGED_FILES into groups of ~8. One agent per group:
+
+```
+You are an adversarial reviewer covering correctness/security and architecture/performance.
+
+## Gather Context
+Files in scope: {files}
+
+1. Run: `ck tool gitcontext --base {base_ref} --format json`
+2. Read these files in full: {files}
+3. If `truncated_files` is non-empty for any scoped file, `Read` those files in full
+
+Focus (Correctness & Security):
+- Edge cases (empty, null, overflow, concurrent access)
+- Invalid states, race conditions
+- Resource leaks (unclosed handles, missing cleanup)
+- Silent failures, swallowed errors
+- Off-by-one, logic inversions
+- Injection (SQL, command, XSS, template)
+- Auth/authz gaps, data exposure, cryptographic misuse
+- Missing tests for new or changed behavior, untested edge cases
+
+Focus (Architecture & Performance):
+- Incomplete refactors, dead code, unused params
+- Unnecessary abstractions, coupling
+- Could this be simpler?
+- O(n^2) in loops, unnecessary allocations
+- Memory (retained refs, unbounded growth)
+- I/O (blocking calls, N+1 queries)
+- Concurrency (thread safety, deadlock, contention)
+
+{disposition_block}
+
+Output: table with Severity | Disposition | File:Line | Issue | Suggestion
+Then brief summary.
+```
 
 ### Perspective Mode (--team)
 
-Spawn EXACTLY 3 Task agents in SINGLE message (4 if COCHANGES non-empty). Pass BASE ref. Each perspective gathers its own diff (no splitting).
+Spawn EXACTLY 3 agents (+ extras if applicable):
 
-If COCHANGES is non-empty, spawn a 4th Task agent (persistent-reviewer) in the same message using the Completeness Lens prompt, passing `{changed_files}` = the file list and `{cochange_candidates}` = the cochange output.
+**Agent 1 — Architect:**
+```
+Architecture reviewer.
 
-Read references/prompts.md for Perspective Mode and Completeness Lens prompt templates.
+{context_preamble}
 
-If `--against`: append "Check plan adherence: implementation match plan? Missing/unplanned features? Deviations justified? Plan: {issue description}"
+Focus:
+- System boundaries, coupling, scalability
+- Design flaws, incomplete abstractions
+- Dependency direction, module cohesion
+- Could this be simpler or more maintainable?
+- Testing gaps: new/changed logic with no coverage, boundary conditions not exercised, untested error paths
 
-If CODEX_TRIGGERED=true, run the Codex invocation from references/prompts.md via Bash. This runs synchronously on the main thread — wait for output before proceeding to Step 4. If `codex` command fails or is not found, log a warning and skip; do not abort the review.
+{disposition_block}
+
+Tag: [architect]
+Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
+Each finding: table with Severity | Disposition | File:Line | Issue | Suggestion
+```
+
+**Agent 2 — Code Quality:**
+```
+Code quality reviewer.
+
+{context_preamble}
+
+Focus:
+- Readability, naming, error handling
+- Edge cases, off-by-one, null safety
+- Consistency with surrounding code
+- Resource leaks, missing cleanup
+- Testing gaps: new/changed logic with no coverage, boundary conditions not exercised, untested error paths
+
+{disposition_block}
+
+Tag: [code-quality]
+Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
+Each finding: table with Severity | Disposition | File:Line | Issue | Suggestion
+```
+
+**Agent 3 — Devil's Advocate:**
+```
+Devil's advocate reviewer.
+
+{context_preamble}
+
+Focus:
+- Failure modes others miss
+- Security: injection, auth gaps, data exposure
+- Bad assumptions, race conditions
+- What breaks under load, bad input, or partial failure?
+- Testing gaps: new/changed logic with no coverage, boundary conditions not exercised, untested error paths
+
+{disposition_block}
+
+Tag: [devil]
+Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
+Each finding: table with Severity | Disposition | File:Line | Issue | Suggestion
+```
+
+### Additional Agents (all modes)
+
+Spawned in the same message as the mode's primary agents.
+
+**Completeness (only if COCHANGES non-empty):**
+```
+You are a completeness reviewer. Find files NOT updated that likely should have been.
+
+## Changed Files
+{changed_files}
+
+## Co-change Candidates
+These files historically change alongside the above but were NOT in this diff:
+{cochange_candidates}
+
+## Your Job
+1. Read each co-change candidate file
+2. Read the changed files to understand what changed
+3. For each candidate: determine if the change warrants an update (pattern consistency, missing counterpart, stale references)
+4. Only flag files with a specific, concrete reason — not just statistical co-change
+
+{disposition_block}
+
+Severity: medium if pattern is clearly broken (counterpart not updated); low if speculative.
+
+Output: table with Severity | Disposition | File | Issue | Suggestion
+Then brief summary.
+```
+
+**Codex (only if CODEX_TRIGGERED):**
+```
+Run `codex review --base {base_ref}` via Bash. Capture the full output.
+If the command fails or is not found, return empty findings with a warning note.
+
+Parse the output into individual findings. For each finding, extract file:line, issue description, and severity estimate.
+
+Tag all findings with [external].
+
+{disposition_block}
+
+Output: table with [external] | Severity | Disposition | File:Line | Issue | Suggestion
+```
 
 ## Step 4: Consolidate + Present
 
-0. **Validate reviewer output** (subagent-trust.md): spot-check 1-2 specific file:line claims from each reviewer before consolidating. If a claimed issue doesn't exist at that location → discard it.
-   For [external] findings from codex: spot-check ALL file:line claims before including. If a codex finding duplicates a human reviewer finding, keep the human version. [external] tag persists through to output.
+0. **Validate reviewer output** (subagent-trust.md): spot-check 1-2 specific file:line claims from each reviewer. Claimed issue doesn't exist at that location → discard.
+   For [external] codex findings: spot-check ALL file:line claims. Codex duplicate of reviewer finding → keep reviewer version. [external] tag persists.
 1. Deduplicate (same issue from multiple lenses → highest severity)
 2. Sort by severity. **NEVER truncate validated findings.** Output EVERY finding that survived validation.
 3. --team only: tag [architect]/[code-quality]/[devil], detect consensus (2+ flag same issue), note disagreements
-4. Completeness findings are always DEFER regardless of what the reviewer classifies them as. They appear in the DEFER section of the output table.
 
 Output: `# Adversarial Review Summary`
 
+- --team: **Consensus** (top, issues flagged by 2+ reviewers)
 - **FIX items** (sorted by severity): table with Severity | File:Line | Issue | Suggestion
 - **IGNORE items** (grouped by category, one line each): collapsed summary
-- **DEFER items** (listed last — most visible to user): table with Severity | File:Line | Issue | Suggestion
-- --team adds: Consensus (top, above FIX items), Disagreements (bottom, after DEFER items)
-- Footer: Verdict (APPROVE/COMMENTS/CHANGES), Blocking count, Review task-id, "Clean review → /commit", "New work discovered → /prepare <task-id>"
+- --team: **Disagreements** (bottom)
+- Footer: Verdict (APPROVE/COMMENTS/CHANGES), Blocking count, Review task-id
 
-!`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Return findings to caller. Don't fix." || echo "Use AskUserQuestion: Fix all FIX items / Fix critical+high FIX items only / Fix critical FIX items only / Skip fixes"`
+!`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Return findings to caller. Don't fix." || echo "Use AskUserQuestion: Fix all FIX items / Fix critical+high only / Fix critical only / Skip fixes"`
 
 ## Step 4b: Store Findings
 
-Store findings using `reviewId` as the task:
-
-1. `PLAN_FILE=$(echo "<findings>" | ck plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "review" 2>/dev/null)` — if command fails or `$PLAN_FILE` is empty, warn user: "Plan file creation failed — findings stored in task metadata only."
-2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "$PLAN_FILE" (omit key if empty), status_detail: "review"}, description: "Review: <topic> — findings in plan file and metadata.design")`
+1. `PLAN_FILE=$(echo "<findings>" | ck plan create --topic "<topic>" --project "REPO_ROOT" --prefix "review" 2>/dev/null)` — if command fails or empty, warn: "Plan file creation failed — findings in task metadata only."
+2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "$PLAN_FILE" (omit if empty), status_detail: "review"}, description: "Review: <topic> — findings in plan file and metadata.design")`
 
 ## Step 5: Dispatch Fixes
 
-Spawn general-purpose agent (model="sonnet"). Read references/prompts.md for fix dispatch prompt template.
+Spawn general-purpose agent (model="sonnet"):
+
+```
+Fix these review issues in code.
+
+## Issues to Fix
+{FIX-classified issues with file:line refs}
+
+## Your Job
+1. Fix each listed issue
+2. Verify fixes (syntax check, run tests to confirm no regressions)
+3. Report what you fixed with file:line for each fix
+
+Do NOT: fix unlisted things, refactor beyond needed, add features
+```
 
 After fix agent returns, invoke `Skill("refine")` on changed files.
 
 ## Step 6: Re-review
 
-Re-run Step 3 after fixes. Track iteration count starting at 1 (max 4 re-review iterations; the initial review doesn't count).
+Re-run Step 3 after fixes. Track iteration count starting at 1 (max 4).
 
 Before re-running:
-- Maintain `fixed_issues` set: `(file, issue-description)` pairs from previous iterations (not file:line — line numbers shift after fixes)
-- When consolidating new findings in Step 4: skip any finding matching a `fixed_issues` entry
+
+- Maintain `fixed_issues` set: `(file, issue-description)` pairs (not file:line — lines shift)
+- When consolidating: skip findings matching `fixed_issues`
 
 On each iteration: announce "Re-review iteration N/4"
 
-If a DEFER item from a previous round no longer appears:
-- Do NOT assume resolved — investigate first
-- Line deleted entirely → resolved, remove from DEFER list
-- Code changed but concern persists → keep as DEFER
-
 Loop exits when:
-- All FIX items resolved (no new FIX findings survive consolidation)
+
+- All FIX items resolved
 - OR user selects "Stop fixing"
-- OR iteration count reaches 4 (report remaining FIX items as unresolved)
+- OR iteration count reaches 4 (report remaining as unresolved)
 
 ## Step 6a: Review Summary
 
-Output structured summary before closing:
-
 ### Fixes Applied (N)
+
 - [file:line] Description of fix
 
 ### Ignored Issues (N)
+
 - [Severity] Description (grouped by type)
 
-### Deferred Issues (N)
-- [Severity] [file:line] Description → task-ID
+### Remaining Issues (N)
 
-For each DEFER finding, create a task:
+- [Severity] [file:line] Description
+
+If remaining issues exist and NON_INTERACTIVE is false, ask which to track as tasks:
+
+```
+AskUserQuestion: "Which remaining issues should be tracked as tasks?"
+  multiSelect: true
+  options: [one per remaining issue] + "None"
+```
+
+For each selected item:
+
 ```
 TaskCreate:
-  subject: "[DEFER] <one-line issue description>"
+  subject: "<one-line issue description>"
   description: "From review <reviewId>.\n\nFile: <file:line>\nSeverity: <severity>\n\n<full issue description + suggestion>"
   activeForm: "Creating deferred issue task"
   metadata:
-    project: <repoRoot>
+    project: REPO_ROOT
     type: "deferred-review"
     source_review: "<reviewId>"
     priority: "<P2 for high/critical, P3 for medium/low>"
 ```
 
-Append created task IDs to the Deferred Issues list. Store summary in `metadata.design` via TaskUpdate.
+Store summary in `metadata.design` via TaskUpdate.
 
 ## Step 6b: Close Review Issue
 
-After review complete (user approves or skips fixes):
 ```
 TaskUpdate(reviewId, status: "completed")
 ```
 
-Review issues can be directly completed since the user is present. Do NOT auto-approve implementation work — user must explicitly request approval.
-
 ## Step 7: Interactive Continuation
 
-Note: Fix selection happens in Step 4 above. This step handles pipeline continuation after review completes.
+Check for pending review tasks: `TaskList()` filtered by `metadata.status_detail === "review"`. If any exist, note them.
 
-Check for implementation issues in review: `TaskList()` filtered by tasks with `metadata.status_detail === "review"` If any exist, note them in the prompt so the user knows approval is pending.
-
-Present next step based on review outcome — use AskUserQuestion only when there's a genuine choice:
+Present next step based on outcome — use AskUserQuestion only when there's a genuine choice:
 
 - **Clean review** → "Approve + commit" or "Refine before commit" or "Test plan"
 - **Issues found and fixed** → "Re-review to verify?" or "Approve + commit" or "Refine before commit"
 - **Issues found but not all fixed** → "Continue fixing?" or "Approve as-is" or "Refine before commit"
 
 Skill dispatch:
-- Approve + commit → `TaskList()` filtered by `metadata.project === repoRoot` and `status_detail === "review"` → `TaskUpdate(id, status: "completed", metadata: {status_detail: null})` for each, then `Skill("commit")`
+
+- Approve + commit → `TaskList()` filtered by `metadata.project === REPO_ROOT` and `status_detail === "review"` → `TaskUpdate(id, status: "completed", metadata: {status_detail: null})` for each, then `Skill("commit")`
 - Re-review → `Skill("review")`
 - Continue fixing → Resume fix loop at Step 5
 - Refine → `Skill("refine")`
