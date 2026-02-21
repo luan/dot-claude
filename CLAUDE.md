@@ -69,6 +69,10 @@ After explore: `/prepare <id>`. After prepare: `/implement <epic-id>`.
 - File remaining work as tasks. Run quality gates if code changed.
 - Commit. Push only when user explicitly requests.
 
+## Session Resume
+
+On resume after compaction: if tasks exist with `metadata.impl_team` set and status `in_progress`, re-invoke `/implement` to trigger recovery.
+
 ## Tasks
 
 All plans, notes, state live in native Tasks. No filesystem documents. Lifecycle: pending → in_progress → review (metadata) → completed

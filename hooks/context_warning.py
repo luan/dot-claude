@@ -8,7 +8,6 @@ Warns once per threshold crossing to avoid noise.
 """
 
 import json
-import os
 import sys
 
 WARN_THRESHOLD = 73
@@ -48,8 +47,10 @@ def main():
             f.write("2")
         print(
             f"⛔ CONTEXT {pct}% — Compaction imminent. "
-            f"Save active task context, decisions, and remaining plan to beads notes. "
-            f"Anything not in notes or memory may be lost.",
+            f"If running /implement in swarm mode: record the epic ID, team name (metadata.impl_team), "
+            f"and pending task IDs before context collapses. "
+            f"Save active skill name, all key decisions, and remaining plan to beads notes. "
+            f"Anything not in notes may be lost.",
             file=sys.stderr,
         )
         sys.exit(2)
@@ -57,8 +58,9 @@ def main():
         with open(flag_file, "w") as f:
             f.write("1")
         print(
-            f"⚠️  CONTEXT {pct}% — Save session-critical state to beads notes: "
-            f"active task context, key decisions, discoveries, and remaining plan. "
+            f"⚠️  CONTEXT {pct}% — Check for active teams (metadata.impl_team on in-progress epics). "
+            f"Save session-critical state to beads notes: active task context, key decisions, "
+            f"discoveries, and remaining plan. "
             f"Ensure anything that wouldn't survive a summary is persisted.",
             file=sys.stderr,
         )
