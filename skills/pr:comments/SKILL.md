@@ -9,7 +9,8 @@ allowed-tools:
   - "Bash(gh pr list *)"
   - "Bash(git branch --show-current)"
   - "Bash(git add *)"
-  - "Bash(gt *)"
+  - "Bash(git push:*)"
+  - Skill
   - Read
   - Edit
   - Glob
@@ -46,7 +47,7 @@ Fix unresolved review comments from a PR.
 
 7. **Commit**: Use `Skill tool: commit` to generate message and commit.
 
-8. **Push** (optional): Ask first, then use `/gt:submit`
+8. **Push** (optional): Ask first. If gt plugin is available, use `Skill(gt:submit)`. Otherwise `git push`.
 
 ## Notes
 

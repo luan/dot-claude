@@ -47,12 +47,13 @@
 
 TDD default. Standards in `rules/test-quality.md`.
 
-## Graphite & PR Workflow
+## Graphite & PR Workflow (gt plugin)
 
-- All branch operations go through `/gt`. Never raw `git rebase`, `git push`, `git branch -d`, `git checkout -b`.
+- When gt plugin is enabled: all branch operations go through `/gt:gt`. Never raw `git rebase`, `git push`, `git branch -d`, `git checkout -b`.
 - Push → `/gt:submit`. Restack → `/gt:restack`. Commit → `/commit`.
 - Return `app.graphite.com/...` URLs, not GitHub.
 - Review scope: diff vs stack parent (`gt log`), not trunk.
+- When gt plugin is disabled: use standard git operations. Push → `git push`. Restack → `git rebase`.
 
 ## Skill Flow
 
@@ -69,7 +70,7 @@ When user input doesn't start with `/`, check if it maps to a skill by matching 
 
 ## Branch Naming
 
-`gt create luan/<description>` (e.g. `luan/fix-container-minimize`)
+`luan/<description>` (e.g. `luan/fix-container-minimize`). Use `gt create` if gt plugin is enabled, `git checkout -b` otherwise.
 
 ## Session End
 

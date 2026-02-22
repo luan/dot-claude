@@ -25,7 +25,7 @@ Recent commits: !`git log --oneline -5 2>/dev/null`
 
 ## Step 0: Detect trunk
 
-Trunk: !`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`
+Trunk: !`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||' || echo main`
 
 If current branch equals trunk, or the user passed an explicit branch/PR# argument, go to the appropriate path:
 
@@ -80,7 +80,7 @@ Only show "Stale branches" line if stale branches exist.
 4. Tasks active → "Continue: ..."
 5. Draft PR, all passing → "Mark ready"
 6. Ready PR, approved → "Merge"
-7. No PR → "Create with /commit then /gt"
+7. No PR → "Create with /commit then /gt:submit"
 8. All clear → "Wait for review"
 
 ---

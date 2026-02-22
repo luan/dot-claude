@@ -13,7 +13,8 @@ allowed-tools:
   - "Bash(git branch --show-current)"
   - "Bash(git add:*)"
   - "Bash(git commit:*)"
-  - "Bash(gt *)"
+  - "Bash(git push:*)"
+  - Skill
   - Read
   - Edit
   - Glob
@@ -52,7 +53,7 @@ Fix failed GitHub Actions checks.
 
 7. **Commit**: Ask first, suggest message like `fix: resolve CI failures`
 
-8. **Push** (optional): Ask first, then use `/gt:submit`
+8. **Push** (optional): Ask first. If gt plugin is available, use `Skill(gt:submit)`. Otherwise `git push`.
 
 ## Common failures
 

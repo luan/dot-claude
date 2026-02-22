@@ -2,9 +2,8 @@
 name: gt
 description: >
   Wrap Graphite CLI for stacked branch management — create, navigate, modify, sync, restack,
-  submit, and push stacked PRs. MANDATORY: Never run gt commands directly via Bash — always
-  invoke this skill. Triggers: /gt, gt commands, "stack", "branch", "PR", "push",
-  "submit", "rebase", "restack", "sync branches", "move branch".
+  submit, and push stacked PRs. Triggers: /gt, gt commands, "stack", "branch", "PR",
+  "rebase", "sync branches", "move branch".
 user-invocable: true
 allowed-tools:
   - "Bash(gt:*)"
