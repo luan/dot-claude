@@ -1,6 +1,6 @@
 ---
 name: prepare
-description: "Convert exploration or review findings into epic + phased child tasks. Triggers: 'prepare', 'prepare work', 'create tasks from plan'."
+description: "Convert exploration or review findings into epic + phased child tasks. Triggers: 'prepare', 'prepare work', 'create tasks from plan'. Do NOT use when: converting user feedback (not explore findings) into tasks — use /fix instead."
 argument-hint: "[t<id>|<task-id>]"
 user-invocable: true
 allowed-tools:
@@ -42,6 +42,7 @@ See rules/skill-interviewing.md. Skill-specific triggers:
 2. **Pre-check design quality:**
    - Must have structured sections (Phase, Step, or numbered groups) with file paths
    - Missing file paths or vague descriptions → suggest re-running `/explore` with more detail, STOP
+   - **Warning tier:** If plan has file paths but descriptions are thin (steps are one-liners without rationale, or phases reference files without explaining what changes), warn via AskUserQuestion: "Plan detail is borderline — tasks may need clarification during implementation. Continue or re-run /explore with more detail?" Options: "Continue" / "Re-run explore". User choosing "Continue" proceeds normally.
    - If plan has a standalone testing/test phase → merge its test items into the implementation phases they cover before proceeding (TDD: tests live with the code they verify, not in a later phase)
 
 3. **Parse plan:**

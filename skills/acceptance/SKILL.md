@@ -71,9 +71,11 @@ git diff HEAD~1..HEAD
 
 Use whichever produces output. If still empty, note "No diff found — verifying against HEAD state."
 
-## Step 5: Spawn Acceptance Subagent
+## Step 5: Spawn Verifier and Breaker
 
-Spawn a single `Task(subagent_type="general-purpose")` with:
+Spawn two `Task(subagent_type="general-purpose")` in parallel:
+
+**Verifier** — confirms criteria are met:
 
 ```
 You are an acceptance validator. Your job: determine whether the implementation satisfies the acceptance criteria and adheres to the plan.
@@ -105,9 +107,51 @@ After the table, add a "Plan Deviations" section:
 End with a one-line verdict: PASS (all criteria met), PARTIAL (some gaps), or FAIL (critical criteria unmet).
 ```
 
-## Step 6: Evaluate and Present
+**Breaker** — adversarial agent that assumes the implementation is subtly wrong:
 
-Present the subagent's full output.
+```
+You are an adversarial breaker. Assume the implementation is subtly wrong. Your job: hunt for gaps the verifier would miss.
+
+## Plan / Design
+<plan content or "No plan available">
+
+## Acceptance Criteria by Task
+<structured list from Step 3>
+
+## Diff
+<git diff output>
+
+Investigate each of these angles:
+
+1. **Implied requirements** — what does the plan/criteria assume but never state? Check if the implementation handles those assumptions.
+2. **Edge cases** — empty inputs, boundary values, concurrent access, error paths. Are they covered or silently ignored?
+3. **Integration points** — does the diff touch interfaces consumed by other code? Could callers break with these changes?
+4. **Technically-met-but-functionally-incomplete** — does the implementation satisfy the letter of a criterion while missing its intent?
+5. **Missing negatives** — things the implementation should NOT do (security, side effects, regressions) that aren't in the criteria.
+
+For each finding, output:
+
+| # | Category | Finding | Severity | Related Criterion |
+|---|----------|---------|----------|--------------------|
+
+Severity values:
+- HIGH: likely bug or missing behavior that would surface in real use
+- MEDIUM: gap that could cause issues under specific conditions
+- LOW: minor concern, style, or unlikely edge case
+
+If you find nothing substantive, say "No significant gaps found." Do not invent findings to justify your role.
+```
+
+## Step 6: Reconcile and Present
+
+**Reconciliation logic** (applied before presenting to user):
+
+1. If the verifier verdict is FAIL → overall verdict is **FAIL** (regardless of breaker).
+2. If the verifier verdict is PARTIAL → overall verdict is **PARTIAL** (breaker findings add context but don't change the verdict).
+3. If the verifier verdict is PASS and the breaker found HIGH-severity findings the verifier marked as PASS or N/A → overall verdict is **PARTIAL**.
+4. If the verifier verdict is PASS and the breaker found no HIGH findings → overall verdict is **PASS**.
+
+Present both outputs with clear labels ("Verifier Report" / "Breaker Report") followed by the reconciled verdict.
 
 **If verdict is PASS:**
 

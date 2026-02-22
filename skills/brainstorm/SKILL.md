@@ -1,6 +1,6 @@
 ---
 name: brainstorm
-description: "Collaborative design for greenfield features and new ideas. Triggers: 'brainstorm', 'ideate', 'new feature design', 'help me think through', 'what should we build'."
+description: "Collaborative design for greenfield features and new ideas. Triggers: 'brainstorm', 'ideate', 'new feature design', 'help me think through', 'what should we build'. Do NOT use when: the user wants to investigate an existing codebase or research a specific technical question — use /explore instead."
 argument-hint: "<idea or topic>"
 user-invocable: true
 allowed-tools:

@@ -60,6 +60,13 @@ explore → prepare → implement [acceptance] → test-plan (manual QA) → com
 Optional: brainstorm (before explore), split-commit (repackage messy WIP), review (adversarial), refine (polish code).
 After explore: `/prepare <id>`. After prepare: `/implement <epic-id>`.
 
+## Natural Language Routing
+
+When user input doesn't start with `/`, check if it maps to a skill by matching intent against skill descriptions and trigger phrases.
+- **High confidence** (keyword appears in exactly one skill's triggers): invoke the skill directly.
+- **Ambiguous** (2-3 plausible candidates): AskUserQuestion listing candidates with brief descriptions.
+- **No match**: respond normally without skill invocation.
+
 ## Branch Naming
 
 `gt create luan/<description>` (e.g. `luan/fix-container-minimize`)
