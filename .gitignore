@@ -70,3 +70,4 @@ target
 backups
 mcp-needs-auth-cache.json
 /icons
+/skills/*-workspace/

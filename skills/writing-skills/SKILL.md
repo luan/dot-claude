@@ -1,6 +1,6 @@
 ---
 name: writing-skills
-description: Create, edit, improve, and troubleshoot Claude Code agent skills. Use when making a new skill, editing SKILL.md files, modifying skill metadata (types, priority, labels, owner), refactoring skill instructions, improving skill discoverability, debugging why a skill isn't activating, answering questions about skills, or reviewing skill best practices. Triggers: 'new skill', 'edit skill', 'update skill', 'fix skill', 'skill not working', 'SKILL.md', 'skill metadata', 'skill consistency'.
+description: Create, edit, improve, evaluate, and troubleshoot Claude Code agent skills. Use when making a new skill, editing SKILL.md files, modifying skill metadata (types, priority, labels, owner), refactoring skill instructions, improving skill discoverability, debugging why a skill isn't activating, running skill evals, testing skill performance, improving a skill iteratively, answering questions about skills, or reviewing skill best practices. Triggers: 'new skill', 'edit skill', 'update skill', 'fix skill', 'skill not working', 'SKILL.md', 'skill metadata', 'skill consistency', 'eval skill', 'test skill', 'improve skill', 'skill quality'.
 ---
 
 # Writing Skills
@@ -76,12 +76,20 @@ The description is the **only thing Claude sees** before deciding to load a skil
 
 **WHAT it does + WHEN to use. NEVER workflow details.** Don't rely on users saying magic words — think about what *situations* call for this skill, including ones Claude should decide to use on its own.
 
+A "workflow detail" is anything describing HOW the skill works internally — mechanisms, enforcement methods, internal steps. The description should only say what outcomes it produces and what situations trigger it.
+
 ```yaml
-# BAD: workflow details Claude will shortcut
+# BAD: mechanism leaked ("enforcing a structured checklist" is HOW, not WHEN)
+description: Enforces code review quality by requiring a structured checklist before approval
+
+# BAD: internal steps leaked
 description: Use when executing plans - dispatches subagent per task with review
 
-# GOOD: what + when, broad trigger surface
+# GOOD: outcomes + situations only
 description: Handles SpeedReader server lifecycle (build, startup, shutdown) and web page rebuild/refresh. Use when you need to verify a web page works, view it, test UI interactions, or see how a page behaves. Also covers development tasks.
+
+# GOOD: discipline skill — describes situations, not enforcement method
+description: Use when reviewing PRs, approving code changes, or assessing code quality. Prevents shallow reviews and missed issues in security, tests, and error handling.
 ```
 
 ## String Substitutions
@@ -165,20 +173,28 @@ Claude can't write a skill for something it doesn't know how to do. Before creat
 - Move details to `--help`, cross-reference files
 - One excellent example > many mediocre
 
+**Hard gate:** After drafting a skill, count the SKILL.md body words (exclude frontmatter). Over budget → cut before finalizing. Never ship over budget.
+
+**Cutting priority** (highest savings first):
+1. Reference tables and lookup data → `references/` directory (saves 50-150 words)
+2. Multi-line examples → collapse to single inline example (saves 30-80 words)
+3. Output format templates → 3-line skeleton, not full example (saves 20-50 words)
+4. Overlapping guidance → deduplicate (one location, reference elsewhere)
+
 ## RED-GREEN-REFACTOR
 
 ### RED: Baseline
 Run pressure scenario WITHOUT skill. Document: choices, rationalizations (verbatim), pressures triggering violations.
 
 ### GREEN: Minimal
-Address rationalizations. Run WITH skill → compliance.
+Address rationalizations. Run WITH skill → compliance. Then immediately test against a different real case — the first scenario shaped the skill, the second tests whether it generalizes.
 
-### REFACTOR: Close Loopholes
-New rationalization → add counter → re-test until bulletproof.
+### REFACTOR: Fresh Eyes
+Re-read the skill as if seeing it for the first time. Cut instructions that don't change behavior, add reasoning to rigid rules missing their WHY, close gaps a creative model might exploit. New rationalization → add counter → re-test until bulletproof.
 
 ## Bulletproofing Discipline Skills
 
-For rule-enforcing skills (TDD, verification):
+Discipline skills enforce process rules (TDD, verification, code review checklists). They need adversarial hardening because the model rationalizes shortcuts under pressure. This does NOT apply to knowledge or technique skills — see the next section.
 
 1. **Close loopholes explicitly:**
    ```markdown
@@ -191,6 +207,73 @@ For rule-enforcing skills (TDD, verification):
 2. **Add:** `**Violating the letter is violating the spirit.**`
 3. **Build rationalization table** from baseline
 4. **Create red flags list** for self-checking
+
+## Writing Knowledge & Technique Skills
+
+Knowledge and technique skills teach rather than enforce. Different failure mode: the risk isn't rule-dodging — it's that the model memorizes surface patterns without understanding the reasoning, then misapplies them in novel situations.
+
+**Explain WHY, not just WHAT.** Every instruction should carry its reasoning. If you write ALWAYS or NEVER in caps, that's a yellow flag — reframe as an explanation so the model understands the goal and can generalize.
+
+```markdown
+# BAD: rigid rule
+NEVER use inline styles.
+
+# GOOD: reasoning the model can generalize
+Avoid inline styles — they bypass the cascade, making themes
+and responsive overrides impossible. Styles in one place
+(stylesheet/module) propagate changes; inline styles require
+hunting through markup.
+```
+
+**Theory of mind.** Explain the goal so the model generalizes to cases you didn't anticipate, rather than breaking on the first edge case your rules didn't cover.
+
+**Generalize from examples.** Include examples to illustrate principles, but frame them as instances of the underlying pattern. If the skill only works when input looks exactly like your examples, it's overfitted.
+
+**Keep the prompt lean.** Every instruction competes for attention. After drafting, do an editing pass: remove lines that don't change behavior. If removing an instruction doesn't degrade output quality, it wasn't pulling its weight.
+
+## Eval & Improve
+
+Test skills with evals before shipping. Eval after: writing a new skill, significant edits, or a REFACTOR pass.
+
+### Building Blocks
+
+| Component | Path | Role |
+|-----------|------|------|
+| Executor | `agents/executor.md` | Runs skill against test prompts, produces transcripts |
+| Grader | `agents/grader.md` | Scores outputs against expectations and conventions |
+| Comparator | `agents/comparator.md` | Blind A/B comparison between skill versions |
+| Analyzer | `agents/analyzer.md` | Post-hoc analysis with improvement suggestions |
+
+### Eval Mode (Measure)
+
+1. Init workspace: `uv run scripts/init_workspace.py <skill-path>`
+2. Define test cases in `evals.json` (see `references/schemas.md`)
+3. Execute each case with `agents/executor.md`
+4. Grade each output with `agents/grader.md`
+5. Aggregate: `uv run scripts/aggregate_results.py <workspace>`
+
+### Improve Mode (Iterate)
+
+1. Run Eval mode to establish v0 baseline — if 100% pass, evals are too easy; tighten first
+2. Per iteration: execute 3x per case → grade → blind compare → analyze
+3. Apply analyzer suggestions, snapshot: `uv run scripts/copy_version.py <workspace>`
+4. Stop when: target reached, no improvement for 2 iterations, or user says stop
+5. Best version wins (not necessarily latest) — check `history.json`
+
+### Without Subagents
+
+The full pipeline works without subagents — run each step inline instead of spawning agents:
+
+| Full pipeline | Single-agent fallback |
+|---|---|
+| Executor agent runs cases | Main agent runs inline |
+| Separate grader agent | Main agent grades following `agents/grader.md` inline |
+| Blind comparator picks winner | Skipped — can't blind yourself |
+| Analyzer suggests changes | Main agent analyzes diffs directly |
+
+Always mention when using this path: _"Running in single-agent mode — no blind comparison, reduced rigor."_
+
+For detailed workflow and schemas, see `references/eval-workflow.md` and `references/schemas.md`.
 
 ## Troubleshooting
 
@@ -206,6 +289,8 @@ For rule-enforcing skills (TDD, verification):
 
 **GREEN:** YAML frontmatter (name + description) → description triggers only → address baseline → one excellent example
 
-**REFACTOR:** identify NEW rationalizations → add counters → rationalization table → re-test
+**REFACTOR:** fresh-eyes re-read → cut dead instructions → identify NEW rationalizations → add counters → re-test
+
+**Knowledge/Technique extra:** every instruction carries WHY → no unexplained ALWAYS/NEVER → examples illustrate patterns (not overfit) → editing pass for leanness
 
 **Deploy:** commit + push
