@@ -1,6 +1,6 @@
 ---
 name: vibe
-description: "Fully autonomous development workflow from prompt to commit. Triggers: /vibe, 'vibe this', 'autonomous workflow', 'just do it all', 'build this end-to-end', 'full pipeline', 'handle everything'. Do NOT use when: only implementing already-prepared tasks — use /implement instead."
+description: "Fully autonomous development workflow from prompt to commit. Triggers: /vibe, 'vibe this', 'autonomous workflow', 'just do it all', 'build this end-to-end', 'full pipeline', 'handle everything', 'do everything from scratch'. Do NOT use when: only implementing already-prepared tasks — use /implement instead."
 allowed-tools: Bash, Read, Glob, Skill, TaskCreate, TaskUpdate, TaskGet, TaskList
 argument-hint: "<prompt> [--no-branch] [--continue] [--dry-run]"
 user-invocable: true

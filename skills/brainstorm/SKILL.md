@@ -1,6 +1,6 @@
 ---
 name: brainstorm
-description: "Collaborative design for greenfield features and new ideas. Triggers: 'brainstorm', 'ideate', 'new feature design', 'help me think through', 'what should we build'. Do NOT use when: the user wants to investigate an existing codebase or research a specific technical question — use /explore instead."
+description: "Collaborative design for greenfield features and new ideas. Triggers: 'brainstorm', 'ideate', 'new feature design', 'help me think through', 'what should we build', 'help me design', 'think through X with me', 'I want to build something new'. Do NOT use when: the user wants to investigate an existing codebase or research a specific technical question — use /explore instead."
 argument-hint: "<idea or topic>"
 user-invocable: true
 allowed-tools:
@@ -36,7 +36,7 @@ TaskCreate: subject "Brainstorm: <topic>", acceptance criteria (design stored as
 
 ### 2. Scan Project Context
 
-Dispatch Task (subagent_type="codebase-researcher"): scan for tech stack, relevant patterns, adjacent code, constraints. Under 30 lines — feeds dialogue, not implementation.
+Dispatch Task (subagent_type="codebase-researcher"): scan for tech stack, relevant patterns, adjacent code, constraints. Under 30 lines — feeds dialogue, not implementation. Empty/new project → skip scan, ask user for stack preferences in interview instead.
 
 ### 3. Interview
 

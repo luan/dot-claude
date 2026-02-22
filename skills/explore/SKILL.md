@@ -50,8 +50,10 @@ Research <topic>. Return COMPLETE findings as text (do NOT write files or create
 Phases must include file paths + approach (downstream depends on it).
 
 ## Escalation
-3+ independent subsystems, 3+ viable approaches with unclear tradeoffs,
-or cross-cutting adversarial concerns → "ESCALATE: team — <reason>"
+3+ independent subsystems or 3+ viable approaches with unclear tradeoffs
+→ "ESCALATE: team — <reason>"
+(Below 3, a single agent can hold full context; above, findings degrade
+from context overload and a team produces better coverage.)
 ```
 
    **On "ESCALATE: team":** spawn 2-3 parallel Task agents (Researcher: breadth-first, Architect: design/tradeoffs, Devil's Advocate: challenges assumptions; all model: opus). Synthesize: collect all reports, surface contradictions (Devil's Advocate vs Architect), produce merged output using Architect's approach with Devil's Advocate caveats folded into Risks.

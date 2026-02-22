@@ -1,6 +1,6 @@
 ---
 name: implement
-description: "Execute an epic or task — auto-detects solo vs parallel vs swarm mode, dispatches subagents. Triggers: 'implement', 'execute the plan', 'build this', 'code this plan', 'start implementing', epic/task ID. Do NOT use when: a full autonomous end-to-end workflow is needed — use /vibe instead."
+description: "Execute an epic or task — auto-detects solo vs parallel vs swarm mode, dispatches subagents. Triggers: 'implement', 'execute the plan', 'build this', 'code this plan', 'start implementing', 'go implement', 'kick off the tasks', 'run this epic', epic/task ID. Do NOT use when: a full autonomous end-to-end workflow is needed — use /vibe instead."
 argument-hint: "[<epic-slug>|t<id>|<id>] [--solo]"
 user-invocable: true
 allowed-tools:
