@@ -1,15 +1,18 @@
 ---
 name: start
-description: "Create a new Graphite branch and optionally link to a task. Triggers: 'start', 'start new branch', 'begin work on'."
+description: "Create a new branch and optionally link to a task. Uses Graphite (gt) if available, falls back to git. Triggers: 'start', 'start new branch', 'begin work on'."
 argument-hint: "<branch-name> [task-id]"
 user-invocable: true
 allowed-tools:
-  - Bash
+  - "Bash(git checkout:*)"
+  - "Bash(git branch:*)"
+  - "Bash(git rev-parse:*)"
   - AskUserQuestion
   - TaskCreate
   - TaskUpdate
   - TaskList
   - TaskGet
+  - Skill
 ---
 
 # Start
@@ -20,7 +23,9 @@ Create branch + optionally link task.
 
 1. Parse args: branch name + optional task ID
 2. Normalize: prefix `luan/` if needed
-3. `gt create <branch-name>`
+3. Create branch:
+   - If gt plugin is loaded: `Skill(gt:gt, "create <branch-name>")`
+   - Otherwise: `git checkout -b <branch-name>`
 4. If task ID:
    - `TaskUpdate(taskId, status: "in_progress", owner: "start")`
    - `TaskUpdate(taskId, metadata: {branch: "<branch-name>"})`
@@ -40,6 +45,6 @@ Create branch + optionally link task.
 6. Report branch + issue, suggest `/explore` or `/implement`
 
 ## Error Handling
-- `gt create` fails → check if branch exists (`git branch -a | grep <name>`), suggest alternate name
+- Branch creation fails → check if branch exists (`git branch -a | grep <name>`), suggest alternate name
 - `TaskUpdate` fails → verify task ID exists with `TaskGet`, report if missing
-- Not on expected parent branch → warn user, suggest `gt checkout` first
+- Not on expected parent branch → warn user, suggest checkout first

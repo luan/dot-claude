@@ -12,7 +12,6 @@ allowed-tools:
   - "Bash(git show:*)"
   - "Bash(gh pr view:*)"
   - "Bash(gh pr edit:*)"
-  - "Bash(gt log:*)"
   - Read
   - AskUserQuestion
 ---
@@ -27,7 +26,7 @@ Update an existing PR's title and description from branch context.
 
 ```bash
 gh pr view --json number,title,body,headRefName -q '{number,title,headRefName}'
-gt log --short
+git log --oneline -10
 git status -sb
 ```
 
@@ -44,7 +43,7 @@ If state is clear (commits on branch, nothing dirty), proceed directly.
 
 ## Step 2: Get Diff
 
-Base: !`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`
+Base: !`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||' || echo main`
 
 ```bash
 git diff <base>...HEAD

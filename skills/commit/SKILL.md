@@ -62,7 +62,7 @@ Recent commits: !`git log --oneline -5 2>/dev/null`
 
 ## Post-commit
 
-After successful commit, check if on a Graphite branch (`gt log --stack 2>/dev/null`). If yes, suggest `/gt:submit` — never offer `git push`.
+After successful commit, if gt plugin is loaded suggest `/gt:submit`. Otherwise suggest `git push`.
 
 ## Hook failures
 
