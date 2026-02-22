@@ -54,7 +54,7 @@ Phases must include file paths + approach (downstream depends on it).
 or cross-cutting adversarial concerns → "ESCALATE: team — <reason>"
 ```
 
-   **On "ESCALATE: team":** spawn 2-3 parallel Task agents (Researcher: breadth-first, Architect: design/tradeoffs, Devil's Advocate: challenges assumptions; all model: opus). Synthesize into unified findings.
+   **On "ESCALATE: team":** spawn 2-3 parallel Task agents (Researcher: breadth-first, Architect: design/tradeoffs, Devil's Advocate: challenges assumptions; all model: opus). Synthesize: collect all reports, surface contradictions (Devil's Advocate vs Architect), produce merged output using Architect's approach with Devil's Advocate caveats folded into Risks.
 
 3. **Validate** (subagent-trust.md): spot-check ALL architectural claims (system structure, component boundaries, data flow, integration points) + 50% of file/behavioral claims. Failed check or echo → targeted follow-up.
 

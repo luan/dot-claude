@@ -36,9 +36,9 @@ See rules/skill-interviewing.md. Ask on: unclear task boundaries (one task or tw
 
 2. **Pre-check design quality:**
    - Must have structured sections (Phase/Step/numbered groups) with file paths
-   - Missing paths or vague descriptions → suggest re-running `/explore`, stop
-   - Thin descriptions (one-liner steps, files without rationale) → AskUserQuestion: "Plan detail is borderline — tasks may need clarification during implementation. Continue or re-run /explore?" Continue proceeds as-is, accepting that workers may need to fill gaps.
-   - Standalone testing phase → merge test items into the implementation phases they cover (TDD: tests live with the code they verify)
+   - Missing paths or vague descriptions → AskUserQuestion: "Findings lack file paths or detail. Continue (workers fill gaps) or re-run /explore?" File paths matter because workers who lack them create wrong files from memory. Continue proceeds as-is; re-run stops.
+   - Thin descriptions (one-liner steps, files without rationale) → AskUserQuestion: same choice, but note it's borderline rather than missing.
+   - Standalone testing phase → merge test items into the implementation phases they cover. Separate test phases imply testing happens after code; TDD means tests are written in the same task as the code they verify.
 
 3. **Parse plan:**
    - Plan file: `ck tool phases <file>` → JSON array of `{phase, title, tasks, deps}`

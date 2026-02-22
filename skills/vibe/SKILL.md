@@ -1,6 +1,6 @@
 ---
 name: vibe
-description: "Fully autonomous development workflow from prompt to commit. Chains explore → prepare → implement → commit. Triggers: /vibe, 'vibe this', 'autonomous workflow'. Do NOT use when: only implementing already-prepared tasks — use /implement instead."
+description: "Fully autonomous development workflow from prompt to commit. Triggers: /vibe, 'vibe this', 'autonomous workflow', 'just do it all', 'build this end-to-end', 'full pipeline', 'handle everything'. Do NOT use when: only implementing already-prepared tasks — use /implement instead."
 allowed-tools: Bash, Read, Glob, Skill, TaskCreate, TaskUpdate, TaskGet, TaskList
 argument-hint: "<prompt> [--no-branch] [--continue] [--dry-run]"
 user-invocable: true
@@ -54,13 +54,13 @@ Generate slug: `ck tool slug "<prompt>"`. `Skill("start", args="luan/<slug>")`
 
 `Skill("explore", args="<prompt>")`
 
-**Verify**: `ck plan latest` succeeds. **Update**: `vibe_stage: "explore"`
+**Verify**: `ck plan latest` succeeds — catches silent explore failures where subagent returned nothing. **Update**: `vibe_stage: "explore"`
 
 ### Prepare
 
 `Skill("prepare")`
 
-**Verify**: `TaskList()` → epic exists with children and `metadata.slug`. **Update**: `vibe_stage: "prepare"`, `vibe_epic: "<epicId>"`, `vibe_slug: "<slug>"`
+**Verify**: `TaskList()` → epic exists with children and `metadata.slug` — prepare can auto-proceed before task creation completes in high-latency environments. **Update**: `vibe_stage: "prepare"`, `vibe_epic: "<epicId>"`, `vibe_slug: "<slug>"`
 
 If `--dry-run` → stop here. Report plan and epic, suggest `/implement` or `/vibe --continue`.
 
@@ -72,7 +72,7 @@ Note: Acceptance check runs automatically as part of implement teardown.
 
 **Verify**: all children of epic completed. **Update**: `vibe_stage: "implement"`
 
-If some tasks failed, continue to commit if `git diff --stat` is non-empty.
+Partial task failures (some children completed, some didn't) are not a stage failure — continue to commit if `git diff --stat` is non-empty.
 
 ### Commit
 
@@ -88,13 +88,13 @@ If `git diff --stat` is empty → skip.
 TaskUpdate(trackerId, status: "completed", metadata: {completedAt: "<ISO 8601>"})
 ```
 
-Report summary: one line per stage. Mark each as **completed**, **skipped** (excluded by flags like `--no-branch` or `--dry-run`), or **failed** (attempted but errored). Skipped stages were never attempted; failed stages were.
+Report summary: one line per stage. Mark each as **completed**, **skipped** (excluded by flags), or **failed** (attempted but errored).
 
 **Limitation:** If vibe fails mid-pipeline, the epic task remains `in_progress`. Orphaned epics are not auto-cleaned — user can resume with `--continue` or manually close the task.
 
 ## Error Handling
 
-If ANY stage fails:
+If a stage completely fails (skill errors out, zero progress):
 1. Do NOT update `vibe_stage` — stays at last successful stage
 2. Leave tracker `in_progress`
 3. Report completed stages + failure details
