@@ -42,6 +42,8 @@ Dispatch Task (subagent_type="codebase-researcher"): scan for tech stack, releva
 
 AskUserQuestion, ONE per turn — wait for answer before next. Prefer multiple-choice.
 
+**Upfront spec:** If the prompt already contains constraints, scope, and success criteria, skip to step 4 (Propose Approaches) with brief acknowledgment of what was provided.
+
 **Sequence** (adapt, skip irrelevant):
 1. **Purpose** — What problem? Who's it for?
 2. **Scope** — Minimum useful version? (YAGNI gate)
@@ -55,7 +57,7 @@ Stop when you can propose approaches. Usually 3-5 questions, never >7.
 
 ### 4. Propose 2-3 Approaches
 
-Lead with recommendation and why. Each approach: 2-3 sentences + key tradeoff. Be opinionated — don't hedge equally. Ask user to pick or refine.
+Lead with recommendation and why. Each approach: 2-3 sentences + key tradeoff. Be opinionated — don't hedge equally. Ask user to pick or refine. If all rejected, ask what's missing and propose new approaches — don't dead-end.
 
 ### 5. Present Design Sections
 
@@ -89,7 +91,5 @@ Stop after summary. User reviews design before proceeding — do not auto-invoke
 
 ## Key Rules
 
-- Subagent only for context scan — all dialogue on main thread
-- Findings stored via plan-storage (plan file + task metadata)
 - Next Steps must include file paths — prepare depends on them
-- YAGNI: push back on scope creep
+- YAGNI: push back on scope creep during interview

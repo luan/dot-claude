@@ -47,7 +47,7 @@ Resolve argument:
 
 ## Worker Dispatch
 
-All modes dispatch via `Task(subagent_type="general-purpose")`. Trivial tasks (single-file rename, config tweak) use `model="sonnet"`. Two prompt variants — see `references/worker-prompts.md`:
+All modes dispatch via `Task(subagent_type="general-purpose")`. Trivial tasks (single-file rename, config tweak) use `model="sonnet"` (cost savings on non-architectural work). Concurrency capped at 4 workers (avoids context thrashing in the orchestrator). Failed workers retry max 2 times (past 2 is unlikely to self-correct without human input). Two prompt variants — see `references/worker-prompts.md`:
 
 - **Standalone** (Solo/Parallel/fallback): no messaging, worker returns directly
 - **Team-based** (Swarm): adds SendMessage to team lead + shutdown handshake

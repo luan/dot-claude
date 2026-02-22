@@ -1,6 +1,6 @@
 ---
 name: acceptance
-description: "Validate implementation against epic acceptance criteria using dual-agent verification (verifier + adversarial breaker). Triggers: 'accept', 'acceptance check', 'verify implementation'."
+description: "Validate implementation against epic acceptance criteria using dual-agent verification. Triggers: 'accept', 'acceptance check', 'verify implementation', 'did it work', 'check my implementation'. Also invoked automatically by /implement after completion."
 argument-hint: "[<task-id>]"
 user-invocable: true
 allowed-tools:
