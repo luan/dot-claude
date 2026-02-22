@@ -10,7 +10,6 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
-  - Skill
   - AskUserQuestion
 ---
 
@@ -80,15 +79,6 @@ Keep:
 ## Step 5: Summary
 
 Per-file: simplifications applied, idiom rewrites, comments removed, other cleanups.
-
-## Step 6: Continuation Prompt
-
-Use AskUserQuestion:
-- "Continue to /commit" (Recommended) — description: "Create conventional commit from changes"
-- "Done for now" — description: "Leave changes uncommitted for later"
-
-If user selects "Continue to /commit":
-→ Invoke Skill tool: skill="commit", args=""
 
 ## Rules
 

@@ -340,7 +340,7 @@ Output: `# Adversarial Review Summary`
 
 ## Step 5: Dispatch Fixes
 
-Spawn general-purpose agent (model="sonnet"):
+Spawn general-purpose agent:
 
 ```
 Fix these review issues in code.

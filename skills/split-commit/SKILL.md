@@ -73,7 +73,7 @@ After approval, soft reset on main thread:
 git reset --soft <base> && git reset HEAD
 ```
 
-Dispatch one subagent per commit (model: "sonnet"), **sequentially**:
+Dispatch one subagent per commit (model="sonnet"), **sequentially**:
 
 ```
 Create commit <N>/<total>: `<commit-message>`

@@ -65,7 +65,7 @@ See rules/skill-interviewing.md. Skill-specific triggers:
        priority: "P1"
    ```
 
-5. **Create all tasks** — dispatch ONE sonnet subagent (subagent_type="general-purpose", model=sonnet) to create ALL tasks. The subagent needs TaskCreate, TaskUpdate, TaskGet in its allowed-tools (specify in the Task dispatch).
+5. **Create all tasks** — dispatch ONE subagent (subagent_type="general-purpose", model="sonnet") to create ALL tasks. The subagent needs TaskCreate, TaskUpdate, TaskGet in its allowed-tools (specify in the Task dispatch).
 
    ```
    Create implementation tasks for all phases
