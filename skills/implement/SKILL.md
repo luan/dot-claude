@@ -49,11 +49,13 @@ Before classifying, check for orphaned work:
 
 ## Step 2: Classify
 
-`TaskGet(taskId)` to inspect. Children = `TaskList()` filtered by `metadata.parent_id`.
+`TaskGet(taskId)` to inspect.
 
-- Single task (no children) → **Solo**
-- 2-3 independent children (no blockedBy) → **Parallel**
-- 4+ children (regardless of dependencies) OR children with blockedBy dependencies → **Swarm**
+**Recursive descendants:** `TaskList()` filtered by `metadata.parent_id == taskId` → one level. Repeat for each child until a level returns empty. Collect all nodes. **Leaves** = descendants with no children of their own.
+
+- Single task (no descendants) → **Solo**
+- 2-3 independent leaves (no blockedBy) → **Parallel**
+- 4+ leaves OR any leaf with blockedBy dependencies → **Swarm**
 - **Readiness check (Parallel/Swarm only):** Scan child task descriptions for `## Files` and `## Approach` sections. If 2+ tasks lack either → AskUserQuestion: "N tasks lack detailed file lists or approach descriptions — workers may need to guess. Continue or refine task briefs first?" Options: "Continue anyway" / "Refine briefs first". User choosing "Continue" proceeds normally.
 
 ## Worker Prompt
@@ -79,7 +81,7 @@ Implement task <task-id>.
    Follow TDD: write failing tests, confirm red, implement until green. No test infra → note in report, implement directly.
 3. Build + test. All green → continue.
    On failure: deduplicate errors (strip paths/line numbers). Same root error 2x → stop, report with context. 3 distinct errors → report all, stop.
-4. TaskUpdate(taskId, status: "completed")
+4. TaskUpdate(taskId, status: "completed", metadata: {completedAt: "<current ISO 8601 timestamp>"})
 5. Run `Skill("refine")` on changed files. No changes needed → skip.
 
 ## Rules
@@ -154,7 +156,7 @@ Implement task <task-id>.
 ## Solo Mode
 
 1. `TaskUpdate(taskId, status: "in_progress", owner: "solo")`
-2. If has `metadata.parent_id` → `TaskGet(parentId)` for epic context
+2. If has `metadata.parent_id` → walk ancestor chain: `TaskGet(parent_id)` repeatedly until a task with no `metadata.parent_id`; that root is the epic context
 3. Spawn single Task agent using **Standalone Worker Prompt**
 4. Verify via `TaskGet(taskId)` → status is completed
 5. If task has `metadata.parent_id` → `Skill("acceptance", args="<parentId>")`
@@ -193,14 +195,15 @@ Used when tasks have dependency waves (blockedBy relationships). **Every task in
 Dispatch tasks as soon as their dependencies are met, not in batch waves. Up to 4 workers run concurrently at any time.
 
 ```
+# descendants(epicId): TaskList() filtered by metadata.parent_id == epicId → one level;
+#   repeat for each child until a level returns empty; collect all nodes.
+# leaf(task): task has no children — TaskList() filtered by metadata.parent_id == task.id is empty.
+
 # Initial dispatch
-ready = TaskList() filtered by:
-  metadata.parent_id == epicId AND
-  status == "pending" AND
-  blockedBy is empty
+ready = [t for t in descendants(epicId) if t.status == "pending" AND t.blockedBy is empty AND leaf(t)]
 
 Spawn ready tasks (up to 4) using dispatch routing:
-  Leaf (no tasks blockedBy it, no children) AND CODEX_AVAILABLE:
+  leaf(task) AND CODEX_AVAILABLE:
     → Codex dispatch
   All others:
     → Team-based Worker Prompt (swarm) / Standalone Worker Prompt (no team)
@@ -208,6 +211,7 @@ Spawn ready tasks (up to 4) using dispatch routing:
 active_count = len(spawned)
 dispatch_count = {}       # task_id → number of Claude dispatches
 codex_attempted = set()   # task_ids that already had a Codex attempt
+dispatched = set(t.id for t in spawned)  # all task_ids ever dispatched (avoid re-dispatch)
 
 # Codex dispatch (leaf tasks only, when CODEX_AVAILABLE):
 #   1. Build prompt: {codex_conventions} template + "\n\n## Task\n" + task description
@@ -239,14 +243,14 @@ while tasks remain incomplete:
          impl_pending: <count of pending children>
        })
     2. Shut down completed team-based workers (SendMessage shutdown_request)
-    3. newly_ready = TaskList() filtered by:
-         metadata.parent_id == epicId AND
-         status == "pending" AND
-         blockedBy is empty
+    3. # Re-scan: worker may have created child tasks (decomposition); former leaf may now be a grouping node
+       fresh_descendants = descendants(epicId)  # re-query full subtree
+       newly_ready = [t for t in fresh_descendants if t.status == "pending" AND t.blockedBy is empty AND leaf(t) AND t.id not in dispatched]
     4. Skip any task where dispatch_count[task_id] >= 2 (mark as failed, report to user)
     5. slots = 4 - active_count
     6. Spawn min(len(newly_ready), slots) tasks → active_count += spawned
-       Codex routing: if CODEX_AVAILABLE AND leaf AND id not in codex_attempted → Codex dispatch
+       dispatched.update(id for each spawned task)
+       Codex routing: if CODEX_AVAILABLE AND leaf(task) AND id not in codex_attempted → Codex dispatch
        Else → Claude worker, dispatch_count[id]++
     7. If active_count == 0 and no pending tasks remain → break
 
@@ -263,7 +267,7 @@ while tasks remain incomplete:
 ### Teardown
 
 1. `TaskUpdate(epicId, metadata: {impl_team: null, impl_mode: null, impl_completed: null, impl_active: null, impl_pending: null})`
-2. `TaskUpdate(epicId, status: "completed")`
+2. `TaskUpdate(epicId, status: "completed", metadata: {completedAt: "<current ISO 8601 timestamp>"})`
 3. TeamDelete
 4. `Skill("acceptance", args="<epicId>")`
 5. → Stage Changes, then Continuation Prompt

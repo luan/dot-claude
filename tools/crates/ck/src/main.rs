@@ -81,6 +81,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let (store, cwd) = store_and_cwd();
                 cli::run_status(&store, &cwd, &id, &status)
             }
+            cli::TaskAction::Prune {
+                days,
+                dry_run,
+                list,
+            } => {
+                let (store, _) = store_and_cwd();
+                cli::run_prune(&store, days, dry_run, list)
+            }
         },
         Some(cli::Command::Plan { action }) => match action {
             cli::PlanAction::List {

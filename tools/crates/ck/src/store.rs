@@ -3,6 +3,7 @@ use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, SystemTime};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Status {
@@ -323,6 +324,42 @@ impl Store {
         fs::remove_file(path).map_err(|e| format!("delete: {e}"))
     }
 
+    pub fn archive_task(&self, list_id: &str, task_id: &str) -> Result<(), String> {
+        let src = self.base.join(list_id).join(format!("{task_id}.json"));
+        let archive_dir = self.base.join(list_id).join("archive");
+        fs::create_dir_all(&archive_dir).map_err(|e| format!("create archive dir: {e}"))?;
+        let dest = archive_dir.join(format!("{task_id}.json"));
+        fs::rename(&src, &dest).map_err(|e| format!("archive: {e}"))
+    }
+
+    pub fn prune_empty_lists(&self) -> Vec<String> {
+        let mut removed = Vec::new();
+        for list in self.list_task_lists() {
+            if !is_uuid(&list.id) {
+                continue;
+            }
+            let dir = self.base.join(&list.id);
+            let has_json = fs::read_dir(&dir)
+                .map(|entries| {
+                    entries.flatten().any(|e| {
+                        let path = e.path();
+                        path.is_file() && path.extension().is_some_and(|ext| ext == "json")
+                    })
+                })
+                .unwrap_or(true);
+            let has_archive = dir.join("archive").is_dir();
+            if !has_json && !has_archive && fs::remove_dir_all(&dir).is_ok() {
+                removed.push(list.id);
+            }
+        }
+        removed
+    }
+
+    #[cfg(test)]
+    pub fn with_base(base: PathBuf) -> Self {
+        Self { base }
+    }
+
     fn next_id(&self, list_id: &str) -> u64 {
         // Check .highwatermark first
         let hwm_path = self.base.join(list_id).join(".highwatermark");
@@ -623,4 +660,220 @@ pub fn tree_order(tasks: &[Task]) -> Vec<TreeRow> {
         );
     }
     result
+}
+
+pub fn parse_iso_to_system_time(s: &str) -> Option<SystemTime> {
+    let s = s.trim();
+    if s.len() < 19 {
+        return None;
+    }
+    let bytes = s.as_bytes();
+    let year: i64 = s.get(0..4)?.parse().ok()?;
+    if *bytes.get(4)? != b'-' {
+        return None;
+    }
+    let month: u32 = s.get(5..7)?.parse().ok()?;
+    if *bytes.get(7)? != b'-' {
+        return None;
+    }
+    let day: i64 = s.get(8..10)?.parse().ok()?;
+    if *bytes.get(10)? != b'T' {
+        return None;
+    }
+    let hour: i64 = s.get(11..13)?.parse().ok()?;
+    if *bytes.get(13)? != b':' {
+        return None;
+    }
+    let min: i64 = s.get(14..16)?.parse().ok()?;
+    if *bytes.get(16)? != b':' {
+        return None;
+    }
+    let sec: i64 = s.get(17..19)?.parse().ok()?;
+
+    // Civil date to days since epoch (Howard Hinnant's algorithm)
+    let y = if month <= 2 { year - 1 } else { year };
+    let m = if month <= 2 {
+        month as i64 + 9
+    } else {
+        month as i64 - 3
+    };
+    let era = y.div_euclid(400);
+    let yoe = y.rem_euclid(400);
+    let doy = (153 * m + 2) / 5 + day - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    let days_since_epoch = era * 146097 + doe - 719468;
+
+    let total_secs = days_since_epoch * 86400 + hour * 3600 + min * 60 + sec;
+    if total_secs < 0 {
+        return None;
+    }
+    Some(SystemTime::UNIX_EPOCH + Duration::from_secs(total_secs as u64))
+}
+
+pub fn task_completed_time(task: &Task, list_dir: &Path) -> Option<SystemTime> {
+    // Prefer metadata.completedAt ISO timestamp
+    if let Some(completed_at) = task
+        .raw
+        .get("metadata")
+        .and_then(|m| m.get("completedAt"))
+        .and_then(|v| v.as_str())
+        && let Some(t) = parse_iso_to_system_time(completed_at)
+    {
+        return Some(t);
+    }
+    // Fall back to file mtime
+    let path = list_dir.join(format!("{}.json", task.id));
+    fs::metadata(&path).ok()?.modified().ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn archive_task_moves_file_to_archive_subdir() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::with_base(dir.path().to_path_buf());
+        let list_id = "test-list";
+        let list_dir = dir.path().join(list_id);
+        fs::create_dir_all(&list_dir).unwrap();
+        fs::write(
+            list_dir.join("1.json"),
+            r#"{"id":"1","status":"completed"}"#,
+        )
+        .unwrap();
+
+        store.archive_task(list_id, "1").unwrap();
+
+        assert!(!list_dir.join("1.json").exists());
+        assert!(list_dir.join("archive").join("1.json").exists());
+    }
+
+    #[test]
+    fn archive_task_returns_error_for_missing_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::with_base(dir.path().to_path_buf());
+        let list_id = "test-list";
+        fs::create_dir_all(dir.path().join(list_id)).unwrap();
+
+        assert!(store.archive_task(list_id, "999").is_err());
+    }
+
+    #[test]
+    fn prune_empty_lists_removes_empty_uuid_dirs() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::with_base(dir.path().to_path_buf());
+        let uuid_id = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+        fs::create_dir_all(dir.path().join(uuid_id)).unwrap();
+
+        let removed = store.prune_empty_lists();
+
+        assert_eq!(removed, vec![uuid_id]);
+        assert!(!dir.path().join(uuid_id).exists());
+    }
+
+    #[test]
+    fn prune_empty_lists_keeps_uuid_dirs_with_tasks() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::with_base(dir.path().to_path_buf());
+        let uuid_id = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+        let list_dir = dir.path().join(uuid_id);
+        fs::create_dir_all(&list_dir).unwrap();
+        fs::write(list_dir.join("1.json"), r#"{"id":"1"}"#).unwrap();
+
+        let removed = store.prune_empty_lists();
+
+        assert!(removed.is_empty());
+        assert!(list_dir.exists());
+    }
+
+    #[test]
+    fn prune_empty_lists_keeps_uuid_dirs_with_archive_subdir() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::with_base(dir.path().to_path_buf());
+        let uuid_id = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+        let list_dir = dir.path().join(uuid_id);
+        // No root .json files — only an archive/ subdirectory
+        fs::create_dir_all(list_dir.join("archive")).unwrap();
+        fs::write(
+            list_dir.join("archive").join("1.json"),
+            r#"{"id":"1","status":"completed"}"#,
+        )
+        .unwrap();
+
+        let removed = store.prune_empty_lists();
+
+        assert!(
+            removed.is_empty(),
+            "list with archive/ subdir should not be removed"
+        );
+        assert!(list_dir.exists());
+    }
+
+    #[test]
+    fn prune_empty_lists_never_removes_named_dirs() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::with_base(dir.path().to_path_buf());
+        let named_id = "my-project";
+        fs::create_dir_all(dir.path().join(named_id)).unwrap();
+
+        let removed = store.prune_empty_lists();
+
+        assert!(removed.is_empty());
+        assert!(dir.path().join(named_id).exists());
+    }
+
+    #[test]
+    fn parse_iso_known_timestamp() {
+        // 2024-01-01T00:00:00Z = 1704067200 unix seconds
+        let t = parse_iso_to_system_time("2024-01-01T00:00:00Z").unwrap();
+        let secs = t.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
+        assert_eq!(secs, 1704067200);
+    }
+
+    #[test]
+    fn parse_iso_with_milliseconds() {
+        let t = parse_iso_to_system_time("2024-01-01T00:00:00.000Z").unwrap();
+        let secs = t.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
+        assert_eq!(secs, 1704067200);
+    }
+
+    #[test]
+    fn parse_iso_rejects_garbage() {
+        assert!(parse_iso_to_system_time("not a date").is_none());
+        assert!(parse_iso_to_system_time("").is_none());
+    }
+
+    #[test]
+    fn task_completed_time_prefers_metadata() {
+        let dir = tempfile::tempdir().unwrap();
+        let list_dir = dir.path();
+        fs::write(list_dir.join("1.json"), "{}").unwrap();
+
+        let task = Task::from_raw(serde_json::json!({
+            "id": "1",
+            "status": "completed",
+            "metadata": { "completedAt": "2024-01-01T00:00:00Z" }
+        }));
+
+        let t = task_completed_time(&task, list_dir).unwrap();
+        let secs = t.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
+        assert_eq!(secs, 1704067200);
+    }
+
+    #[test]
+    fn task_completed_time_falls_back_to_mtime() {
+        let dir = tempfile::tempdir().unwrap();
+        let list_dir = dir.path();
+        fs::write(list_dir.join("1.json"), "{}").unwrap();
+
+        let task = Task::from_raw(serde_json::json!({
+            "id": "1",
+            "status": "completed"
+        }));
+
+        let t = task_completed_time(&task, list_dir).unwrap();
+        let elapsed = SystemTime::now().duration_since(t).unwrap();
+        assert!(elapsed.as_secs() < 5);
+    }
 }

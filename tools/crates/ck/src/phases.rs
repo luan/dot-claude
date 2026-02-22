@@ -1,11 +1,17 @@
 use std::fs;
 use std::io::{self, IsTerminal, Read};
 
+#[derive(Debug, PartialEq)]
+pub struct Task {
+    pub text: String,
+    pub sub_tasks: Vec<String>,
+}
+
 #[derive(Debug)]
 pub struct Phase {
     pub phase: u32,
     pub title: String,
-    pub tasks: Vec<String>,
+    pub tasks: Vec<Task>,
     pub deps: Vec<u32>,
 }
 
@@ -103,15 +109,17 @@ pub fn parse_phases(content: &str) -> Vec<Phase> {
             if let Some(idx) = last_task_idx
                 && let Some(task) = current.tasks.get_mut(idx)
             {
-                task.push_str(" — ");
-                task.push_str(&sub);
+                task.sub_tasks.push(sub);
             }
             continue;
         }
 
         // Numbered list items
         if let Some(text) = parse_numbered_item(trimmed) {
-            current.tasks.push(text);
+            current.tasks.push(Task {
+                text,
+                sub_tasks: Vec::new(),
+            });
             last_task_idx = Some(current.tasks.len() - 1);
             continue;
         }
@@ -119,7 +127,8 @@ pub fn parse_phases(content: &str) -> Vec<Phase> {
 
     // Compute dependencies
     for i in 0..phases.len() {
-        let combined = format!("{} {}", phases[i].title, phases[i].tasks.join(" "));
+        let task_texts: Vec<&str> = phases[i].tasks.iter().map(|t| t.text.as_str()).collect();
+        let combined = format!("{} {}", phases[i].title, task_texts.join(" "));
         if is_independent(&combined) || i == 0 {
             phases[i].deps = vec![];
         } else {
@@ -140,14 +149,42 @@ pub fn to_json(phases: &[Phase]) -> String {
             .tasks
             .iter()
             .map(|t| {
-                let escaped = t.replace('\\', "\\\\").replace('"', "\\\"");
-                format!("\"{escaped}\"")
+                let text_escaped = t
+                    .text
+                    .replace('\\', "\\\\")
+                    .replace('"', "\\\"")
+                    .replace('\n', "\\n")
+                    .replace('\r', "\\r")
+                    .replace('\t', "\\t");
+                let subs: Vec<String> = t
+                    .sub_tasks
+                    .iter()
+                    .map(|s| {
+                        let escaped = s
+                            .replace('\\', "\\\\")
+                            .replace('"', "\\\"")
+                            .replace('\n', "\\n")
+                            .replace('\r', "\\r")
+                            .replace('\t', "\\t");
+                        format!("\"{escaped}\"")
+                    })
+                    .collect();
+                format!(
+                    "{{\"text\": \"{text_escaped}\", \"sub_tasks\": [{}]}}",
+                    subs.join(", ")
+                )
             })
             .collect();
 
         let deps_json: Vec<String> = p.deps.iter().map(|d| d.to_string()).collect();
 
-        let title_escaped = p.title.replace('\\', "\\\\").replace('"', "\\\"");
+        let title_escaped = p
+            .title
+            .replace('\\', "\\\\")
+            .replace('"', "\\\"")
+            .replace('\n', "\\n")
+            .replace('\r', "\\r")
+            .replace('\t', "\\t");
 
         out.push_str(&format!(
             "  {{\n    \"phase\": {},\n    \"title\": \"{}\",\n    \"tasks\": [{}],\n    \"deps\": [{}]\n  }}",
@@ -159,6 +196,229 @@ pub fn to_json(phases: &[Phase]) -> String {
     }
     out.push_str("\n]");
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn phase_titles(phases: &[Phase]) -> Vec<&str> {
+        phases.iter().map(|p| p.title.as_str()).collect()
+    }
+
+    #[test]
+    fn empty_input_returns_no_phases() {
+        assert!(parse_phases("").is_empty());
+    }
+
+    fn task(text: &str) -> Task {
+        Task {
+            text: text.to_string(),
+            sub_tasks: Vec::new(),
+        }
+    }
+
+    fn task_with_subs(text: &str, subs: &[&str]) -> Task {
+        Task {
+            text: text.to_string(),
+            sub_tasks: subs.iter().map(|s| s.to_string()).collect(),
+        }
+    }
+
+    #[test]
+    fn heading_style_phase_markers_parsed() {
+        let input = "### Phase 1: Setup\n1. Install deps\n\n### Phase 2: Build\n1. Run build";
+        let phases = parse_phases(input);
+        assert_eq!(phase_titles(&phases), vec!["Setup", "Build"]);
+        assert_eq!(phases[0].tasks, vec![task("Install deps")]);
+        assert_eq!(phases[1].tasks, vec![task("Run build")]);
+    }
+
+    #[test]
+    fn bold_style_phase_markers_parsed() {
+        let input = "**Phase 1: Alpha**\n1. Step one\n\n**Phase 2: Beta**\n1. Step two";
+        let phases = parse_phases(input);
+        assert_eq!(phase_titles(&phases), vec!["Alpha", "Beta"]);
+    }
+
+    #[test]
+    fn tasks_attributed_to_correct_phase() {
+        let input = "### Phase 1: First\n1. task-a\n1. task-b\n\n### Phase 2: Second\n1. task-c";
+        let phases = parse_phases(input);
+        assert_eq!(phases[0].tasks, vec![task("task-a"), task("task-b")]);
+        assert_eq!(phases[1].tasks, vec![task("task-c")]);
+    }
+
+    #[test]
+    fn first_phase_has_no_deps() {
+        let input = "### Phase 1: Only\n1. do it";
+        let phases = parse_phases(input);
+        assert!(phases[0].deps.is_empty());
+    }
+
+    #[test]
+    fn sequential_phases_get_predecessor_dep() {
+        let input =
+            "### Phase 1: A\n1. first\n\n### Phase 2: B\n1. second\n\n### Phase 3: C\n1. third";
+        let phases = parse_phases(input);
+        assert!(phases[0].deps.is_empty());
+        assert_eq!(phases[1].deps, vec![1]);
+        assert_eq!(phases[2].deps, vec![2]);
+    }
+
+    #[test]
+    fn independent_phrase_clears_dep() {
+        let input =
+            "### Phase 1: A\n1. first\n\n### Phase 2: B — independent of phase 1\n1. second";
+        let phases = parse_phases(input);
+        assert!(phases[1].deps.is_empty());
+    }
+
+    #[test]
+    fn frontmatter_stripped_before_parsing() {
+        let input = "---\ntopic: test\n---\n### Phase 1: Real\n1. actual task";
+        let phases = parse_phases(input);
+        assert_eq!(phases.len(), 1);
+        assert_eq!(phases[0].title, "Real");
+    }
+
+    #[test]
+    fn sub_items_nested_under_parent_task() {
+        let input = "### Phase 1: Setup\n1. Install deps\n  - use npm\n  - check versions";
+        let phases = parse_phases(input);
+        assert_eq!(
+            phases[0].tasks,
+            vec![task_with_subs(
+                "Install deps",
+                &["use npm", "check versions"]
+            )]
+        );
+    }
+
+    #[test]
+    fn task_with_no_sub_items_has_empty_sub_tasks() {
+        let input = "### Phase 1: Setup\n1. Install deps\n1. Run build";
+        let phases = parse_phases(input);
+        assert_eq!(
+            phases[0].tasks,
+            vec![task("Install deps"), task("Run build")]
+        );
+        assert!(phases[0].tasks[0].sub_tasks.is_empty());
+        assert!(phases[0].tasks[1].sub_tasks.is_empty());
+    }
+
+    #[test]
+    fn single_sub_item_nested() {
+        let input = "### Phase 1: Setup\n1. Install deps\n  - use npm";
+        let phases = parse_phases(input);
+        assert_eq!(
+            phases[0].tasks,
+            vec![task_with_subs("Install deps", &["use npm"])]
+        );
+    }
+
+    #[test]
+    fn sub_items_on_multiple_tasks() {
+        let input = "### Phase 1: Setup\n1. Install deps\n  - use npm\n1. Configure\n  - set env\n  - add secrets";
+        let phases = parse_phases(input);
+        assert_eq!(
+            phases[0].tasks,
+            vec![
+                task_with_subs("Install deps", &["use npm"]),
+                task_with_subs("Configure", &["set env", "add secrets"]),
+            ]
+        );
+    }
+
+    #[test]
+    fn phase_number_preserved() {
+        let input = "### Phase 3: Non-sequential\n1. task";
+        let phases = parse_phases(input);
+        assert_eq!(phases[0].phase, 3);
+    }
+
+    #[test]
+    fn test_three_level_nesting() {
+        let input = "### Phase 1: Foundation\n1. Setup database\n  - create schema\n  - add migrations\n1. Configure auth\n  - jwt setup\n  - session store\n\n### Phase 2: Features\n1. User CRUD\n  - create endpoint\n  - delete endpoint\n1. API gateway";
+
+        let phases = parse_phases(input);
+
+        // Correct phase count
+        assert_eq!(phases.len(), 2);
+        assert_eq!(phases[0].title, "Foundation");
+        assert_eq!(phases[1].title, "Features");
+
+        // Task count per phase
+        assert_eq!(phases[0].tasks.len(), 2);
+        assert_eq!(phases[1].tasks.len(), 2);
+
+        // sub_tasks populated correctly
+        assert_eq!(phases[0].tasks[0].text, "Setup database");
+        assert_eq!(
+            phases[0].tasks[0].sub_tasks,
+            vec!["create schema", "add migrations"]
+        );
+
+        assert_eq!(phases[0].tasks[1].text, "Configure auth");
+        assert_eq!(
+            phases[0].tasks[1].sub_tasks,
+            vec!["jwt setup", "session store"]
+        );
+
+        assert_eq!(phases[1].tasks[0].text, "User CRUD");
+        assert_eq!(
+            phases[1].tasks[0].sub_tasks,
+            vec!["create endpoint", "delete endpoint"]
+        );
+
+        // Task with no sub-items stays flat
+        assert_eq!(phases[1].tasks[1].text, "API gateway");
+        assert!(phases[1].tasks[1].sub_tasks.is_empty());
+
+        // to_json contains "sub_tasks" key with correct nesting
+        let json = to_json(&phases);
+        assert!(json.contains("\"sub_tasks\""));
+        assert!(json.contains("\"create schema\""));
+        assert!(json.contains("\"add migrations\""));
+        assert!(json.contains("\"jwt setup\""));
+        assert!(json.contains("\"session store\""));
+        assert!(json.contains("\"create endpoint\""));
+        assert!(json.contains("\"delete endpoint\""));
+        // Flat task still emits empty sub_tasks array
+        assert!(json.contains(r#""text": "API gateway", "sub_tasks": []"#));
+    }
+
+    #[test]
+    fn to_json_emits_task_objects_with_sub_tasks() {
+        let phases = vec![Phase {
+            phase: 1,
+            title: "Test".to_string(),
+            tasks: vec![
+                task("do thing"),
+                task_with_subs("setup", &["install", "configure"]),
+            ],
+            deps: vec![],
+        }];
+        let json = to_json(&phases);
+        assert!(json.contains(r#""text": "do thing""#));
+        assert!(json.contains(r#""sub_tasks": []"#));
+        assert!(json.contains(r#""text": "setup""#));
+        assert!(json.contains(r#""sub_tasks": ["install", "configure"]"#));
+    }
+
+    #[test]
+    fn to_json_escapes_newlines_and_tabs() {
+        let phases = vec![Phase {
+            phase: 1,
+            title: "Test".to_string(),
+            tasks: vec![task_with_subs("line1\nline2", &["sub\twith\ttabs"])],
+            deps: vec![],
+        }];
+        let json = to_json(&phases);
+        assert!(json.contains(r#""text": "line1\nline2""#));
+        assert!(json.contains(r#""sub\twith\ttabs""#));
+        assert!(!json.contains('\n') || !json.contains("line1\nline2"));
+    }
 }
 
 pub fn run_phases(file_arg: Option<String>) -> Result<(), Box<dyn std::error::Error>> {

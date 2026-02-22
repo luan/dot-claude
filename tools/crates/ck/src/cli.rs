@@ -136,6 +136,18 @@ pub enum TaskAction {
         #[arg(help = "New status (pending, in_progress, completed)", value_parser = ["pending", "in_progress", "completed"])]
         status: String,
     },
+
+    #[command(about = "Archive completed tasks older than N days")]
+    Prune {
+        #[arg(long, default_value_t = 7, help = "Age threshold in days")]
+        days: u64,
+
+        #[arg(long, help = "Dry run — print what would be pruned without archiving")]
+        dry_run: bool,
+
+        #[arg(long, help = "Only prune tasks from this list ID")]
+        list: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -637,6 +649,66 @@ pub fn run_status(
         ansi::arrow(),
         new_colored
     );
+
+    Ok(())
+}
+
+pub fn run_prune(
+    store: &Store,
+    days: u64,
+    dry_run: bool,
+    list: Option<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let lists = if let Some(ref id) = list {
+        vec![TaskList { id: id.clone() }]
+    } else {
+        store.list_task_lists()
+    };
+
+    let threshold = std::time::Duration::from_secs(days * 86400);
+    let now = std::time::SystemTime::now();
+    let mut archived_count = 0u32;
+
+    for task_list in &lists {
+        let list_dir = store.tasks_base().join(&task_list.id);
+        let tasks = store.list_tasks(&task_list.id);
+
+        for task in &tasks {
+            if task.status != crate::store::Status::Completed {
+                continue;
+            }
+
+            let is_old_enough = crate::store::task_completed_time(task, &list_dir)
+                .and_then(|t| now.duration_since(t).ok())
+                .is_some_and(|elapsed| elapsed >= threshold);
+
+            if !is_old_enough {
+                continue;
+            }
+
+            if dry_run {
+                println!("would archive: {} ({})", task.id, task.subject);
+            } else {
+                store.archive_task(&task_list.id, &task.id)?;
+                archived_count += 1;
+            }
+        }
+    }
+
+    if !dry_run {
+        if archived_count > 0 {
+            println!("Archived {archived_count} completed task(s)");
+        }
+        // Only scan all lists for empty-list cleanup when no specific list was targeted.
+        // Scoping to a single list would miss other empty lists anyway, and the list
+        // specified by --list is unlikely to be empty right after archiving from it.
+        if list.is_none() {
+            let removed_lists = store.prune_empty_lists();
+            if !removed_lists.is_empty() {
+                println!("Removed {} empty list(s)", removed_lists.len());
+            }
+        }
+    }
 
     Ok(())
 }

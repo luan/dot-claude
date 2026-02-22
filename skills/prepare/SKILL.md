@@ -46,7 +46,7 @@ See rules/skill-interviewing.md. Skill-specific triggers:
    - If plan has a standalone testing/test phase → merge its test items into the implementation phases they cover before proceeding (TDD: tests live with the code they verify, not in a later phase)
 
 3. **Parse plan:**
-   - If source is a plan file: `ck tool phases <file>` → JSON array of `{phase, title, tasks, deps}`
+   - If source is a plan file: `ck tool phases <file>` → JSON array of `{phase, title, tasks, deps}` where each task is `{text, sub_tasks}` (sub_tasks may be empty)
    - If source is task metadata.design: write to temp file, run `ck tool phases <tmpfile>`
    - Extract title from first heading or the plan file's frontmatter topic
 
@@ -95,11 +95,19 @@ See rules/skill-interviewing.md. Skill-specific triggers:
        type: <infer from task content: "bug" if fixing broken behavior or correcting a defect, "feature" if adding new user-visible capability, "chore" for everything else (refactoring, cleanup, config, tests)>
        priority: <inherit from epic, default "P2">
        parent_id: "<epic-id>"
+       depth: 1  # 1 = phase task; sub-tasks get depth 2; leaves under sub-tasks get depth 3
+
+   Decomposition rule: if a phase has 3+ distinct implementation concerns (each touching different files or components), decompose it into sub-tasks instead of cramming all concerns into one task:
+   - Create the phase task first as a grouping node (`parent_id: "<epic-id>"`, `depth: 1`); its description becomes a summary of the concerns
+   - For each concern, create a sub-task: `parent_id: "<phase-task-id>"`, `depth: 2`; same description format, same quality requirements
+   - Depth limit: never create tasks at depth > 3 (1=phase, 2=sub-task, 3=leaf). If decomposition would require 4+ levels, flatten to depth ≤ 3 instead.
+   - Flat phases (1-2 concerns) stay as single tasks at depth 1 — decomposition is only triggered at 3+.
 
    4. Set dependencies based on actual data/code dependencies between tasks:
       TaskUpdate(taskId, addBlockedBy: [<ids of tasks that produce files, APIs, or state this task consumes>])
       Heuristic: if task B modifies a file that task A creates, or task B imports/uses an API that task A defines, B is blocked by A. If two tasks modify different files, they are independent.
       Independent tasks across phases should NOT block each other.
+      Sub-task blocking: sub-tasks within the same phase can block each other — use addBlockedBy with sibling sub-task IDs when one sub-task produces a file or API that another consumes.
 
    5. Return all task IDs as a list: "Created: task-1, task-2, task-3"
 
@@ -120,7 +128,7 @@ See rules/skill-interviewing.md. Skill-specific triggers:
 
 7. **Finalize:**
    - `TaskUpdate(epicId, status: "in_progress", owner: "prepare")`
-   - If source was a task → `TaskUpdate(sourceId, status: "completed", metadata: {status_detail: null})`
+   - If source was a task → `TaskUpdate(sourceId, status: "completed", metadata: {status_detail: null, completedAt: "<current ISO 8601 timestamp>"})`
 
 8. **Report:**
    ```
