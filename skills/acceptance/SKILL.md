@@ -49,13 +49,13 @@ Flat epics (no grandchildren) produce flat `Task <id>: ...` output.
 
 ## Step 4: Get Diff
 
-`git diff HEAD` + `git diff --cached` in parallel. Both empty → `git diff HEAD~1..HEAD`. Still empty → "No diff found — verifying against HEAD state."
+`git diff HEAD` + `git diff --cached` in parallel. Both empty → `git diff HEAD~1..HEAD`. Still empty → verify against HEAD state (acceptance still runs — diff-less changes like config or dependency updates are valid).
 
 ## Step 5: Spawn Verifier and Breaker
 
 Two parallel `Task(subagent_type="general-purpose")` agents — a dual-lens approach because a single reviewer misses adversarial gaps:
 
-**Verifier** evaluates each criterion against the diff: PASS/FAIL/PARTIAL/N/A with line-level evidence. Adds "Plan Deviations" section noting justified vs problematic divergences. Ends with one-line verdict.
+**Verifier** evaluates each criterion against the diff: PASS/FAIL/PARTIAL/N/A with line-level evidence. All criteria N/A → PASS with note "no applicable criteria found." Adds "Plan Deviations" section noting justified vs problematic divergences. Ends with one-line verdict.
 
 **Breaker** assumes the implementation is subtly wrong. Hunts five angles: implied requirements, edge cases, integration points, technically-met-but-incomplete criteria, missing negatives. Each finding rated HIGH/MEDIUM/LOW with related criterion. No substantive findings → says so honestly rather than inventing issues.
 
