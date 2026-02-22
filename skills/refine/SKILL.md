@@ -1,6 +1,6 @@
 ---
 name: refine
-description: "Use before committing to polish code. Triggers: 'refine', 'clean up', 'simplify'. Removes low-value comments, simplifies complexity, applies language-idiomatic rewrites. Does NOT change behavior."
+description: "Use before committing to polish code. Triggers: 'refine', 'clean up', 'simplify'. Removes low-value comments, simplifies complexity, applies language-idiomatic rewrites. Does NOT change behavior. Do NOT use when: a full adversarial review with bug-finding is needed — use /review instead."
 argument-hint: "[optional: file-pattern]"
 user-invocable: true
 allowed-tools:

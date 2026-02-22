@@ -1,6 +1,6 @@
 ---
 name: implement
-description: "Execute an epic or task — auto-detects solo vs swarm mode, dispatches subagents to implement. Triggers: \"implement\", \"execute the plan\", \"build this\", \"code this plan\", \"start implementing\", \"ready to implement\", epic/task ID."
+description: "Execute an epic or task — auto-detects solo vs swarm mode, dispatches subagents to implement. Triggers: \"implement\", \"execute the plan\", \"build this\", \"code this plan\", \"start implementing\", \"ready to implement\", epic/task ID. Do NOT use when: a full autonomous end-to-end workflow (explore through commit) is needed — use /vibe instead."
 argument-hint: "[<epic-slug>|t<id>|<id>] [--solo]"
 user-invocable: true
 allowed-tools:
@@ -54,6 +54,7 @@ Before classifying, check for orphaned work:
 - Single task (no children) → **Solo**
 - 2-3 independent children (no blockedBy) → **Parallel**
 - 4+ children (regardless of dependencies) OR children with blockedBy dependencies → **Swarm**
+- **Readiness check (Parallel/Swarm only):** Scan child task descriptions for `## Files` and `## Approach` sections. If 2+ tasks lack either → AskUserQuestion: "N tasks lack detailed file lists or approach descriptions — workers may need to guess. Continue or refine task briefs first?" Options: "Continue anyway" / "Refine briefs first". User choosing "Continue" proceeds normally.
 
 ## Worker Prompt
 
@@ -87,6 +88,36 @@ Implement task <task-id>.
 - Never invoke Skill("commit") — orchestrator handles commits
 - Only modify files in your task scope
 - Bug found elsewhere → TaskCreate(subject: "Found: ...", metadata: {type: "bug", priority: "P2", project: "<repo root>"})
+```
+
+### Codex Conventions Component
+
+Injected into every Codex dispatch prompt — not used by Claude workers.
+
+```
+{codex_conventions}
+
+## Project Conventions (injected from ~/.claude)
+
+### Code Style
+- Clarity over brevity. No clever one-liners that obscure intent.
+- No dead code, commented-out code, "just in case" code.
+- Comments for WHY / edge cases / surprising behavior only.
+- Three similar lines before abstracting.
+
+### Testing (TDD required)
+- Write failing test first, confirm red, then implement.
+- Every test must answer: "What bug would this catch?"
+- Banned: tautology mocks, getter/setter tests, implementation mirroring, coverage padding.
+- Mock only: external services, network, filesystem, clock. Never mock what you own.
+
+### File Structure
+- Exact file paths from task description — do not create new files outside scope.
+- One logical change per file modification.
+
+### Naming
+- Match surrounding code conventions (check 2-3 nearby files first).
+- No versioned names (FooV2), no migration wrappers.
 ```
 
 ### Team-based Variant
@@ -155,6 +186,7 @@ Used when tasks have dependency waves (blockedBy relationships). **Every task in
 4. `TeamCreate(team_name="impl-<slug>")`  (fall back to `impl-<epicId>` if no slug) If fails → fall back to sequential wave dispatch using **Standalone Worker Prompt**: dispatch unblocked tasks (up to 4), wait for completion, then dispatch newly unblocked tasks. Same rolling logic as Swarm but without team messaging. On failure: `TaskUpdate(epicId, metadata: {impl_mode: "standalone-fallback"})`
 5. Read team config `~/.claude/teams/impl-<slug>/config.json` → extract team lead name for worker prompts
    `TaskUpdate(epicId, metadata: {impl_team: "impl-<slug>", impl_mode: "swarm"})`
+6. `CODEX_AVAILABLE = Bash("which codex >/dev/null 2>&1 && echo yes || echo no")` — detect Codex CLI
 
 ### Rolling Scheduler
 
@@ -167,19 +199,38 @@ ready = TaskList() filtered by:
   status == "pending" AND
   blockedBy is empty
 
-Spawn ready tasks (up to 4). Always use Team-based Worker Prompt
-when TeamCreate succeeded (swarm mode), Standalone Worker Prompt
-when no team exists.
+Spawn ready tasks (up to 4) using dispatch routing:
+  Leaf (no tasks blockedBy it, no children) AND CODEX_AVAILABLE:
+    → Codex dispatch
+  All others:
+    → Team-based Worker Prompt (swarm) / Standalone Worker Prompt (no team)
 
 active_count = len(spawned)
-dispatch_count = {}  # task_id → number of times dispatched
+dispatch_count = {}       # task_id → number of Claude dispatches
+codex_attempted = set()   # task_ids that already had a Codex attempt
+
+# Codex dispatch (leaf tasks only, when CODEX_AVAILABLE):
+#   1. Build prompt: {codex_conventions} template + "\n\n## Task\n" + task description
+#   2. Bash("codex -q --task '<escaped_prompt>'", timeout=300000, run_in_background=true)
+#   3. codex_attempted.add(id)
+#   On completion:
+#     exit 0 → spawn Claude review worker to run tests, Skill("refine"),
+#              and TaskUpdate(taskId, status: "completed")
+#     non-zero/timeout → TaskUpdate(id, status: "pending", owner: ""),
+#                         re-dispatch immediately as Claude worker (counts as dispatch_count[id]++)
 
 # Rolling loop
 while tasks remain incomplete:
-  Wait for ANY worker to complete (Task returns or SendMessage received).
+  Wait for ANY worker to complete (Task returns, SendMessage received,
+  or Codex background task finishes via TaskOutput).
 
   On each completion:
     1. If worker completed its task → active_count--
+       If Codex task completed:
+         exit 0 → spawn Claude review worker (test + refine + mark completed),
+                   active_count stays (review worker replaces Codex slot)
+         non-zero/timeout → active_count--, TaskUpdate(id, status: "pending", owner: ""),
+                            add to newly_ready for Claude dispatch
        If Standalone worker returned without completing → check TaskList():
          task still in_progress → stuck, TaskUpdate(id, status: "pending", owner: ""), active_count--
        TaskUpdate(epicId, metadata: {
@@ -194,7 +245,9 @@ while tasks remain incomplete:
          blockedBy is empty
     4. Skip any task where dispatch_count[task_id] >= 2 (mark as failed, report to user)
     5. slots = 4 - active_count
-    6. Spawn min(len(newly_ready), slots) tasks → active_count += spawned, dispatch_count[id]++
+    6. Spawn min(len(newly_ready), slots) tasks → active_count += spawned
+       Codex routing: if CODEX_AVAILABLE AND leaf AND id not in codex_attempted → Codex dispatch
+       Else → Claude worker, dispatch_count[id]++
     7. If active_count == 0 and no pending tasks remain → break
 
   Report progress: "N completed, M active, K pending, F failed"

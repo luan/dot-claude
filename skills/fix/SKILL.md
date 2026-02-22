@@ -1,6 +1,6 @@
 ---
 name: fix
-description: "Convert user feedback or review findings into phased tasks. Does NOT implement fixes. Triggers: 'fix', 'create issues from feedback', 'file bugs from feedback'."
+description: "Convert user feedback or review findings into phased tasks. Does NOT implement fixes. Triggers: 'fix', 'create issues from feedback', 'file bugs from feedback'. Do NOT use when: the cause is unknown and investigation is needed — use /debugging instead. Do NOT use when: you want to implement the fix immediately — this skill only creates tasks."
 argument-hint: "<feedback-text>"
 user-invocable: true
 allowed-tools:

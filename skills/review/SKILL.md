@@ -1,6 +1,6 @@
 ---
 name: review
-description: "Adversarial code review with parallel reviewers. Triggers: 'review', 'review my changes', 'check this code', 'code review'. Use --team for 3-perspective mode."
+description: "Adversarial code review with parallel reviewers. Triggers: 'review', 'review my changes', 'check this code', 'code review'. Use --team for 3-perspective mode. Do NOT use when: only cosmetic polish is needed — use /refine instead. Do NOT use when: investigating an unknown bug — use /debugging instead."
 argument-hint: "[base..head | file-list | PR#] [--against <issue-id>] [--team] [--continue]"
 user-invocable: true
 allowed-tools:
@@ -112,6 +112,11 @@ Substituted into Step 3 prompts via `{name}` markers.
 Classify each finding:
 - FIX: correctness bugs, security issues, test gaps — will be auto-fixed
 - IGNORE: style preferences, subjective, low-signal, out-of-scope tech debt — skip
+
+Assign a tier to each finding:
+- critical: correctness bugs, security vulnerabilities, data loss risks
+- notable: design issues, performance problems, missing tests
+- nitpick: style, naming, minor improvements
 ```
 
 ## Step 3: Dispatch Reviewers
@@ -142,7 +147,7 @@ Focus:
 
 {disposition_block}
 
-Output: table with Severity | Disposition | File:Line | Issue | Suggestion
+Output: table with Tier | Severity | Disposition | File:Line | Issue | Suggestion
 Then brief summary.
 ```
 
@@ -163,7 +168,7 @@ Focus:
 
 {disposition_block}
 
-Output: table with Severity | Disposition | File:Line | Issue | Suggestion
+Output: table with Tier | Severity | Disposition | File:Line | Issue | Suggestion
 Then Simplicity table (same columns, severity capped at medium) for over-engineering findings.
 Then brief summary.
 ```
@@ -203,7 +208,7 @@ Focus (Architecture & Performance):
 
 {disposition_block}
 
-Output: table with Severity | Disposition | File:Line | Issue | Suggestion
+Output: table with Tier | Severity | Disposition | File:Line | Issue | Suggestion
 Then Simplicity table (same columns, severity capped at medium) for over-engineering findings.
 Then brief summary.
 ```
@@ -229,7 +234,7 @@ Focus:
 
 Tag: [architect]
 Output: Phase 1 (Critical) → Phase 2 (Design & Simplicity, cap simplicity severity at medium) → Phase 3 (Testing Gaps)
-Each finding: table with Severity | Disposition | File:Line | Issue | Suggestion
+Each finding: table with Tier | Severity | Disposition | File:Line | Issue | Suggestion
 ```
 
 **Agent 2 — Code Quality:**
@@ -249,7 +254,7 @@ Focus:
 
 Tag: [code-quality]
 Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
-Each finding: table with Severity | Disposition | File:Line | Issue | Suggestion
+Each finding: table with Tier | Severity | Disposition | File:Line | Issue | Suggestion
 ```
 
 **Agent 3 — Devil's Advocate:**
@@ -269,7 +274,7 @@ Focus:
 
 Tag: [devil]
 Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
-Each finding: table with Severity | Disposition | File:Line | Issue | Suggestion
+Each finding: table with Tier | Severity | Disposition | File:Line | Issue | Suggestion
 ```
 
 ### Additional Agents (all modes)
@@ -297,7 +302,7 @@ These files historically change alongside the above but were NOT in this diff:
 
 Severity: medium if pattern is clearly broken (counterpart not updated); low if speculative.
 
-Output: table with Severity | Disposition | File | Issue | Suggestion
+Output: table with Tier | Severity | Disposition | File | Issue | Suggestion
 Then brief summary.
 ```
 
@@ -312,22 +317,23 @@ Tag all findings with [external].
 
 {disposition_block}
 
-Output: table with [external] | Severity | Disposition | File:Line | Issue | Suggestion
+Output: table with [external] | Tier | Severity | Disposition | File:Line | Issue | Suggestion
 ```
 
 ## Step 4: Consolidate + Present
 
 0. **Validate reviewer output** (subagent-trust.md): spot-check 1-2 specific file:line claims from each reviewer. Claimed issue doesn't exist at that location → discard.
    For [external] codex findings: spot-check ALL file:line claims. Codex duplicate of reviewer finding → keep reviewer version. [external] tag persists.
-1. Deduplicate (same issue from multiple lenses → highest severity)
-2. Sort by severity. **NEVER truncate validated findings.** Output EVERY finding that survived validation.
-3. --team only: tag [architect]/[code-quality]/[devil], detect consensus (2+ flag same issue), note disagreements
+1. Deduplicate (same issue from multiple lenses → highest severity, highest tier)
+2. Consensus filter: a finding survives if (a) any reviewer tagged it critical, OR (b) 2+ reviewers flagged it at the same tier. Solo (2 reviewers): 2-of-2 for notable/nitpick. File-Split/Perspective (3+ reviewers): 2-of-N. Single-reviewer notables and nitpicks → demote to IGNORE with "1-of-N reviewers" label.
+3. Sort by severity. **NEVER truncate validated findings.** Output EVERY finding that survived consensus + validation.
+4. --team only: tag [architect]/[code-quality]/[devil], note disagreements
 
 Output: `# Adversarial Review Summary`
 
 - --team: **Consensus** (top, issues flagged by 2+ reviewers)
-- **FIX items** (sorted by severity): table with Severity | File:Line | Issue | Suggestion
-- **IGNORE items** (grouped by category, one line each): collapsed summary
+- **FIX items** (sorted by severity): table with Tier | Severity | File:Line | Issue | Suggestion
+- **IGNORE items** (grouped by category, one line each): collapsed summary — includes consensus-demoted findings labeled "1-of-N reviewers"
 - --team: **Disagreements** (bottom)
 - Footer: Verdict (APPROVE/COMMENTS/CHANGES), Blocking count, Review task-id
 
