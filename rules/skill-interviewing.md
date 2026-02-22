@@ -22,12 +22,12 @@ When a skill finishes, there's usually an obvious next step in the pipeline (exp
 
 ### When to stop vs auto-proceed
 
-**Stop** when the skill produced analysis/findings that the next skill will act on structurally. Wrong findings → wrong plan. Let the user review and respond naturally.
-- explore → prepare (findings become tasks)
+**Stop** when the skill produced output that needs human verification before the next step acts on it.
+- explore → prepare (findings become tasks — wrong findings → wrong plan)
 - brainstorm → prepare (design becomes tasks)
+- implement → user verification (user must verify functionality before review, or review risks blessing regressions)
 
 **Auto-proceed** when the next step is mechanical or self-correcting:
 - prepare → implement (user already validated the analysis)
-- implement → review (review catches implementation issues)
 
 Never present formulaic menus with "Done for now" filler options. If the user wants to stop, they'll just... stop.

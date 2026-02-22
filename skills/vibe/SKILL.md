@@ -83,17 +83,6 @@ Skill("implement")
 
 If some tasks failed, continue to commit if `git diff --stat` is non-empty.
 
-### Test Plan
-
-```
-Skill("test-plan")
-```
-
-**Verify**: plan output is non-empty.
-**Update**: `vibe_stage: "test-plan"`
-
-If pipeline is non-interactive, capture output for finalize report.
-
 ### Commit
 
 If `git diff --stat` is empty → skip.
@@ -111,7 +100,7 @@ Skill("commit")
 TaskUpdate(trackerId, status: "completed")
 ```
 
-Report summary with one line per stage showing what happened. Include test plan output if captured.
+Report summary with one line per stage showing what happened.
 
 ## Error Handling
 
@@ -125,6 +114,6 @@ If ANY stage fails:
 ## Stage Numbering
 
 Adjust `[N/M]` denominator based on flags:
-- All stages: 6
-- `--no-branch`: 5
-- `--dry-run`: 4 (or 3 with `--no-branch`)
+- All stages: 5
+- `--no-branch`: 4
+- `--dry-run`: 3 (or 2 with `--no-branch`)
