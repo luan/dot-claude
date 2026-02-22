@@ -21,153 +21,69 @@ Figure out where you are, then either resume in-flight work or pick something ne
 
 Branch: !`git branch --show-current`
 Status: !`git status -sb 2>/dev/null`
-Recent commits: !`git log --oneline -5 2>/dev/null`
-
-## Step 0: Detect trunk
-
+Recent: !`git log --oneline -5 2>/dev/null`
 Trunk: !`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||' || echo main`
 
-If current branch equals trunk, or the user passed an explicit branch/PR# argument, go to the appropriate path:
+## Route
 
-- **On trunk, no argument** → Jump to [Trunk Path](#trunk-path)
-- **On feature branch** → Jump to [Feature Branch Path](#feature-branch-path)
-- **Explicit argument (branch name or PR#)** → Resolve the branch first (PR# → `gh pr view <num> --json headRefName`), then follow Feature Branch Path for that branch
+- **On trunk, no argument** → Trunk Path
+- **On feature branch** → Feature Branch Path
+- **Explicit argument** (branch or PR#) → resolve (PR# via `gh pr view <num> --json headRefName`), then Feature Branch Path
 
 ---
 
 ## Feature Branch Path
 
-Resume in-flight work. Gather state, suggest next action.
+### 1. Gather State
 
-### 1. Gather branch state
+Branch, status, commits from Context. If PR exists: `gh pr view --json title,state,isDraft,reviewDecision,statusCheckRollup`, `gh pr checks`, `gh api repos/{owner}/{repo}/pulls/{num}/comments`.
 
-Already have branch name, status, and recent commits from Context.
+### 2. Stale Branch Check
 
-### 2. Gather PR context (if PR exists)
+List local feature branches (`git branch --list '<pattern>/*'` — adapt pattern to repo's naming convention). Cross-reference against in_progress tasks' `metadata.branch`. Unmatched branches are potentially stale. **Caveat:** not all skills set `metadata.branch`, so absence doesn't confirm staleness. Never auto-delete; surface for awareness only.
 
-- `gh pr view --json title,state,isDraft,reviewDecision,statusCheckRollup`
-- `gh pr checks`
-- PR review comments: `gh api repos/{owner}/{repo}/pulls/{num}/comments`
-
-### 3. Check for stale branches
-
-- List all local `luan/*` branches: `git branch --list 'luan/*' --format='%(refname:short)'`
-- Get active tasks: `TaskList()` filtered by status === "in_progress" and metadata.project === repoRoot
-- Check `metadata.branch` field on each task
-- Cross-reference: branches not referenced in any in_progress task's `metadata.branch` are potentially stale
-- Never auto-delete — only surface for user awareness
-
-### 4. Summarize
+### 3. Summarize + Suggest
 
 ```
-Branch: <name>
-Commits: last 3 messages
+Branch: <name>  |  Commits: last 3
 PR: #N (draft/ready) — title
-Review: Approved | Changes requested | Pending
-CI: Passing | Failing (list failures)
-Comments: N unresolved (summarize)
+Review/CI/Comments: <status>
 Tasks: N active, M pending
-Stale branches: <list> (no matching active issues)
+Stale branches: <list> (if any)
 ```
 
-Only show "Stale branches" line if stale branches exist.
-
-### 5. Suggest next action (priority order)
-
-1. CI failing → "Fix checks"
-2. Changes requested → "Address N review comments"
-3. Unresolved comments → "Respond to feedback"
-4. Tasks active → "Continue: ..."
-5. Draft PR, all passing → "Mark ready"
-6. Ready PR, approved → "Merge"
-7. No PR → "Create with /commit then /gt:submit"
-8. All clear → "Wait for review"
+Suggest next action (priority order): CI failing → fix checks; changes requested → address comments; unresolved comments → respond; active tasks → continue; draft+passing → mark ready; approved → merge; no PR → /commit then /gt:submit; all clear → wait for review.
 
 ---
 
 ## Trunk Path
 
-Read the board, find what's ready, dispatch the right skill.
+### 1. Prune + Read Board
 
-### 0. Prune stale tasks
+Run `ck task prune --days 7` silently (note if tasks pruned). TaskList filtered by `metadata.project === repoRoot`. Split: pending, in_progress (without status_detail). Sort by priority (P1→P3), then creation order.
 
-Run silently: `ck task prune --days 7`
+### 2. Pick Top Candidate
 
-If it produces output (tasks were pruned), include a brief note like "Pruned N completed tasks." Otherwise omit entirely.
+Highest-priority unblocked item. Skip: completed, deleted, `status_detail === "review"`. A task is blocked if any ID in its `blockedBy` array has status !== "completed" — check via TaskGet. Prefer in_progress over pending at same priority — resuming started work avoids duplicate effort.
 
-### 1. Read the board
+### 3. Classify
 
-```
-TaskList() filtered by metadata.project === repoRoot
-Split into: pending (open) and in_progress without status_detail (active)
-```
+Read via TaskGet. Route by signal:
+- Type `bug` → `/debugging`
+- Title "Brainstorm:" or "Needs brainstorm" → `/brainstorm`
+- Title "Explore:" or "Needs explore" → `/explore`
+- Has design, no children → `/prepare`
+- Has children or is leaf → `/implement`
+- **Default** → `/explore` — cheapest to course-correct from
+- No Approach/Design → `/explore`; approach but no phases → `/brainstorm`
 
-Sort by metadata.priority (P1 first, then P2, P3), then creation order.
+### 4. Present + Dispatch
 
-### 2. Pick the top candidate
-
-Select the highest-priority item that is NOT blocked. Skip:
-- Items with status `completed` or `deleted`
-- Items with status_detail === 'review' (waiting on human)
-- Items whose description says "blocked by" an open issue
-
-If an item has status `in_progress`, prefer it over `pending` items at the same priority (someone already started it — resume it).
-
-### 3. Read the candidate
-
-```
-TaskGet(taskId)
-```
-
-### 4. Classify the action
-
-Read the issue description and classify:
-
-| Signal | Action |
-|--------|--------|
-| Type is `bug` | `/debugging` |
-| Title starts with "Brainstorm:" or description says "Needs brainstorm" | `/brainstorm` |
-| Title starts with "Explore:" or description says "Needs explore" or "Explore first" | `/explore` |
-| Has design/plan but no children yet (TaskList shows no tasks with metadata.parent_id === taskId) | `/prepare` |
-| Has children (TaskList shows tasks with metadata.parent_id === taskId), or is a leaf task ready to build | `/implement` |
-
-**Default:** If no signal matches → `/explore` (cheapest to course-correct)
-
-**Tie-breaking:**
-- Feature with no "## Approach" or "## Design" section → `/explore`
-- Feature with approach but no concrete phases → `/brainstorm`
-
-### 5. Present to user
-
-Use AskUserQuestion with:
-- Recommended action as first option (with "(Recommended)")
-- 1-2 alternatives that could also apply
-- Brief explanation of why this issue and this action
-
-Format the question header as the issue ID.
-
-Example:
-```
-Question: "Next up: <title> (P<n>). What should we do?"
-Options:
-  - "/explore (Recommended)" — "Investigate before designing"
-  - "/brainstorm" — "Jump to design dialogue"
-  - "Skip — show me the next one" — "Pick a different issue"
-```
-
-### 6. Dispatch
-
-Based on user's choice, invoke the selected skill:
-
-```
-Skill tool: skill="<chosen-skill>", args="<issue-id>"
-```
-
-If user chose "Skip", go back to step 2 with the next candidate.
+AskUserQuestion: recommended action first ("(Recommended)"), 1-2 alternatives, brief rationale. Invoke chosen skill with task ID. "Skip" → next candidate.
 
 ## Key Rules
 
-- Never dispatch without showing the user what you picked and why
-- Never skip reading the issue — the description drives classification
-- If TaskList returns no matching tasks actionable, say so plainly
-- Don't create issues — this skill discovers, it doesn't plan
+- Never dispatch without showing what you picked and why
+- Never skip reading the issue — description drives classification
+- No actionable tasks → say so plainly
+- This skill discovers work, it doesn't create it

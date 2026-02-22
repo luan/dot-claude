@@ -32,53 +32,42 @@ git status -sb
 
 If no PR found, tell user and stop.
 
-**Handle edge cases — ask before proceeding:**
+**Edge cases — ask before proceeding:**
+- **On main:** "You're on main. Did you mean to be on a feature branch?"
+- **Uncommitted changes:** "Describe from just committed, or include uncommitted too?"
+- **No commits ahead:** "Branch has no commits ahead. Describe uncommitted changes?"
 
-1. **On main branch**: "You're on main. Did you mean to be on a feature branch?"
-2. **Uncommitted changes**: "You have uncommitted changes. Describe from just committed changes, or include uncommitted too?"
-3. **Untracked files**: "Untracked files exist (list them). Include in description or ignore?"
-4. **No commits ahead**: "Branch has no commits ahead. Describe uncommitted changes?"
-
-If state is clear (commits on branch, nothing dirty), proceed directly.
+If state is clear, proceed directly.
 
 ## Step 2: Get Diff
 
-Base: !`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||' || echo main`
+Detect base: `gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||' || echo main`
+
+This base detection pattern is shared across pr: skills — finds the stack parent (Graphite) or falls back to trunk.
 
 ```bash
-git diff <base>...HEAD
+git diff <base>...HEAD        # three-dot finds common ancestor
 git log <base>..HEAD --oneline
 ```
 
-The `...` syntax automatically finds the common ancestor — prevents showing irrelevant diffs if parent has moved ahead.
+If including uncommitted (per Step 1): `git diff HEAD`
 
-If including uncommitted changes (per Step 1):
-
-```bash
-git diff HEAD  # uncommitted on top
-```
-
-If diff is large, use `--stat` first and read key files. If context is unclear from diff alone, check commit messages and read relevant source.
+If diff is large, use `--stat` first and read key files.
 
 ## Step 3: Generate Title and Body
 
-**Title**: conventional commit — `type(scope): description`, max 72 chars, lowercase, no period, imperative mood. Types: feat|fix|refactor|perf|docs|test|style|build|ci|chore|revert. Scope: primary area or omit if global.
+**Title**: conventional commit — `type(scope): description`. Max 72 chars — GitHub truncates longer titles in list views. Lowercase, no period, imperative mood. Types: feat|fix|refactor|perf|docs|test|style|build|ci|chore|revert.
 
-**Body**: 1-3 sentences explaining WHY the change is being made, with high-level HOW. No bullet lists, no headers, no changelog. Just prose. Don't list changes obvious from the diff.
+**Body**: 1-3 sentences explaining WHY, with high-level HOW. Prose, no bullet lists or headers. Don't list changes obvious from diff.
 
 ## Step 4: Preview and Update
 
-Show suggested title + body, then add observations if relevant:
-
-- Is the WHY unclear and needs more context from user?
-- Would this be easier to review as multiple PRs?
-- Are there unrelated changes mixed in?
-
-Don't force observations — skip if everything looks clean.
+Show title + body. Add observations only if genuinely useful:
+- WHY is unclear → ask user for context
+- Unrelated changes mixed in → suggest splitting
+- Too large for one review → suggest multiple PRs
 
 AskUserQuestion: "Update PR with this title and description?"
-
-If confirmed:
 
 ```bash
 gh pr edit <NUMBER> --title "<title>" --body "<body>"

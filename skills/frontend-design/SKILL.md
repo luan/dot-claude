@@ -4,44 +4,40 @@ description: "Create distinctive, production-grade frontend interfaces with high
 user-invocable: true
 ---
 
-This skill guides creation of distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics. Implement real working code with exceptional attention to aesthetic details and creative choices.
+# Frontend Design
 
-The user provides frontend requirements: a component, page, application, or interface to build. They may include context about the purpose, audience, or technical constraints.
+Create distinctive, production-grade interfaces that avoid generic "AI slop" aesthetics.
 
-## Stack Detection
+## Workflow
 
-Before writing code, determine what the project uses:
-
-1. Read `package.json`, `Cargo.toml`, `pubspec.yaml`, or equivalent
-2. Check for existing component patterns (`src/components/`, etc.)
-3. Match the project's conventions — file structure, naming, styling approach (CSS modules, Tailwind, styled-components, etc.)
-4. If greenfield, ask the user or infer from requirements
-
-Then implement working code in whatever stack fits the project (HTML/CSS/JS, React, Vue, Svelte, Angular, Solid, Flutter, SwiftUI, terminal UI — anything).
+1. **Detect stack**: Read `package.json`/equivalent, check existing component patterns (`src/components/`), match project conventions (file structure, naming, styling approach). Greenfield → ask user or infer.
+2. **Design direction**: Before coding, commit to a clear aesthetic — see below.
+3. **Implement**: Working code in whatever stack fits (React, Vue, Svelte, vanilla HTML/CSS/JS, Flutter, SwiftUI, terminal UI — anything).
+4. **Verify**: Check the result matches the chosen direction, not generic defaults.
 
 ## Design Thinking
 
-Before coding, commit to a clear aesthetic direction:
+Before coding, commit to a specific aesthetic direction:
 
 1. **Purpose** — What problem does this solve? Who uses it?
-2. **Tone** — Pick a specific aesthetic (brutalist, editorial, retro-futuristic, luxury, playful, etc.) and commit fully. Intentionality over intensity.
-3. **Differentiation** — What's the one thing someone will remember?
+2. **Tone** — Pick a concrete aesthetic (brutalist, editorial, retro-futuristic, luxury, playful, etc.) and commit fully. A strong point of view looks intentional; a lukewarm mix of styles looks accidental.
+3. **Differentiation** — What's the one thing someone will remember about this interface?
 
 ## Banned Patterns
 
-These signal generic AI output — avoid unconditionally:
+These create the "AI-generated website" look — sameness across every output:
 
-- **Fonts:** Inter, Roboto, Arial, Space Grotesk, system fonts
-- **Colors:** Purple gradients on white backgrounds, cliched color schemes
-- **Layouts:** Cookie-cutter component patterns, predictable symmetry
+- **Fonts:** Inter, Roboto, Arial, Space Grotesk, system fonts — these are the default fallbacks every AI reaches for, making output instantly recognizable as generated. Pick fonts that reinforce the chosen aesthetic (Google Fonts has thousands).
+- **Colors:** Purple gradients on white backgrounds — the canonical AI palette. Build palettes from the brand/purpose instead. Dominant color + sharp accents > evenly-distributed rainbow.
+- **Layouts:** Cookie-cutter symmetry, predictable card grids — these telegraph "template." Break the grid with asymmetry, overlap, or generous negative space.
 
-Every generation must vary: different fonts, different palettes, different themes (light/dark), different aesthetic directions. Never converge across sessions.
+Every generation must vary: different fonts, palettes, themes, aesthetic directions. Never converge across sessions.
 
 ## Execution
 
-- Match complexity to vision: maximalist → elaborate animations/effects; minimalist → precision in spacing/typography/subtlety
-- Typography: pair a distinctive display font with a refined body font (Google Fonts)
-- Color: CSS variables/design tokens. Dominant color + sharp accents > evenly-distributed palettes
-- Motion: CSS-first, libraries (Motion, GSAP) when stack supports. One orchestrated page load > scattered micro-interactions
-- Spatial: asymmetry, overlap, grid-breaking, generous negative space OR controlled density
-- Backgrounds: atmosphere and depth over solid colors (gradients, noise, patterns, layered transparencies)
+- **Match complexity to vision**: maximalist → elaborate animations/effects; minimalist → precision in spacing, typography, subtlety
+- **Typography**: pair a distinctive display font with a refined body font
+- **Color**: CSS variables/design tokens for consistency
+- **Motion**: CSS-first; libraries (Motion, GSAP) when stack supports. One orchestrated page load > scattered micro-interactions
+- **Spatial**: asymmetry, overlap, grid-breaking, generous negative space OR controlled density — pick one and commit
+- **Backgrounds**: atmosphere and depth over flat solid colors (gradients, noise, patterns, layered transparencies)

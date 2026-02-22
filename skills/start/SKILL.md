@@ -1,6 +1,6 @@
 ---
 name: start
-description: "Create a new branch and optionally link to a task. Uses Graphite (gt) if available, falls back to git. Triggers: 'start', 'start new branch', 'begin work on'."
+description: "Create a new branch and optionally link to a task. Uses Graphite (gt) if available, falls back to git. Triggers: 'start', 'start new branch', 'begin work on'. User-invoked only — branches are not created autonomously."
 argument-hint: "<branch-name> [task-id]"
 user-invocable: true
 allowed-tools:
@@ -17,34 +17,25 @@ allowed-tools:
 
 # Start
 
-Create branch + optionally link task.
+Create branch + optionally link task. User-invoked only — this skill never creates branches autonomously, respecting the "no branches unless explicitly requested" convention.
 
 ## Steps
 
-1. Parse args: branch name + optional task ID
-2. Normalize: prefix `luan/` if needed
+1. Parse args: first = branch name, second = optional task ID
+2. Normalize: prefix `luan/` if not already present
 3. Create branch:
-   - If gt plugin is loaded: `Skill(gt:gt, "create <branch-name>")`
-   - Otherwise: `git checkout -b <branch-name>`
-4. If task ID:
-   - `TaskUpdate(taskId, status: "in_progress", owner: "start")`
-   - `TaskUpdate(taskId, metadata: {branch: "<branch-name>"})`
+   - gt plugin loaded → `Skill(gt:gt, "create <branch-name>")`
+   - Otherwise → `git checkout -b <branch-name>`
+4. If task ID provided:
+   - `TaskUpdate(taskId, status: "in_progress", metadata: {branch: "<branch-name>"})`
 5. If no task ID:
-   - AskUserQuestion: "Create task?"
-   - If yes:
-     ```
-     TaskCreate:
-       subject: "<branch-name>"
-       activeForm: "Creating task"
-       metadata:
-         project: <repo root from git rev-parse --show-toplevel>
-         type: "chore"
-         priority: "P2"
-     ```
-   - `TaskUpdate(taskId, status: "in_progress", owner: "start", metadata: {branch: "<branch-name>"})`
-6. Report branch + issue, suggest `/explore` or `/implement`
+   - AskUserQuestion: "Create a task for this branch?"
+   - If yes → `TaskCreate` with subject from branch name. Type inferred from branch name: `"feat"` for feature work, `"fix"` for bugfixes, `"chore"` otherwise. Priority defaults to P2.
+   - Link: `TaskUpdate(taskId, status: "in_progress", metadata: {branch: "<branch-name>"})`
+6. Report branch + task, suggest `/explore` or `/implement`
 
 ## Error Handling
-- Branch creation fails → check if branch exists (`git branch -a | grep <name>`), suggest alternate name
-- `TaskUpdate` fails → verify task ID exists with `TaskGet`, report if missing
-- Not on expected parent branch → warn user, suggest checkout first
+
+- **Branch exists** → `git branch -a | grep <name>`, suggest alternate name
+- **Task ID not found** → verify with `TaskGet`, report if missing
+- **Wrong parent branch** → warn user, suggest checking out intended parent first
