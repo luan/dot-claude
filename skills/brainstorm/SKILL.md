@@ -47,7 +47,7 @@ Then TaskUpdate(taskId, status: "in_progress", owner: "brainstorm")
 
 ### 2. Scan Project Context
 
-Dispatch via Task (subagent_type="codebase-researcher", model=sonnet):
+Dispatch via Task (subagent_type="codebase-researcher"):
 
 ```
 Quick context scan for brainstorming session about: <topic>

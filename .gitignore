@@ -69,3 +69,4 @@ tools/target
 target
 backups
 mcp-needs-auth-cache.json
+/icons

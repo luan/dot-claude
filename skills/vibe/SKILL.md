@@ -78,6 +78,8 @@ If `--dry-run` → stop here. Report plan and epic, suggest `/implement` or `/vi
 Skill("implement")
 ```
 
+Note: Acceptance check runs automatically as part of implement teardown.
+
 **Verify**: all children of epic completed.
 **Update**: `vibe_stage: "implement"`
 

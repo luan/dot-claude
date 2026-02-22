@@ -24,7 +24,7 @@ If `metadata.parent_id` exists → `TaskGet(parentId)` for epic subject + `metad
 
 ## Step 2: Spawn Sub-Worker
 
-Spawn a single `Task(subagent_type="general-purpose", model="sonnet")` with this prompt (fill in from Step 1):
+Spawn a single `Task(subagent_type="general-purpose")` with this prompt (fill in from Step 1). For trivial tasks (single-file rename, config tweak, simple find-and-replace), use `model="sonnet"` to save cost:
 
 ```
 Implement task <task-id>.
@@ -57,7 +57,7 @@ After sub-worker returns:
 
 1. `Bash("git diff --name-only HEAD")` — collect changed files
 2. No changed files → skip refine, go to Step 4
-3. Changed files exist → `Skill("refine")`. When refine asks about committing, select "Done for now" — caller handles commits.
+3. Changed files exist → `Skill("refine")`
 
 ## Step 4: Return
 

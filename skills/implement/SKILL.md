@@ -57,7 +57,7 @@ Before classifying, check for orphaned work:
 
 ## Worker Prompt
 
-All modes dispatch work via Task subagent (`subagent_type="general-purpose"`, `model="sonnet"`). Two variants based on coordination needs:
+All modes dispatch work via Task subagent (`subagent_type="general-purpose"`). For trivial tasks (single-file rename, config tweak, simple find-and-replace), use `model="sonnet"` to save cost. Two variants based on coordination needs:
 
 ### Standalone Variant
 
@@ -79,7 +79,7 @@ Implement task <task-id>.
 3. Build + test. All green → continue.
    On failure: deduplicate errors (strip paths/line numbers). Same root error 2x → stop, report with context. 3 distinct errors → report all, stop.
 4. TaskUpdate(taskId, status: "completed")
-5. Run `Skill("refine")` on changed files. No changes needed → skip. **When refine asks about committing, select "Done for now" — orchestrator handles commits.**
+5. Run `Skill("refine")` on changed files. No changes needed → skip.
 
 ## Rules
 - TDD: test first. Standards: rules/test-quality.md
@@ -126,7 +126,8 @@ Implement task <task-id>.
 2. If has `metadata.parent_id` → `TaskGet(parentId)` for epic context
 3. Spawn single Task agent using **Standalone Worker Prompt**
 4. Verify via `TaskGet(taskId)` → status is completed
-5. → Stage Changes, then Continuation Prompt
+5. If task has `metadata.parent_id` → `Skill("acceptance", args="<parentId>")`
+6. → Stage Changes, then Continuation Prompt
 
 ## Parallel Mode
 
@@ -140,7 +141,7 @@ All tasks independent — fire and forget, no team overhead.
 5. Wait for all to return. Check `TaskList()` for any incomplete.
 6. Incomplete tasks → spawn another batch (max 2 retries per task)
 7. `TaskUpdate(epicId, metadata: {impl_mode: null})`
-8. → Verify, Stage Changes, then Continuation Prompt
+8. → Verify, then `Skill("acceptance", args="<epicId>")`, then Stage Changes, then Continuation Prompt
 
 ## Swarm Mode
 
@@ -211,7 +212,8 @@ while tasks remain incomplete:
 1. `TaskUpdate(epicId, metadata: {impl_team: null, impl_mode: null, impl_completed: null, impl_active: null, impl_pending: null})`
 2. `TaskUpdate(epicId, status: "completed")`
 3. TeamDelete
-4. → Stage Changes, then Continuation Prompt
+4. `Skill("acceptance", args="<epicId>")`
+5. → Stage Changes, then Continuation Prompt
 
 ## Stage Changes
 
@@ -223,4 +225,4 @@ Run after all workers complete, before prompting the user:
 
 ## After Completion
 
-Stop after staging and showing the summary. The user needs to verify functionality before review — do not auto-invoke review.
+Stop after staging and showing the summary. Acceptance check runs automatically before staging. The user needs to verify functionality before review — do not auto-invoke review.
