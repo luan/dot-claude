@@ -99,7 +99,7 @@ Skill("commit")
 ## Finalize
 
 ```
-TaskUpdate(trackerId, status: "completed")
+TaskUpdate(trackerId, status: "completed", metadata: {completedAt: "<current ISO 8601 timestamp>"})
 ```
 
 Report summary with one line per stage showing what happened.

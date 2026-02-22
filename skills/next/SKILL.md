@@ -89,6 +89,12 @@ Only show "Stale branches" line if stale branches exist.
 
 Read the board, find what's ready, dispatch the right skill.
 
+### 0. Prune stale tasks
+
+Run silently: `ck task prune --days 7`
+
+If it produces output (tasks were pruned), include a brief note like "Pruned N completed tasks." Otherwise omit entirely.
+
 ### 1. Read the board
 
 ```

@@ -422,7 +422,7 @@ Store summary in `metadata.design` via TaskUpdate.
 ## Step 6b: Close Review Issue
 
 ```
-TaskUpdate(reviewId, status: "completed")
+TaskUpdate(reviewId, status: "completed", metadata: {completedAt: "<current ISO 8601 timestamp>"})
 ```
 
 ## Step 7: Interactive Continuation

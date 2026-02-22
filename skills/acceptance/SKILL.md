@@ -40,19 +40,64 @@ ck plan latest --task-file <plan_file>
 
 Capture full plan content. If command fails or plan_file is absent, use `metadata.design` as the plan. If neither exists, note "No plan found — checking criteria only."
 
-## Step 3: Gather Child Task Criteria
+## Step 3: Gather Descendant Criteria
 
-`TaskList()` filtered by `metadata.parent_id == epicId`.
+Recursively collect all descendants of the epic:
 
-For each child task, extract its `## Acceptance Criteria` section from the description. Build a structured list:
+```
+descendants(id):
+  direct = TaskList() filtered by metadata.parent_id == id
+  return direct + flatten(descendants(child.id) for child in direct)
+
+all_tasks = descendants(epicId)
+```
+
+No descendants → stop: "Epic has no descendant tasks. Run /prepare first."
+
+**Orphaned task detection:** While traversing, flag any task where `status == "pending"` and its immediate parent task's `status == "completed"`. If any found, prepend a warning to the criteria output:
+
+```
+⚠ Orphaned tasks detected (parent completed, child still pending):
+- Task <id>: <subject> (parent: Task <parent_id>)
+```
+
+This is advisory — the check continues regardless.
+
+**Orphaned task detection — test scenarios:**
+
+| Scenario | Setup | Expected warning | Behavior |
+|----------|-------|------------------|----------|
+| A: One orphan | Parent Task 10 `status=completed`; child Task 11 `status=pending`, `parent_id=10` | `⚠ Orphaned tasks detected (parent completed, child still pending):`<br>`- Task 11: <subject> (parent: Task 10)` | Warning prepended; acceptance continues normally |
+| B: No orphan | Parent Task 10 `status=completed`; child Task 11 `status=completed`, `parent_id=10` | _(no warning)_ | Traversal continues silently |
+| C: Nested orphan | Grandparent Task 10 `status=completed`; parent Task 11 `status=completed`; grandchild Task 12 `status=pending`, `parent_id=11` | `⚠ Orphaned tasks detected (parent completed, child still pending):`<br>`- Task 12: <subject> (parent: Task 11)` | Detected at grandchild level during recursive traversal; acceptance continues |
+
+Scenario C confirms detection fires at any depth, not just direct children of the epic. The warning never blocks acceptance — it is informational only.
+
+**Group criteria by subtree:**
+
+For each task in `all_tasks`:
+- If the task has children (grouping node) → emit as a section header only; skip its own criteria (grouping nodes have none)
+- If the task is a leaf → extract its `## Acceptance Criteria` section and nest under the nearest ancestor that has children
+
+Build a structured list:
+
+```
+Phase N: <phase subject>
+  Task <id>: <leaf subject>
+  - [ ] criterion 1
+  - [ ] criterion 2
+Phase M: <phase subject>
+  Task <id>: <leaf subject>
+  - [ ] criterion 1
+```
+
+Flat epics (all descendants are direct children with no grandchildren) produce output identical to the prior format:
 
 ```
 Task <id>: <subject>
 - [ ] criterion 1
 - [ ] criterion 2
 ```
-
-No children → stop: "Epic has no child tasks. Run /prepare first."
 
 ## Step 4: Get Diff
 
