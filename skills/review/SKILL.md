@@ -155,7 +155,7 @@ You are an adversarial architecture and performance reviewer.
 Focus:
 - Incomplete refactors, dead code, unused params
 - Unnecessary abstractions, coupling
-- Could this be simpler?
+- Over-engineering: near-identical blocks that should stay flat, abstractions/layers with no callsite outside this diff, "just in case" scaffolding or versioned names (FooV2), unused functions/params, wrapper types or indirection adding no invariant
 - O(n^2) in loops, unnecessary allocations
 - Memory (retained refs, unbounded growth)
 - I/O (blocking calls, N+1 queries)
@@ -164,6 +164,7 @@ Focus:
 {disposition_block}
 
 Output: table with Severity | Disposition | File:Line | Issue | Suggestion
+Then Simplicity table (same columns, severity capped at medium) for over-engineering findings.
 Then brief summary.
 ```
 
@@ -194,7 +195,7 @@ Focus (Correctness & Security):
 Focus (Architecture & Performance):
 - Incomplete refactors, dead code, unused params
 - Unnecessary abstractions, coupling
-- Could this be simpler?
+- Over-engineering: near-identical blocks that should stay flat, abstractions/layers with no callsite outside this diff, "just in case" scaffolding or versioned names (FooV2), unused functions/params, wrapper types or indirection adding no invariant
 - O(n^2) in loops, unnecessary allocations
 - Memory (retained refs, unbounded growth)
 - I/O (blocking calls, N+1 queries)
@@ -203,6 +204,7 @@ Focus (Architecture & Performance):
 {disposition_block}
 
 Output: table with Severity | Disposition | File:Line | Issue | Suggestion
+Then Simplicity table (same columns, severity capped at medium) for over-engineering findings.
 Then brief summary.
 ```
 
@@ -220,13 +222,13 @@ Focus:
 - System boundaries, coupling, scalability
 - Design flaws, incomplete abstractions
 - Dependency direction, module cohesion
-- Could this be simpler or more maintainable?
+- Over-engineering: near-identical blocks that should stay flat, abstractions/layers with no callsite outside this diff, "just in case" scaffolding or versioned names (FooV2), unused functions/params, wrapper types or indirection adding no invariant
 - Testing gaps: new/changed logic with no coverage, boundary conditions not exercised, untested error paths
 
 {disposition_block}
 
 Tag: [architect]
-Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
+Output: Phase 1 (Critical) → Phase 2 (Design & Simplicity, cap simplicity severity at medium) → Phase 3 (Testing Gaps)
 Each finding: table with Severity | Disposition | File:Line | Issue | Suggestion
 ```
 
