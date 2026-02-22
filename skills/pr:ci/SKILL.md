@@ -49,15 +49,15 @@ Fix failed GitHub Actions checks.
 
 5. **Plan fixes**: Identify root cause, create concise plan. Ask "Ready to execute?"
 
-6. **Execute**: Apply fixes, summarize
+6. **Execute**: Apply fixes, summarize changes.
 
 7. **Commit**: Ask first, suggest message like `fix: resolve CI failures`
 
-8. **Push** (optional): Ask first. If gt plugin is available, use `Skill(gt:submit)`. Otherwise `git push`.
+8. **Push** (optional): Ask first. Use `Skill(gt:submit)` if gt plugin is loaded, otherwise `git push`.
 
-## Common failures
+## Common Failures & Remediation
 
-- **Build**: missing imports, type errors, syntax
-- **Test**: outdated assertions, missing fixtures, flaky tests
-- **Lint**: formatting, unused imports/vars
-- **Infra**: secrets, rate limits (can't fix - inform user)
+- **Build** — missing imports, type errors, syntax → read error output, fix source directly
+- **Test** — outdated assertions, missing fixtures → update expectations or add missing test data
+- **Lint** — formatting, unused imports/vars → run the project formatter, remove dead code
+- **Infra** — secrets, rate limits, runner issues → can't fix locally; inform user to check repo/org settings

@@ -16,136 +16,89 @@ allowed-tools:
 
 # Test Plan
 
-Analyze changes, classify by risk, produce structured manual test plan. Auto-exits for trivial changes (docs-only, config formatting, comment edits).
+Analyze changes, classify by risk, produce structured manual test plan. Auto-exits for trivial changes.
 
 ## Interviewing
 
 See rules/skill-interviewing.md. Skill-specific triggers:
-- Risk classification unclear (e.g., config change that might affect runtime) → ask user's assessment
+- Risk classification unclear (e.g., config change that might affect runtime) → ask
 - Testing environment ambiguous (e.g., requires specific device/OS) → clarify setup
 
 ## Step 1: Scope
 
 Parse $ARGUMENTS:
 
-| Input        | Diff source                           |
-| ------------ | ------------------------------------- |
-| (none)       | `git diff HEAD`                       |
-| `main..HEAD` | `git diff main..HEAD`                 |
-| file list    | `git diff HEAD -- <files>`            |
-| `#123`       | `gh pr diff 123`                      |
+| Input        | Diff source                |
+| ------------ | -------------------------- |
+| (none)       | `git diff HEAD`            |
+| `main..HEAD` | `git diff main..HEAD`      |
+| file list    | `git diff HEAD -- <files>` |
+| `#123`       | `gh pr diff 123`           |
 
-Collect the diff and `git diff --stat` for file summary.
+Collect diff and `git diff --stat`.
 
-**Early exit.** If ALL changed files match trivial patterns, output:
-
+**Early exit.** If ALL changed files are trivial, output:
 ```
 ## Test Plan: No Manual Testing Required
-
-Changes are trivial (docs/comments/formatting only). No functional
-impact — skip manual verification.
-
-Changed files:
-<file list from --stat>
+Changes are trivial. No functional impact.
+Changed files: <--stat output>
 ```
 
-Trivial patterns:
-- Docs-only (*.md, *.txt, LICENSE, CHANGELOG)
-- Comment-only changes (no code lines changed)
-- Whitespace/formatting-only changes
-- CI config that doesn't affect build output (.github/workflows metadata like labels, assignees)
-
-Exceptions (never trivial): SKILL.md, CLAUDE.md, *.mdx — these contain executable specifications.
-
-If not trivial, proceed to Step 2.
+Trivial: *.md, *.txt, LICENSE, CHANGELOG, comment-only, whitespace-only, CI metadata (labels, assignees).
+**Never trivial:** SKILL.md, CLAUDE.md, *.mdx — these are executable specs that change agent behavior. Analyze them with the same rigor as code: what behavior changed, what could break, what to verify.
 
 ## Step 2: Analyze
 
-Read the full diff. For each changed file, classify the change:
+Read the full diff. Classify each changed file by risk and type.
 
 ### Risk Levels
 
-**Critical** — changes that can break core functionality or lose data:
-- Authentication/authorization logic
-- Data persistence (migrations, schema changes, write paths)
-- Payment/billing/financial calculations
-- Security-sensitive code (crypto, input validation, CORS, CSP)
-- Infrastructure (deployment configs, env vars, networking)
+| Level | Scope | Verification |
+|-------|-------|-------------|
+| **Critical** | Core functionality, data loss risk (auth, persistence, payments, security, infra) | Test first, most thoroughly |
+| **High** | User-visible behavior (UI, API contracts, business logic, error handling, perf paths) | Full verification steps |
+| **Medium** | Indirect impact (refactors changing control flow, dep updates, logging, build config) | Targeted verification |
+| **Low** | Unlikely user-facing (style fixes, adding tests, code comments, dev tooling) | Spot-check only |
 
-**High** — changes affecting user-visible behavior:
-- UI components users interact with directly
-- API endpoint behavior (request/response contracts)
-- Business logic (state machines, validation rules, feature flags)
-- Error handling paths that surface to users
-- Performance-critical paths (queries, loops, caching)
-
-**Medium** — changes with indirect user impact:
-- Internal refactors that change control flow
-- Dependency updates (library versions)
-- Logging/monitoring/observability changes
-- Test infrastructure changes
-- Build configuration changes
-
-**Low** — changes unlikely to cause user-facing issues:
-- Code style/linting fixes within logic files
-- Adding tests (not changing test infra)
-- Internal documentation (code comments)
-- Dev tooling (scripts, local config)
+When multiple risk levels apply, use the highest — a refactor touching auth logic is Critical, not Medium.
 
 ### Change Types
 
-Tag each file with its change type to guide verification approach:
-- **new-feature**: net-new functionality
-- **behavior-change**: existing functionality modified
-- **refactor**: same behavior, different structure
-- **bugfix**: corrects incorrect behavior
-- **config**: configuration/infrastructure
-- **dependency**: library/package updates
+Tag each file: **new-feature**, **behavior-change**, **refactor**, **bugfix**, **config**, **dependency**.
 
 ## Step 3: Generate
 
-Build the test plan from analyzed changes. Group verification steps by risk level, highest first. Each step must be concrete and actionable.
+Group verification steps by risk (highest first). Each step:
+1. **What** — specific behavior to verify
+2. **How** — exact steps
+3. **Expected** — observable correct outcome
+4. **Regression** — adjacent functionality to confirm
 
-### Verification Step Format
-
-Each step includes:
-1. **What to test** — specific user action or system behavior
-2. **How to test** — exact steps (click X, run Y, send request Z)
-3. **Expected result** — observable outcome that confirms correctness
-4. **Regression check** — related functionality that should still work
-
-### Plan Structure
-
-```markdown
-## Test Plan: <one-line scope summary>
-
-Risk profile: <N critical, N high, N medium, N low>
-Estimated effort: <quick (5min) | moderate (15min) | thorough (30min+)>
+Output structure:
+```
+## Test Plan: <scope summary>
+Risk: N critical, N high, N medium, N low
+Effort: quick (5min) | moderate (15min) | thorough (30min+)
 
 ### Critical Risk
-<verification steps for critical-risk changes>
+<verification steps>
 
 ### High Risk
-<verification steps for high-risk changes>
+<verification steps>
 
 ### Low Risk (spot-check)
-<brief list — these don't need full verification steps>
+<brief list>
 
 ### Regression Checklist
-- [ ] <area adjacent to changes that should still work>
-- [ ] <another adjacent area>
+- [ ] <adjacent area>
 ```
 
-Omit empty risk sections entirely. Only include sections that have actual verification steps.
+Omit empty risk sections — only include levels with actual changes. If all changes are Low, the plan is just a spot-check list.
 
-For **refactor** changes: focus verification on behavior preservation — same inputs produce same outputs, no regressions in adjacent features.
-
-For **bugfix** changes: include the original bug reproduction steps as a verification step, plus edge cases around the fix boundary.
+For **refactors**: focus on behavior preservation — same inputs → same outputs.
+For **bugfixes**: include original reproduction steps + edge cases around fix boundary.
 
 ## Step 4: Output
 
-Present the test plan.
-
-If `$CLAUDE_NON_INTERACTIVE` is set, output the plan and stop. Do not present AskUserQuestion.
-
-Present the test plan and stop. User will ask for refinements if needed.
+Present the plan. If `$CLAUDE_NON_INTERACTIVE` is set, output and stop.
+Otherwise present and stop — user will request refinements if needed.

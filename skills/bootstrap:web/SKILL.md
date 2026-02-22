@@ -12,122 +12,68 @@ Scaffold a new SvelteKit web app. Researches current ecosystem state before scaf
 
 ## Arguments
 
-- First word: project name (required, directory name under `~/src/`)
-- Remaining words: project description/purpose (optional)
+First word = project name (directory under `~/src/`). Remaining = description. If no name, ask with AskUserQuestion.
 
-If no project name, ask with AskUserQuestion.
+## Fixed Stack (non-negotiable)
 
-## Fixed Preferences
-
-These are non-negotiable — do not research alternatives:
-
-| Layer           | Choice                                                                  |
-| --------------- | ----------------------------------------------------------------------- |
-| Framework       | SvelteKit + Svelte 5 (runes: `$state`, `$derived`, `$props`, `$effect`) |
-| Language        | TypeScript (strict mode)                                                |
-| Package manager | bun (never npm/pnpm)                                                    |
-| Styling         | Tailwind CSS via vite plugin (NO `tailwind.config.*`)                   |
-| Colors          | OKLCH color space, CSS custom properties                                |
-| Dark mode       | Class-based (`.dark`), dark-first design                                |
-| Deploy          | Cloudflare Pages (`@sveltejs/adapter-cloudflare`)                       |
-| Database        | D1 SQLite                                                               |
-| Auth            | WebAuthn passkeys                                                       |
-| Testing         | Vitest                                                                  |
-| Build           | Vite                                                                    |
+- **Framework:** SvelteKit + Svelte 5 (runes), TypeScript strict
+- **Tooling:** bun (never npm/pnpm), Vite, Vitest
+- **Styling:** Tailwind CSS via vite plugin (no `tailwind.config.*`), OKLCH colors, CSS custom properties
+- **Dark mode:** class-based (`.dark`), dark-first
+- **Deploy:** Cloudflare Pages (`@sveltejs/adapter-cloudflare`), D1 SQLite
+- **Auth:** WebAuthn passkeys
 
 ## Dev Routing
 
-Register the project in the local subdomain routing system:
-
-```
-Skill tool: bootstrap:caddy, args: "<project-name>"
-```
-
-This assigns a port and creates `https://<project>.localhost`. Use the returned port in vite.config.ts (`server.port`) and the URL in .env (`WEBAUTHN_ORIGIN`).
-
-If it fails because infrastructure is missing, stop and tell the user to set up dev routing via dotfiles first.
+Invoke `Skill(bootstrap:caddy, "<project-name>")` to assign a port and create `https://<project>.localhost`. Use returned port in vite.config.ts, URL in `.env` (`WEBAUTHN_ORIGIN`). If infrastructure missing, stop and tell user.
 
 ## Research Phase
 
-Before writing any files, research the current state of each evolving choice. Use WebSearch, context7, and current docs.
+Before writing files, research current state via WebSearch/context7. For each topic, identify the current best option — present choices to user only when multiple strong contenders exist:
 
-### What to research
+1. **SvelteKit scaffold** — `sv create` or manual? Non-interactive mode support?
+2. **DB layer** — Drizzle ORM vs raw SQL vs alternatives for D1
+3. **UI components** — shadcn-svelte, bits-ui, or newer Svelte 5-compatible library
+4. **Icons** — unplugin-icons, lucide-svelte, phosphor, or other
+5. **WebAuthn** — `@simplewebauthn` still best?
+6. **CSS utilities** — clsx + tailwind-merge + tailwind-variants still right combo?
+7. **Animation** — lightweight Tailwind animation approach
+8. **Testing** — Vitest + `@testing-library/svelte` + jsdom still needed?
 
-1. **SvelteKit scaffold** — Is there an official `sv create` or `create-svelte` CLI? What's the current recommended way to init a project? Use it if it supports non-interactive mode with our preferences (TypeScript, Tailwind, no demo app). Otherwise scaffold manually.
-
-2. **DB layer** — What's the current best way to use D1 SQLite from SvelteKit? Options include Drizzle ORM, raw SQL, or alternatives. Check what works well with D1 today.
-
-3. **UI components** — What's the current best Svelte 5 component library? shadcn-svelte, bits-ui, melt-ui, or something newer? Check compatibility with latest Svelte and Tailwind.
-
-4. **Icons** — What's the current best icon solution for SvelteKit? unplugin-icons, lucide-svelte, @phosphor-icons/svelte, or other?
-
-5. **WebAuthn library** — Is `@simplewebauthn` still the recommended choice? Any better alternatives?
-
-6. **CSS utilities** — Are `clsx` + `tailwind-merge` +
-   `tailwind-variants` still the right combo? Or has the ecosystem consolidated?
-
-7. **Animation** — Best lightweight animation approach for Tailwind? `tw-animate-css`, or something else?
-
-8. **Testing** — Does Vitest still need `@testing-library/svelte` and `jsdom`? Or has the testing story changed?
-
-### Research output
-
-After researching, summarize findings as a brief decision list and present to the user via AskUserQuestion for any choices with multiple good options. For clear winners, just proceed.
+Summarize findings as a decision list. Clear winners → proceed. Close calls → AskUserQuestion.
 
 ## Design Interview
 
-After research decisions are settled, interview the user about visual direction using AskUserQuestion. Ask about:
+After research, interview user via AskUserQuestion:
 
-1. **Tone/personality** — What feeling should the app convey? Options like: minimal/clean, bold/expressive, playful, editorial, brutalist, luxury, retro, organic, industrial. Let the user describe in their own words too.
+1. **Tone** — minimal, bold, playful, editorial, brutalist, etc. (or own words)
+2. **Color direction** — warm/cool, muted/vibrant, monochrome/colorful, or "surprise me"
+3. **Typography** — serif, sans, mono, mixed; formal vs casual
 
-2. **Color direction** — Any colors in mind? Warm vs cool? Muted vs vibrant? Monochrome vs colorful? Or "surprise me."
+Use answers to select fonts (Google Fonts), build OKLCH palette, shape layout per `/frontend-design` principles.
 
-3. **Typography feel** — Serif, sans-serif, mono, mixed? Formal vs casual? Or "you pick something distinctive."
+## Scaffold
 
-Use their answers to select fonts (Google Fonts), build the OKLCH palette, and shape the layout. Apply `/frontend-design` principles.
+Create project at `~/src/<project-name>` using research results for exact packages/APIs.
 
-## Scaffold Phase
-
-After research + design interview, create the project at `~/src/<project-name>`.
-
-### Constraints
-
-- NEVER hardcode package versions — `bun add <package>` resolves latest
-- Write config files based on current docs from research phase, not templates
-- vite.config.ts MUST use `server: { port: Number(process.env.DEV_PORT) || undefined }` (port from gitignored `.env`)
+**Constraints:**
+- Never hardcode versions — `bun add <package>` resolves latest
+- Config from current docs, not stale templates
+- vite.config.ts: `server: { port: Number(process.env.DEV_PORT) || undefined }`
 - Dark-first: `<html class="dark">`
-- WebAuthn: `rpID` = `localhost` (valid for `*.localhost`), origin from `$env/dynamic/private`
-- HMAC-signed challenges for WebAuthn (no DB challenge storage)
+- WebAuthn: `rpID = localhost`, origin from `$env/dynamic/private`, HMAC-signed challenges
 - `.env.example` committed, `.env` gitignored
 
-### What to Build
-
-Use research results to determine exact packages and APIs. Build:
-
-1. **Config** — vite, svelte, typescript, vitest, wrangler, tailwind, DB ORM
-2. **App shell** — app.html, app.css (Tailwind v4 + OKLCH design tokens), app.d.ts
-3. **Lib** — cn() helper, DB schema+client, auth (WebAuthn), sessions
-4. **Routes** — hooks.server.ts, layout, home page, auth flow (register/login/logout)
-5. **UI** — at minimum a Button component with variant/size props
-6. **Static** — favicon, .gitignore, .env.example, initial migration
+**Build:** config files, app shell (html/css/d.ts), lib (cn helper, DB schema, auth, sessions), routes (hooks, layout, home, auth flow), UI components, static assets.
 
 ## Quality Gate
 
 ```bash
-cd ~/src/<project-name>
-bun run prepare
-bun run check
+cd ~/src/<project-name> && bun run prepare && bun run check
 ```
 
-Both must pass. Fix any type errors. Do NOT return with a broken scaffold.
+Both must pass. Fix type errors before returning — never ship a broken scaffold. If failures persist after 2 fix attempts, report the specific errors.
 
 ## Completion
 
-After quality gate passes, report:
-
-- Project location: `~/src/<project-name>`
-- Dev URL: `https://<project-name>.localhost`
-- How to start: `cd ~/src/<project-name> && bun dev`
-- Reminder: create D1 database with `wrangler d1 create <name>` and update wrangler.toml
-- Reminder: set real CHALLENGE_SECRET before deploying
-- Summary of research decisions made (which packages chosen and why)
+Report: project location, dev URL, how to start (`bun dev`), and research decisions summary. Remind user to create D1 database (`wrangler d1 create`) and set real `CHALLENGE_SECRET` before deploy.

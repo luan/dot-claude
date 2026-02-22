@@ -74,30 +74,23 @@ git-surgeon split HEAD \
 ## Workflows
 
 **Typical:**
-1. `git-surgeon hunks` → IDs
-2. `git-surgeon show <id>` → inspect
-3. `git-surgeon commit <id1> <id2> -m "msg"` or stage → `git commit`
-4. Partial: `git-surgeon commit <id>:5-30 -m "msg"`
+1. `hunks` → IDs → `show <id>` → inspect → `commit <id1> <id2> -m "msg"`
+2. Partial: `commit <id>:5-30 -m "msg"`
 
 **Fixup:**
-1. `git-surgeon stage <id1> <id2>`
-2. `git-surgeon fixup <sha>` (HEAD → amend; older → autosquash rebase)
-3. Unstaged preserved
+1. `stage <id1> <id2>` → `fixup <sha>` (HEAD → amend; older → autosquash rebase)
+2. Unstaged changes preserved
 
 **Undo:**
-1. `git-surgeon hunks --commit <sha>`
-2. `git-surgeon undo <id> --from <sha>` or `git-surgeon undo-file src/main.rs --from <sha>`
-3. Changes → unstaged mods
+1. `hunks --commit <sha>` → `undo <id> --from <sha>` → changes appear as unstaged mods
 
 **Split:**
-1. `git-surgeon hunks --commit <sha>` (use `--full` for lines)
-2. `git-surgeon split <sha> --pick <id1> -m "first" --rest-message "second"`
-3. Multiple `-m` → subject + body
-4. `id:range` for partial; commas for non-contiguous: `--pick <id>:2-6,34-37`
-5. HEAD → direct reset; older → rebase. Requires clean working tree.
+1. `hunks --commit <sha>` (use `--full` for line numbers)
+2. `split <sha> --pick <id1> -m "first" --rest-message "second"`
+3. Multiple `-m` → subject + body. `id:range` for partial; commas for non-contiguous
+4. HEAD → direct reset; older → rebase. Requires clean working tree.
 
-## Hunk IDs
+## Troubleshooting
 
-- 7-char hex from file path + hunk content
-- Stable while diff unchanged; duplicates → `-2`, `-3`
-- ID not found → re-run `hunks`
+- **Hunk IDs** are 7-char hex derived from file path + content. Stable while diff is unchanged; duplicate content gets `-2`, `-3` suffixes.
+- **ID not found** → diff changed since last `hunks` listing. Re-run `hunks` to get fresh IDs.

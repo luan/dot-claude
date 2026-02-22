@@ -21,36 +21,31 @@ allowed-tools:
 
 Fix unresolved review comments from a PR.
 
-**Safety: NEVER auto-pushes. Push optional + requires confirmation.**
+**Safety: NEVER auto-pushes. NEVER replies to or resolves threads — only fetches and fixes locally.**
 
 ## Steps
 
 1. **Detect PR**: `gh pr view --json number -q '.number'` or ask user
 
 2. **Verify branch** (if PR specified manually):
-   - `git branch --show-current` vs `gh pr view <PR> --json headRefName -q .headRefName`
-   - Mismatch → ask user
+   `git branch --show-current` vs `gh pr view <PR> --json headRefName -q .headRefName` — mismatch → ask user
 
-3. **Fetch and display comments**:
+3. **Fetch comments**:
+
+   First verify `scripts/fetch_threads.py` exists (check repo root and `~/.claude/scripts/`). If missing, fall back to `gh api repos/{owner}/{repo}/pulls/{PR}/comments`.
 
    ```bash
    scripts/fetch_threads.py --pr <PR>
    ```
 
-   Display as numbered list with file:line, author, preview. Ask "Which comment(s) to fix?" with options: "Fix all" / "Other"
+   Display as numbered list with file:line, author, preview. Ask "Which comment(s) to fix?" — options: "Fix all" / "Other"
 
 4. **Plan fixes**: For each comment, read code, create one-line fix description. Ask "Ready to execute?"
 
 5. **Execute**: Apply fixes, summarize changes.
 
-6. **Run tests**: Run the project test suite (or relevant subset if large). Fix any failures caused by your changes. If 3+ test failures persist after fixes, report and stop.
+6. **Run tests**: Detect and run the project test suite (look for `test` script in package.json, pytest, cargo test, etc.). Fix failures caused by your changes. If 3+ failures persist after fixes, report and stop.
 
-7. **Commit**: Use `Skill tool: commit` to generate message and commit.
+7. **Commit**: Use `Skill(commit)` to generate message and commit.
 
-8. **Push** (optional): Ask first. If gt plugin is available, use `Skill(gt:submit)`. Otherwise `git push`.
-
-## Notes
-
-- User confirms plan before execution
-- NEVER reply to or resolve threads — only fetch and fix locally
-- Be concise — don't over-explain trivial fixes
+8. **Push** (optional): Ask first. Use `Skill(gt:submit)` if gt plugin is loaded, otherwise `git push`.

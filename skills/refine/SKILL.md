@@ -19,11 +19,9 @@ Simplify code + remove comment bloat in uncommitted changes.
 
 ## Mid-Skill Interviewing
 
-Use AskUserQuestion when facing genuine ambiguity during execution:
-- Simplification might change semantics → confirm intent before applying
+Use AskUserQuestion when facing genuine ambiguity:
+- Simplification might change semantics → confirm before applying
 - Uncertain if removing code/comment changes behavior → ask
-
-Do NOT ask when the answer is obvious or covered by the task brief.
 
 ## Step 1: Identify Files
 
@@ -34,47 +32,42 @@ Do NOT ask when the answer is obvious or covered by the task brief.
 
 ## Step 2: Read All Files in Parallel
 
-Read all identified files using parallel Read tool calls.
+Read all identified files using parallel Read calls. Detect language from extension — apply only idioms appropriate to that language.
 
 ## Step 3: Apply Refinements
 
+**Behavior boundary:** "Never change behavior" means same inputs → same outputs, same side effects, same error paths. Structural rewrites (early returns, constant extraction, idiom substitution) are in-scope when they preserve this contract.
+
 ### Simplify Complexity
-- Flatten nesting (early returns)
+- Flatten nesting via early returns
 - Remove redundant defaults (`.get(key, None)` → `.get(key)`)
 - Replace inline lambdas with direct expressions
-- Extract magic numbers only if used multiple times
+- Extract magic numbers only when used multiple times — single-use literals are clearer inline
 - Three similar lines > premature abstraction
 
 ### Language Idioms
-Detect language from file extensions before applying simplifications.
-
-- Prefer standard library features over manual implementations (e.g., `Path.exists()` over `os.path.exists()`, array spread over manual concat)
-- Apply conventional patterns per language: guard statements (Swift/Go/Kotlin), comprehensions (Python), defer blocks (Go/Swift), optional chaining (Swift/JS/TS), context managers (Python), early returns (all)
-- Use idiomatic equivalents: prefer language-native constructs over generic ones
-
-### Balance Against Over-Simplification
-- Do NOT reduce clarity or maintainability in the name of brevity
-- Avoid overly clever one-liners that obscure intent
-- Do not combine too many concerns into a single function or expression
-- Do not remove helpful abstractions (named intermediates, well-named helpers)
-- Do not make code harder to debug or extend
+Apply conventional patterns per language: guard clauses, comprehensions, defer blocks, optional chaining, context managers — whatever is idiomatic. Prefer standard library over manual implementations.
 
 ### Remove Low-Value Comments
-Remove: code-restating inline comments (`// Create user object` above `user = new User()`), contextless TODOs, valueless section dividers
+Remove: code-restating inline comments, contextless TODOs, valueless section dividers
 
-Keep:
-- WHY explanations, edge case warnings, business logic context, performance implications
-- **Doc comments by default** — JSDoc, Python docstrings, Rust `///`, Go doc comments are API docs. Preserve them unless genuinely vacuous (`@param name the name`, `@return the result`). Removing a doc comment is deliberate per-case judgment, not a blanket rule.
+Keep: WHY explanations, edge case warnings, business logic context, performance implications
+
+**Doc comments** (JSDoc, docstrings, Rust `///`, Go doc): preserve by default — they're API surface. Remove only when vacuous: the doc adds zero beyond what function name + types convey (e.g., `@param name the name`).
 
 ### Clean Up
 - Remove unused imports from this change
 - Fix inconsistent formatting in changed code
 - Remove debug artifacts (console.log, print, etc.)
 
+### Do NOT Over-Simplify
+- Avoid clever one-liners that obscure intent
+- Don't combine too many concerns into a single expression
+- Don't remove helpful abstractions (named intermediates, well-named helpers)
+
 ## Step 4: Verify Each Edit
 
-- Run linter/parser if available
-- If broken → revert, note issue, continue
+Run linter/parser if available. Broken → revert, note issue, continue.
 
 ## Step 5: Summary
 

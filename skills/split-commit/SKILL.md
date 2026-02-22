@@ -17,54 +17,37 @@ Repackage branch changes into clean vertical commits. Each commit compiles + pas
 
 Parse: `<base-branch>` (default: !`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`), optional `--test='command'`.
 
-Dispatch analysis subagent (general-purpose):
+Dispatch analysis subagent (general-purpose — has Read/Grep/Glob for file context beyond the diff):
 
 ```
 Analyze changes for repackaging into clean vertical commits.
 Base branch: <base-branch>
 
-## Steps
+Steps:
 1. Count: `git log --oneline <base>..HEAD | wc -l`
 2. Overview: `git diff --stat <base>..HEAD | tail -40`
-3. Full diff: `git diff <base>..HEAD` — Explore subagents for large diffs
-4. Trace cross-file deps (imports, includes, use/require)
-5. Group into vertical features that compile independently
-6. Order: foundational first (build, config), features next, cleanup last
-7. For shared files (multi-feature edits), note which hunks belong where
+3. Full diff: `git diff <base>..HEAD` — use Explore subagents for large diffs
+4. Read files with Read/Grep when diff context is insufficient
+5. Trace cross-file deps (imports, includes, use/require)
+6. Group into vertical features that compile independently
+7. Order: foundational first, features next, cleanup last
+8. For shared files, note which hunks belong where
 
-## Auto-detect test commands
-Check: justfile, Makefile, package.json, Cargo.toml.
-Pick build + lint + test commands.
-If --test provided, use that instead.
+Auto-detect test commands from justfile, Makefile, package.json, Cargo.toml. Use --test if provided.
 
-## Cross-file dependency rules
+Cross-file dep rules:
 - File A imports B → same commit or B earlier
-- Config files (Cargo.toml, package.json) go with feature introducing dep
-- Lock files go with config change triggering them
+- Config/lock files go with the feature introducing the dep
 - New types/interfaces go with first consumer
 
-## Output
+Output:
 TEST_COMMANDS: <detected or provided>
-TOTAL_FILES: <count>
-TOTAL_INSERTIONS: <approx>
-
 COMMIT_PLAN:
-1. `type(scope): message`
-   Files: file1 (whole), file2 (whole), dir/* (all new)
-   Partial: file3 (only X-related hunks — describe)
-   Rationale: <why grouped>
-2. ...
-
-DEPENDENCY_NOTES:
-- <hunk-level splitting needs>
-- <ordering constraints>
-- <test failure risks>
+1. `type(scope): message` — Files: <list>, Partial: <hunks>, Rationale: <why>
+DEPENDENCY_NOTES: <hunk splitting, ordering constraints>
 ```
 
-Present plan via AskUserQuestion:
-- Commit count, test commands, estimated size
-- Each commit: message + key files
-- "Proceed with this plan?"
+Present plan via AskUserQuestion: commit count, test commands, each commit message + key files. "Proceed?"
 
 ## Phase 2: Execute
 
@@ -73,45 +56,29 @@ After approval, soft reset on main thread:
 git reset --soft <base> && git reset HEAD
 ```
 
-Dispatch one subagent per commit (model="sonnet"), **sequentially**:
+Dispatch one subagent per commit (model="sonnet"), **sequentially** — each depends on prior state:
 
 ```
 Create commit <N>/<total>: `<commit-message>`
+Target files: <file list + hunk descriptions from plan>
 
-## Target files
-<file list + hunk descriptions from plan>
-
-## Steps
 1. `git-surgeon hunks` — list available hunks with IDs
-2. Identify hunks for this commit:
-   - Whole files: find all hunks, stage all
-   - Partial: `git-surgeon show <id>`, stage matching only
-   - `git-surgeon stage <id1> <id2> ...`
-   - Line precision: `git-surgeon stage <id> --lines X-Y`
+2. Stage target hunks: whole files → all hunks; partial → `git-surgeon show <id>`, stage matching; line precision → `git-surgeon stage <id> --lines X-Y`
 3. Verify: `git diff --cached --stat`
 4. Run tests: <test-commands>
-5. Tests FAIL:
-   - Read error → find missing dep → `git-surgeon hunks` → stage it → retry
-   - Repeat until passing — do NOT give up
-6. `git commit -m "<message>"`
-7. `git diff --stat` — report remaining unstaged
+5. Tests FAIL → read error, find missing dep, stage it, retry until passing
+6. Commit FAILS (hook rejection, etc.) → read error, fix, retry once. Still failing → report to main thread, stop.
+7. `git commit -m "<message>"`
+8. `git diff --stat` — report remaining unstaged
 ```
 
-After all commits, verify on main thread:
+After all commits, verify:
 ```bash
 git status          # should be clean
 git log --oneline <base>..HEAD   # N clean commits
 ```
 
-Dirty tree after last commit → dispatch final sonnet subagent:
-```
-Create cleanup commit for remaining unstaged changes.
-1. `git-surgeon hunks` — list remaining hunks
-2. `git-surgeon stage <all-ids>`
-3. Run tests: <test-commands>
-4. `git commit -m "chore: clean up remaining changes"`
-5. `git diff --stat` — confirm clean
-```
+Dirty tree after last commit → dispatch cleanup subagent: stage remaining, run tests, commit as `chore: clean up remaining changes`. If cleanup also fails tests, report remaining changes to user rather than forcing a broken commit.
 
 ## Key Rules
 
@@ -120,5 +87,4 @@ Create cleanup commit for remaining unstaged changes.
 - **git-surgeon always** — hunk-level precision, never plain git add
 - **Every commit compiles** — fix test failures by staging missing deps
 - **Sequential** — commits depend on prior state, cannot parallelize
-- **Cross-file deps** — trace imports to keep dependent files together
 - **Plan > rigidity** — tests demand extra files → include them
