@@ -105,16 +105,11 @@ Implement task <task-id>.
 ## Protocol
 1. TaskUpdate(taskId, status: "in_progress", owner: "worker-<taskId>")
    If fails → someone else claimed it. Report and stop.
-2. Read every file in scope. Read 2-3 existing test files in the same module/directory to learn conventions (imports, framework, base classes, assertion patterns, naming, fixtures). Match their style. No nearby tests → use rules/test-quality.md defaults.
-   Follow TDD: write failing tests, confirm red, implement until green. No test infra → note in report, implement directly.
-3. Build + test. All green → continue.
-   On failure: deduplicate errors (strip paths/line numbers). Same root error 2x → stop, report with context. 3 distinct errors → report all, stop.
-4. TaskUpdate(taskId, status: "completed")
-5. Run `Skill("refine")` on changed files. No changes needed → skip. **When refine asks about committing, select "Done for now" — orchestrator handles commits.**
-6. SendMessage(type="message", recipient="<team-lead-name>",
+2. Skill("implement-worker", args="<task-id>")
+3. SendMessage(type="message", recipient="<team-lead-name>",
      content="Completed <task-id>: <summary>",
      summary="Completed <task-id>")
-7. Wait for shutdown request. Approve it.
+4. Wait for shutdown request. Approve it.
 
 ## Rules
 - TDD: test first. Standards: rules/test-quality.md
@@ -228,4 +223,4 @@ Run after all workers complete, before prompting the user:
 
 ## After Completion
 
-After staging and showing the summary, proceed: `Skill("review")`
+Stop after staging and showing the summary. The user needs to verify functionality before review — do not auto-invoke review.
