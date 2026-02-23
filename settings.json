@@ -26,6 +26,14 @@
     "command": "uv run ~/.claude/statusline.py",
     "padding": 0
   },
+  "extraKnownMarketplaces": {
+    "local": {
+      "source": {
+        "source": "directory",
+        "path": "~/.claude/local-plugins"
+      }
+    }
+  },
   "enabledPlugins": {
     "clangd-lsp@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
