@@ -20,9 +20,7 @@ Analyze changes, classify by risk, produce structured manual test plan. Auto-exi
 
 ## Interviewing
 
-See rules/skill-interviewing.md. Skill-specific triggers:
-- Risk classification unclear (e.g., config change that might affect runtime) → ask
-- Testing environment ambiguous (e.g., requires specific device/OS) → clarify setup
+See rules/skill-interviewing.md. Ask on: unclear risk classification, ambiguous test environment.
 
 ## Step 1: Scope
 
@@ -37,19 +35,14 @@ Parse $ARGUMENTS:
 
 Collect diff and `git diff --stat`.
 
-**Early exit.** If ALL changed files are trivial, output:
-```
-## Test Plan: No Manual Testing Required
-Changes are trivial. No functional impact.
-Changed files: <--stat output>
-```
+**Early exit.** ALL files trivial → `## Test Plan: No Manual Testing Required` + stat output.
 
-Trivial: *.md, *.txt, LICENSE, CHANGELOG, comment-only, whitespace-only, CI metadata (labels, assignees).
-**Never trivial:** SKILL.md, CLAUDE.md, *.mdx — these are executable specs that change agent behavior (a typo in a trigger phrase can break skill discovery). Analyze them with the same rigor as code: what behavior changed, what could break, what to verify.
+Trivial: *.md, *.txt, LICENSE, CHANGELOG, comment-only, whitespace-only, CI metadata.
+**Never trivial:** SKILL.md, CLAUDE.md, *.mdx — executable specs that change agent behavior. Analyze with code rigor: what behavior changed, what could break, what to verify.
 
 ## Step 2: Analyze
 
-Read the full diff. Classify each changed file by risk and type.
+Read the full diff. Classify each changed file by risk and type. Include a 1-sentence justification per file referencing the specific change characteristic (e.g., "Critical — modifies auth token validation logic").
 
 ### Risk Levels
 
@@ -60,7 +53,7 @@ Read the full diff. Classify each changed file by risk and type.
 | **Medium** | Indirect impact (refactors changing control flow, dep updates, logging, build config) | Targeted verification |
 | **Low** | Unlikely user-facing (style fixes, adding tests, code comments, dev tooling) | Spot-check only |
 
-When multiple risk levels apply, use the highest — under-testing a critical path is far costlier than over-testing a minor change. A refactor touching auth logic is Critical, not Medium.
+Multiple levels apply → use highest. A refactor touching auth logic is Critical, not Medium.
 
 ### Change Types
 
@@ -68,9 +61,9 @@ Tag each file: **new-feature**, **behavior-change**, **refactor**, **bugfix**, *
 
 ## Step 3: Generate
 
-Group verification steps by risk (highest first). Each step:
+Group verification steps by risk (highest first). Every component must reference domain-specific terms from the diff (function names, endpoints, error messages) — no generic language. Each step:
 1. **What** — specific behavior to verify
-2. **How** — exact steps
+2. **How** — concrete reproducible actions (e.g., "call `paginate(page=1, size=10)`", "POST `/api/auth/login` with expired token"). Spec changes: invoke skill with specific trigger/argument, verify behavioral change.
 3. **Expected** — observable correct outcome
 4. **Regression** — adjacent functionality to confirm
 
@@ -78,7 +71,7 @@ Output structure:
 ```
 ## Test Plan: <scope summary>
 Risk: N critical, N high, N medium, N low
-Effort: quick (5min) | moderate (15min) | thorough (30min+)
+Effort: quick (5min — single-file, Low/Medium risk) | moderate (15min — multi-file, High risk) | thorough (30min+ — any Critical risk present)
 
 ### Critical Risk
 <verification steps>
@@ -93,12 +86,11 @@ Effort: quick (5min) | moderate (15min) | thorough (30min+)
 - [ ] <adjacent area>
 ```
 
-Omit empty risk sections — only include levels with actual changes. If all changes are Low, the plan is just a spot-check list.
+Omit empty risk sections. All Low → spot-check list only.
 
 For **refactors**: focus on behavior preservation — same inputs → same outputs.
 For **bugfixes**: include original reproduction steps + edge cases around fix boundary.
 
 ## Step 4: Output
 
-Present the plan. If `$CLAUDE_NON_INTERACTIVE` is set, output and stop.
-Otherwise present and stop — user will request refinements if needed.
+Present the plan. `$CLAUDE_NON_INTERACTIVE` → output and stop. Otherwise present and stop.

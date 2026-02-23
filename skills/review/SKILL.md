@@ -22,7 +22,7 @@ Three modes: solo (default), file-split (auto ≥15 files), perspective (--team)
 
 ## Interviewing
 
-See rules/skill-interviewing.md. Ask on: borderline severity judgment, unclear pattern violation (style vs correctness).
+See rules/skill-interviewing.md. Ask on: borderline severity, unclear pattern violation.
 
 ## Step 1: Scope + Mode
 
@@ -41,38 +41,44 @@ Mode: `--team` → Perspective (3 specialists), ≥15 files → File-Split (~8/a
 
 ## Step 2: Setup + Context
 
-TaskCreate with `metadata: {type: "review", project: REPO_ROOT}`, set in_progress. `--continue`: TaskList filtered by `metadata.type == "review"` + `status == "in_progress"`, first match; not found → "No review to continue", stop. Resume: extract metadata.design, prepend.
+TaskCreate `metadata: {type: "review", project: REPO_ROOT}`, in_progress. `--continue`: TaskList `metadata.type == "review"` + `in_progress`, first match; not found → stop. Resume: prepend metadata.design.
 
-Parallel: `git diff --stat`, `--name-only`, `git log --oneline`, `ck tool cochanges --base $BASE` (empty/unavailable → skip completeness). `--against`: TaskGet for plan.
+Parallel: `git diff --stat`, `--name-only`, `git log --oneline`, `ck tool cochanges --base $BASE` (unavailable → skip). `--against`: TaskGet for plan.
 
 ## Step 3: Dispatch Reviewers
 
-All persistent-reviewer Task agents, spawn in ONE message. Full prompt templates in `references/reviewer-prompts.md`. If `--against`: append plan adherence check to every prompt.
+All Task agents, spawn in ONE message. Prompts in `references/reviewer-prompts.md`. `--against`: append plan adherence to every prompt.
 
 - **Solo**: Correctness & Security + Architecture & Performance
 - **File-Split**: Combined lens per ~8-file group
 - **Perspective**: Architect + Code Quality + Devil's Advocate
-- **Additional** (all modes): Completeness (if cochanges non-empty), Codex (if `which codex` succeeds AND files≥5 or lines≥200)
+- **Additional**: Completeness (if cochanges non-empty), Codex (if available AND files≥5 or lines≥200)
 
 ## Step 4: Consolidate
 
-1. **Validate** (subagent-trust.md): spot-check 1-2 claims per reviewer; ALL codex claims (codex has no codebase context, so hallucination rate is higher). Codex duplicate → keep reviewer version.
-2. **Deduplicate**: same issue → highest severity/tier.
-3. **Consensus**: critical from any reviewer survives (false negative on security/data-loss is far costlier than a false positive). Non-critical needs 2+ at same tier (single-reviewer non-critical findings are often style opinions; consensus filters noise). Solo: both lenses must agree. Single-reviewer → IGNORE "1-of-N".
-4. Sort by severity. **Never truncate.**
+1. **Validate** (subagent-trust.md): spot-check 1-2 claims per reviewer; ALL codex claims. Codex duplicate → keep reviewer version.
+2. **Deduplicate**: same issue → highest severity.
+3. **Consensus**: critical from any reviewer survives. Non-critical needs 2+ at same tier. Solo: both lenses must agree. Single-reviewer → IGNORE "1-of-N".
+4. Sort by severity (Critical > High > Medium > Low). **Never truncate.** Re-examination keeps each finding on its own merits — one false claim does not taint the reviewer's other valid findings.
 
-Output `# Adversarial Review Summary`: FIX table, collapsed IGNORE, --team tags/disagreements, verdict footer. Store via `ck plan create` + TaskUpdate metadata.design.
+Output `# Adversarial Review Summary`:
+- **FIX table** columns: Severity | File | Finding | Recommendation. Severity ∈ {Critical, High, Medium, Low}.
+- **IGNORE** section (collapsed): findings below consensus threshold, labeled "1-of-N".
+- **--team disagreements**: when specialists differ on severity, show attribution (e.g., "Architect: High, Code Quality: Medium → resolved: High") before the resolved row.
+- **Verdict footer**: PASS (no FIX items), CHANGES_REQUESTED (any FIX items), FAIL (any Critical).
+
+Store via `ck plan create` + TaskUpdate metadata.design.
 
 !`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Return findings to caller. Don't fix." || echo "AskUserQuestion: Fix all / Fix critical+high / Fix critical only / Skip fixes"`
 
 ## Step 5: Fix + Re-review Loop
 
-Spawn general-purpose agent with FIX items → fix, verify, report. Then `Skill("refine")`.
+Spawn agent with FIX items → fix, verify, report. Then `Skill("refine")`.
 
-Re-run Step 3, max 4 iterations (beyond 4, fix quality degrades as context fills with prior findings). Track fixed_issues by (file, description) — not line numbers (they shift). Skip matches when consolidating. Exit: all resolved, user stops, or iteration 4.
+Re-run Step 3, max 4 iterations. Track fixed_issues by (file, description) — not line numbers. Skip matches when consolidating. Exit: all resolved, user stops, or iteration 4.
 
 ## Step 6: Summary + Next
 
-Output: Fixes Applied, Ignored, Remaining. If remaining + interactive: multiSelect to track as deferred-review tasks. Close: TaskUpdate → completed. Next via AskUserQuestion (commit/review/refine/test-plan).
+Output: Fixes Applied, Ignored, Remaining. Remaining + interactive: multiSelect to defer. Close: TaskUpdate → completed. Next via AskUserQuestion.
 
-**Receiving feedback:** Verify claims by reading the file. Push back with evidence when feedback breaks functionality or violates YAGNI.
+**Receiving feedback:** Verify claims by reading the file. Push back with evidence when feedback breaks functionality.

@@ -31,8 +31,8 @@ Resolve argument:
 - Nothing found → suggest `/explore` then `/prepare`, stop
 
 **Recovery:** Before classifying, check for orphaned epics (`metadata.impl_team` set AND `status == "in_progress"`). Only auto-recover when no explicit argument given.
-- Team config exists → re-enter Rolling Scheduler using current metadata counters as starting state. Shut down unresponsive workers, re-dispatch their tasks.
-- Config missing (team died) → clear `impl_team`, dispatch remaining pending children sequentially (up to 4) using Standalone Worker Prompt.
+- Team config exists → re-enter Rolling Scheduler from current metadata counters. Re-dispatch unresponsive workers.
+- Config missing → clear `impl_team`, dispatch remaining pending children sequentially (up to 4) via Standalone prompts.
 - After recovery → skip to Teardown.
 
 ## Step 2: Classify
@@ -41,22 +41,22 @@ Resolve argument:
 
 - No descendants → **Solo**
 - 2-3 independent leaves (no blockedBy) → **Parallel**
-- 4+ leaves OR any blockedBy dependencies → **Swarm**
+- 4+ leaves OR any blockedBy → **Swarm**
 
-**Readiness check (Parallel/Swarm):** If 2+ tasks lack `## Files` or `## Approach` → ask user to continue or refine briefs first.
+**Readiness check (Parallel/Swarm):** 2+ tasks lack `## Files` or `## Approach` → AskUserQuestion before dispatching any workers.
 
 ## Worker Dispatch
 
-All modes dispatch via `Task(subagent_type="general-purpose")`. Trivial tasks (single-file rename, config tweak) use `model="sonnet"` (cost savings on non-architectural work). Concurrency capped at 4 workers (avoids context thrashing in the orchestrator). Failed workers retry max 2 times (past 2 is unlikely to self-correct without human input). Two prompt variants — see `references/worker-prompts.md`:
+All modes use `Task(subagent_type="general-purpose")`. Trivial tasks use `model="sonnet"`. Cap: 4 concurrent, 2 retries. Prompt variants in `references/worker-prompts.md`:
 
-- **Standalone** (Solo/Parallel/fallback): no messaging, worker returns directly
-- **Team-based** (Swarm): adds SendMessage to team lead + shutdown handshake
+- **Standalone** (Solo/Parallel/fallback): no messaging, returns directly
+- **Team-based** (Swarm): adds SendMessage + shutdown handshake
 
-Codex routing: when `codex` CLI is available and task is a leaf, dispatch via Codex first. On failure, fall back to Claude worker. See `references/scheduler.md`.
+Codex routing: `codex` available + leaf task → Codex first, Claude fallback. See `references/scheduler.md`.
 
 ## Solo Mode
 
-1. Set task in_progress. Walk ancestor chain (`metadata.parent_id`) for epic context.
+1. Set task in_progress. Walk ancestor chain for epic context.
 2. Spawn single standalone worker.
 3. Verify completed → `Skill("acceptance")` → Stage Changes.
 
@@ -71,15 +71,11 @@ Codex routing: when `codex` CLI is available and task is a leaf, dispatch via Co
 
 Tasks have dependency waves (blockedBy relationships). Every task dispatches via subagent.
 
-1. **Setup:** `TeamCreate(team_name="impl-<slug>")`. If fails → fall back to standalone sequential dispatch (up to 4 concurrent, same rolling logic). Detect Codex availability via `which codex`.
-2. **Rolling Scheduler:** Dispatch leaf tasks as dependencies resolve, up to 4 concurrent workers. See `references/scheduler.md` for full pseudocode and Codex routing.
+1. **Setup:** `TeamCreate(team_name="impl-<slug>")`. If fails → fall back to standalone sequential dispatch (up to 4 concurrent). Detect Codex via `which codex`.
+2. **Rolling Scheduler:** Pre-compute dependency waves: wave 1 = unblocked tasks (no pending blockedBy); subsequent waves = tasks whose blockedBy all resolved. Dispatch wave 1 immediately (up to 4 concurrent), advance as workers complete. See `references/scheduler.md`.
 3. **Verify:** Full test suite. Red → spawn fix agent (max 2 cycles). Still red → escalate to user.
 4. **Teardown:** Clear all impl_* metadata, complete epic, TeamDelete, `Skill("acceptance")`, Stage Changes.
 
 ## Stage Changes
 
-After all workers complete: `git add -u`, check for untracked files (ask user whether to stage), show `git diff --cached --stat`.
-
-## After Completion
-
-Stop after staging and showing summary. User verifies functionality before review — do not auto-invoke review.
+After all workers: `git add -u`, ask about untracked files, show `git diff --cached --stat`. Stop — user verifies before review.

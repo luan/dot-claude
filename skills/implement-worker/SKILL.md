@@ -31,23 +31,27 @@ Flat case (direct child): breadcrumb is just the epic subject.
 ## Step 1.5: Complexity Assessment
 
 **Decompose if ALL hold:**
-- 4+ files touching unrelated components, OR 3+ concerns each needing different test context (below these thresholds a single worker handles the scope efficiently; above, context switching across unrelated components degrades output quality)
-- `task.metadata.depth` is set AND < 3 (depth cap prevents unbounded nesting — 3 levels of task hierarchy is the maximum that stays manageable)
+- 4+ files touching unrelated components, OR 3+ concerns needing different test context
+- `task.metadata.depth` is set AND < 3 (depth cap prevents unbounded nesting)
 
-`depth` is not guaranteed by all upstream skills. If absent, assume leaf — do NOT decompose, because unbounded recursion on tasks not structured for nesting would waste work and risk loops.
+`depth` absent → assume leaf, do NOT decompose (prevents unbounded recursion).
 
 Threshold met → Step 1.6. Otherwise → Step 2.
 
 ## Step 1.6: Decompose Path
 
-Skip Steps 2–4. Decompose, dispatch children, verify.
+Skip Steps 2–6. Decompose, dispatch children, verify.
 
 1. **Create children** — one per concern. Each: `metadata: {parent_id: task.id, depth: (task.metadata.depth ?? 0) + 1, ...inherited}`.
 2. **Dispatch** — up to 4 concurrent `Task(subagent_type="general-purpose")` using Sub-Worker Prompt (Step 2). Each child's breadcrumb = parent breadcrumb + current task subject.
 3. **Wait** for all children.
 4. `Skill("acceptance", args=task.id)` — PASS → complete task. FAIL → report, do not complete.
 
-## Step 2: Sub-Worker Prompt
+## Step 2: Claim Task
+
+`TaskUpdate(taskId, status: "in_progress", owner: "solo")` — establish ownership before dispatching any work.
+
+## Step 3: Sub-Worker Prompt
 
 Spawn `Task(subagent_type="general-purpose")`. **Trivial tasks** (single-file, <20 lines changed, no new logic — e.g. rename, config tweak): use `model="sonnet"` to save cost.
 
@@ -64,11 +68,9 @@ Implement task <task-id>.
 <root epic subject + metadata.design summary; omit if no parent>
 
 ## Protocol
-1. TaskUpdate(taskId, status: "in_progress", owner: "solo")
-2. Read every file in scope + 2-3 nearby test files to learn conventions.
+1. Read every file in scope + 2-3 nearby test files to learn conventions.
    TDD: failing test → red → implement → green. No test infra → note, implement directly.
-3. Build + test. Same root error 2x → stop + report. 3 distinct errors → report all, stop.
-4. TaskUpdate(taskId, status: "completed", metadata: {completedAt: "<ISO 8601>"})
+2. Build + test. Same root error 2x → stop + report. 3 distinct errors → report all, stop.
 
 ## Rules
 - TDD first. Standards: rules/test-quality.md
@@ -77,10 +79,14 @@ Implement task <task-id>.
 - Bug elsewhere → TaskCreate(subject: "Found: ...", metadata: {type: "bug", priority: "P2", project: "<repo root>"})
 ```
 
-## Step 3: Refine
+## Step 4: Refine
 
 After sub-worker: `git diff --name-only HEAD` for changed files. None → skip. Changed → `Skill("refine")`.
 
-## Step 4: Return
+## Step 5: Complete Task
+
+`TaskUpdate(taskId, status: "completed", metadata: {completedAt: "<ISO 8601>"})` — mark complete after refine, not inside sub-worker.
+
+## Step 6: Return
 
 Completion summary (files changed, what implemented). No staging, no commit — caller handles.

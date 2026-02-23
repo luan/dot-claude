@@ -42,7 +42,7 @@ Dispatch Task (subagent_type="codebase-researcher"): scan for tech stack, releva
 
 AskUserQuestion, ONE per turn — wait for answer before next. Prefer multiple-choice.
 
-**Upfront spec:** If the prompt already contains constraints, scope, and success criteria, skip to step 4 (Propose Approaches) with brief acknowledgment of what was provided.
+**Upfront spec:** If the prompt already contains constraints, scope, and success criteria, skip to step 4 — acknowledge by citing 2+ concrete details from the user's spec (specific numbers, names, requirements).
 
 **Sequence** (adapt, skip irrelevant):
 1. **Purpose** — What problem? Who's it for?
@@ -51,13 +51,13 @@ AskUserQuestion, ONE per turn — wait for answer before next. Prefer multiple-c
 4. **Prior art** — Similar code in codebase or elsewhere?
 5. **Success criteria** — How will you know it works?
 
-Stop when you can propose approaches. Usually 3-5 questions, never >7.
+Stop when you can propose approaches. Usually 3-5 questions, never >7. Stay technology-agnostic during interview — specific technologies belong in step 4.
 
 **Mid-dialogue pivot:** If direction shifts fundamentally, acknowledge, discard stale context, restart from the relevant question.
 
 ### 4. Propose 2-3 Approaches
 
-Lead with recommendation and why. Each approach: 2-3 sentences + key tradeoff. Be opinionated — don't hedge equally. Ask user to pick or refine. If all rejected, ask what's missing and propose new approaches — don't dead-end.
+Lead with recommendation + justification referencing user's stated constraints. Non-recommended approaches: 2-3 sentences + explicit downside vs the recommended one. Be opinionated — don't hedge equally. Ask user to pick or refine. If all rejected, ask what's missing and propose new approaches — don't dead-end.
 
 ### 5. Present Design Sections
 

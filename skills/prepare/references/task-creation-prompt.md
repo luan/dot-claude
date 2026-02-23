@@ -43,17 +43,16 @@ even if code within each task stays flat.
   Flatten to ≤3 if needed.
 - Flat phases (1-2 concerns) stay as single depth-1 tasks
 
-4. Set dependencies based on actual data/code dependencies:
-   TaskUpdate(taskId, addBlockedBy: [<ids of tasks producing files/APIs/state this task consumes>])
-   Heuristic: task B modifies file that task A creates, or B imports API that A defines → B blocked by A.
-   Different files = independent. Independent tasks across phases should NOT block each other.
-   Sub-tasks within same phase can block siblings when one produces what another consumes.
+4. Set dependencies — default: sequential phases block in order (phase 2 blocked by phase 1, etc.).
+   Override: if two phases touch completely independent files/subsystems with no data flow between them, they MAY be independent.
+   Within a phase: sub-tasks block siblings when one produces what another consumes.
+   TaskUpdate(taskId, addBlockedBy: [<ids of predecessor tasks>])
 
 5. Return all task IDs: "Created: task-1, task-2, task-3"
 
 ## Quality Requirements
 - Exact file paths with Read/Modify/Create labels
-- Clear implementation approach and key decisions
+- Approach must use domain terms from the source phase description (preserve terminology traceability)
 - Testable acceptance criteria
 - Explicit assumptions about file structure
 - Each task = one logical unit (one feature/fix/change)

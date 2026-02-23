@@ -36,7 +36,7 @@ Read all identified files using parallel Read calls. Detect language from extens
 
 ## Step 3: Apply Refinements
 
-**Behavior boundary:** "Never change behavior" means same inputs → same outputs, same side effects, same error paths. Structural rewrites (early returns, constant extraction, idiom substitution) are in-scope when they preserve this contract.
+**Behavior boundary:** same inputs → same outputs, same side effects, same error paths. Structural rewrites are in-scope when they preserve this contract.
 
 ### Simplify Complexity
 - Flatten nesting via early returns
@@ -53,7 +53,7 @@ Remove: code-restating inline comments, contextless TODOs, valueless section div
 
 Keep: WHY explanations, edge case warnings, business logic context, performance implications
 
-**Doc comments** (JSDoc, docstrings, Rust `///`, Go doc): preserve by default — they're API surface. Remove only when vacuous: the doc adds zero beyond what function name + types convey (e.g., `@param name the name`).
+**Doc comments** (JSDoc, docstrings, Rust `///`, Go doc): preserve by default — they're API surface. Remove only when vacuous: the doc adds zero beyond what function name + types convey (e.g., `@param name the name`). **Value ranking:** never remove a higher-value doc while keeping a lower-value one in the same scope — if a borderline doc stays, all non-borderline docs must also stay.
 
 ### Clean Up
 - Remove unused imports from this change
@@ -76,6 +76,6 @@ Per-file: simplifications applied, idiom rewrites, comments removed, other clean
 ## Rules
 
 - **Never change behavior** — structural/cosmetic only
-- **Only touch uncommitted changes** — committed code was already reviewed; refining it risks unintended scope creep
-- **Preserve existing patterns** — inconsistent style within a file creates cognitive overhead and noisy diffs
-- **When in doubt, leave it** — ambiguous rewrites risk silent breakage; only refactor when semantics are unambiguous
+- **Only touch uncommitted changes** — committed code is out of scope
+- **Preserve existing patterns** — inconsistent style creates noisy diffs
+- **When in doubt, leave it** — ambiguous rewrites risk silent breakage
