@@ -12,6 +12,8 @@ allowed-tools:
   - "Bash(git show:*)"
   - "Bash(gh pr view:*)"
   - "Bash(gh pr edit:*)"
+  - "Bash(gh pr list:*)"
+  - "Bash(cat *PULL_REQUEST_TEMPLATE*)"
   - Read
   - AskUserQuestion
 ---
@@ -28,6 +30,8 @@ Update an existing PR's title and description from branch context.
 gh pr view --json number,title,body,headRefName -q '{number,title,headRefName}'
 git log --oneline -10
 git status -sb
+cat .github/PULL_REQUEST_TEMPLATE.md 2>/dev/null
+gh pr list --state merged --limit 3 --json body -q '.[].body' | head -80
 ```
 
 If no PR found, tell user and stop.
@@ -58,7 +62,7 @@ If diff is large, use `--stat` first and read key files.
 
 **Title**: conventional commit — `type(scope): description`. Max 72 chars — GitHub truncates longer titles in list views. Lowercase, no period, imperative mood. Types: feat|fix|refactor|perf|docs|test|style|build|ci|chore|revert.
 
-**Body**: 1-3 sentences explaining WHY, with high-level HOW. Prose, no bullet lists or headers. Don't list changes obvious from diff.
+**Body**: Follow the repo's PR template if one exists — use its headings and fill each section with content from the diff. Otherwise, if recent merged PRs share a consistent format (e.g., test plan section, changelog), match that structure. If neither exists or history is inconsistent, default to 1-3 sentences explaining WHY with high-level HOW. Don't list changes obvious from diff.
 
 ## Step 4: Preview and Update
 
