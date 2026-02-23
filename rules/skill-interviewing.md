@@ -31,3 +31,12 @@ When a skill finishes, there's usually an obvious next step in the pipeline (exp
 - prepare → implement (user already validated the analysis)
 
 Never present formulaic menus with "Done for now" filler options. If the user wants to stop, they'll just... stop.
+
+## Post-Skill Artifact Freshness
+
+When user feedback after a skill's output substantively changes the design (new approach, different scope, architectural shift — not acknowledgment or minor wording):
+
+- **Update stored artifacts immediately** (task metadata, plan files) — don't defer to the next skill
+- Next-skill invocations read from stored artifacts, not conversation context
+- Critical for cross-session continuity: user may invoke the next skill in a fresh session
+- Stale artifacts + fresh session = wrong plan = wrong implementation

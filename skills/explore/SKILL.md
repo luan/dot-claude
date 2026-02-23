@@ -74,15 +74,24 @@ Phases must include file paths + approach.
 
 6. Stop — user reviews before proceeding.
 
+7. **Design refinement:** If user feedback after step 6 changes the recommendation (new approach, different scope, architectural shift — not acknowledgment), revise on main thread without subagent dispatch:
+   1. Incorporate feedback into revised findings (rewrite recommendation, key files, phases)
+   2. `TaskUpdate(taskId, metadata: {design: "<revised>", status_detail: "review"})`
+   3. If `metadata.plan_file`, overwrite plan file with revised findings
+   4. Re-output revised summary. Stop for review.
+   5. Repeat on further substantive feedback. `/prepare` reads stored artifacts, not conversation — stale artifacts in a fresh session = wrong plan.
+
+   Use `--continue` instead when the feedback requires new codebase research (not just design-level redirection).
+
 ## Continuation (--continue)
 
 1. Resolve task: argument → task ID; bare `--continue` → TaskList filtered by `metadata.type === "explore"` + `status_detail === "review"`, first result
 2. TaskGet → extract `metadata.design`. TaskUpdate to in_progress, clear status_detail
 3. Dispatch subagent with previous findings as context + new prompt. Instruct: "Compare against prior findings. Flag new files not previously covered. Produce a single unified output merging prior + new — no separated 'Old Findings' / 'New Findings' sections."
-4. **Update existing task** — TaskUpdate(taskId, metadata: {design: "<merged findings>", status_detail: "review"}). Do NOT ck plan create a new plan; update in place.
+4. **Update existing task** — TaskUpdate(taskId, metadata: {design: "<merged findings>", status_detail: "review"}). If `metadata.plan_file`, overwrite plan file with merged findings. Do NOT ck plan create a new plan.
 5. Output summary. Stop for user review.
 
 ## Key Rules
 
-- Main thread does NOT explore — subagent does
+- Main thread does NOT research the codebase — subagent does. Design revision (step 7) stays on main thread.
 - Next Steps must include file paths — prepare depends on them
