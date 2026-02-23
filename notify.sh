@@ -64,8 +64,12 @@ fi
 # Dock bounce
 printf '\a' > /dev/tty 2>/dev/null
 
-# Build click-to-focus command
-execute_cmd="open -a Ghostty"
+# Build click-to-focus command — focus Ghostty, then switch tmux to this session
+if [[ -n "$tmux_session" ]]; then
+  execute_cmd="$HOME/.claude/scripts/focus-session.sh '$tmux_session' '$(command -v tmux)'"
+else
+  execute_cmd="open -a Ghostty"
+fi
 
 # Flag tmux session for attention indicator in status bar and refresh
 if [[ -n "$tmux_session" ]]; then
