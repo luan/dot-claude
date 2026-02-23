@@ -1,6 +1,6 @@
 ---
 name: debugging
-description: "Systematic root cause investigation before proposing fixes. Triggers: bugs, test failures, unexpected behavior, 'why is this failing', 'not working', 'broken'. Do NOT use when: the bug is already identified and the fix is obvious — use /fix instead."
+description: "Systematic root cause investigation before proposing fixes. Triggers: bugs, test failures, unexpected behavior, 'why is this failing', 'not working', 'broken'. Do NOT use when: the bug is already identified and the fix is obvious — use /triage instead."
 ---
 
 # Systematic Debugging

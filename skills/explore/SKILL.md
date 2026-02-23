@@ -13,6 +13,9 @@ allowed-tools:
   - AskUserQuestion
   - Bash
   - Write
+  - TeamCreate
+  - TeamDelete
+  - SendMessage
 ---
 
 # Explore
@@ -49,7 +52,17 @@ Phases must include file paths + approach.
 3+ independent subsystems or 3+ viable approaches → "ESCALATE: team — <reason>"
 ```
 
-   **On "ESCALATE: team":** spawn 2-3 parallel Task agents (Researcher: breadth-first, Architect: design/tradeoffs, Devil's Advocate: challenges assumptions; all model: opus). Synthesize: collect all reports, produce merged output using Architect's approach. Add a **Contradictions** section that quotes specific claims from Architect vs Devil's Advocate (e.g., "Architect: X — Devil's Advocate: Y"). If agents fully agree, write "No contradictions found." Fold remaining caveats into Risks.
+   **On "ESCALATE: team":**
+
+   a. `TeamCreate(team_name="explore-<topic-slug>")`
+   b. Dispatch 3 agents (all model: opus, mode: "plan"):
+      - **Researcher** — breadth-first investigation: map all relevant subsystems, surface patterns, catalog interfaces
+      - **Architect** — design & tradeoffs: evaluate approaches, propose architecture, identify constraints
+      - **Skeptic** — challenge assumptions: stress-test claims, find counter-evidence, identify risks others miss
+   c. **Plan review:** each agent calls ExitPlanMode, sending a plan_approval_request. Review each plan — `SendMessage(type="plan_approval_response", approve: true/false)` with feedback if rejecting. Agents proceed only after approval.
+   d. **Collect results:** agents send findings via SendMessage when done.
+   e. **Synthesize:** merge all reports, produce unified output using Architect's approach. Add a **Contradictions** section that quotes specific claims from Architect vs Skeptic (e.g., "Architect: X — Skeptic: Y"). If agents fully agree, write "No contradictions found." Fold remaining caveats into Risks.
+   f. `TeamDelete` — clean up team after synthesis.
 
 3. **Validate** (subagent-trust.md): spot-check ALL architectural claims + 50% of file/behavioral claims. Failed check → follow-up.
 

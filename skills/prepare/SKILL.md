@@ -1,6 +1,6 @@
 ---
 name: prepare
-description: "Convert exploration or review findings into epic + phased child tasks with design briefs. Triggers: 'prepare', 'prepare work', 'create tasks from plan', 'turn findings into tasks', 'make a task list from this', 'plan out the work'. Do NOT use when: converting user feedback (not explore findings) into tasks — use /fix instead."
+description: "Convert exploration or review findings into epic + phased child tasks with design briefs. Triggers: 'prepare', 'prepare work', 'create tasks from plan', 'turn findings into tasks', 'make a task list from this', 'plan out the work'. Do NOT use when: converting user feedback (not explore findings) into tasks — use /triage instead."
 argument-hint: "[t<id>|<task-id>]"
 user-invocable: true
 allowed-tools:
@@ -31,7 +31,7 @@ See rules/skill-interviewing.md.
    - File path arg → use directly
    - Task ID arg → TaskGet, extract metadata.design; if metadata.plan_file, run `ck plan latest --task-file <metadata.plan_file>`
    - No args → `ck plan latest`
-   - Still none → TaskList (status_detail==="review", type in ["explore","review","fix"]), first match's metadata.design
+   - Still none → TaskList (status_detail==="review", type in ["explore","review","triage"]), first match's metadata.design
    - No plan → suggest `/explore`, stop
 
 2. **Pre-check design quality:**

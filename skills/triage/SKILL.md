@@ -1,6 +1,6 @@
 ---
-name: fix
-description: "Convert user feedback or review findings into phased tasks. Does NOT implement fixes. Triggers: 'fix', 'create issues from feedback', 'file bugs from feedback'. Do NOT use when: the cause is unknown and investigation is needed — use /debugging instead. Do NOT use when: you want to implement the fix immediately — this skill only creates tasks."
+name: triage
+description: "Convert user feedback or review findings into phased tasks. Does NOT implement fixes. Triggers: 'triage', 'create issues from feedback', 'file bugs from feedback'. Do NOT use when: the cause is unknown and investigation is needed — use /debugging instead. Do NOT use when: you want to implement the fix immediately — this skill only creates tasks."
 argument-hint: "<feedback-text>"
 user-invocable: true
 allowed-tools:
@@ -14,7 +14,7 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# Fix
+# Triage
 
 Convert user feedback into ONE task with phased design — directly consumable by `/prepare`. Does NOT implement; creates actionable work items for later scheduling.
 
@@ -43,7 +43,7 @@ Break feedback ($ARGUMENTS) into individual findings:
 
 ### 3. Create Single Issue with Phased Design
 
-TaskCreate: subject "Fix: <brief-summary>", acceptance criteria (all feedback addressed, phased structure, consumable by /prepare), metadata `{project: <repo root>, type: "fix", priority: "P2"}`.
+TaskCreate: subject "Triage: <brief-summary>", acceptance criteria (all feedback addressed, phased structure, consumable by /prepare), metadata `{project: <repo root>, type: "triage", priority: "P2"}`.
 
 Description includes phased findings — bugs first because they block testing improvements:
 - **Phase 1**: Bugs (highest priority first within phase)
@@ -51,17 +51,17 @@ Description includes phased findings — bugs first because they block testing i
 - **Phase 3**: Features / new functionality
 - Skip empty phases. Each item: actionable title with file:line when available.
 
-Mark active: `TaskUpdate(taskId, status: "in_progress", owner: "fix")`
+Mark active: `TaskUpdate(taskId, status: "in_progress", owner: "triage")`
 
 **Store findings** — dual storage because plan file provides durable searchable backup while metadata enables quick API access by downstream skills:
 
-1. `PLAN_FILE=$(echo "<findings>" | ck plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "fix" 2>/dev/null)` — warn if fails/empty.
-2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "$PLAN_FILE" (omit if empty), status_detail: "review"}, description: "Fix: <topic> — findings in plan file and metadata.design")`
+1. `PLAN_FILE=$(echo "<findings>" | ck plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "triage" 2>/dev/null)` — warn if fails/empty.
+2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "$PLAN_FILE" (omit if empty), status_detail: "review"}, description: "Triage: <topic> — findings in plan file and metadata.design")`
 
 ### 4. Report
 
 ```
-## Fix: t<id>
+## Triage: t<id>
 
 **Findings**: N items (X bugs, Y tasks, Z features)
 
