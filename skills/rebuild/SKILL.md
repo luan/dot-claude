@@ -36,7 +36,7 @@ Dep rules: imports → same commit or dep earlier. Config/locks with introducing
 Output:
 TEST_COMMANDS: <detected or --test>
 COMMIT_PLAN:
-1. `type(scope): message` — Files: <list>, Changes: <what>, Refinements: <concrete before/after, e.g. "rename x→multiplier in service.py:12">
+1. `type(scope): message` (conventional commit per /commit skill) — Files: <list>, Changes: <what>, Refinements: <concrete before/after, e.g. "rename x→multiplier in service.py:12">
 ```
 
 Present via AskUserQuestion: commit count, tests, each message + files + planned refinements. "Proceed?"
