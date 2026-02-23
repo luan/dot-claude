@@ -66,7 +66,7 @@ printf '\a' > /dev/tty 2>/dev/null
 
 # Build click-to-focus command — focus Ghostty, then switch tmux to this session
 if [[ -n "$tmux_session" ]]; then
-  execute_cmd="$HOME/.claude/scripts/focus-session.sh '$tmux_session' '$(command -v tmux)'"
+  execute_cmd="$HOME/.claude/scripts/focus-session.sh '$tmux_session' '$(command -v tmux)' '$(command -v grrr)'"
 else
   execute_cmd="open -a Ghostty"
 fi
@@ -85,6 +85,14 @@ sound_flag=(--sound "$sound")
 image_flag=()
 [[ -n "$session_image" && -f "$session_image" ]] && image_flag=(--image "$session_image")
 
-grrr --appId Claude --title "$title" --subtitle "$subtitle" "${sound_flag[@]}" "${image_flag[@]}" --execute "$execute_cmd" ${message:+"$message"} >/dev/null 2>&1
+# Group by session; latest notification per session replaces the previous
+thread_flag=()
+id_flag=()
+if [[ -n "$tmux_session" ]]; then
+  thread_flag=(--threadId "claude-$tmux_session")
+  id_flag=(--identifier "claude-$tmux_session")
+fi
+
+grrr --appId Claude --title "$title" --subtitle "$subtitle" "${sound_flag[@]}" "${image_flag[@]}" "${thread_flag[@]}" "${id_flag[@]}" --execute "$execute_cmd" ${message:+"$message"} >/dev/null 2>&1
 
 exit 0
