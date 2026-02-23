@@ -1,6 +1,6 @@
 ---
 name: test-plan
-description: "Analyze current diff, classify changes by risk, and produce structured manual test plan. Triggers: 'test plan', 'what should I test', 'manual testing', 'verification steps', 'QA checklist'. Exits early for trivial changes."
+description: "Analyze current diff, classify changes by risk, and produce structured manual test plan. Triggers: 'test plan', 'what should I test', 'manual testing', 'verification steps', 'QA checklist'. Exits early for trivial changes. Do NOT use when: writing automated tests — use /implement with TDD. Do NOT use when: reviewing code quality — use /review instead."
 argument-hint: "[base..head | file-list | PR#]"
 user-invocable: true
 model: sonnet
@@ -45,7 +45,7 @@ Changed files: <--stat output>
 ```
 
 Trivial: *.md, *.txt, LICENSE, CHANGELOG, comment-only, whitespace-only, CI metadata (labels, assignees).
-**Never trivial:** SKILL.md, CLAUDE.md, *.mdx — these are executable specs that change agent behavior. Analyze them with the same rigor as code: what behavior changed, what could break, what to verify.
+**Never trivial:** SKILL.md, CLAUDE.md, *.mdx — these are executable specs that change agent behavior (a typo in a trigger phrase can break skill discovery). Analyze them with the same rigor as code: what behavior changed, what could break, what to verify.
 
 ## Step 2: Analyze
 
@@ -55,12 +55,12 @@ Read the full diff. Classify each changed file by risk and type.
 
 | Level | Scope | Verification |
 |-------|-------|-------------|
-| **Critical** | Core functionality, data loss risk (auth, persistence, payments, security, infra) | Test first, most thoroughly |
+| **Critical** | Data loss or security breach risk (auth, persistence, payments, security, infra) | Test first, most thoroughly |
 | **High** | User-visible behavior (UI, API contracts, business logic, error handling, perf paths) | Full verification steps |
 | **Medium** | Indirect impact (refactors changing control flow, dep updates, logging, build config) | Targeted verification |
 | **Low** | Unlikely user-facing (style fixes, adding tests, code comments, dev tooling) | Spot-check only |
 
-When multiple risk levels apply, use the highest — a refactor touching auth logic is Critical, not Medium.
+When multiple risk levels apply, use the highest — under-testing a critical path is far costlier than over-testing a minor change. A refactor touching auth logic is Critical, not Medium.
 
 ### Change Types
 

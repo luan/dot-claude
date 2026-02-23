@@ -14,7 +14,7 @@ Random fixes waste time + create new bugs.
 ### Phase 1: Root Cause Investigation
 
 1. Read errors carefully — stack traces, line numbers
-2. Reproduce consistently — exact steps
+2. Reproduce consistently — exact steps. Intermittent? Add logging at component boundaries to capture state on next occurrence.
 3. Check recent changes — git diff, new deps
 4. Gather evidence at component boundaries
 5. Trace data flow to source
@@ -30,7 +30,7 @@ Random fixes waste time + create new bugs.
 
 1. Form single hypothesis: "X is root cause because Y"
 1b. **Oracle test (when applicable):** Compare current behavior against a known-good baseline to confirm the bug and isolate its scope. Options: available worktree from pool (`git worktree list` — detached HEAD = available), reference implementation, or reduced test case with known-correct output. Creating a new worktree is expensive — justify only when the bug is non-obvious and affects multiple components. Return worktree to detached HEAD when done.
-2. **3+ plausible hypotheses:** STOP — spawn parallel subagents (one per hypothesis). Each traces one hypothesis, reports evidence for/against.
+2. **3+ plausible hypotheses:** STOP — spawn parallel subagents (one per hypothesis, each traces one, reports evidence for/against). At 3+ hypotheses, sequential testing wastes time because each test cycle is slow; parallel investigation covers more ground faster.
 3. SMALLEST possible change to test
 4. One variable at a time
 5. Worked → Phase 4. Didn't → NEW hypothesis (if 3rd, parallelize per step 2)
@@ -45,6 +45,8 @@ Random fixes waste time + create new bugs.
 4. Fix doesn't work? < 3 attempts → Phase 1. >= 3 → architectural issue
 
 ## 3+ Fixes = Question Architecture
+
+Repeated fixes without root cause understanding signal a design problem, not a surface bug. Continuing tactical patches compounds tech debt and masks the real issue.
 
 !`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Document concern in task description, attempt one structural fix, surface to caller." || echo "STOP. Discuss with human before more fixes."`
 

@@ -31,8 +31,8 @@ Flat case (direct child): breadcrumb is just the epic subject.
 ## Step 1.5: Complexity Assessment
 
 **Decompose if ALL hold:**
-- 4+ files touching unrelated components, OR 3+ concerns each needing different test context
-- `task.metadata.depth` is set AND < 3
+- 4+ files touching unrelated components, OR 3+ concerns each needing different test context (below these thresholds a single worker handles the scope efficiently; above, context switching across unrelated components degrades output quality)
+- `task.metadata.depth` is set AND < 3 (depth cap prevents unbounded nesting — 3 levels of task hierarchy is the maximum that stays manageable)
 
 `depth` is not guaranteed by all upstream skills. If absent, assume leaf — do NOT decompose, because unbounded recursion on tasks not structured for nesting would waste work and risk loops.
 
