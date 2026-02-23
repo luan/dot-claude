@@ -44,8 +44,10 @@ if [[ -n "$TMUX" ]]; then
   # Per-session + per-event colored icon as notification thumbnail
   session_color=$(tmux show-option -t "$tmux_session" -qv @session_color 2>/dev/null)
   if [[ -n "$session_color" ]]; then
-    session_image="$HOME/.claude/icons/${tmux_session}-${symbol}.png"
+    color_hex="${session_color//\#/}"
+    session_image="$HOME/.claude/icons/${tmux_session}-${symbol}-${color_hex}.png"
     if [[ ! -f "$session_image" ]]; then
+      rm -f "$HOME/.claude/icons/${tmux_session}-${symbol}"-*.png 2>/dev/null
       ~/.claude/gen-circle "$session_color" "$session_image" "$symbol" 2>/dev/null
     fi
   fi
