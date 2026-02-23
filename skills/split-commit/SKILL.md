@@ -41,7 +41,7 @@ Cross-file dep rules:
 Output:
 TEST_COMMANDS: <detected or provided>
 COMMIT_PLAN:
-1. `type(scope): message` — Files: <list>, Partial: <hunks>, Deps: <import-chain justification for grouping>, Rationale: <why>
+1. `type(scope): message` (conventional commit per /commit skill) — Files: <list>, Partial: <hunks>, Deps: <import-chain justification for grouping>, Rationale: <why>
 DEPENDENCY_NOTES: <hunk splitting, ordering constraints>
 ```
 
