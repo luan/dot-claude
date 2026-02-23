@@ -1,6 +1,6 @@
 ---
 name: implement
-description: "Execute an epic or task — auto-detects solo vs parallel vs swarm mode, dispatches subagents. Triggers: 'implement', 'execute the plan', 'build this', 'code this plan', 'start implementing', 'go implement', 'kick off the tasks', 'run this epic', epic/task ID. Do NOT use when: a full autonomous end-to-end workflow is needed — use /vibe instead."
+description: "Execute an epic or task — auto-detects solo vs team mode, dispatches subagents. Triggers: 'implement', 'execute the plan', 'build this', 'code this plan', 'start implementing', 'go implement', 'kick off the tasks', 'run this epic', epic/task ID. Do NOT use when: a full autonomous end-to-end workflow is needed — use /vibe instead."
 argument-hint: "[<epic-slug>|t<id>|<id>] [--solo]"
 user-invocable: true
 allowed-tools:
@@ -40,17 +40,16 @@ Resolve argument:
 `TaskGet(taskId)` + recursive descendant scan via `metadata.parent_id` chains. **Leaves** = no children.
 
 - No descendants → **Solo**
-- 2-3 independent leaves (no blockedBy) → **Parallel**
-- 4+ leaves OR any blockedBy → **Swarm**
+- 2+ leaves → **Team**
 
-**Readiness check (Parallel/Swarm):** 2+ tasks lack `## Files` or `## Approach` → AskUserQuestion before dispatching any workers.
+**Readiness check (Team):** 2+ tasks lack `## Files` or `## Approach` → AskUserQuestion before dispatching any workers.
 
 ## Worker Dispatch
 
 All modes use `Task(subagent_type="general-purpose")`. Trivial tasks use `model="sonnet"`. Cap: 4 concurrent, 2 retries. Prompt variants in `references/worker-prompts.md`:
 
-- **Standalone** (Solo/Parallel/fallback): no messaging, returns directly
-- **Team-based** (Swarm): adds SendMessage + shutdown handshake
+- **Standalone** (Solo/fallback): no messaging, returns directly
+- **Team-based** (Team): adds SendMessage + shutdown handshake
 
 Codex routing: `codex` available + leaf task → Codex first, Claude fallback. See `references/scheduler.md`.
 
@@ -60,19 +59,12 @@ Codex routing: `codex` available + leaf task → Codex first, Claude fallback. S
 2. Spawn single standalone worker.
 3. Verify completed → `Skill("acceptance")` → Stage Changes.
 
-## Parallel Mode
+## Team Mode
 
-1. Store `impl_mode: "parallel"`. Pre-flight: children exist with descriptions.
-2. Spawn ALL children as standalone workers in a single message (up to 4, queue remainder).
-3. Wait. Retry incomplete (max 2 per task).
-4. Clear impl_mode → Verify → `Skill("acceptance")` → Stage Changes.
-
-## Swarm Mode
-
-Tasks have dependency waves (blockedBy relationships). Every task dispatches via subagent.
+Every task dispatches via subagent. TeamCreate always runs.
 
 1. **Setup:** `TeamCreate(team_name="impl-<slug>")`. If fails → fall back to standalone sequential dispatch (up to 4 concurrent). Detect Codex via `which codex`.
-2. **Rolling Scheduler:** Pre-compute dependency waves: wave 1 = unblocked tasks (no pending blockedBy); subsequent waves = tasks whose blockedBy all resolved. Dispatch wave 1 immediately (up to 4 concurrent), advance as workers complete. See `references/scheduler.md`.
+2. **Dispatch:** 4+ leaves with blockedBy chains → **Rolling Scheduler:** pre-compute dependency waves (wave 1 = unblocked, subsequent = blockedBy resolved), dispatch up to 4 concurrent, advance as workers complete. See `references/scheduler.md`. Otherwise → dispatch all tasks at once (up to 4 concurrent).
 3. **Verify:** Full test suite. Red → spawn fix agent (max 2 cycles). Still red → escalate to user.
 4. **Teardown:** Clear all impl_* metadata, complete epic, TeamDelete, `Skill("acceptance")`, Stage Changes.
 

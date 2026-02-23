@@ -82,14 +82,14 @@ Problem: <1 sentence>
 Approach: <1 sentence>
 Phases:
 1. <title> — <key files>
-Next: /prepare t<id>
+Next: /explore t<id>
 ```
 
 ### 8. After Completion
 
-Stop after summary. User reviews design before proceeding — do not auto-invoke prepare.
+Stop after summary. User reviews design before proceeding — do not auto-invoke explore.
 
 ## Key Rules
 
-- Next Steps must include file paths — prepare depends on them
+- Next Steps must include file paths — explore depends on them
 - YAGNI: push back on scope creep during interview

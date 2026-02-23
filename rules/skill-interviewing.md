@@ -24,7 +24,7 @@ When a skill finishes, there's usually an obvious next step in the pipeline (exp
 
 **Stop** when the skill produced output that needs human verification before the next step acts on it.
 - explore → prepare (findings become tasks — wrong findings → wrong plan)
-- brainstorm → prepare (design becomes tasks)
+- brainstorm → explore (design needs technical validation before becoming tasks)
 - implement → user verification (user must verify functionality before review, or review risks blessing regressions)
 
 **Auto-proceed** when the next step is mechanical or self-correcting:
