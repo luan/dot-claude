@@ -35,9 +35,9 @@ If plan_file set → `ck plan latest --task-file <plan_file>`. Falls back to `me
 
 Recursively collect all descendants via `metadata.parent_id` chains. No descendants → stop: "Run /prepare first."
 
-**Orphaned task detection:** While traversing, flag any task where `status == "pending"` but parent `status == "completed"`. Prepend advisory warning — never blocks acceptance. See `references/scenarios.md` for test scenarios.
+**Orphaned task detection:** While traversing, flag any task where `status == "pending"` but parent `status == "completed"`. Prepend advisory warning — never blocks acceptance, does not exclude the task from criteria collection. See `references/scenarios.md` for test scenarios.
 
-**Group criteria by subtree:** Grouping nodes (have children) become section headers. Leaves have their `## Acceptance Criteria` extracted and nested under nearest grouping ancestor. Format:
+**Group criteria by subtree:** Grouping nodes (have children) become section headers. Leaves have their `## Acceptance Criteria` extracted and nested under nearest grouping ancestor. Leaf missing this section → flag as `⚠ No acceptance criteria defined` under that task (do not skip silently). Format:
 
 ```
 Phase N: <phase subject>
@@ -49,11 +49,11 @@ Flat epics (no grandchildren) produce flat `Task <id>: ...` output.
 
 ## Step 4: Get Diff
 
-`git diff HEAD` + `git diff --cached` in parallel. Both empty → `git diff HEAD~1..HEAD`. Still empty → verify against HEAD state (acceptance still runs — diff-less changes like config or dependency updates are valid).
+`git diff HEAD` + `git diff --cached` in parallel. Both empty → `git diff HEAD~1..HEAD`. Still empty → verify against HEAD state.
 
 ## Step 5: Spawn Verifier and Breaker
 
-Two parallel `Task(subagent_type="general-purpose")` agents — a dual-lens approach because a single reviewer misses adversarial gaps:
+Two parallel `Task(subagent_type="general-purpose")` agents:
 
 **Verifier** evaluates each criterion against the diff: PASS/FAIL/PARTIAL/N/A with line-level evidence. All criteria N/A → PASS with note "no applicable criteria found." Adds "Plan Deviations" section noting justified vs problematic divergences. Ends with one-line verdict.
 
@@ -67,14 +67,14 @@ Reconciliation rules (applied before presenting):
 3. Verifier PASS + breaker HIGH findings on PASS/N/A criteria → **PARTIAL** (breaker caught what verifier missed)
 4. Verifier PASS + no breaker HIGH findings → **PASS**
 
-Present both reports with clear labels. **PASS** → green summary, done.
+Present both reports with clear labels. **PASS** → concise green summary (max 5 lines, no per-criterion breakdown), done.
 
-**PARTIAL/FAIL** → AskUserQuestion: "Acceptance check found gaps."
-- **Fix gaps** → spawn fix agent with FAIL/PARTIAL criteria as scope, re-run from Step 4
-- **Commit anyway (override)** → note override in findings, proceed to Step 7
-- **File as follow-up tasks** → TaskCreate per gap (`metadata: {type: "bug", priority: "P2", parent_id: epicId}`), proceed to Step 7
-- **Re-run after manual fixes** → wait for user signal, re-run from Step 4
+**PARTIAL/FAIL** → AskUserQuestion with exactly 4 options:
+1. **Fix gaps** → spawn fix agent with FAIL/PARTIAL criteria as scope, re-run from Step 4
+2. **Commit anyway (override)** → note override in findings, proceed to Step 7
+3. **File as follow-up tasks** → TaskCreate per gap (`metadata: {type: "bug", priority: "P2", parent_id: epicId}`), proceed to Step 7
+4. **Re-run after manual fixes** → wait for user signal, re-run from Step 4
 
 ## Step 7: Store Findings
 
-Persist via `ck plan create --prefix "acceptance"`. Store result and plan file path in epic metadata.
+`ck plan create --prefix "acceptance"`. TaskUpdate epic with `acceptance_result: {verdict, criteria_count, verifier_report, breaker_report}` and `plan_file`.

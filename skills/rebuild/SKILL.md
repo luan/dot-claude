@@ -36,7 +36,7 @@ Dep rules: imports → same commit or dep earlier. Config/locks with introducing
 Output:
 TEST_COMMANDS: <detected or --test>
 COMMIT_PLAN:
-1. `type(scope): message` — Files: <list>, Changes: <what>, Refinements: <improvements>
+1. `type(scope): message` — Files: <list>, Changes: <what>, Refinements: <concrete before/after, e.g. "rename x→multiplier in service.py:12">
 ```
 
 Present via AskUserQuestion: commit count, tests, each message + files + planned refinements. "Proceed?"
@@ -63,7 +63,7 @@ User instructions: <--instructions or "general refinement">
 3. Read staged files. Apply refinements (simplify, improve naming, remove dead code, apply user instructions). Do NOT change functionality.
 4. Stage refinement edits: `git add -u`
 5. Run tests: <test-commands>
-6. Tests FAIL → check if refinement broke something. Revert that refinement, retry.
+6. Tests FAIL → identify which specific refinement broke tests. Revert ONLY that edit, keep other refinements intact. Retry.
    Still failing → find missing dep, stage it, retry once more.
    Still failing → report to main thread, stop.
 7. `git commit -m "<message>"`

@@ -19,41 +19,36 @@ allowed-tools:
 
 # Prepare
 
-Findings → epic + phased tasks with design briefs. Main thread handles plan lookup and epic creation (steps 1-4), subagent creates child tasks (step 5).
+Findings → epic + phased tasks with design briefs. Main thread: steps 1-4; subagent: step 5.
 
 ## Interviewing
 
-See rules/skill-interviewing.md. Ask on: unclear task boundaries (one task or two?), dependency ambiguity (parallel or serial?).
+See rules/skill-interviewing.md.
 
 ## Steps
 
 1. **Find plan source:**
    - File path arg → use directly
-   - Task ID arg → TaskGet, extract metadata.design; if metadata.plan_file set, run `ck plan latest --task-file <metadata.plan_file>`, else fall through
-   - No args → `ck plan latest` (most recent plan for current project)
-   - Still none → TaskList filtered by status=in_progress + metadata.status_detail==="review" + metadata.type in ["explore", "review", "fix"], use first match's metadata.design
-   - No plan found → suggest `/explore` or `/review`, stop
+   - Task ID arg → TaskGet, extract metadata.design; if metadata.plan_file, run `ck plan latest --task-file <metadata.plan_file>`
+   - No args → `ck plan latest`
+   - Still none → TaskList (status_detail==="review", type in ["explore","review","fix"]), first match's metadata.design
+   - No plan → suggest `/explore`, stop
 
 2. **Pre-check design quality:**
-   - Must have structured sections (Phase/Step/numbered groups) with file paths
-   - Missing paths or vague descriptions → AskUserQuestion: "Findings lack file paths or detail. Continue (workers fill gaps) or re-run /explore?" File paths matter because workers who lack them create wrong files from memory. Continue proceeds as-is; re-run stops.
-   - Thin descriptions (one-liner steps, files without rationale) → AskUserQuestion: same choice, but note it's borderline rather than missing.
-   - Standalone testing phase → merge test items into the implementation phases they cover. Separate test phases imply testing happens after code; TDD means tests are written in the same task as the code they verify.
+   - Must have structured sections with file paths
+   - Missing paths/vague → AskUserQuestion: "Findings lack detail. Continue or re-run /explore?"
+   - Standalone testing phase → merge each test file into the implementation phase for the code it tests (match by subsystem/file prefix, e.g. auth tests → auth phase). TDD means tests live with the code they verify.
+   - Single-phase spanning 3+ subsystems → AskUserQuestion: "Split into focused phases or keep as one?"
 
-3. **Parse plan:**
-   - Plan file: `ck tool phases <file>` → JSON array of `{phase, title, tasks, deps}`
-   - Task metadata.design: write to temp file, run `ck tool phases <tmpfile>`
-   - Extract title from first heading or frontmatter topic
+3. **Parse plan:** `ck tool phases <file>` → JSON array of `{phase, title, tasks, deps}`. For metadata.design: write to temp file first. Extract title from first heading.
 
-4. **Create epic:** TaskCreate with title, Problem/Solution/Acceptance from design, `metadata: {project: REPO_ROOT, slug: <from ck tool slug>, type: "epic", priority: "P1"}`.
+4. **Create epic:** TaskCreate with title, Problem/Solution/Acceptance, `metadata: {project: REPO_ROOT, slug: <from ck tool slug>, type: "epic", priority: "P1", design: <source design>}`.
 
-5. **Create tasks:** Dispatch ONE general-purpose subagent (model="sonnet" — mechanical task creation with no architectural decisions, saves cost). Full prompt template in `references/task-creation-prompt.md`. Process all phases in one dispatch.
+5. **Create tasks:** Dispatch ONE subagent (model="sonnet"). Prompt in `references/task-creation-prompt.md`. Process all phases in one dispatch.
 
-6. **Validate** (subagent-trust.md): spot-check that created tasks have real file paths (Read 1-2 referenced files), testable acceptance criteria, and specific approach. Vague tasks → send back to subagent with feedback.
+6. **Validate** (subagent-trust.md): spot-check file paths (Read 1-2), acceptance criteria, approach. Vague → send back.
 
-7. **Finalize:**
-   - TaskUpdate(epicId, status: "in_progress", owner: "prepare")
-   - If source was a task → TaskUpdate(sourceId, status: "completed", metadata: {status_detail: null, completedAt: timestamp})
+7. **Finalize:** TaskUpdate(epicId, status: "in_progress", owner: "prepare"). Source task → TaskUpdate(sourceId, status: "completed").
 
 8. **Report:**
    ```

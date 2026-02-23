@@ -40,7 +40,7 @@ TaskUpdate(taskId, status: "in_progress", owner: "vibe")
 
 ## Pipeline
 
-Run stages sequentially. After each succeeds, update `metadata.vibe_stage` before proceeding.
+Run stages sequentially. Before each stage, output the stage announcement (`[N/M] Stage`) as text BEFORE the `Skill()` invocation — the user must see progress before work begins. After each succeeds, update `metadata.vibe_stage` before proceeding.
 
 **Stage numbering `[N/M]`:** M = total stages that will actually run. Base: 5 (branch, explore, prepare, implement, commit). Subtract skipped stages: `--no-branch` → 4, `--dry-run` → 3 (or 2 with both flags). N counts only executed stages, not skipped ones.
 
@@ -54,15 +54,15 @@ Generate slug: `ck tool slug "<prompt>"`. `Skill("start", args="luan/<slug>")`
 
 `Skill("explore", args="<prompt>")`
 
-**Verify**: `ck plan latest` succeeds — catches silent explore failures where subagent returned nothing. **Update**: `vibe_stage: "explore"`
+**Verify**: `ck plan latest` succeeds. **Update**: `vibe_stage: "explore"`
 
 ### Prepare
 
 `Skill("prepare")`
 
-**Verify**: `TaskList()` → epic exists with children and `metadata.slug` — prepare can auto-proceed before task creation completes in high-latency environments. **Update**: `vibe_stage: "prepare"`, `vibe_epic: "<epicId>"`, `vibe_slug: "<slug>"`
+**Verify**: `TaskList()` → epic exists with children and `metadata.slug`. **Update**: `vibe_stage: "prepare"`, `vibe_epic: "<epicId>"`, `vibe_slug: "<slug>"`
 
-If `--dry-run` → stop here. Report plan and epic, suggest `/implement` or `/vibe --continue`.
+If `--dry-run` → stop here. Output "Dry run complete." then report plan and epic, suggest `/implement` or `/vibe --continue`.
 
 ### Implement
 
@@ -88,9 +88,7 @@ If `git diff --stat` is empty → skip.
 TaskUpdate(trackerId, status: "completed", metadata: {completedAt: "<ISO 8601>"})
 ```
 
-Report summary: one line per stage. Mark each as **completed**, **skipped** (excluded by flags), or **failed** (attempted but errored).
-
-**Limitation:** If vibe fails mid-pipeline, the epic task remains `in_progress`. Orphaned epics are not auto-cleaned — user can resume with `--continue` or manually close the task.
+Report summary: one line per stage (**completed** / **skipped** / **failed**).
 
 ## Error Handling
 
