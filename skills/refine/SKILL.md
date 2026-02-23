@@ -1,6 +1,6 @@
 ---
 name: refine
-description: "Use before committing to polish code. Triggers: 'refine', 'clean up', 'simplify'. Removes low-value comments, simplifies complexity, applies language-idiomatic rewrites. Does NOT change behavior. Do NOT use when: a full adversarial review with bug-finding is needed — use /review instead."
+description: "Polish uncommitted code without changing behavior. Triggers: 'refine', 'clean up', 'simplify', 'polish my code', 'tidy up', 'remove dead comments'. Removes low-value comments, simplifies complexity, applies language-idiomatic rewrites. Do NOT use when: a full adversarial review with bug-finding is needed — use /review instead."
 argument-hint: "[optional: file-pattern]"
 user-invocable: true
 allowed-tools:
@@ -76,6 +76,6 @@ Per-file: simplifications applied, idiom rewrites, comments removed, other clean
 ## Rules
 
 - **Never change behavior** — structural/cosmetic only
-- **Only touch uncommitted changes**
-- **Preserve existing patterns**
-- **When in doubt, leave it**
+- **Only touch uncommitted changes** — committed code was already reviewed; refining it risks unintended scope creep
+- **Preserve existing patterns** — inconsistent style within a file creates cognitive overhead and noisy diffs
+- **When in doubt, leave it** — ambiguous rewrites risk silent breakage; only refactor when semantics are unambiguous

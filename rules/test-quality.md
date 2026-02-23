@@ -16,13 +16,13 @@ Escape hatch: if no test infrastructure exists in the project (no test runner co
 
 ## Banned Patterns
 
-- **Tautology** — mock returns what you told it
-- **Getter/setter** — testing that a builder/constructor stores values
-- **Implementation mirroring** — test duplicates production formula
-- **Constant echo** — `assert_eq!(MY_CONST, 42)` just restates the definition
-- **Happy-path-only** — no error/edge/boundary tests
-- **Coverage padding** — executes code without asserting outcomes
-- **No-assertion smoke** — constructs object, asserts nothing
+- **Tautology** — mock returns what you told it; proves the test setup, not the code
+- **Getter/setter** — testing that a constructor stores values; the compiler catches this
+- **Implementation mirroring** — test duplicates production formula; breaks when formula is refactored correctly
+- **Constant echo** — `assert_eq!(MY_CONST, 42)` restates the definition; catches nothing
+- **Happy-path-only** — no error/edge/boundary tests; real bugs live at boundaries
+- **Coverage padding** — executes code without asserting outcomes; green bar means nothing
+- **No-assertion smoke** — constructs object, asserts nothing; false confidence
 
 ## What to Test
 
@@ -36,12 +36,22 @@ Escape hatch: if no test infrastructure exists in the project (no test runner co
 
 ## Mock Discipline
 
-Mocks are last resort:
+Mocks are last resort. Every mock removes a real integration from your test — the more you mock, the less you're testing.
 
 - Mock external services (network, filesystem, clock, third-party APIs)
-- Do NOT mock thing you're testing
+- Do NOT mock the thing you're testing
 - Do NOT mock collaborators you own — use real implementation
-- 3+ mocks in one test = design too coupled. Simplify.
+- 3+ mocks in one test = design too coupled. Simplify the design, not the test.
+
+## Speed
+
+Fast feedback loop is non-negotiable. Slow tests erode TDD discipline — if red/green takes 10 seconds, you stop running tests.
+
+- **Tests must not leave the process.** Network, disk, subprocesses — each crosses a boundary that adds latency and non-determinism.
+- **Tests must not wait.** If something is async, synchronize on the event, not the clock. Sleeps make tests both slow and flaky.
+- **Tests must be isolated.** No shared mutable state between tests. Isolation enables parallelism and prevents ordering bugs that waste debugging time.
+
+"But this is an integration test" is not an excuse for slow unit tests. Separate the suites. Unit tests stay fast; integration tests run separately.
 
 ## The Deletion Test
 
