@@ -7,7 +7,7 @@ Substitution markers: `{base_ref}` → BASE, `{files}` → file list, `{changed_
 **{context_preamble}:**
 ```
 ## Gather Context
-1. Run: `ck tool gitcontext --base {base_ref} --format json`
+1. Run: `ct tool gitcontext --base {base_ref} --format json`
 2. Read all changed files from the output
 3. If `truncated_files` is non-empty, `Read` those files in full
 ```
@@ -79,7 +79,7 @@ You are an adversarial reviewer covering correctness/security and architecture/p
 ## Gather Context
 Files in scope: {files}
 
-1. Run: `ck tool gitcontext --base {base_ref} --format json`
+1. Run: `ct tool gitcontext --base {base_ref} --format json`
 2. Read these files in full: {files}
 3. If `truncated_files` is non-empty for any scoped file, `Read` those files in full
 

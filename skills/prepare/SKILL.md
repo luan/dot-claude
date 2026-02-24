@@ -29,8 +29,8 @@ See rules/skill-interviewing.md.
 
 1. **Find plan source:**
    - File path arg → use directly
-   - Task ID arg → TaskGet, extract metadata.design; if metadata.plan_file, run `ck plan latest --task-file <metadata.plan_file>`
-   - No args → `ck plan latest`
+   - Task ID arg → TaskGet, extract metadata.design; if metadata.plan_file, run `ct plan latest --task-file <metadata.plan_file>`
+   - No args → `ct plan latest`
    - Still none → TaskList (status_detail==="review", type in ["explore","review","triage"]), first match's metadata.design
    - No plan → suggest `/explore`, stop
 
@@ -40,9 +40,9 @@ See rules/skill-interviewing.md.
    - Standalone testing phase → merge each test file into the implementation phase for the code it tests (match by subsystem/file prefix, e.g. auth tests → auth phase). TDD means tests live with the code they verify.
    - Single-phase spanning 3+ subsystems → AskUserQuestion: "Split into focused phases or keep as one?"
 
-3. **Parse plan:** `ck tool phases <file>` → JSON array of `{phase, title, tasks, deps}`. For metadata.design: write to temp file first. Extract title from first heading.
+3. **Parse plan:** `ct tool phases <file>` → JSON array of `{phase, title, tasks, deps}`. For metadata.design: write to temp file first. Extract title from first heading.
 
-4. **Create epic:** TaskCreate with title, Problem/Solution/Acceptance, `metadata: {project: REPO_ROOT, slug: <from ck tool slug>, type: "epic", priority: "P1", design: <source design>}`.
+4. **Create epic:** TaskCreate with title, Problem/Solution/Acceptance, `metadata: {project: REPO_ROOT, slug: <from ct tool slug>, type: "epic", priority: "P1", design: <source design>}`.
 
 5. **Create tasks:** Dispatch ONE subagent (model="sonnet"). Prompt in `references/task-creation-prompt.md`. Process all phases in one dispatch.
 

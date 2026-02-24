@@ -4,7 +4,7 @@ topic: "4-Level Decomposition Integration Test"
 
 # 4-Level Decomposition: End-to-End Scenario
 
-Demonstrates the full flow: plan file → `ck tool phases` → `prepare` (task hierarchy) → `implement` scheduling → `acceptance` criteria gathering.
+Demonstrates the full flow: plan file → `ct tool phases` → `prepare` (task hierarchy) → `implement` scheduling → `acceptance` criteria gathering.
 
 ## Plan Input
 
@@ -30,9 +30,9 @@ A plan with two phases, each containing numbered tasks with indented sub-items (
 
 ## Observable Checkpoints
 
-### Checkpoint 1: ck tool phases JSON
+### Checkpoint 1: ct tool phases JSON
 
-`ck tool phases <plan-file>` emits a JSON array. Each task object carries a `sub_tasks` array:
+`ct tool phases <plan-file>` emits a JSON array. Each task object carries a `sub_tasks` array:
 
 ```json
 [

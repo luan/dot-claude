@@ -46,7 +46,7 @@ Run stages sequentially. Before each stage, output the stage announcement (`[N/M
 
 ### Branch (skip if `--no-branch` or already on non-main branch)
 
-Generate slug: `ck tool slug "<prompt>"`. `Skill("start", args="luan/<slug>")`
+Generate slug: `ct tool slug "<prompt>"`. `Skill("start", args="luan/<slug>")`
 
 **Verify**: `git branch --show-current` returns new branch. **Update**: `vibe_stage: "branch"`
 
@@ -54,7 +54,7 @@ Generate slug: `ck tool slug "<prompt>"`. `Skill("start", args="luan/<slug>")`
 
 `Skill("explore", args="<prompt>")`
 
-**Verify**: `ck plan latest` succeeds. **Update**: `vibe_stage: "explore"`
+**Verify**: `ct plan latest` succeeds. **Update**: `vibe_stage: "explore"`
 
 ### Prepare
 
