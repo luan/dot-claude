@@ -23,7 +23,7 @@ For each phase:
 TaskCreate:
   subject: "Phase N: <task-title>"
   description: "## Context\nEpic: <epic-id>\n\n## Goal\n[what needs to be implemented + why]\n\n## Files\n- Read: exact/path/to/file (why: understand current X)\n- Modify: exact/path/to/file (why: add Y)\n- Create: exact/path/to/test (why: verify Z)\n\n## Approach\n[how to implement: patterns to use, key decisions, implementation strategy]\n- TDD: write failing tests first, then implement\n\n## Acceptance Criteria\n- [ ] [testable criterion 1]\n- [ ] [testable criterion 2]\n- [ ] Tests written before implementation (or noted if no test infra)\n- [ ] No regressions\n\n## Assumptions\n- [what must be true about file structure]\n- [what must be true about imports/exports]\n- [what must be true about dependencies]"
-  activeForm: "Creating phase N task"
+  activeForm: "<present-continuous of task work, e.g. 'Implementing auth middleware'>"
   metadata:
     project: <repo root from ## Project above>
     type: <infer: "bug" if fixing broken behavior, "feature" if new capability, "chore" for everything else>

@@ -71,3 +71,4 @@ backups
 mcp-needs-auth-cache.json
 /icons
 /skills/*-workspace/
+.credentials.json
