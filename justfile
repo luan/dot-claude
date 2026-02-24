@@ -5,12 +5,12 @@ check:
     cd tools && cargo fmt --check && cargo clippy -- -W clippy::all && cargo test
 
 install:
-    cd tools && cargo install --path crates/ck
+    cd tools && cargo install --path crates/ct
 
 completions:
     mkdir -p ~/.config/fish/completions
-    ck tool completion fish > ~/.config/fish/completions/ck.fish
+    ct tool completion fish > ~/.config/fish/completions/ct.fish
 
 setup: install completions
-    @echo "Installed: ck (fish completions → ~/.config/fish/completions/ck.fish)"
-    @echo "Verify: ck tool slug 'hello world'"
+    @echo "Installed: ct (fish completions → ~/.config/fish/completions/ct.fish)"
+    @echo "Verify: ct tool slug 'hello world'"

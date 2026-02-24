@@ -67,7 +67,7 @@ Phases must include file paths + approach.
 3. **Validate** (subagent-trust.md): spot-check ALL architectural claims + 50% of file/behavioral claims. Failed check → follow-up.
 
 4. **Store findings:**
-   1. `PLAN_FILE=$(echo "<findings>" | ck plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "explore" 2>/dev/null)`
+   1. `PLAN_FILE=$(echo "<findings>" | ct plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "explore" 2>/dev/null)`
    2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "$PLAN_FILE" (omit if empty), status_detail: "review"})`
 
 5. Output: `Explore: t<id> — <topic>`, problem, recommendation, phases with key files, `Next: /prepare t<id>`.
@@ -88,7 +88,7 @@ Phases must include file paths + approach.
 1. Resolve task: argument → task ID; bare `--continue` → TaskList filtered by `metadata.type === "explore"` + `status_detail === "review"`, first result
 2. TaskGet → extract `metadata.design`. TaskUpdate to in_progress, clear status_detail
 3. Dispatch subagent with previous findings as context + new prompt. Instruct: "Compare against prior findings. Flag new files not previously covered. Produce a single unified output merging prior + new — no separated 'Old Findings' / 'New Findings' sections."
-4. **Update existing task** — TaskUpdate(taskId, metadata: {design: "<merged findings>", status_detail: "review"}). If `metadata.plan_file`, overwrite plan file with merged findings. Do NOT ck plan create a new plan.
+4. **Update existing task** — TaskUpdate(taskId, metadata: {design: "<merged findings>", status_detail: "review"}). If `metadata.plan_file`, overwrite plan file with merged findings. Do NOT ct plan create a new plan.
 5. Output summary. Stop for user review.
 
 ## Key Rules

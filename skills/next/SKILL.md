@@ -60,7 +60,7 @@ Suggest next action (priority order): CI failing → fix checks; changes request
 
 ### 1. Prune + Read Board
 
-Run `ck task prune --days 7` silently (note if tasks pruned). TaskList filtered by `metadata.project === repoRoot`. Split: pending, in_progress (without status_detail). Sort by priority (P1→P3), then creation order.
+Run `ct task prune --days 7` silently (note if tasks pruned). TaskList filtered by `metadata.project === repoRoot`. Split: pending, in_progress (without status_detail). Sort by priority (P1→P3), then creation order.
 
 ### 2. Pick Top Candidate
 

@@ -43,7 +43,7 @@ Mode: `--team` → Perspective (3 specialists), ≥15 files → File-Split (~8/a
 
 TaskCreate `metadata: {type: "review", project: REPO_ROOT}`, in_progress. `--continue`: TaskList `metadata.type == "review"` + `in_progress`, first match; not found → stop. Resume: prepend metadata.design.
 
-Parallel: `git diff --stat`, `--name-only`, `git log --oneline`, `ck tool cochanges --base $BASE` (unavailable → skip). `--against`: TaskGet for plan.
+Parallel: `git diff --stat`, `--name-only`, `git log --oneline`, `ct tool cochanges --base $BASE` (unavailable → skip). `--against`: TaskGet for plan.
 
 ## Step 3: Dispatch Reviewers
 
@@ -67,7 +67,7 @@ Output `# Adversarial Review Summary`:
 - **--team disagreements**: when specialists differ on severity, show attribution (e.g., "Architect: High, Code Quality: Medium → resolved: High") before the resolved row.
 - **Verdict footer**: PASS (no FIX items), CHANGES_REQUESTED (any FIX items), FAIL (any Critical).
 
-Store via `ck plan create` + TaskUpdate metadata.design.
+Store via `ct plan create` + TaskUpdate metadata.design.
 
 !`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Return findings to caller. Don't fix." || echo "AskUserQuestion: Fix all / Fix critical+high / Fix critical only / Skip fixes"`
 

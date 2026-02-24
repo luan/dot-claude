@@ -164,21 +164,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
-name = "ck"
-version = "0.1.0"
-dependencies = [
- "clap",
- "clap_complete",
- "crossterm 0.28.1",
- "dirs",
- "notify",
- "ratatui",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
 name = "clap"
 version = "4.5.59"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -326,6 +311,21 @@ checksum = "eb2a7d3066da2de787b7f032c736763eb7ae5d355f81a68bab2675a96008b0bf"
 dependencies = [
  "lab",
  "phf",
+]
+
+[[package]]
+name = "ct"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "clap_complete",
+ "crossterm 0.28.1",
+ "dirs",
+ "notify",
+ "ratatui",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]

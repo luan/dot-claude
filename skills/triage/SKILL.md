@@ -55,7 +55,7 @@ Mark active: `TaskUpdate(taskId, status: "in_progress", owner: "triage")`
 
 **Store findings** — dual storage because plan file provides durable searchable backup while metadata enables quick API access by downstream skills:
 
-1. `PLAN_FILE=$(echo "<findings>" | ck plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "triage" 2>/dev/null)` — warn if fails/empty.
+1. `PLAN_FILE=$(echo "<findings>" | ct plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "triage" 2>/dev/null)` — warn if fails/empty.
 2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "$PLAN_FILE" (omit if empty), status_detail: "review"}, description: "Triage: <topic> — findings in plan file and metadata.design")`
 
 ### 4. Report

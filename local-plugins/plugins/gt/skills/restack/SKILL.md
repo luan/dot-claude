@@ -38,5 +38,5 @@ Rebase Graphite stack onto updated parents and resolve any merge conflicts.
 - Read the full file first. Count all `<<<<<<<` markers. Resolve all of them in one pass.
 - Take the **semantically correct** merge: understand what both sides changed, combine intent.
 - For renames/refactors: apply the rename to the newer code from the child branch.
-- After editing, verify no conflict markers remain: `grep -c '<<<<<<<' <file>` before `git add`.
+- After editing, verify no conflict markers remain: `rg -c '<<<<<<<' <file>` before `git add`.
 - If a conflict is ambiguous and you can't determine the right resolution, `gt abort` and report to the user.

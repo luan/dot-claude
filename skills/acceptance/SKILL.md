@@ -29,7 +29,7 @@ Advisory gate — findings are reported, user decides how to proceed.
 
 From `TaskGet(epicId)`: extract `metadata.design` and `metadata.plan_file`.
 
-If plan_file set → `ck plan latest --task-file <plan_file>`. Falls back to `metadata.design`. Neither exists → "No plan found — checking criteria only."
+If plan_file set → `ct plan latest --task-file <plan_file>`. Falls back to `metadata.design`. Neither exists → "No plan found — checking criteria only."
 
 ## Step 3: Gather Descendant Criteria
 
@@ -77,4 +77,4 @@ Present both reports with clear labels. **PASS** → concise green summary (max 
 
 ## Step 7: Store Findings
 
-`ck plan create --prefix "acceptance"`. TaskUpdate epic with `acceptance_result: {verdict, criteria_count, verifier_report, breaker_report}` and `plan_file`.
+`ct plan create --prefix "acceptance"`. TaskUpdate epic with `acceptance_result: {verdict, criteria_count, verifier_report, breaker_report}` and `plan_file`.

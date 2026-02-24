@@ -12,8 +12,8 @@ allowed-tools:
   - "Bash(git add:*)"
   - "Bash(git commit:*)"
   - "Bash(git notes:*)"
-  - "Bash(ck plan archive:*)"
-  - "Bash(ck plan list:*)"
+  - "Bash(ct plan archive:*)"
+  - "Bash(ct plan list:*)"
   - "Bash(git branch:*)"
   - "Bash(git rev-parse:*)"
   - Read
@@ -52,12 +52,12 @@ Recent commits: !`git log --oneline -5 2>/dev/null`
    )"
    ```
 
-5. **Plan archive**: after successful commit, archive active plans. `ck plan list --json` returns an array of `{name, path}` entries — iterate and archive each:
+5. **Plan archive**: after successful commit, archive active plans. `ct plan list --json` returns an array of `{name, path}` entries — iterate and archive each:
    ```bash
-   ck plan list --json
-   # For each entry: ck plan archive <path>
+   ct plan list --json
+   # For each entry: ct plan archive <path>
    ```
-   Skip silently if no active plans or `ck` not available.
+   Skip silently if no active plans or `ct` not available.
 
 ## Post-commit
 
