@@ -9,7 +9,17 @@ import json
 import re
 import sys
 
-PATTERN = re.compile(r"^\s*(grep|find)\s", re.IGNORECASE)
+# Match grep/find in command position: after start-of-line, pipe, chain (&&/||/;),
+# subshell ($( or `), optionally preceded by env assignments (FOO=bar) or
+# command wrappers (command, env, sudo, xargs). Uses \b to avoid matching
+# substrings like grep_tool. Does NOT match git grep or --grep= (no separator).
+PATTERN = re.compile(
+    r"(?:^|[|;&\n]|\$\(|`)\s*"
+    r"(?:\S+=\S*\s+)*"
+    r"(?:(?:command|env|sudo|xargs)\s+)*"
+    r"(grep|find)\b",
+    re.IGNORECASE | re.MULTILINE,
+)
 
 MESSAGE = """\
 **[enforce-search-tools]**
@@ -23,6 +33,18 @@ Do not use raw `grep` or `find` in Bash.
 """
 
 
+_HEREDOC = re.compile(r"<<'?(\w+)'?\n.*?\n\1\b", re.DOTALL)
+_SINGLE_QUOTED = re.compile(r"'[^']*'")
+
+
+def _strip_literals(cmd):
+    """Remove heredoc bodies and single-quoted strings so literal text
+    mentioning grep/find (e.g. in commit messages) doesn't trigger a match."""
+    cmd = _HEREDOC.sub("", cmd)
+    cmd = _SINGLE_QUOTED.sub("''", cmd)
+    return cmd
+
+
 def main():
     try:
         data = json.load(sys.stdin)
@@ -34,7 +56,7 @@ def main():
         sys.exit(0)
 
     command = data.get("tool_input", {}).get("command", "")
-    if not PATTERN.search(command):
+    if not PATTERN.search(_strip_literals(command)):
         print("{}")
         sys.exit(0)
 
