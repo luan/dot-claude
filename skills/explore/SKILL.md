@@ -30,23 +30,17 @@ See rules/skill-interviewing.md.
 
 1. TaskCreate: subject "Explore: <topic>", metadata `{project: <repo root>, type: "explore", priority: "P2"}`. TaskUpdate(taskId, status: "in_progress", owner: "explore").
 
-2. Dispatch Task (subagent_type="codebase-researcher"):
+2. Dispatch Task (subagent_type="Explore"):
 
 ```
 Research <topic>. Return findings as text (do NOT write files or create tasks).
 
 ## Output
-1. **Current State**: per file — path, what it exports/defines, patterns used (e.g. "src/auth.ts — exports verifyToken middleware, uses JWT RS256")
+1. **Current State**: per file — path, exports/defines, patterns
 2. **Recommendation**: chosen approach + rationale
 3. **Key Files**: exact paths to modify/create
 4. **Risks**: edge cases, failure modes
-5. **Next Steps** — per phase:
-   **Phase N: <title>**
-   Files: exact/path/to/file.ts
-   Approach: <what and why>
-   1. <step>
-
-Phases must include file paths + approach.
+5. **Next Steps** — per phase: title, file paths, approach, steps
 
 ## Escalation
 3+ independent subsystems or 3+ viable approaches → "ESCALATE: team — <reason>"
@@ -55,14 +49,10 @@ Phases must include file paths + approach.
    **On "ESCALATE: team":**
 
    a. `TeamCreate(team_name="explore-<topic-slug>")`
-   b. Dispatch 3 agents (all model: opus, mode: "plan"):
-      - **Researcher** — breadth-first investigation: map all relevant subsystems, surface patterns, catalog interfaces
-      - **Architect** — design & tradeoffs: evaluate approaches, propose architecture, identify constraints
-      - **Skeptic** — challenge assumptions: stress-test claims, find counter-evidence, identify risks others miss
-   c. **Plan review:** each agent calls ExitPlanMode, sending a plan_approval_request. Review each plan — `SendMessage(type="plan_approval_response", approve: true/false)` with feedback if rejecting. Agents proceed only after approval.
-   d. **Collect results:** agents send findings via SendMessage when done.
-   e. **Synthesize:** merge all reports, produce unified output using Architect's approach. Add a **Contradictions** section that quotes specific claims from Architect vs Skeptic (e.g., "Architect: X — Skeptic: Y"). If agents fully agree, write "No contradictions found." Fold remaining caveats into Risks.
-   f. `TeamDelete` — clean up team after synthesis.
+   b. Dispatch 3 opus agents (mode: "plan"): **Researcher** (map subsystems, catalog interfaces), **Architect** (evaluate approaches, propose design), **Skeptic** (stress-test claims, find counter-evidence).
+   c. Review each plan via ExitPlanMode → plan_approval_request. Approve or reject with feedback.
+   d. Collect via SendMessage. Synthesize: unified output from Architect's approach + **Contradictions** quoting Architect vs Skeptic. Full agreement → "No contradictions found."
+   e. `TeamDelete`.
 
 3. **Validate**: spot-check ALL architectural claims + 50% of file/behavioral claims. Failed check → follow-up.
 
@@ -74,22 +64,21 @@ Phases must include file paths + approach.
 
 6. Stop — user reviews before proceeding.
 
-7. **Design refinement:** If user feedback after step 6 changes the recommendation (new approach, different scope, architectural shift — not acknowledgment), revise on main thread without subagent dispatch:
-   1. Incorporate feedback into revised findings (rewrite recommendation, key files, phases)
-   2. `TaskUpdate(taskId, metadata: {design: "<revised>", status_detail: "review"})`
-   3. If `metadata.plan_file`, overwrite plan file with revised findings
-   4. Re-output revised summary. Stop for review.
-   5. Repeat on further substantive feedback. `/prepare` reads stored artifacts, not conversation — stale artifacts in a fresh session = wrong plan.
+7. **Design refinement:** If feedback changes the recommendation (not acknowledgment), revise on main thread:
+   1. Rewrite recommendation, key files, phases with feedback incorporated.
+   2. `TaskUpdate(taskId, metadata: {design: "<revised>", status_detail: "review"})`. If `metadata.plan_file`, overwrite it.
+   3. Re-output summary. Stop for review. Repeat on further substantive feedback.
+   4. `/prepare` reads stored artifacts, not conversation — stale artifacts = wrong plan.
 
-   Use `--continue` instead when the feedback requires new codebase research (not just design-level redirection).
+   Feedback needs new codebase research → `--continue` instead.
 
 ## Continuation (--continue)
 
-1. Resolve task: argument → task ID; bare `--continue` → TaskList filtered by `metadata.type === "explore"` + `status_detail === "review"`, first result
-2. TaskGet → extract `metadata.design`. TaskUpdate to in_progress, clear status_detail
-3. Dispatch subagent with previous findings as context + new prompt. Instruct: "Compare against prior findings. Flag new files not previously covered. Produce a single unified output merging prior + new — no separated 'Old Findings' / 'New Findings' sections."
-4. **Update existing task** — TaskUpdate(taskId, metadata: {design: "<merged findings>", status_detail: "review"}). If `metadata.plan_file`, overwrite plan file with merged findings. Do NOT ct plan create a new plan.
-5. Output summary. Stop for user review.
+1. Resolve task: argument → task ID; bare `--continue` → TaskList `metadata.type === "explore"` + `status_detail === "review"`, first match.
+2. TaskGet → extract `metadata.design`. TaskUpdate to in_progress, clear status_detail.
+3. Dispatch subagent with prior findings + new prompt: "Merge prior + new into unified output. Flag newly covered files."
+4. TaskUpdate with merged findings. If `metadata.plan_file`, overwrite. Do NOT create a new plan.
+5. Output summary. Stop for review.
 
 ## Key Rules
 

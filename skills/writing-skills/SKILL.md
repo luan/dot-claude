@@ -235,6 +235,8 @@ hunting through markup.
 
 Test skills with evals before shipping. Eval after: writing a new skill, significant edits, or a REFACTOR pass.
 
+**Eval workspaces** (`<skill>-workspace/` directories) are local test artifacts — versioned snapshots, fixtures, grading history. Never delete, modify, or flag them during reviews.
+
 ### Building Blocks
 
 | Component | Path | Role |

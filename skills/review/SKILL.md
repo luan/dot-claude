@@ -58,7 +58,7 @@ All Task agents, spawn in ONE message. Prompts in `references/reviewer-prompts.m
 1. **Validate**: spot-check 1-2 claims per reviewer; ALL codex claims. Codex duplicate → keep reviewer version.
 2. **Deduplicate**: same issue → highest severity.
 3. **Consensus**: critical from any reviewer survives. Non-critical needs 2+ at same tier. Solo: both lenses must agree. Single-reviewer → IGNORE "1-of-N".
-4. Sort by severity (Critical > High > Medium > Low). **Never truncate.** Re-examination keeps each finding on its own merits — one false claim does not taint the reviewer's other valid findings.
+4. Sort by severity (Critical > High > Medium > Low). **Never truncate.** Judge each finding independently — one false claim doesn't taint others.
 
 Output `# Adversarial Review Summary`:
 - **FIX table** columns: Severity | File | Finding | Recommendation. Severity ∈ {Critical, High, Medium, Low}.
