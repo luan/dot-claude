@@ -57,7 +57,7 @@ Codex routing: `codex` available + leaf task → Codex first, Claude fallback. S
 
 1. Set task in_progress. Walk ancestor chain for epic context.
 2. Spawn single standalone worker.
-3. Verify completed → `Skill("acceptance")` → Stage Changes.
+3. Verify completed → `Skill("acceptance", args="<epicId>")` → Stage Changes.
 
 ## Team Mode
 
@@ -66,7 +66,7 @@ Every task dispatches via subagent. TeamCreate always runs.
 1. **Setup:** `TeamCreate(team_name="impl-<slug>")`. If fails → fall back to standalone sequential dispatch (up to 4 concurrent). Detect Codex via `which codex`.
 2. **Dispatch:** 4+ leaves with blockedBy chains → **Rolling Scheduler:** pre-compute dependency waves (wave 1 = unblocked, subsequent = blockedBy resolved), dispatch up to 4 concurrent, advance as workers complete. See `references/scheduler.md`. Otherwise → dispatch all tasks at once (up to 4 concurrent).
 3. **Verify:** Full test suite. Red → spawn fix agent (max 2 cycles). Still red → escalate to user.
-4. **Teardown:** Clear all impl_* metadata, complete epic, TeamDelete, `Skill("acceptance")`, Stage Changes.
+4. **Teardown:** Clear all impl_* metadata, complete epic, TeamDelete, `Skill("acceptance", args="<epicId>")`, Stage Changes.
 
 ## Stage Changes
 

@@ -18,22 +18,24 @@ allowed-tools:
 
 Analyze changes, classify by risk, produce structured manual test plan. Auto-exits for trivial changes.
 
+## Context
+
+Stat: !`git diff --stat HEAD 2>/dev/null`
+Files: !`git diff --name-only HEAD 2>/dev/null`
+
 ## Interviewing
 
 See rules/skill-interviewing.md. Ask on: unclear risk classification, ambiguous test environment.
 
 ## Step 1: Scope
 
-Parse $ARGUMENTS:
+Use injected Stat/Files above for the no-args case. Override with $ARGUMENTS:
 
 | Input        | Diff source                |
 | ------------ | -------------------------- |
-| (none)       | `git diff HEAD`            |
 | `main..HEAD` | `git diff main..HEAD`      |
 | file list    | `git diff HEAD -- <files>` |
 | `#123`       | `gh pr diff 123`           |
-
-Collect diff and `git diff --stat`.
 
 **Early exit.** ALL files trivial → `## Test Plan: No Manual Testing Required` + stat output.
 

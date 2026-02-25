@@ -24,17 +24,17 @@ Update an existing PR's title and description from branch context.
 
 **Assumes PR already exists.** This skill NEVER pushes or submits.
 
+## Context
+
+PR: !`gh pr view --json number,title,body,headRefName -q '{number,title,headRefName}' 2>/dev/null`
+Log: !`git log --oneline -10 2>/dev/null`
+Status: !`git status -sb 2>/dev/null`
+Template: !`cat .github/PULL_REQUEST_TEMPLATE.md 2>/dev/null`
+BASE: !`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||' || echo main`
+
 ## Step 1: Check State
 
-```bash
-gh pr view --json number,title,body,headRefName -q '{number,title,headRefName}'
-git log --oneline -10
-git status -sb
-cat .github/PULL_REQUEST_TEMPLATE.md 2>/dev/null
-gh pr list --state merged --limit 3 --json body -q '.[].body' | head -80
-```
-
-If no PR found, tell user and stop.
+Use injected context above. If PR is empty, tell user and stop.
 
 **Edge cases — ask before proceeding:**
 - **On main:** "You're on main. Did you mean to be on a feature branch?"
@@ -45,13 +45,8 @@ If state is clear, proceed directly.
 
 ## Step 2: Get Diff
 
-Detect base: `gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||' || echo main`
-
-This base detection pattern is shared across pr: skills — finds the stack parent (Graphite) or falls back to trunk.
-
 ```bash
-git diff <base>...HEAD        # three-dot finds common ancestor
-git log <base>..HEAD --oneline
+git diff $BASE...HEAD        # three-dot finds common ancestor
 ```
 
 If including uncommitted (per Step 1): `git diff HEAD`

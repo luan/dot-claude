@@ -18,18 +18,17 @@ allowed-tools:
 
 Convert user feedback into ONE task with phased design — directly consumable by `/prepare`. Does NOT implement; creates actionable work items for later scheduling.
 
+## Context
+
+Recent files: !`git diff --name-only HEAD~3..HEAD 2>/dev/null`
+Log: !`git log --oneline -5 2>/dev/null`
+Branch: !`git branch --show-current 2>/dev/null`
+
 ## Workflow
 
-### 1. Gather Context (Parallel)
+### 1. Gather Context
 
-Ground feedback against recent changes so classification reflects actual code state:
-```bash
-git diff --name-only HEAD~3..HEAD
-git log --oneline -5
-git branch --show-current
-```
-
-If user references specific files, read them.
+Use injected context above to ground feedback against recent changes. If user references specific files, read them.
 
 ### 2. Analyze Feedback
 

@@ -38,14 +38,6 @@
     "command": "uv run ~/.claude/statusline.py",
     "padding": 0
   },
-  "extraKnownMarketplaces": {
-    "local": {
-      "source": {
-        "source": "directory",
-        "path": "~/.claude/local-plugins"
-      }
-    }
-  },
   "enabledPlugins": {
     "clangd-lsp@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
@@ -53,8 +45,15 @@
     "pyright-lsp@claude-plugins-official": true,
     "rust-analyzer-lsp@claude-plugins-official": true,
     "swift-lsp@claude-plugins-official": true,
-    "hookify@claude-plugins-official": true,
     "gt@local": true
+  },
+  "extraKnownMarketplaces": {
+    "local": {
+      "source": {
+        "source": "directory",
+        "path": "~/.claude/local-plugins"
+      }
+    }
   },
   "alwaysThinkingEnabled": true,
   "promptSuggestionEnabled": true,
