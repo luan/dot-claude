@@ -34,9 +34,11 @@ Do NOT invoke implementation skills, write code, or take implementation action u
 
 TaskCreate: subject "Brainstorm: <topic>", acceptance criteria (design stored as Problem/Approaches/Design/Next Steps, user approved each section), metadata `{project: <repo root>, type: "explore", priority: "P2"}`. Then `TaskUpdate(taskId, status: "in_progress", owner: "brainstorm")`.
 
-### 2. Scan Project Context
+### 2. Scan Project Context + Start Interview
 
-Dispatch Task (subagent_type="codebase-researcher"): scan for tech stack, relevant patterns, adjacent code, constraints. Under 30 lines — feeds dialogue, not implementation. Empty/new project → skip scan, ask user for stack preferences in interview instead.
+Dispatch Task (subagent_type="codebase-researcher", run_in_background=true): scan for tech stack, relevant patterns, adjacent code, constraints. Under 30 lines — feeds dialogue, not implementation. Empty/new project → skip scan, ask user for stack preferences in interview instead.
+
+**Don't wait** — begin interview immediately. Scan results are only needed at Step 4.
 
 ### 3. Interview
 
@@ -56,6 +58,8 @@ Stop when you can propose approaches. Usually 3-5 questions, never >7. Stay tech
 **Mid-dialogue pivot:** If direction shifts fundamentally, acknowledge, discard stale context, restart from the relevant question.
 
 ### 4. Propose 2-3 Approaches
+
+Check that the background scan from Step 2 has completed before proposing. Incorporate findings into approach recommendations.
 
 Lead with recommendation + justification referencing user's stated constraints. Non-recommended approaches: 2-3 sentences + explicit downside vs the recommended one. Be opinionated — don't hedge equally. Ask user to pick or refine. If all rejected, ask what's missing and propose new approaches — don't dead-end.
 

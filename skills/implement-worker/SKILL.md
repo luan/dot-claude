@@ -1,6 +1,6 @@
 ---
 name: implement-worker
-description: "Internal skill. Implements a single task: claims it, runs TDD + build via sub-worker, then runs refine on changed files. Invoked by implement and other orchestrators."
+description: "Internal skill. Implements a single task: claims it, runs TDD + build via sub-worker. Invoked by implement and other orchestrators."
 argument-hint: "<task-id>"
 user-invocable: false
 allowed-tools:
@@ -15,18 +15,18 @@ allowed-tools:
 
 # Implement Worker
 
-Single-task mini-orchestrator. Receives a task ID, spawns a code-only sub-worker, then runs refine on the result.
+Single-task mini-orchestrator. Receives a task ID, spawns a code-only sub-worker.
 
 ## Step 1: Load Task
 
-`TaskGet(<task-id>)` — capture description and `metadata.parent_id`.
+`TaskGet(<task-id>)` — capture description and metadata.
 
-If `metadata.parent_id` exists → walk ancestor chain to epic root:
+**Pre-computed context** (set by implement): if `metadata.breadcrumb` and `metadata.epic_design` exist, use them directly — skip ancestor walk.
+
+**Fallback** (invoked outside implement): if `metadata.parent_id` exists, walk ancestor chain to epic root:
 1. Repeatedly `TaskGet(parent_id)` until no `parent_id`
 2. Build breadcrumb root-first, excluding current task: `"Epic > Phase > ..."`
 3. Source `metadata.design` from root epic
-
-Flat case (direct child): breadcrumb is just the epic subject.
 
 ## Step 1.5: Complexity Assessment
 
@@ -79,14 +79,10 @@ Implement task <task-id>.
 - Bug elsewhere → TaskCreate(subject: "Found: ...", metadata: {type: "bug", priority: "P2", project: "<repo root>"})
 ```
 
-## Step 4: Refine
+## Step 4: Complete Task
 
-After sub-worker: `git diff --name-only HEAD` for changed files. None → skip. Changed → `Skill("refine", args="<space-separated file list>")`.
+`TaskUpdate(taskId, status: "completed", metadata: {completedAt: "<ISO 8601>"})` — mark complete here, not inside sub-worker.
 
-## Step 5: Complete Task
-
-`TaskUpdate(taskId, status: "completed", metadata: {completedAt: "<ISO 8601>"})` — mark complete after refine, not inside sub-worker.
-
-## Step 6: Return
+## Step 5: Return
 
 Completion summary (files changed, what implemented). No staging, no commit — caller handles.

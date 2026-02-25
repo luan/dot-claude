@@ -63,5 +63,5 @@ while tasks remain incomplete:
 2. `Bash("codex -q --task '<escaped_prompt>'", timeout=300000, run_in_background=true)`
 3. `codex_attempted.add(id)`
 4. On completion:
-   - exit 0 → spawn Claude review worker to run tests, `Skill("refine")`, and `TaskUpdate(taskId, status: "completed")`
+   - exit 0 → spawn Claude review worker to run tests and `TaskUpdate(taskId, status: "completed")`
    - non-zero/timeout → `TaskUpdate(id, status: "pending", owner: "")`, re-dispatch as Claude worker (counts as `dispatch_count[id]++`)
