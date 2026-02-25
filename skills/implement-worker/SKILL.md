@@ -81,7 +81,7 @@ Implement task <task-id>.
 
 ## Step 4: Refine
 
-After sub-worker: `git diff --name-only HEAD` for changed files. None → skip. Changed → `Skill("refine")`.
+After sub-worker: `git diff --name-only HEAD` for changed files. None → skip. Changed → `Skill("refine", args="<space-separated file list>")`.
 
 ## Step 5: Complete Task
 

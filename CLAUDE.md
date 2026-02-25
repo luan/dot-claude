@@ -15,6 +15,11 @@
 - Run parallel operations in single messages when possible
 - Delegate work to subagents; main thread orchestrates
 - Pre-compute summaries for subagent context rather than passing raw content
+- Subagent trust is adversarial by default. Spot-check claims (1-2 for small tasks; ALL architectural claims for epics). Echo detection: if findings match framing too neatly, probe the likeliest friction point. Build gate exemption: build/test-verified results skip spot-checks.
+
+## Search Tools
+
+- Grep tool > Glob tool > `rg`/`fd` in Bash > `ck` (semantic). Never raw `grep`/`find` in Bash (hook-enforced).
 
 ## Context Budget
 
@@ -57,8 +62,7 @@ TDD default. Standards in `rules/test-quality.md`.
 
 ## Skill Flow
 
-brainstorm → explore → prepare → implement [acceptance] → test-plan → commit
-Optional: split-commit (repackage messy WIP), review (adversarial), refine (polish code).
+brainstorm → explore → prepare → implement [acceptance] → review → refine → commit
 After explore: `/prepare <id>`. After prepare: `/implement <epic-id>`.
 
 ## Natural Language Routing

@@ -17,6 +17,10 @@ allowed-tools:
 
 Simplify code + remove comment bloat in uncommitted changes.
 
+## Context
+
+Changed: !`git diff --name-only HEAD 2>/dev/null`
+
 ## Mid-Skill Interviewing
 
 Use AskUserQuestion when facing genuine ambiguity:
@@ -26,7 +30,7 @@ Use AskUserQuestion when facing genuine ambiguity:
 ## Step 1: Identify Files
 
 - $ARGUMENTS → use as file pattern (`*.py`, `src/**/*.ts`)
-- No args → `git diff --name-only HEAD`
+- No args → use injected Changed list above
 - Skip: lock files, generated, binaries, config
 - No files → exit: "No uncommitted changes to refine."
 

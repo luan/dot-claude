@@ -7,7 +7,6 @@ allowed-tools:
   - "Bash(scripts/fetch_threads.py *)"
   - "Bash(gh pr view *)"
   - "Bash(gh pr list *)"
-  - "Bash(git branch --show-current)"
   - "Bash(git add *)"
   - "Bash(git push:*)"
   - Skill
@@ -23,12 +22,16 @@ Fix unresolved review comments from a PR.
 
 **Safety: NEVER auto-pushes. NEVER replies to or resolves threads — only fetches and fixes locally.**
 
+## Context
+
+PR: !`gh pr view --json number,headRefName -q '{number,headRefName}' 2>/dev/null`
+Branch: !`git branch --show-current 2>/dev/null`
+
 ## Steps
 
-1. **Detect PR**: `gh pr view --json number -q '.number'` or ask user
+1. **Detect PR**: Use injected context above. If empty, ask user.
 
-2. **Verify branch** (if PR specified manually):
-   `git branch --show-current` vs `gh pr view <PR> --json headRefName -q .headRefName` — mismatch → ask user
+2. **Verify branch**: Compare injected Branch vs PR headRefName — mismatch → ask user.
 
 3. **Fetch comments**:
 

@@ -1,7 +1,7 @@
 ---
 name: acceptance
-description: "Validate implementation against epic acceptance criteria using dual-agent verification. Triggers: 'accept', 'acceptance check', 'verify implementation', 'did it work', 'check my implementation'. Also invoked automatically by /implement after completion."
-argument-hint: "[<task-id>]"
+description: "Validate implementation against acceptance criteria using dual-agent verification. Works on epics (all descendants) or individual tasks. Triggers: 'accept', 'acceptance check', 'verify implementation', 'did it work', 'check my implementation'. Also invoked automatically by /implement after completion."
+argument-hint: "[<task-id>|<epic-id>]"
 user-invocable: true
 allowed-tools:
   - Task
@@ -19,25 +19,27 @@ allowed-tools:
 
 Advisory gate — findings are reported, user decides how to proceed.
 
-## Step 1: Resolve Epic
+## Step 1: Resolve Target
 
-- Argument → `TaskGet(taskId)`. Not epic? Use `metadata.parent_id`.
-- No argument → `TaskList()` filtered by `metadata.type == "epic"` AND status in `["completed", "in_progress"]`. Pick highest ID.
-- None found → stop: "No epic found. Pass a task ID or ensure an epic exists."
+- Argument → `TaskGet(taskId)`.
+  - **Epic** (`metadata.type == "epic"`) → epic mode (validate all descendants)
+  - **Non-epic task** → task mode (validate this task only)
+- No argument → `TaskList()` filtered by `metadata.type == "epic"` AND status in `["completed", "in_progress"]`. Pick highest ID → epic mode.
+- None found → stop: "No task or epic found. Pass a task ID."
 
 ## Step 2: Gather Plan Context
 
-From `TaskGet(epicId)`: extract `metadata.design` and `metadata.plan_file`.
+**Epic mode:** From `TaskGet(epicId)`: extract `metadata.design` and `metadata.plan_file`. If plan_file set → `ct plan latest --task-file <plan_file>`. Falls back to `metadata.design`. Neither exists → "No plan found — checking criteria only."
 
-If plan_file set → `ct plan latest --task-file <plan_file>`. Falls back to `metadata.design`. Neither exists → "No plan found — checking criteria only."
+**Task mode:** Walk `metadata.parent_id` to find root epic. Extract `metadata.design` from root for context. Falls back to task's own description.
 
-## Step 3: Gather Descendant Criteria
+## Step 3: Gather Criteria
 
-Recursively collect all descendants via `metadata.parent_id` chains. No descendants → stop: "Run /prepare first."
+**Epic mode:** Recursively collect all descendants via `metadata.parent_id` chains. No descendants → stop: "Run /prepare first."
 
-**Orphaned task detection:** While traversing, flag any task where `status == "pending"` but parent `status == "completed"`. Prepend advisory warning — never blocks acceptance, does not exclude the task from criteria collection. See `references/scenarios.md` for test scenarios.
+Orphaned task detection: flag any task where `status == "pending"` but parent `status == "completed"`. Advisory warning only — never blocks acceptance. See `references/scenarios.md`.
 
-**Group criteria by subtree:** Grouping nodes (have children) become section headers. Leaves have their `## Acceptance Criteria` extracted and nested under nearest grouping ancestor. Leaf missing this section → flag as `⚠ No acceptance criteria defined` under that task (do not skip silently). Format:
+Group criteria by subtree: grouping nodes become section headers, leaves have `## Acceptance Criteria` extracted. Missing section → `⚠ No acceptance criteria defined`. Format:
 
 ```
 Phase N: <phase subject>
@@ -46,6 +48,8 @@ Phase N: <phase subject>
 ```
 
 Flat epics (no grandchildren) produce flat `Task <id>: ...` output.
+
+**Task mode:** Extract `## Acceptance Criteria` from the target task's description. Missing → use full description as criteria context.
 
 ## Step 4: Get Diff
 
@@ -77,4 +81,4 @@ Present both reports with clear labels. **PASS** → concise green summary (max 
 
 ## Step 7: Store Findings
 
-`ct plan create --prefix "acceptance"`. TaskUpdate epic with `acceptance_result: {verdict, criteria_count, verifier_report, breaker_report}` and `plan_file`.
+`ct plan create --prefix "acceptance"`. TaskUpdate target (epic or task) with `acceptance_result: {verdict, criteria_count, verifier_report, breaker_report}` and `plan_file`.
