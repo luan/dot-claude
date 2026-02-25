@@ -75,6 +75,5 @@ Every task dispatches via subagent. TeamCreate always runs.
 ## Stage Changes
 
 After all workers:
-1. `git diff --name-only HEAD` for changed files → `Skill("refine", args="<file list>")` if any.
-2. `Skill("acceptance", args="<epicId>")`.
-3. `git add -u`, ask about untracked files, show `git diff --cached --stat`. Stop — user verifies before review.
+1. `Skill("acceptance", args="<epicId>")`.
+2. `git add -u`, ask about untracked files, show `git diff --cached --stat`. Stop — user verifies before review.

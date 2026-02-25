@@ -71,6 +71,7 @@ Implement task <task-id>.
 1. Read every file in scope + 2-3 nearby test files to learn conventions.
    TDD: failing test → red → implement → green. No test infra → note, implement directly.
 2. Build + test. Same root error 2x → stop + report. 3 distinct errors → report all, stop.
+3. Self-check: re-read changed files. Remove debug artifacts, low-value comments, unused imports. Flatten nesting via early returns. Apply language-idiomatic patterns.
 
 ## Rules
 - TDD first. Standards: rules/test-quality.md
