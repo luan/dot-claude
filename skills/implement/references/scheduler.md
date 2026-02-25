@@ -31,7 +31,7 @@ while tasks remain incomplete:
   On each completion:
     1. If worker completed its task → active_count--
        If Codex task completed:
-         exit 0 → spawn Claude review worker (test + refine + mark completed),
+         exit 0 → spawn Claude review worker (test + mark completed),
                    active_count stays (review worker replaces Codex slot)
          non-zero/timeout → active_count--, TaskUpdate(id, status: "pending", owner: ""),
                             add to newly_ready for Claude dispatch

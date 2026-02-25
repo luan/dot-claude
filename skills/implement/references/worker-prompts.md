@@ -19,7 +19,8 @@ Implement task <task-id>.
    Follow TDD: write failing tests, confirm red, implement until green. No test infra → note in report, implement directly.
 3. Build + test. All green → continue.
    On failure: deduplicate errors (strip paths/line numbers). Same root error 2x → stop, report with context. 3 distinct errors → report all, stop.
-4. TaskUpdate(taskId, status: "completed", metadata: {completedAt: "<current ISO 8601 timestamp>"})
+4. Self-check: re-read changed files. Remove debug artifacts (console.log, print, debugger), low-value comments (code-restating, contextless TODOs), unused imports. Flatten nesting via early returns. Apply language-idiomatic patterns.
+5. TaskUpdate(taskId, status: "completed", metadata: {completedAt: "<current ISO 8601 timestamp>"})
 
 ## Rules
 - TDD: test first. Standards: rules/test-quality.md

@@ -1,11 +1,10 @@
 ---
 name: review
-description: "Adversarial code review dispatching parallel reviewer agents across correctness, security, architecture, and performance lenses. Triggers: 'review', 'review my changes', 'check this code', 'code review'. Use --team for 3-perspective mode. Do NOT use when: cosmetic polish only — use /refine. Do NOT use when: investigating unknown bug — use /debugging."
+description: "Adversarial code review dispatching parallel reviewer agents across correctness, security, architecture, and performance lenses. Triggers: 'review', 'review my changes', 'check this code', 'code review'. Use --team for 3-perspective mode. Do NOT use when: investigating unknown bug — use /debugging."
 argument-hint: "[base..head | file-list | PR#] [--against <issue-id>] [--team] [--continue]"
 user-invocable: true
 allowed-tools:
   - Task
-  - Skill
   - AskUserQuestion
   - Read
   - Bash
@@ -73,7 +72,7 @@ Store via `ct plan create` + TaskUpdate metadata.design.
 
 ## Step 5: Fix + Re-review Loop
 
-Spawn agent with FIX items → fix, verify, report. Then `Skill("refine")`.
+Spawn agent with FIX items → fix, verify, self-check (remove debug artifacts, low-value comments, unused imports), report.
 
 Re-run Step 3, max 4 iterations. Track fixed_issues by (file, description) — not line numbers. Skip matches when consolidating. Exit: all resolved, user stops, or iteration 4.
 

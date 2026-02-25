@@ -62,7 +62,7 @@ TDD default. Standards in `rules/test-quality.md`.
 
 ## Skill Flow
 
-brainstorm → explore → prepare → implement [acceptance] → review → refine → commit
+brainstorm → explore → prepare → implement [acceptance] → review → commit
 After explore: `/prepare <id>`. After prepare: `/implement <epic-id>`.
 
 ## Natural Language Routing
