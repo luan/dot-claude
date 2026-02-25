@@ -46,7 +46,7 @@ See rules/skill-interviewing.md.
 
 5. **Create tasks:** Dispatch ONE subagent (model="sonnet"). Prompt in `references/task-creation-prompt.md`. Process all phases in one dispatch.
 
-6. **Validate** (subagent-trust.md): spot-check file paths (Read 1-2), acceptance criteria, approach. Vague → send back.
+6. **Validate**: spot-check file paths (Read 1-2), acceptance criteria, approach. Vague → send back.
 
 7. **Finalize:** TaskUpdate(epicId, status: "in_progress", owner: "prepare"). Source task → TaskUpdate(sourceId, status: "completed").
 
