@@ -64,7 +64,7 @@ Phases must include file paths + approach.
    e. **Synthesize:** merge all reports, produce unified output using Architect's approach. Add a **Contradictions** section that quotes specific claims from Architect vs Skeptic (e.g., "Architect: X — Skeptic: Y"). If agents fully agree, write "No contradictions found." Fold remaining caveats into Risks.
    f. `TeamDelete` — clean up team after synthesis.
 
-3. **Validate** (subagent-trust.md): spot-check ALL architectural claims + 50% of file/behavioral claims. Failed check → follow-up.
+3. **Validate**: spot-check ALL architectural claims + 50% of file/behavioral claims. Failed check → follow-up.
 
 4. **Store findings:**
    1. `PLAN_FILE=$(echo "<findings>" | ct plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "explore" 2>/dev/null)`

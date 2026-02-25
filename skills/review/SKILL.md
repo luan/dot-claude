@@ -56,7 +56,7 @@ All Task agents, spawn in ONE message. Prompts in `references/reviewer-prompts.m
 
 ## Step 4: Consolidate
 
-1. **Validate** (subagent-trust.md): spot-check 1-2 claims per reviewer; ALL codex claims. Codex duplicate → keep reviewer version.
+1. **Validate**: spot-check 1-2 claims per reviewer; ALL codex claims. Codex duplicate → keep reviewer version.
 2. **Deduplicate**: same issue → highest severity.
 3. **Consensus**: critical from any reviewer survives. Non-critical needs 2+ at same tier. Solo: both lenses must agree. Single-reviewer → IGNORE "1-of-N".
 4. Sort by severity (Critical > High > Medium > Low). **Never truncate.** Re-examination keeps each finding on its own merits — one false claim does not taint the reviewer's other valid findings.
