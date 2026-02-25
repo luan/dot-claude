@@ -74,7 +74,7 @@ After all commits: `git status` (should be clean), `git log --oneline <base>..HE
 
 ## Key Rules
 
-- **Per-commit subagents** — each commit needs Edit for refinements, and fresh context prevents refinement-fix iteration from exhausting the window
+- **Per-commit subagents** — each needs Edit for refinements, fresh context prevents iteration from exhausting the window
 - **git-surgeon for staging, Edit for refinements** — git-surgeon provides hunk-level selection without interactive prompts; Edit applies refinements after staging so the original hunks anchor each commit
 - **Refinements preserve functionality** — same tests pass, same behavior. Cleaner code, not different code.
 - **User instructions override defaults** — if `--instructions` is set, focus refinements there instead of general cleanup

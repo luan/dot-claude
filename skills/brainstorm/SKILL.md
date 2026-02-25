@@ -36,7 +36,7 @@ TaskCreate: subject "Brainstorm: <topic>", acceptance criteria (design stored as
 
 ### 2. Scan Project Context + Start Interview
 
-Dispatch Task (subagent_type="codebase-researcher", run_in_background=true): scan for tech stack, relevant patterns, adjacent code, constraints. Under 30 lines — feeds dialogue, not implementation. Empty/new project → skip scan, ask user for stack preferences in interview instead.
+Dispatch Task (subagent_type="Explore", run_in_background=true): scan for tech stack, relevant patterns, adjacent code, constraints. Under 30 lines — feeds dialogue, not implementation. Empty/new project → skip scan, ask user for stack preferences in interview instead.
 
 **Don't wait** — begin interview immediately. Scan results are only needed at Step 4.
 
@@ -59,15 +59,15 @@ Stop when you can propose approaches. Usually 3-5 questions, never >7. Stay tech
 
 ### 4. Propose 2-3 Approaches
 
-Check that the background scan from Step 2 has completed before proposing. Incorporate findings into approach recommendations.
+Check background scan completed. Incorporate findings into approaches.
 
-Lead with recommendation + justification referencing user's stated constraints. Non-recommended approaches: 2-3 sentences + explicit downside vs the recommended one. Be opinionated — don't hedge equally. Ask user to pick or refine. If all rejected, ask what's missing and propose new approaches — don't dead-end.
+Lead with recommendation + justification referencing user's constraints. Non-recommended: 2-3 sentences + downside vs recommended. Be opinionated. Ask user to pick or refine. All rejected → ask what's missing, propose new approaches.
 
 ### 5. Present Design Sections
 
-Scale to complexity. After each section: "Does this look right, or should we adjust?"
+Scale to complexity. After each section, confirm before proceeding.
 
-Include only relevant: Architecture, Data flow, API surface, Error handling, Testing strategy.
+Include only relevant: architecture, data flow, API surface, error handling, testing.
 
 ### 6. Store Design
 
@@ -89,9 +89,9 @@ Phases:
 Next: /explore t<id>
 ```
 
-### 8. After Completion
+### 8. Stop
 
-Stop after summary. User reviews design before proceeding — do not auto-invoke explore.
+User reviews design before proceeding — do not auto-invoke explore.
 
 ## Key Rules
 
