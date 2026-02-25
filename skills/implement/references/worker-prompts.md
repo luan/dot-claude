@@ -11,7 +11,7 @@ Implement task <task-id>.
 <task description from TaskGet>
 
 ## Epic Context (if applicable)
-<epic subject + metadata.design summary>
+<from task metadata.breadcrumb + metadata.epic_design>
 
 ## Protocol
 1. TaskUpdate(taskId, status: "in_progress", owner: "solo")
@@ -20,7 +20,6 @@ Implement task <task-id>.
 3. Build + test. All green → continue.
    On failure: deduplicate errors (strip paths/line numbers). Same root error 2x → stop, report with context. 3 distinct errors → report all, stop.
 4. TaskUpdate(taskId, status: "completed", metadata: {completedAt: "<current ISO 8601 timestamp>"})
-5. Run `Skill("refine")` on changed files. No changes needed → skip.
 
 ## Rules
 - TDD: test first. Standards: rules/test-quality.md
@@ -71,7 +70,7 @@ Implement task <task-id>.
 <task description from TaskGet>
 
 ## Epic Context
-<epic subject + design summary>
+<from task metadata.breadcrumb + metadata.epic_design>
 
 ## Protocol
 1. TaskUpdate(taskId, status: "in_progress", owner: "worker-<taskId>")

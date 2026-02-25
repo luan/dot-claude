@@ -44,6 +44,10 @@ Resolve argument:
 
 **Readiness check (Team):** 2+ tasks lack `## Files` or `## Approach` → AskUserQuestion before dispatching any workers.
 
+## Pre-compute Context
+
+After classifying, write `metadata: {breadcrumb: "Epic > Phase > ...", epic_design: "<design>"}` to each leaf task. Implement-worker and standalone workers use this instead of re-walking ancestors.
+
 ## Worker Dispatch
 
 All modes use `Task(subagent_type="general-purpose")`. Trivial tasks use `model="sonnet"`. Cap: 4 concurrent, 2 retries. Prompt variants in `references/worker-prompts.md`:
@@ -57,17 +61,20 @@ Codex routing: `codex` available + leaf task → Codex first, Claude fallback. S
 
 1. Set task in_progress. Walk ancestor chain for epic context.
 2. Spawn single standalone worker.
-3. Verify completed → `Skill("acceptance", args="<epicId>")` → Stage Changes.
+3. Verify completed → Stage Changes.
 
 ## Team Mode
 
 Every task dispatches via subagent. TeamCreate always runs.
 
 1. **Setup:** `TeamCreate(team_name="impl-<slug>")`. If fails → fall back to standalone sequential dispatch (up to 4 concurrent). Detect Codex via `which codex`.
-2. **Dispatch:** 4+ leaves with blockedBy chains → **Rolling Scheduler:** pre-compute dependency waves (wave 1 = unblocked, subsequent = blockedBy resolved), dispatch up to 4 concurrent, advance as workers complete. See `references/scheduler.md`. Otherwise → dispatch all tasks at once (up to 4 concurrent).
+2. **Dispatch:** 4+ leaves with blockedBy chains → **Rolling Scheduler:** dispatch unblocked tasks (up to 4 concurrent), re-scan after each completion to dispatch newly unblocked tasks. See `references/scheduler.md`. Otherwise → dispatch all tasks at once (up to 4 concurrent).
 3. **Verify:** Full test suite. Red → spawn fix agent (max 2 cycles). Still red → escalate to user.
-4. **Teardown:** Clear all impl_* metadata, complete epic, TeamDelete, `Skill("acceptance", args="<epicId>")`, Stage Changes.
+4. **Teardown:** Clear all impl_* metadata, complete epic, TeamDelete → Stage Changes.
 
 ## Stage Changes
 
-After all workers: `git add -u`, ask about untracked files, show `git diff --cached --stat`. Stop — user verifies before review.
+After all workers:
+1. `git diff --name-only HEAD` for changed files → `Skill("refine", args="<file list>")` if any.
+2. `Skill("acceptance", args="<epicId>")`.
+3. `git add -u`, ask about untracked files, show `git diff --cached --stat`. Stop — user verifies before review.
