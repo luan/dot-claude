@@ -66,7 +66,7 @@ Output `# Adversarial Review Summary`:
 - **--team disagreements**: when specialists differ on severity, show attribution (e.g., "Architect: High, Code Quality: Medium → resolved: High") before the resolved row.
 - **Verdict footer**: PASS (no FIX items), CHANGES_REQUESTED (any FIX items), FAIL (any Critical).
 
-Store via `ct plan create` + TaskUpdate metadata.design.
+Store via TaskUpdate metadata.design.
 
 !`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Return findings to caller. Don't fix." || echo "AskUserQuestion: Fix all / Fix critical+high / Fix critical only / Skip fixes"`
 

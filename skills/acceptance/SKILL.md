@@ -29,13 +29,13 @@ Advisory gate — findings are reported, user decides how to proceed.
 
 ## Step 2: Gather Plan Context
 
-**Epic mode:** From `TaskGet(epicId)`: extract `metadata.design` and `metadata.plan_file`. If plan_file set → `ct plan latest --task-file <plan_file>`. Falls back to `metadata.design`. Neither exists → "No plan found — checking criteria only."
+**Epic mode:** From `TaskGet(epicId)`: extract `metadata.design`. Not found → "No plan found — checking criteria only."
 
 **Task mode:** Walk `metadata.parent_id` to find root epic. Extract `metadata.design` from root for context. Falls back to task's own description.
 
 ## Step 3: Gather Criteria
 
-**Epic mode:** Recursively collect all descendants via `metadata.parent_id` chains. No descendants → stop: "Run /prepare first."
+**Epic mode:** Recursively collect all descendants via `metadata.parent_id` chains. No descendants → stop: "Run /scope first."
 
 Orphaned task detection: flag any task where `status == "pending"` but parent `status == "completed"`. Advisory warning only — never blocks acceptance. See `references/scenarios.md`.
 
@@ -81,4 +81,4 @@ Present both reports with clear labels. **PASS** → concise green summary (max 
 
 ## Step 7: Store Findings
 
-`ct plan create --prefix "acceptance"`. TaskUpdate target (epic or task) with `acceptance_result: {verdict, criteria_count, verifier_report, breaker_report}` and `plan_file`.
+TaskUpdate target (epic or task) with `acceptance_result: {verdict, criteria_count, verifier_report, breaker_report}`.
