@@ -85,6 +85,9 @@ pub enum Command {
         action: ProjectAction,
     },
 
+    #[command(visible_alias = "n", about = "Handle notification hooks")]
+    Notify,
+
     #[command(visible_alias = "o", about = "Utility tools")]
     Tool {
         #[command(subcommand)]
