@@ -5,8 +5,6 @@ mod cochanges;
 mod editor;
 mod gitcontext;
 mod phases;
-mod plan;
-mod planfile;
 mod slug;
 mod store;
 mod ui;
@@ -89,30 +87,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let (store, _) = store_and_cwd();
                 cli::run_prune(&store, days, dry_run, list)
             }
-        },
-        Some(cli::Command::Plan { action }) => match action {
-            cli::PlanAction::List {
-                json,
-                all,
-                project,
-                archived,
-            } => {
-                let (_, cwd) = store_and_cwd();
-                cli::run_plans(&cwd, json, all, project, archived)
-            }
-            cli::PlanAction::Create {
-                topic,
-                project,
-                slug,
-                prefix,
-                body,
-            } => cli::run_plan_create(topic, project, slug, prefix, body),
-            cli::PlanAction::Read { file, frontmatter } => cli::run_plan_read(file, frontmatter),
-            cli::PlanAction::Latest { project, task_file } => {
-                cli::run_plan_latest(project, task_file)
-            }
-            cli::PlanAction::Archive { file } => cli::run_plan_archive(file),
-            cli::PlanAction::Show { id } => cli::run_plan_show(&id),
         },
         Some(cli::Command::Project { action }) => match action {
             cli::ProjectAction::List { json } => {
@@ -251,13 +225,8 @@ fn run_loop(
             terminal.clear()?;
 
             if status.is_ok() {
-                if req.task_id.is_empty() {
-                    // Plan edit — file was edited in place, just reload plans
-                    app.reload_plans();
-                } else {
-                    app.handle_editor_result(&req.task_id, &req.path, &req.list_id);
-                }
-            } else if !req.task_id.is_empty() {
+                app.handle_editor_result(&req.task_id, &req.path, &req.list_id);
+            } else {
                 let _ = std::fs::remove_file(&req.path);
             }
             continue;

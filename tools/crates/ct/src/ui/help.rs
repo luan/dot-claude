@@ -11,7 +11,7 @@ struct Section {
     keys: &'static [(&'static str, &'static str)],
 }
 
-const TASK_SECTIONS: &[Section] = &[
+const SECTIONS: &[Section] = &[
     Section {
         title: "Navigation",
         keys: &[
@@ -19,13 +19,6 @@ const TASK_SECTIONS: &[Section] = &[
             ("enter", "open task detail"),
             ("esc", "back"),
             ("q", "quit"),
-        ],
-    },
-    Section {
-        title: "Tabs",
-        keys: &[
-            ("tab / 2", "switch to Plans tab"),
-            ("1", "switch to Tasks tab"),
         ],
     },
     Section {
@@ -41,11 +34,7 @@ const TASK_SECTIONS: &[Section] = &[
     },
     Section {
         title: "Detail view",
-        keys: &[
-            ("j/k", "scroll"),
-            ("space / b", "page down / up"),
-            ("p", "browse plans for project"),
-        ],
+        keys: &[("j/k", "scroll"), ("space / b", "page down / up")],
     },
     Section {
         title: "Filters",
@@ -75,48 +64,6 @@ const TASK_SECTIONS: &[Section] = &[
             ("R", "reload from disk"),
             ("?", "toggle this help"),
         ],
-    },
-];
-
-const PLAN_SECTIONS: &[Section] = &[
-    Section {
-        title: "Navigation",
-        keys: &[
-            ("j/k", "move up / down"),
-            ("enter", "open plan"),
-            ("esc", "back"),
-            ("q", "quit"),
-        ],
-    },
-    Section {
-        title: "Tabs",
-        keys: &[
-            ("tab / 1", "switch to Tasks tab"),
-            ("2", "switch to Plans tab"),
-        ],
-    },
-    Section {
-        title: "Actions",
-        keys: &[("e", "edit in $EDITOR (active only)")],
-    },
-    Section {
-        title: "Filters",
-        keys: &[
-            ("A", "cycle: active / archived / git notes"),
-            ("/", "search by title"),
-        ],
-    },
-    Section {
-        title: "Plan detail",
-        keys: &[
-            ("j/k", "scroll"),
-            ("space / b", "page down / up"),
-            ("esc", "back to list"),
-        ],
-    },
-    Section {
-        title: "Other",
-        keys: &[("R", "reload from disk"), ("?", "toggle this help")],
     },
 ];
 
@@ -200,13 +147,6 @@ fn render_sections(f: &mut Frame, area: Rect, sections: &[Section], scroll: u16)
     clamped
 }
 
-/// Render context-sensitive help in two columns with scroll.
-/// `plans_context`: true when help was opened from the Plans tab.
-/// Returns clamped scroll position.
-pub fn render_help(f: &mut Frame, area: Rect, scroll: u16, plans_context: bool) -> u16 {
-    if plans_context {
-        render_sections(f, area, PLAN_SECTIONS, scroll)
-    } else {
-        render_sections(f, area, TASK_SECTIONS, scroll)
-    }
+pub fn render_help(f: &mut Frame, area: Rect, scroll: u16) -> u16 {
+    render_sections(f, area, SECTIONS, scroll)
 }
