@@ -11,7 +11,7 @@
       "expectations": [
         {
           "criterion": "spec-presented-first",
-          "description": "After research and validation, a spec is synthesized and presented FIRST. The spec covers WHAT we're building: problem statement, recommendation, key files, risks. It does NOT include implementation phases or step-by-step approach — those belong to the plan.",
+          "description": "After research and validation, a spec is synthesized and presented FIRST. The spec covers WHAT we're building: problem statement, recommendation (strategy-level), key files (existing code landscape — NOT files to create/modify), risks. It does NOT include implementation phases, file change lists, or code-level changes like 'add X to Y' — those belong to the plan.",
           "required": true
         },
         {
@@ -77,7 +77,7 @@
         },
         {
           "criterion": "both-artifacts-stored",
-          "description": "Both metadata.spec and metadata.design are populated. Both archival procedures run (git notes for spec, ct plan create for plan).",
+          "description": "Both metadata.spec and metadata.design are populated. Both archival procedures run (ct spec create for spec, ct plan create for plan). Both file paths stored in metadata (spec_file, plan_file).",
           "required": true
         },
         {
@@ -115,8 +115,8 @@
       "files": [],
       "expectations": [
         {
-          "criterion": "spec-uses-git-notes",
-          "description": "Spec is archived using 'git notes add' — the spec content is attached as a git note to HEAD. ct plan create is NOT used for the spec.",
+          "criterion": "spec-uses-ct-spec-create",
+          "description": "Spec is archived using 'ct spec create' with --prefix 'scope' — mirroring the plan archival mechanism. git notes is NOT used for the spec. Spec file path stored in metadata.spec_file.",
           "required": true
         },
         {
@@ -217,6 +217,28 @@
         {
           "criterion": "merges-and-persists",
           "description": "Merges new research with existing plan, then persists to metadata.design AND overwrites plan file if exists. metadata.spec is NOT modified — the spec (what) was already approved.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "spec-abstraction-boundary",
+      "prompt": "You are Claude following the scope skill instructions. Research subagent returns findings for '/scope add persistence to sync queue':\n\n## Current State\n- SyncChangeQueue.swift: in-memory queue, fire-and-forget\n- SyncChangeTracker.swift: adapter-level state, coordinates queue ops\n- SyncPersistenceClient.swift: only persists marker/birthday (4 closures)\n- SyncEntity.swift: Equatable+Sendable but NOT Codable\n- MemoryDatabase.swift: existing GRDB patterns in Memory module\n\n## Key Files\n- SyncChangeQueue.swift: modify — add persistence backing\n- SyncChangeTracker.swift: modify — wire persistence for metadata\n- SyncEntity.swift: modify — add Codable conformance\n- Sync/Persistence/SyncDatabase.swift: create — GRDB setup + migrations\n- Sync/Persistence/SyncQueueRecord.swift: create — GRDB record type\n- Sync/Persistence/SyncQueueStore.swift: create — load/save API\n\n## Recommended Approach\nDedicated GRDB database for sync state. GRDB transactions for atomic persist-and-clear.\n\n## Suggested Phases\nPhase 1: Database + record types. Phase 2: Wire into queue + tracker. Phase 3: Integration tests.\n\nSynthesize the spec from these findings. Show the spec content.\n\nCRITICAL: The research findings contain implementation-level details (files to create/modify, specific code changes). The spec must abstract UP from these.",
+      "files": [],
+      "expectations": [
+        {
+          "criterion": "key-files-are-existing-code",
+          "description": "The spec's Key Files section references EXISTING code that explains the current landscape (e.g., SyncChangeQueue.swift is in-memory, SyncPersistenceClient.swift only persists marker/birthday, MemoryDatabase.swift shows GRDB patterns). It does NOT list files to create (SyncDatabase.swift, SyncQueueRecord.swift) or describe modifications ('add persistence backing', 'add Codable conformance').",
+          "required": true
+        },
+        {
+          "criterion": "recommendation-is-strategy-not-code",
+          "description": "The recommendation describes the chosen approach at a strategy level ('dedicated GRDB database for sync state persistence') without specifying code changes, file modifications, or implementation steps. Rationale explains WHY this approach, not WHAT code to write.",
+          "required": true
+        },
+        {
+          "criterion": "no-files-to-create-or-modify",
+          "description": "The spec does NOT contain Create/Modify annotations, file change tables, or phrases like 'add X to Y.swift', 'create Z.swift', 'extend W with'. These belong exclusively in the plan.",
           "required": true
         }
       ]

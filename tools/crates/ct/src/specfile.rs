@@ -7,15 +7,13 @@ use std::time::SystemTime;
 
 use crate::artifact;
 
-pub use crate::artifact::project_name;
-
 fn fatal(msg: &str) -> ! {
-    eprintln!("planfile: {msg}");
+    eprintln!("specfile: {msg}");
     process::exit(1);
 }
 
-pub fn plans_dir(project_path: &str) -> PathBuf {
-    artifact::artifact_dir(project_path, "plans")
+pub fn specs_dir(project_path: &str) -> PathBuf {
+    artifact::artifact_dir(project_path, "specs")
 }
 
 pub fn cmd_create(args: &[String]) {
@@ -75,12 +73,11 @@ pub fn cmd_create(args: &[String]) {
         format!("{prefix}-{s}.md")
     };
 
-    let dir = plans_dir(&project);
+    let dir = specs_dir(&project);
     fs::create_dir_all(&dir).unwrap_or_else(|e| fatal(&format!("cannot create directory: {e}")));
 
     let full_path = dir.join(&filename);
 
-    // Read body from stdin if not provided and stdin is piped
     if body.is_empty() && !io::stdin().is_terminal() {
         io::stdin()
             .read_to_string(&mut body)
@@ -119,7 +116,7 @@ pub fn cmd_read(args: &[String]) {
     }
 
     if file_path.is_empty() {
-        fatal("usage: planfile read [--frontmatter] <file>");
+        fatal("usage: specfile read [--frontmatter] <file>");
     }
 
     let content =
@@ -149,10 +146,7 @@ pub fn cmd_read(args: &[String]) {
     }
 }
 
-/// Core logic for `ck plan latest`, extracted for testability.
-/// Returns `Ok(path)` on success or `Err(message)` on failure.
-pub fn latest_plan(task_file: Option<&str>, project: &str) -> Result<PathBuf, String> {
-    // --task-file short-circuits the mtime heuristic entirely.
+pub fn latest_spec(task_file: Option<&str>, project: &str) -> Result<PathBuf, String> {
     if let Some(tf) = task_file {
         let p = PathBuf::from(tf);
         if p.exists() {
@@ -161,9 +155,9 @@ pub fn latest_plan(task_file: Option<&str>, project: &str) -> Result<PathBuf, St
         return Err(format!("task-file not found: {tf}"));
     }
 
-    let dir = plans_dir(project);
+    let dir = specs_dir(project);
     let entries = fs::read_dir(&dir)
-        .map_err(|e| format!("cannot read plans directory {}: {e}", dir.display()))?;
+        .map_err(|e| format!("cannot read specs directory {}: {e}", dir.display()))?;
 
     let mut latest_path: Option<PathBuf> = None;
     let mut latest_time = SystemTime::UNIX_EPOCH;
@@ -182,7 +176,7 @@ pub fn latest_plan(task_file: Option<&str>, project: &str) -> Result<PathBuf, St
         }
     }
 
-    latest_path.ok_or_else(|| format!("no plan files found in {}", dir.display()))
+    latest_path.ok_or_else(|| format!("no spec files found in {}", dir.display()))
 }
 
 pub fn cmd_latest(args: &[String]) {
@@ -206,7 +200,6 @@ pub fn cmd_latest(args: &[String]) {
     }
 
     if project.is_empty() && task_file.is_none() {
-        // Try git root
         let output = process::Command::new("git")
             .args(["rev-parse", "--show-toplevel"])
             .output();
@@ -222,7 +215,7 @@ pub fn cmd_latest(args: &[String]) {
         }
     }
 
-    match latest_plan(task_file.as_deref(), &project) {
+    match latest_spec(task_file.as_deref(), &project) {
         Ok(p) => println!("{}", p.display()),
         Err(e) => fatal(&e),
     }
@@ -232,7 +225,7 @@ pub fn cmd_archive(args: &[String]) {
     let file_path = args
         .iter()
         .find(|a| !a.starts_with('-'))
-        .unwrap_or_else(|| fatal("usage: planfile archive <file>"));
+        .unwrap_or_else(|| fatal("usage: specfile archive <file>"));
 
     let path = Path::new(file_path);
     if !path.exists() {
@@ -241,7 +234,6 @@ pub fn cmd_archive(args: &[String]) {
 
     let content = fs::read_to_string(path).unwrap_or_else(|e| fatal(&format!("reading file: {e}")));
 
-    // Extract project path from frontmatter to locate the git repo
     let (yaml, _) = artifact::parse_frontmatter(&content);
     let project = yaml
         .map(|y| {
@@ -254,10 +246,9 @@ pub fn cmd_archive(args: &[String]) {
         .unwrap_or_default();
 
     if project.is_empty() {
-        fatal("plan has no project field — cannot determine git repo");
+        fatal("spec has no project field — cannot determine git repo");
     }
 
-    // Find the git toplevel for the project
     let git_dir = process::Command::new("git")
         .args(["-C", &project, "rev-parse", "--show-toplevel"])
         .output()
@@ -266,19 +257,17 @@ pub fn cmd_archive(args: &[String]) {
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
         .unwrap_or_else(|| fatal(&format!("not a git repository: {project}")));
 
-    // Store plan content as a git note on HEAD under refs/notes/plans
     let note_status = process::Command::new("git")
-        .args(["-C", &git_dir, "notes", "--ref=plans", "append", "-F"])
+        .args(["-C", &git_dir, "notes", "--ref=specs", "append", "-F"])
         .arg(path)
         .arg("HEAD")
         .status()
         .unwrap_or_else(|e| fatal(&format!("running git notes: {e}")));
 
     if !note_status.success() {
-        fatal("git notes append failed — plan file preserved");
+        fatal("git notes append failed — spec file preserved");
     }
 
-    // Note stored successfully — move to archive/ subfolder
     let parent = path
         .parent()
         .unwrap_or_else(|| fatal("cannot determine parent directory"));
@@ -291,99 +280,4 @@ pub fn cmd_archive(args: &[String]) {
     let dest = archive_dir.join(file_name);
     fs::rename(path, &dest).unwrap_or_else(|e| fatal(&format!("archiving file: {e}")));
     eprintln!("Archived: {file_path} → git notes + {}", dest.display());
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::artifact::{chrono_rfc3339, parse_frontmatter, parse_yaml_map, yaml_quote};
-
-    #[test]
-    fn worktree_path_gets_repo_prefix() {
-        assert_eq!(project_name("/Users/me/src/repo.git/wt1"), "repo-wt1");
-        assert_eq!(project_name("/Users/me/src/repo.git/wt2"), "repo-wt2");
-    }
-
-    #[test]
-    fn bare_git_dir_uses_stem() {
-        assert_eq!(project_name("/Users/me/src/repo.git"), "repo");
-    }
-
-    #[test]
-    fn nested_worktree_joins_all_segments() {
-        assert_eq!(
-            project_name("/Users/me/src/mono.git/apps/web"),
-            "mono-apps-web"
-        );
-    }
-
-    #[test]
-    fn normal_path_uses_last_component() {
-        assert_eq!(project_name("/Users/me/src/myapp/src/core"), "core");
-    }
-
-    #[test]
-    fn task_file_returns_specified_path() {
-        let tmp = std::env::temp_dir().join(format!("ck-latest-test-{}", std::process::id()));
-        std::fs::create_dir_all(&tmp).unwrap();
-
-        let plan = tmp.join("my-plan.md");
-        std::fs::write(&plan, "# plan\n").unwrap();
-
-        let result = latest_plan(Some(plan.to_str().unwrap()), "");
-        assert!(result.is_ok(), "expected Ok, got {result:?}");
-        assert_eq!(
-            result.unwrap().canonicalize().unwrap(),
-            plan.canonicalize().unwrap(),
-            "--task-file should return the specified path"
-        );
-
-        std::fs::remove_dir_all(&tmp).ok();
-    }
-
-    #[test]
-    fn task_file_flag_errors_when_file_missing() {
-        let result = latest_plan(Some("/nonexistent/path/plan.md"), "");
-        assert!(result.is_err(), "expected Err for missing task-file");
-        let msg = result.unwrap_err();
-        assert!(
-            msg.contains("task-file not found"),
-            "error message should mention task-file, got: {msg}"
-        );
-    }
-
-    #[test]
-    fn cmd_create_frontmatter_has_no_status_field() {
-        let tmp = std::env::temp_dir().join(format!("ck-test-{}", std::process::id()));
-        let project_path = "/some/project";
-
-        // Use artifact_dir_with_base to get the expected directory without mutating HOME.
-        let project_dir = crate::artifact::artifact_dir_with_base(project_path, "plans", &tmp);
-        std::fs::create_dir_all(&project_dir).unwrap();
-
-        let slug = crate::slug::slug("Test Topic");
-        let file_path = project_dir.join(format!("{slug}.md"));
-
-        let now = chrono_rfc3339();
-        let mut buf = String::new();
-        buf.push_str("---\n");
-        buf.push_str(&format!("topic: {}\n", yaml_quote("Test Topic")));
-        buf.push_str(&format!("project: {}\n", yaml_quote(project_path)));
-        buf.push_str(&format!("created: {now}\n"));
-        buf.push_str("---\n");
-        std::fs::write(&file_path, &buf).unwrap();
-
-        let content = std::fs::read_to_string(&file_path).unwrap();
-
-        // Confirm frontmatter does NOT contain a status field.
-        let (yaml, _) = parse_frontmatter(&content);
-        let yaml = yaml.expect("frontmatter must be present");
-        let keys: Vec<_> = parse_yaml_map(yaml).into_iter().map(|(k, _)| k).collect();
-        assert!(
-            !keys.contains(&"status".to_string()),
-            "frontmatter must not contain a 'status' field, got keys: {keys:?}"
-        );
-
-        std::fs::remove_dir_all(&tmp).ok();
-    }
 }

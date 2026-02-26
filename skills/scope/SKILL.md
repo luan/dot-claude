@@ -61,29 +61,29 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
 
 4. **Synthesize spec** from validated research. The spec is the WHAT — it answers "what are we building and why":
    - **Problem**: what's broken or missing
-   - **Recommendation**: chosen approach + rationale
-   - **Key Files**: paths to modify/create with roles
+   - **Recommendation**: chosen approach + rationale (strategy-level — WHY this approach, not WHAT code to change)
+   - **Key Files**: existing code relevant to the problem — where current behavior lives, what patterns exist. Orients the reader to the landscape. No Modify/Create annotations, no files-to-create, no change descriptions. The reader should understand where the relevant code lives today, not what to do with it.
    - **Risks**: edge cases, failure modes, constraints
 
-   The spec does NOT include implementation phases, step-by-step approaches, or task breakdowns — those belong to the plan.
+   The spec does NOT include: implementation phases, step-by-step approaches, task breakdowns, files to create/modify, or specific code changes (e.g., "add Codable conformance to X", "create Y.swift", "SyncChangeQueue.swift — add persistence backing"). Those belong to the plan. If your Key Files table has a "Role" column with Modify/Create, you've written a plan disguised as a spec — remove it and list only existing paths with what they currently do.
 
 5. **Store spec:**
-   - `TaskUpdate(taskId, metadata: {spec: "<spec content>", status_detail: "spec_review"})`
-   - `echo "<spec content>" | git notes add --force --file=- HEAD`
+   - `SPEC_FILE=$(echo "<spec content>" | ct spec create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "scope" 2>/dev/null)`
+   - `TaskUpdate(taskId, metadata: {spec: "<spec content>", spec_file: "$SPEC_FILE" (omit if empty), status_detail: "spec_review"})`
 
 6. **Present spec** — output as conversation text:
    - `Spec: t<id> — <topic>`
    - Problem statement
    - Recommendation + rationale
-   - Key files with roles
+   - Key files (existing code landscape)
    - Risks and constraints
 
    If `--auto-approve` → skip to step 8.
    Otherwise → stop for user review.
 
 7. **Spec refinement** — if user gives feedback:
-   - **Minor (no new research needed):** Revise spec from stored research + feedback. TaskUpdate revised metadata.spec. Re-archive: `echo "<revised spec>" | git notes add --force --file=- HEAD`. status_detail stays `"spec_review"`.
-   - **Major (user references unexplored code or new approach):** Dispatch follow-up research subagent with current spec as context. Merge findings. TaskUpdate merged spec. Re-archive git note.
+   - **Minor (no new research needed):** Revise spec from stored research + feedback. TaskUpdate revised metadata.spec. If metadata.spec_file → overwrite it by writing to the existing path. Do NOT run `ct spec create` again — that generates a new file and orphans the reference in metadata.spec_file. status_detail stays `"spec_review"`.
+   - **Major (user references unexplored code or new approach):** Dispatch follow-up research subagent with current spec as context. Merge findings. TaskUpdate merged spec. Overwrite spec_file if set.
    - Re-present. Repeat until user approves.
    - Always persist changes to metadata.spec before re-presenting.
 
@@ -97,8 +97,9 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
    - Research Next Steps must include file paths — develop depends on them.
 
 10. **Store plan:**
-    1. `PLAN_FILE=$(echo "<plan content>" | ct plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "scope" 2>/dev/null)`
-    2. `TaskUpdate(taskId, metadata: {design: "<plan content>", plan_file: "$PLAN_FILE" (omit if empty), status_detail: "review"})`
+    1. If a previous metadata.plan_file exists from a prior scope run for this project, archive it first: `ct plan archive <old_plan_file> 2>/dev/null`
+    2. `PLAN_FILE=$(echo "<plan content>" | ct plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "scope" 2>/dev/null)`
+    3. `TaskUpdate(taskId, metadata: {design: "<plan content>", plan_file: "$PLAN_FILE" (omit if empty), status_detail: "review"})`
 
     The design field must be substantive — full phased breakdown with file paths, approaches. If a reader can't understand the plan from metadata.design alone, it's too sparse.
 
@@ -115,13 +116,13 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
     - **Minor (no new files needed):** Revise from stored plan + feedback. TaskUpdate revised metadata.design.
       If metadata.plan_file → overwrite it by writing to the existing path. Do NOT run `ct plan create` again — that generates a new file and orphans the reference in metadata.plan_file.
     - **Major (new codebase data required):** If the user references unexplored code, asks to research something, or introduces a new architectural approach — dispatch a follow-up subagent with `metadata.design` as prior findings verbatim in the prompt. Merge new + prior. TaskUpdate merged design. Overwrite plan_file if set. When in doubt, dispatch.
-    - **Spec affected?** If feedback changes WHAT we're building (scope, goals, key files, risks) — not just HOW — update metadata.spec too and re-archive: `echo "<revised spec>" | git notes add --force --file=- HEAD`. Approach-only changes leave the spec untouched.
+    - **Spec affected?** If feedback changes WHAT we're building (scope, goals, key files, risks) — not just HOW — update metadata.spec too and overwrite spec_file if set. Approach-only changes leave the spec untouched.
     - Re-present. Repeat until user approves.
     - Always persist changes to metadata before re-presenting — develop reads stored artifacts, not conversation context. Stale artifacts = wrong plan.
 
 13. **Approve plan and finalize:**
     - `TaskUpdate(taskId, metadata: {status_detail: "approved"})`.
-    - **Spec-to-repo option:** AskUserQuestion — "Save spec as a file in the repo?" If yes, write spec to a file (e.g., `docs/specs/<slug>.md` or project-appropriate path). This lets the user commit the spec alongside implementation files.
+    - **Spec-to-repo option:** AskUserQuestion — "Save spec as a file in the repo?" If yes: write spec content to `docs/specs/<slug>.md` (or project-appropriate path). The spec already exists in `~/.claude/specs/` — this copies it into the project tree so it can be committed alongside implementation files.
     - If `--no-develop` → report scope task ID, stop.
     - Otherwise → `Skill("develop", "t<scopeTaskId>")`.
 
@@ -130,14 +131,14 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
 Resolve task: argument → task ID; bare → TaskList `type === "scope"`, `status_detail` in `["spec_review", "review", "approved"]`, most recent. Extract relevant metadata.
 
 - `status_detail === "approved"` → already approved. `Skill("develop", "t<taskId>")`.
-- `status_detail === "spec_review"` → re-present spec from metadata.spec. Resume from step 6.
+- `status_detail === "spec_review"` → if metadata.spec_file is set, read content via `ct spec read <spec_file>`; otherwise use metadata.spec. Re-present spec. Resume from step 6.
 - `status_detail === "review"` → dispatch subagent with `metadata.design` as prior findings verbatim: "Prior findings: \<metadata.design\>. New prompt: \<user prompt\>. Merge both into updated findings." TaskUpdate merged. If metadata.plan_file → overwrite existing path (do NOT run `ct plan create` again). Re-enter from step 10.
 
 ## Key Rules
 
 - Main thread does NOT research — subagent does.
 - Two-phase output: spec (what) THEN plan (how). Each has its own approval gate.
-- Spec archival: `git notes add --force`. Plan archival: `ct plan create`.
+- Spec archival: `ct spec create`. Plan archival: `ct plan create`.
 - Present findings as conversation text, not plan mode. Stop for user review at each gate.
 - Scope does NOT create epic or tasks — develop handles that.
 - metadata.spec = the spec (what). metadata.design = the plan (how). Separate fields.
