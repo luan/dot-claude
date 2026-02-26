@@ -12,8 +12,6 @@ allowed-tools:
   - "Bash(git add:*)"
   - "Bash(git commit:*)"
   - "Bash(git notes:*)"
-  - "Bash(ct plan archive:*)"
-  - "Bash(ct plan list:*)"
   - "Bash(git branch:*)"
   - "Bash(git rev-parse:*)"
   - Read
@@ -42,22 +40,13 @@ Recent commits: !`git log --oneline -5 2>/dev/null`
 
 2. **Message**: conventional commit format — `type(scope): description`, max 72 chars, lowercase, no period, imperative mood. Types: feat|fix|perf|docs|test|style|build|ci|chore|revert. Scope: primary area or omit if global. Multi-line: blank line then body wrapping at 72 chars explaining motivation not mechanics. If task active (TaskList, filter by project + status=in_progress), append ID: `fix(auth): handle token expiry (task-<id>)`
 
-3. **Confirm** via AskUserQuestion: "Commit with this message?"
-
-4. **Execute** using HEREDOC for clean formatting:
+3. **Execute** using HEREDOC for clean formatting:
    ```bash
    git commit -m "$(cat <<'EOF'
    type(scope): description
    EOF
    )"
    ```
-
-5. **Plan archive**: after successful commit, archive active plans. `ct plan list --json` returns an array of `{name, path}` entries — iterate and archive each:
-   ```bash
-   ct plan list --json
-   # For each entry: ct plan archive <path>
-   ```
-   Skip silently if no active plans or `ct` not available.
 
 ## Post-commit
 

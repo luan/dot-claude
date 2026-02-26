@@ -71,10 +71,9 @@ Include only relevant: architecture, data flow, API surface, error handling, tes
 
 ### 6. Store Design
 
-Once approved, store via plan-storage:
+Once approved, store in metadata.design:
 
-1. `PLAN_FILE=$(echo "<findings>" | ct plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "brainstorm" 2>/dev/null)` — warn if fails/empty.
-2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "$PLAN_FILE" (omit if empty), status_detail: "review"}, description: "Brainstorm: <topic> — findings in plan file and metadata.design")`
+`TaskUpdate(taskId, metadata: {design: "<findings>", status_detail: "review"}, description: "Brainstorm: <topic> — findings in metadata.design")`
 
 Findings format: `## Problem` → `## Chosen Approach` (with rationale) → `## Design` (approved sections) → `## Next Steps` (Phase N: title, Files, Approach, steps).
 
