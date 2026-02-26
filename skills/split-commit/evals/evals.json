@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "skill": "skills/split-commit",
+  "cases": [
+    {
+      "id": "noop-single-commit",
+      "prompt": "You are Claude running /split-commit. git log --oneline main..HEAD shows exactly 1 commit.\n\nDemonstrate Phase 1.",
+      "expectations": [
+        {
+          "criterion": "detects-noop",
+          "description": "Checks commit count (git log --oneline <base>..HEAD | wc -l) and finds ≤1 commit",
+          "required": true
+        },
+        {
+          "criterion": "stops-early",
+          "description": "Stops with a message like 'Nothing to repackage — single commit' rather than proceeding to analysis or execution",
+          "required": true
+        },
+        {
+          "criterion": "suggests-alternative",
+          "description": "Suggests /commit for amending as an alternative",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "execution-failure-mid-commit",
+      "prompt": "You are Claude running /split-commit. Analysis phase completed with a 4-commit plan, user approved. Execution subagent committed commits 1 and 2 successfully, but FAILED on commit 3 — tests broke because a missing dependency wasn't staged.\n\nThe subagent returned with: 'Stopped at commit 3. Error: test_auth fails — missing AuthConfig type (defined in config.rs, not yet staged).'\n\nDemonstrate recovery.",
+      "expectations": [
+        {
+          "criterion": "spawns-fix-agent",
+          "description": "Spawns a fix subagent to address the dependency issue (stage the missing file/hunk) rather than abandoning the operation",
+          "required": true
+        },
+        {
+          "criterion": "continues-remaining",
+          "description": "After the fix, re-invokes execution subagent for the remaining commits (3 and 4) — does not restart from commit 1",
+          "required": true
+        },
+        {
+          "criterion": "preserves-earlier-commits",
+          "description": "Commits 1 and 2 remain intact — does not reset or redo them",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

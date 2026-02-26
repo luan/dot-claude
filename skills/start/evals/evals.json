@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "skill": "skills/start",
+  "cases": [
+    {
+      "id": "normalizes-and-links",
+      "prompt": "You are Claude running /start fix-auth-timeout 42. The gt plugin is loaded.\n\nDemonstrate the full flow.",
+      "expectations": [
+        {
+          "criterion": "prefixes-branch",
+          "description": "Normalizes the branch name to luan/fix-auth-timeout (adds luan/ prefix)",
+          "required": true
+        },
+        {
+          "criterion": "uses-gt-create",
+          "description": "Uses Skill(gt:gt, 'create luan/fix-auth-timeout') instead of git checkout -b, because gt plugin is loaded",
+          "required": true
+        },
+        {
+          "criterion": "links-task",
+          "description": "Updates task #42 with status in_progress and metadata.branch set to the branch name",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "branch-already-exists",
+      "prompt": "You are Claude running /start fix-auth-timeout. The gt plugin is NOT loaded. git checkout -b luan/fix-auth-timeout fails with 'fatal: a branch named luan/fix-auth-timeout already exists'.\n\nDemonstrate error handling.",
+      "expectations": [
+        {
+          "criterion": "detects-conflict",
+          "description": "Recognizes the branch already exists from the git error rather than silently failing or retrying the same name",
+          "required": true
+        },
+        {
+          "criterion": "suggests-alternate",
+          "description": "Checks existing branches (git branch -a | grep) and suggests an alternate name to the user",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

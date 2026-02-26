@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "skill": "skills/implement-worker",
+  "cases": [
+    {
+      "id": "sub-worker-failure",
+      "prompt": "You are Claude running implement-worker for task #42. You dispatched the sub-worker in Step 3. It returned, but TaskGet(42) shows status is still 'in_progress' — the worker crashed without completing.\n\nDemonstrate what you do.",
+      "expectations": [
+        {
+          "criterion": "checks-task-status-after-worker",
+          "description": "After the sub-worker returns, checks task status via TaskGet rather than assuming success",
+          "required": true
+        },
+        {
+          "criterion": "does-not-mark-complete",
+          "description": "Does NOT proceed to Step 4 (mark task completed) when the sub-worker failed",
+          "required": true
+        },
+        {
+          "criterion": "returns-failure-to-caller",
+          "description": "Returns failure information to the caller (develop) so it can handle the failed task appropriately",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "decompose-child-failure",
+      "prompt": "You are Claude running implement-worker for task #50 which was decomposed into 3 children (Step 1.6). Two children completed successfully. The third child's sub-worker returned but TaskGet shows it's still in_progress.\n\nDemonstrate what you do.",
+      "expectations": [
+        {
+          "criterion": "detects-child-failure",
+          "description": "Detects that the third child did not complete — does not assume all children succeeded because all agents returned",
+          "required": true
+        },
+        {
+          "criterion": "does-not-complete-parent",
+          "description": "Does NOT mark the parent task (#50) as completed when a child failed",
+          "required": true
+        },
+        {
+          "criterion": "reports-partial-progress",
+          "description": "Reports which children completed and which failed, preserving the progress of successful children",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

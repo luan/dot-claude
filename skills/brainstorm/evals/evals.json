@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "skill": "skills/brainstorm",
+  "cases": [
+    {
+      "id": "vague-prompt-skips-interview",
+      "prompt": "You are Claude running /brainstorm. The user says: 'I want to add dark mode to my app. It should look good and work on mobile.'\n\nThis prompt has some detail but is missing explicit scope boundaries (no non-goals stated), has no measurable constraints, and no testable success criteria.\n\nDemonstrate what you do.",
+      "expectations": [
+        {
+          "criterion": "does-not-skip-interview",
+          "description": "Does NOT skip the interview phase — the prompt lacks all three required skip criteria (explicit scope boundaries with non-goals, measurable constraints, testable success criteria)",
+          "required": true
+        },
+        {
+          "criterion": "asks-one-question-at-a-time",
+          "description": "Asks exactly ONE question per turn via AskUserQuestion, does not batch multiple questions",
+          "required": true
+        },
+        {
+          "criterion": "no-premature-implementation",
+          "description": "Does NOT invoke implementation skills, write code, or take implementation action before design is presented and approved",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "detailed-spec-skip-validation",
+      "prompt": "You are Claude running /brainstorm. The user says: 'Build a rate limiter for our API. Non-goals: no distributed rate limiting, no Redis — in-memory only. Constraints: p99 latency under 1ms, max 100 RPS per client IP. Success: rate-limited responses return 429 with Retry-After header, passes load test at 200 RPS showing 50% rejection.'\n\nThis prompt has explicit scope boundaries, measurable constraints, and testable success criteria.\n\nDemonstrate what you do.",
+      "expectations": [
+        {
+          "criterion": "recognizes-complete-spec",
+          "description": "Recognizes that all three skip criteria are met and may skip interview",
+          "required": true
+        },
+        {
+          "criterion": "cites-concrete-details",
+          "description": "If skipping interview, acknowledges by citing 2+ concrete details from the user's spec (not generic paraphrasing)",
+          "required": true
+        },
+        {
+          "criterion": "still-designs-before-implementing",
+          "description": "Even with a complete spec, still goes through design steps (propose approaches, present design) before any implementation",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

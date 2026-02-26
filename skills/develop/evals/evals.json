@@ -1,0 +1,95 @@
+{
+  "version": "1.0",
+  "skill": "skills/develop",
+  "cases": [
+    {
+      "id": "recovery-stale-metadata",
+      "prompt": "You are Claude running /develop with no argument. TaskList finds an orphaned epic (metadata.impl_team set, status in_progress). The epic has 5 children: 3 completed, 2 pending.\n\nDemonstrate the recovery flow.",
+      "expectations": [
+        {
+          "criterion": "scans-children-first",
+          "description": "Checks all children's statuses before deciding how to recover — does not blindly re-dispatch all tasks",
+          "required": true
+        },
+        {
+          "criterion": "only-dispatches-pending",
+          "description": "Only dispatches the 2 pending children, does NOT re-dispatch the 3 already-completed tasks",
+          "required": true
+        },
+        {
+          "criterion": "preserves-completed-work",
+          "description": "Does not clear, reset, or re-run any completed children — their work is preserved",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "all-children-completed-recovery",
+      "prompt": "You are Claude running /develop with no argument. TaskList finds an orphaned epic (metadata.impl_team set, status in_progress). The epic has 4 children, ALL completed.\n\nDemonstrate what you do.",
+      "expectations": [
+        {
+          "criterion": "detects-all-completed",
+          "description": "Recognizes that all children are completed — no dispatch needed",
+          "required": true
+        },
+        {
+          "criterion": "skips-to-teardown",
+          "description": "Clears impl_team and proceeds directly to Teardown (acceptance + stage changes) without re-dispatching any workers",
+          "required": true
+        },
+        {
+          "criterion": "does-not-re-dispatch",
+          "description": "Does NOT spawn any workers or implementation agents for already-completed tasks",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "worker-rescope-escalation",
+      "prompt": "You are Claude running /develop for epic 500 ('webhook-retry', slug 'webhook-retry'). Team mode, 3 leaf tasks. You dispatch worker for task 501. The worker returns with this output:\n\n\"RESCOPE: The webhook retry approach assumes idempotent endpoints, but the payment service uses non-idempotent POST for charge creation. Retrying would cause duplicate charges. Need a fundamentally different strategy — likely an outbox pattern with deduplication keys.\"\n\nTasks 502 and 503 have not started yet.\n\nDemonstrate what you do.",
+      "expectations": [
+        {
+          "criterion": "detects-rescope-signal",
+          "description": "Recognizes the 'RESCOPE:' prefix in worker output as a design conflict signal, not a normal failure",
+          "required": true
+        },
+        {
+          "criterion": "does-not-retry-worker",
+          "description": "Does NOT re-dispatch the worker or attempt to fix the task — a RESCOPE signal means the design is wrong, not the implementation",
+          "required": true
+        },
+        {
+          "criterion": "invokes-scope-continue",
+          "description": "Invokes Skill('scope', '--continue 500') or equivalent to re-scope the epic with the new information",
+          "required": true
+        },
+        {
+          "criterion": "does-not-dispatch-remaining",
+          "description": "Does NOT dispatch tasks 502 and 503 — they depend on a design that's now invalidated",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "worker-decomposes-task",
+      "prompt": "You are Claude running /develop for epic 600 using rolling scheduler. 4 leaf tasks initially. Worker for task 601 completes, but during execution it created 2 child tasks (601a, 601b) under task 601 and marked 601 as completed.\n\nThe scheduler re-scans descendants after the completion. Tasks 601a and 601b are now pending leaf tasks with no blockedBy.\n\nDemonstrate the scheduler behavior.",
+      "expectations": [
+        {
+          "criterion": "rescans-descendants",
+          "description": "After worker completion, re-scans the full descendant tree to discover newly-created child tasks (601a, 601b)",
+          "required": true
+        },
+        {
+          "criterion": "dispatches-new-leaves",
+          "description": "Dispatches the newly-discovered leaf tasks (601a, 601b) as part of the rolling scheduler's normal newly_ready scan — treats them like any other unblocked pending leaf",
+          "required": true
+        },
+        {
+          "criterion": "does-not-redispatch-601",
+          "description": "Does NOT re-dispatch task 601 (already completed) — only dispatches the new children",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

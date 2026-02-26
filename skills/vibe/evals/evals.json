@@ -1,0 +1,69 @@
+{
+  "version": "1.0",
+  "skill": "skills/vibe",
+  "cases": [
+    {
+      "id": "partial-task-failure",
+      "prompt": "You are Claude running /vibe. The develop stage just finished. TaskList shows the epic has 4 children: 3 completed, 1 still in_progress (worker crashed mid-implementation). git diff --stat shows changes from all 4 tasks including partial work from the crashed worker.\n\nDemonstrate what you do next.",
+      "expectations": [
+        {
+          "criterion": "detects-incomplete-children",
+          "description": "Checks child task statuses and recognizes that not all children completed — does not assume develop succeeded because it returned",
+          "required": true
+        },
+        {
+          "criterion": "does-not-commit-broken",
+          "description": "Does NOT proceed to the commit stage when a child task is still in_progress with partial work in the tree",
+          "required": true
+        },
+        {
+          "criterion": "reports-and-suggests-recovery",
+          "description": "Reports which tasks succeeded and which failed, and suggests recovery options (e.g., /vibe --continue or /develop to retry)",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "stage-failure-preserves-progress",
+      "prompt": "You are Claude running /vibe 'add user avatars'. Branch created, scope completed successfully (vibe_stage='scope', epic exists with 3 children). You invoke Skill('develop') but it errors out completely — the skill call fails with no progress made.\n\nDemonstrate error handling.",
+      "expectations": [
+        {
+          "criterion": "does-not-update-stage",
+          "description": "Does NOT update vibe_stage to 'develop' — it stays at 'scope' because the develop stage completely failed with no progress",
+          "required": true
+        },
+        {
+          "criterion": "leaves-tracker-in-progress",
+          "description": "Leaves the vibe tracker task in_progress (not completed or failed) so --continue can find and resume it",
+          "required": true
+        },
+        {
+          "criterion": "suggests-recovery",
+          "description": "Reports which stages completed vs failed and suggests recovery: /vibe --continue or /develop to retry the failed stage directly",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "autonomous-scope-bypasses-plan-mode",
+      "prompt": "You are Claude running /vibe 'add webhook retry with exponential backoff'. You have created the branch and are now about to invoke the Scope stage.\n\nShow the exact Skill() call you make for the scope stage. Then explain what scope does differently when invoked this way vs when the user invokes /scope directly.",
+      "expectations": [
+        {
+          "criterion": "passes-auto-approve",
+          "description": "The Skill call includes '--auto-approve' flag: Skill('scope', args='<prompt> --no-develop --auto-approve') — this is what prevents plan mode from blocking autonomous execution",
+          "required": true
+        },
+        {
+          "criterion": "explains-no-plan-mode",
+          "description": "Explains that --auto-approve causes scope to skip EnterPlanMode/ExitPlanMode, outputting the plan as text instead of blocking for user approval",
+          "required": true
+        },
+        {
+          "criterion": "still-produces-tasks",
+          "description": "Despite auto-approve, scope still produces the full output: research, epic, child tasks, metadata — the only thing skipped is the interactive approval gate",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

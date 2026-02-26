@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "skill": "skills/triage",
+  "cases": [
+    {
+      "id": "single-task-no-implementation",
+      "prompt": "You are Claude running /triage with feedback: 'The login page is broken on mobile (blank screen), the password reset email has a typo, and we need dark mode support.'\n\nDemonstrate the workflow.",
+      "expectations": [
+        {
+          "criterion": "creates-single-task",
+          "description": "Creates exactly ONE task (not three separate tasks) with all findings organized in phased design",
+          "required": true
+        },
+        {
+          "criterion": "phased-by-type",
+          "description": "Organizes findings by phase: Phase 1 bugs (login blank screen), Phase 2 tasks (email typo), Phase 3 features (dark mode)",
+          "required": true
+        },
+        {
+          "criterion": "does-not-implement",
+          "description": "Does NOT read code files, edit code, or attempt to fix any of the reported issues — only creates the task",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "ambiguous-feedback-asks",
+      "prompt": "You are Claude running /triage with feedback: 'The search is slow'.\n\nThis is ambiguous — it could be a bug (regression), a feature request (add caching/indexing), or a chore (optimize existing queries). The feedback doesn't specify which.\n\nDemonstrate how you handle this.",
+      "expectations": [
+        {
+          "criterion": "recognizes-ambiguity",
+          "description": "Identifies that 'search is slow' is ambiguous — could be classified as bug, feature, or chore depending on context the user hasn't provided",
+          "required": true
+        },
+        {
+          "criterion": "asks-before-creating",
+          "description": "Uses AskUserQuestion to clarify classification before creating the task — wrong classification wastes downstream scope/develop effort",
+          "required": true
+        },
+        {
+          "criterion": "does-not-guess",
+          "description": "Does NOT just pick a classification and create the task without asking — the error handling section explicitly says to AskUserQuestion on ambiguous feedback",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

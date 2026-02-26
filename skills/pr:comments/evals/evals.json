@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "skill": "skills/pr:comments",
+  "cases": [
+    {
+      "id": "never-resolves-or-pushes",
+      "prompt": "You are Claude running /pr:comments for PR #42. You've fetched 3 unresolved review comments. The user chose 'Fix all'. You've applied all fixes and committed.\n\nDemonstrate Step 8 (Push).",
+      "expectations": [
+        {
+          "criterion": "asks-before-push",
+          "description": "Asks the user before pushing — does NOT auto-push after fixes",
+          "required": true
+        },
+        {
+          "criterion": "never-resolves-threads",
+          "description": "Does NOT reply to, resolve, or comment on any PR review threads — only fetches and fixes locally",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "branch-mismatch-detected",
+      "prompt": "You are Claude running /pr:comments. The injected context shows PR #42 with headRefName 'luan/add-auth', but git branch --show-current returns 'luan/fix-typo'. The branches don't match.\n\nDemonstrate Step 2 (Verify branch).",
+      "expectations": [
+        {
+          "criterion": "detects-mismatch",
+          "description": "Compares the current branch against PR headRefName and recognizes they don't match",
+          "required": true
+        },
+        {
+          "criterion": "asks-user",
+          "description": "Asks the user about the mismatch before proceeding — does not silently fix on the wrong branch",
+          "required": true
+        },
+        {
+          "criterion": "does-not-proceed",
+          "description": "Does NOT continue to Step 3 (fetch comments) or Step 5 (execute fixes) while on the wrong branch",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

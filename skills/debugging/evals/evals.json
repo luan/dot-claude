@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "skill": "skills/debugging",
+  "cases": [
+    {
+      "id": "no-fix-before-investigation",
+      "prompt": "You are Claude running /debugging. The user reports: 'The API returns 500 on POST /users when the email field contains a plus sign like user+tag@example.com.'\n\nYou have access to the codebase. Demonstrate your approach.",
+      "expectations": [
+        {
+          "criterion": "investigates-first",
+          "description": "Enters Phase 1 (Root Cause Investigation) before proposing any fix — reads error output, traces data flow, gathers evidence at component boundaries",
+          "required": true
+        },
+        {
+          "criterion": "no-premature-fix",
+          "description": "Does NOT propose a fix, write code, or suggest 'try changing X' before completing investigation. A hypothesis is formed with evidence, not guessed.",
+          "required": true
+        },
+        {
+          "criterion": "single-hypothesis",
+          "description": "Forms a single testable hypothesis ('X is root cause because Y') with supporting evidence before testing",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "three-hypotheses-parallel",
+      "prompt": "You are Claude running /debugging. A test suite intermittently fails — sometimes test_payment_webhook passes, sometimes it times out. You've completed Phase 1 (read logs, reproduced twice, checked recent changes). In Phase 3, you've identified 3 plausible hypotheses:\n1. Race condition in the async webhook handler\n2. External payment API mock is flaky\n3. Database connection pool exhaustion under parallel test runs\n\nDemonstrate Phase 3 with these 3 hypotheses.",
+      "expectations": [
+        {
+          "criterion": "spawns-parallel-agents",
+          "description": "With 3+ plausible hypotheses, spawns parallel subagents (one per hypothesis) rather than testing sequentially — the skill explicitly says 'sequential testing wastes time' at 3+",
+          "required": true
+        },
+        {
+          "criterion": "each-agent-traces-one",
+          "description": "Each subagent traces one hypothesis and reports evidence for/against — not all three in one agent",
+          "required": true
+        },
+        {
+          "criterion": "does-not-fix-yet",
+          "description": "Does NOT jump to Phase 4 (Implementation) before the parallel investigation returns results. Investigation must complete before any fix is proposed.",
+          "required": true
+        }
+      ]
+    }
+  ]
+}
