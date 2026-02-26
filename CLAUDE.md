@@ -2,6 +2,7 @@
 
 1. Never complete a review-status task without explicit user consent.
 2. Never external actions without explicit request (PR comments, GitHub issues, Slack, email, Notion).
+3. Questions are reflections to analyze, not disguised commands. Think critically and answer the question. Don't treat "do you think X needs Y?" as "do Y."
 
 ## Code Style
 
@@ -74,7 +75,7 @@ When user input doesn't start with `/`, check if it maps to a skill by matching 
 
 ## Branch Naming
 
-`luan/<description>` (e.g. `luan/fix-container-minimize`). Use `gt create` if gt plugin is enabled, `git checkout -b` otherwise.
+!`echo "${GIT_USERNAME:-$(whoami)}"`/`<description>` (e.g. `luan/fix-container-minimize`). Use `gt create` if gt plugin is enabled, `git checkout -b` otherwise.
 
 ## Session End
 

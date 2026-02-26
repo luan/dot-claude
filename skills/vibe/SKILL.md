@@ -46,7 +46,7 @@ Run stages sequentially. Before each stage, output the stage announcement (`[N/M
 
 ### Branch (skip if `--no-branch` or already on non-main branch)
 
-Generate slug: `ct tool slug "<prompt>"`. `Skill("start", args="luan/<slug>")`
+Generate slug: `ct tool slug "<prompt>"`. `Skill("start", args="` !`echo "${GIT_USERNAME:-$(whoami)}"` `/<slug>")`
 
 **Verify**: `git branch --show-current` returns new branch. **Update**: `vibe_stage: "branch"`
 
