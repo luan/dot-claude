@@ -3,6 +3,20 @@
 Claude Code configuration. Skills, rules, and workflows
 for AI-assisted development.
 
+## New User Setup
+
+1. **Set your username**
+   Add `"GIT_USERNAME": "<your-handle>"` to the `env` block in `settings.json` or `settings.local.json`. This controls branch prefixes and other user-specific behaviour.
+
+2. **Install the `ct` CLI**
+   ```bash
+   cd ~/.claude/tools && cargo install --path crates/ct
+   ```
+   Requires Rust (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`).
+
+3. **Reinstall plugins**
+   Plugin state is not committed. Open Claude Code and reinstall plugins via the plugin manager.
+
 ## Quick Start
 
 ```bash

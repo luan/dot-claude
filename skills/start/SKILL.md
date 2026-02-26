@@ -22,7 +22,7 @@ Create branch + optionally link task. User-invoked only — this skill never cre
 ## Steps
 
 1. Parse args: first = branch name, second = optional task ID
-2. Normalize: prefix `luan/` if not already present
+2. Normalize: prefix with !`echo "${GIT_USERNAME:-$(whoami)}"/` — if not already present
 3. Create branch:
    - gt plugin loaded → `Skill(gt:gt, "create <branch-name>")`
    - Otherwise → `git checkout -b <branch-name>`
