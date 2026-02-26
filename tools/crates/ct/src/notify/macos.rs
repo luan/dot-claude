@@ -28,12 +28,13 @@ pub fn is_app_focused(app_name: &str) -> bool {
 /// Parse the app name from lsappinfo output like: `"name"="Ghostty"`
 pub fn parse_lsappinfo_name(output: &str) -> Option<&str> {
     for line in output.lines() {
-        if let Some(eq_pos) = line.find('=') {
-            let value = line[eq_pos + 1..].trim();
-            // Strip surrounding quotes
-            if value.starts_with('"') && value.ends_with('"') && value.len() >= 2 {
-                return Some(&value[1..value.len() - 1]);
-            }
+        let trimmed = line.trim();
+        // Look for "name"="value" pattern (quoted value only)
+        if let Some(rest) = trimmed.strip_prefix("\"name\"=")
+            && let Some(quoted) = rest.trim().strip_prefix('"')
+            && let Some(end) = quoted.find('"')
+        {
+            return Some(&quoted[..end]);
         }
     }
     None
@@ -122,11 +123,13 @@ pub fn build_grrr_command(
     session: Option<&str>,
     title: &str,
     subtitle: &str,
+    message: &str,
     sound: &str,
     icon_path: Option<&str>,
     ghostty_focused: bool,
 ) -> Command {
     let mut cmd = Command::new("grrr");
+    cmd.arg("send");
 
     cmd.args(["--appId", "Claude"]);
     cmd.args(["--title", title]);
@@ -138,10 +141,10 @@ pub fn build_grrr_command(
         cmd.args(["--sound", sound]);
     }
 
-    if let Some(path) = icon_path {
-        if Path::new(path).exists() {
-            cmd.args(["--image", path]);
-        }
+    if let Some(path) = icon_path
+        && Path::new(path).exists()
+    {
+        cmd.args(["--image", path]);
     }
 
     if let Some(sess) = session {
@@ -154,6 +157,8 @@ pub fn build_grrr_command(
         cmd.args(["--execute", "open -a Ghostty"]);
     }
 
+    cmd.arg(message);
+
     cmd
 }
 
@@ -164,23 +169,23 @@ pub fn build_grrr_command(
 pub fn notify(
     session: Option<&str>,
     subtitle: &str,
+    message: &str,
     sound: &str,
     icon_path: Option<&str>,
 ) -> Result<(), String> {
     let ghostty_focused = is_app_focused("Ghostty");
 
-    if ghostty_focused {
-        if let Some(sess) = session {
-            if is_session_active(sess) {
-                return Ok(());
-            }
-        }
+    if ghostty_focused
+        && let Some(sess) = session
+        && is_session_active(sess)
+    {
+        return Ok(());
     }
 
     ensure_app_registered();
 
     let title = session.unwrap_or("Claude Code");
-    let mut cmd = build_grrr_command(session, title, subtitle, sound, icon_path, ghostty_focused);
+    let mut cmd = build_grrr_command(session, title, subtitle, message, sound, icon_path, ghostty_focused);
 
     cmd.output().map_err(|e| format!("grrr failed: {e}"))?;
     Ok(())
@@ -226,7 +231,7 @@ LSAppInfoItem 0x600003744540 "com.mitchellh.ghostty" (Ghostty)
 
     #[test]
     fn build_grrr_command_uses_none_sound_when_ghostty_focused() {
-        let cmd = build_grrr_command(None, "Claude Code", "Ready", "Hero", None, true);
+        let cmd = build_grrr_command(None, "Claude Code", "Ready", "Ready", "Hero", None, true);
         let args: Vec<_> = cmd.get_args().collect();
         let args: Vec<&str> = args.iter().map(|a| a.to_str().unwrap()).collect();
         let sound_pos = args.iter().position(|&a| a == "--sound").unwrap();
@@ -235,7 +240,7 @@ LSAppInfoItem 0x600003744540 "com.mitchellh.ghostty" (Ghostty)
 
     #[test]
     fn build_grrr_command_uses_provided_sound_when_not_focused() {
-        let cmd = build_grrr_command(None, "Claude Code", "Ready", "Hero", None, false);
+        let cmd = build_grrr_command(None, "Claude Code", "Ready", "Ready", "Hero", None, false);
         let args: Vec<_> = cmd.get_args().collect();
         let args: Vec<&str> = args.iter().map(|a| a.to_str().unwrap()).collect();
         let sound_pos = args.iter().position(|&a| a == "--sound").unwrap();
@@ -244,7 +249,7 @@ LSAppInfoItem 0x600003744540 "com.mitchellh.ghostty" (Ghostty)
 
     #[test]
     fn build_grrr_command_sets_thread_and_identifier_for_session() {
-        let cmd = build_grrr_command(Some("work"), "work", "Done", "Hero", None, false);
+        let cmd = build_grrr_command(Some("work"), "work", "Done", "Done", "Hero", None, false);
         let args: Vec<_> = cmd.get_args().collect();
         let args: Vec<&str> = args.iter().map(|a| a.to_str().unwrap()).collect();
         assert!(args.contains(&"--threadId"));
@@ -254,7 +259,7 @@ LSAppInfoItem 0x600003744540 "com.mitchellh.ghostty" (Ghostty)
 
     #[test]
     fn build_grrr_command_no_thread_flags_when_no_session() {
-        let cmd = build_grrr_command(None, "Claude Code", "Ready", "Hero", None, false);
+        let cmd = build_grrr_command(None, "Claude Code", "Ready", "Ready", "Hero", None, false);
         let args: Vec<_> = cmd.get_args().collect();
         let args: Vec<&str> = args.iter().map(|a| a.to_str().unwrap()).collect();
         assert!(!args.contains(&"--threadId"));
@@ -263,7 +268,7 @@ LSAppInfoItem 0x600003744540 "com.mitchellh.ghostty" (Ghostty)
 
     #[test]
     fn build_grrr_command_skips_image_flag_when_no_icon() {
-        let cmd = build_grrr_command(None, "Claude Code", "Ready", "Hero", None, false);
+        let cmd = build_grrr_command(None, "Claude Code", "Ready", "Ready", "Hero", None, false);
         let args: Vec<_> = cmd.get_args().collect();
         let args: Vec<&str> = args.iter().map(|a| a.to_str().unwrap()).collect();
         assert!(!args.contains(&"--image"));

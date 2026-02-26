@@ -1,3 +1,4 @@
+#[cfg(any(target_os = "linux", test))]
 pub fn sound_file_for_type(notification_type: Option<&str>) -> &'static str {
     match notification_type {
         Some("permission_prompt") | Some("idle_prompt") | Some("elicitation_dialog") => {

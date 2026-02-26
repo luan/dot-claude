@@ -80,6 +80,7 @@ fn tmux_session() -> Option<String> {
 
 /// Returns "session:window" target for switch-client, so clicking
 /// a notification switches to the exact window (tab), not just the session.
+#[cfg(target_os = "linux")]
 fn tmux_target() -> Option<String> {
     if std::env::var("TMUX").is_err() {
         return None;
@@ -142,6 +143,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let mapping = map_notification_type(notification_type.as_deref());
     let session = tmux_session();
+    #[cfg(target_os = "linux")]
     let target = tmux_target();
     let display_title = session.as_deref().unwrap_or("Claude Code");
     let display_subtitle = subtitle.as_deref().or(title.as_deref()).unwrap_or("");
@@ -204,6 +206,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         let _ = macos::notify(
             session.as_deref(),
             display_subtitle,
+            mapping.message,
             mapping.sound,
             icon_str,
         );
