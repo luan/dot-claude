@@ -29,6 +29,31 @@ def get_git_hash() -> str | None:
     return None
 
 
+def compute_average_score(workspace: Path, version: int) -> float | None:
+    """Compute mean score across all grading files for a given version."""
+    grading_dir = workspace / "grading"
+    if not grading_dir.is_dir():
+        return None
+
+    scores: list[int] = []
+    for path in grading_dir.glob(f"*_v{version}_run*.json"):
+        try:
+            data = json.loads(path.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        for result in data.get("results", []):
+            if "score" in result:
+                scores.append(result["score"])
+            elif result.get("passed", False):
+                scores.append(4)
+            else:
+                scores.append(1)
+
+    if not scores:
+        return None
+    return round(sum(scores) / len(scores), 1)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Snapshot current skill into a new versioned directory."
@@ -64,6 +89,9 @@ def main() -> None:
     new_skill_dir.mkdir(parents=True)
     shutil.copytree(current_skill, new_skill_dir, dirs_exist_ok=True)
 
+    # Compute average score from grading files for current version
+    average_score = compute_average_score(workspace, current_version)
+
     # Record version metadata
     version_entry = {
         "version": next_version,
@@ -71,6 +99,7 @@ def main() -> None:
         "description": args.description or f"version {next_version}",
         "git_hash": get_git_hash(),
         "path": f"v{next_version}/skill",
+        "average_score": average_score,
     }
 
     history["versions"].append(version_entry)
@@ -81,6 +110,8 @@ def main() -> None:
     print(f"  Path: {new_skill_dir}")
     if args.description:
         print(f"  Description: {args.description}")
+    if average_score is not None:
+        print(f"  Average score: {average_score}")
 
 
 if __name__ == "__main__":

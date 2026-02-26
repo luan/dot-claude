@@ -1,6 +1,7 @@
 ---
 paths:
-  - "skills/**/SKILL.md"
+  - "skills/**/*"
+  - "rules/skill-*.md"
 ---
 
 Skill(writing-skills)
@@ -22,4 +23,4 @@ Skills degrade when new features are appended rather than woven into existing st
 - **Consolidate shared structure** — if two modes use similar prompts or output formats, use one template with per-mode callouts for differences
 - **Match section order to workflow order** — sections appear in the order the workflow references them, so readers never backtrack
 - **Extract duplicated guidance** — same rule in two places → pull into a shared section and reference it
-- **Read top-to-bottom after editing** — read the full skill file sequentially to verify it flows without jumps or redundancy
+- **Read top-to-bottom before and after editing** — pre-read to understand current structure; post-edit to verify it flows without jumps or redundancy

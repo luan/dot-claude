@@ -4,7 +4,7 @@ All files use JSON. Shown as annotated examples — field descriptions inline.
 
 ## evals.json
 
-Test case definitions. Created by `scripts/init_workspace.py`, populated by the user.
+Test case definitions. Lives in `<skill>/evals/evals.json` (version-controlled with the skill). Created by `scripts/init_workspace.py` if missing, populated by the user.
 
 ```json
 {
@@ -49,7 +49,8 @@ Version tracking. Created by `scripts/init_workspace.py`, updated by `scripts/co
       "timestamp": "2026-02-22T20:00:00Z",  // ISO 8601 UTC
       "description": "baseline",            // what this version represents
       "git_hash": null,                      // commit hash at snapshot time, null if uncommitted
-      "path": "v0/skill"                     // directory containing this version's skill files (relative to workspace)
+      "path": "v0/skill",                    // directory containing this version's skill files (relative to workspace)
+      "average_score": null                  // mean grading score across all cases for this version (null if no scores)
     }
   ],
   "current_version": 0                       // index of the active version being worked on
@@ -60,16 +61,31 @@ Version tracking. Created by `scripts/init_workspace.py`, updated by `scripts/co
 
 Per-run grading output. Written by `agents/grader.md` to `grading/<case_id>_v<version>_run<run>.json`.
 
+### Scoring rubric
+
+| Score | Meaning | Passes? |
+|-------|---------|---------|
+| 1 | Criterion unaddressed or contradicted | No |
+| 2 | Partially addressed; significant gaps | No |
+| 3 | Met minimally; superficial | Yes |
+| 4 | Met well; nuanced | Yes |
+| 5 | Exemplary; all nuances covered | Yes |
+
+Threshold: `score >= 3 → passed: true`. 1-5 scale (not 1-10): fewer false-precision decisions, faster grader calibration, aligns with education rubrics.
+
 ```json
 {
   "case_id": "case-01",                      // matches evals.json case id
   "version": 0,                             // which skill version was graded
   "run": 1,                                 // run number (1-3 in improve mode, always 1 in eval mode)
+  "overall_score": 4.0,                     // mean of all criteria scores
+  "required_score": 4.0,                    // mean of required-only criteria scores
   "results": [
     {
       "criterion": "frontmatter",           // matches evals.json criterion label
-      "passed": true,
-      "reasoning": "Valid YAML with name and description fields"
+      "score": 4,                           // integer 1-5 per rubric above
+      "passed": true,                       // derived: score >= 3
+      "reasoning": "Valid YAML with name and description fields; nuanced triggers"
     }
   ],
   "overall": "pass",                        // "pass" if all required criteria passed, "fail" otherwise
@@ -88,6 +104,10 @@ Per-run grading output. Written by `agents/grader.md` to `grading/<case_id>_v<ve
   "execution_metrics": {}                    // copied from executor's metrics.json if available, empty object otherwise
 }
 ```
+
+**`score` → `passed` derivation:** `passed = score >= 3`. The `passed` field is always present for backwards compatibility but is derived from `score`. Never set `passed` independently.
+
+**`overall_score`:** Mean of all criteria scores (float, one decimal). `required_score`: mean of scores where the criterion has `required: true`.
 
 **`overall` logic:** `"pass"` only when every `required: true` expectation has `passed: true`. Optional failures don't affect `overall`.
 

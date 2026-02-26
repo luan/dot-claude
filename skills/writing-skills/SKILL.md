@@ -1,13 +1,24 @@
 ---
 name: writing-skills
-description: Create, edit, improve, evaluate, and troubleshoot Claude Code agent skills. Use when making a new skill, editing SKILL.md files, modifying skill metadata (types, priority, labels, owner), refactoring skill instructions, improving skill discoverability, debugging why a skill isn't activating, running skill evals, testing skill performance, improving a skill iteratively, answering questions about skills, or reviewing skill best practices. Triggers: 'new skill', 'edit skill', 'update skill', 'fix skill', 'skill not working', 'SKILL.md', 'skill metadata', 'skill consistency', 'eval skill', 'test skill', 'improve skill', 'skill quality'.
+description: "Create, edit, improve, evaluate, and troubleshoot Claude Code agent skills. Use when making a new skill, editing ANY file under a skills/ directory (SKILL.md, references, scripts, evals), modifying skill metadata, refactoring skill instructions, improving skill discoverability, debugging why a skill isn't activating, running skill evals, or reviewing skill best practices. Also activates via rules/skills-editing.md when any skills/**/* file is touched. Triggers: 'new skill', 'edit skill', 'update skill', 'fix skill', 'skill not working', 'SKILL.md', 'skill metadata', 'eval skill', 'test skill', 'improve skill', 'run evals', 'skill quality'."
+argument-hint: "[--run-evals [<skill-path>|all]]"
 ---
 
 # Writing Skills
 
 TDD for process docs. Write test (pressure scenario) → fail → write skill → pass → refactor.
 
-**Iron Law:** No skill without failing test first.
+## Editing a Skill
+
+1. **Pre-check:** `<skill>/evals/evals.json` exists? Missing → stop and create evals (at least one case covering existing behavior) before editing. "I'll add evals after" defeats the gate — the pre-check catches regressions your edit might introduce.
+2. **Read** the skill top-to-bottom — understand current structure so you don't silently break existing behavior.
+3. **Edit.**
+4. **Update evals:** new/changed behavior → add covering criteria. Stale evals on changed behavior prove nothing.
+5. **Grade → aggregate → report scores to user.** Edit isn't done until scores confirm no regressions.
+
+If evals are missing and you can't create them, tell the user: "This skill has no evals — I need to create them before editing."
+
+Untested edits cause silent regressions. Non-negotiable.
 
 ## When to Create
 
@@ -42,6 +53,13 @@ skills/
     references/           # Heavy reference material
     assets/               # Templates, samples, static data
     examples/             # Example outputs
+    evals/                # Version-controlled test definitions
+      evals.json          # Test cases + expectations
+      fixtures/           # Test data files referenced by cases
+  skill-name-workspace/   # Runtime artifacts (gitignored)
+    grading/              # Grading output files
+    history.json          # Version tracking
+    v0/skill/             # Versioned snapshots
 ```
 
 Never add README.md — SKILL.md is the entry point. Keep `SKILL.md` <500 lines; heavy reference → separate files.
@@ -233,38 +251,48 @@ hunting through markup.
 
 ## Eval & Improve
 
-Test skills with evals before shipping. Eval after: writing a new skill, significant edits, or a REFACTOR pass.
+Edit procedure: see **Editing a Skill** at the top.
 
-**Eval workspaces** (`<skill>-workspace/` directories) are local test artifacts — versioned snapshots, fixtures, grading history. Never delete, modify, or flag them during reviews.
+**Eval definitions** (`<skill>/evals/`) are version-controlled — commit them with the skill. **Workspaces** (`<skill>-workspace/`) are gitignored runtime artifacts. Never delete, modify, or flag workspaces during reviews.
 
 ### Building Blocks
 
 | Component | Path | Role |
 |-----------|------|------|
 | Executor | `agents/executor.md` | Runs skill against test prompts, produces transcripts |
-| Grader | `agents/grader.md` | Scores outputs against expectations and conventions |
+| Grader | `agents/grader.md` | Scores outputs against expectations (1-5 rubric) |
 | Comparator | `agents/comparator.md` | Blind A/B comparison between skill versions |
 | Analyzer | `agents/analyzer.md` | Post-hoc analysis with improvement suggestions |
 
 ### Eval Mode (Measure)
 
 1. Init workspace: `uv run scripts/init_workspace.py <skill-path>`
-2. Define test cases in `evals.json` (see `references/schemas.md`)
+2. Define test cases in `<skill>/evals/evals.json` (see `references/schemas.md`). Fixtures in `<skill>/evals/fixtures/`.
 3. Execute each case with `agents/executor.md`
-4. Grade each output with `agents/grader.md`
-5. Aggregate: `uv run scripts/aggregate_results.py <workspace>`
+4. Grade each output with `agents/grader.md` (1-5 scored rubric)
+5. Aggregate: `uv run scripts/aggregate_results.py <workspace>` (dual tables: pass-rate + scores)
 
 ### Improve Mode (Iterate)
 
-1. Run Eval mode to establish v0 baseline — if 100% pass, evals are too easy; tighten first
+1. Run Eval mode to establish v0 baseline — if 100% pass or all scores 5, evals are too easy; tighten first
 2. Per iteration: execute 3x per case → grade → blind compare → analyze
 3. Apply analyzer suggestions, snapshot: `uv run scripts/copy_version.py <workspace>`
 4. Stop when: target reached, no improvement for 2 iterations, or user says stop
-5. Best version wins (not necessarily latest) — check `history.json`
+5. Best version wins (not necessarily latest) — check `history.json` scores
+
+### --run-evals Mode
+
+`/writing-skills --run-evals <skill-path>` or `/writing-skills --run-evals all`
+
+1. **Find skills:** specific path, or glob all `skills/*/evals/evals.json`
+2. **Per skill:** init workspace if needed → execute each case → grade → aggregate
+3. **Report:** per-skill score summary, flag regressions vs previous version
+
+Use after any skill edit to verify no regressions. Use `all` before major commits touching multiple skills.
 
 ### Without Subagents
 
-The full pipeline works without subagents — run each step inline instead of spawning agents:
+Run each step inline instead of spawning agents:
 
 | Full pipeline | Single-agent fallback |
 |---|---|
@@ -294,5 +322,7 @@ For detailed workflow and schemas, see `references/eval-workflow.md` and `refere
 **REFACTOR:** fresh-eyes re-read → cut dead instructions → identify NEW rationalizations → add counters → re-test
 
 **Knowledge/Technique extra:** every instruction carries WHY → no unexplained ALWAYS/NEVER → examples illustrate patterns (not overfit) → editing pass for leanness
+
+**EVAL:** evals exist in `<skill>/evals/` → new criteria cover the edit → grade passes → aggregate shows no regressions
 
 **Deploy:** commit + push
