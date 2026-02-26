@@ -1,6 +1,6 @@
-# Post-Plan No-Tasks Fixture
+# Post-Approval Fixture
 
-Scope task after plan mode completed (ExitPlanMode succeeded) but session was interrupted before task creation. Design exists, plan file exists, but no epic or child tasks were created.
+Scope task after both spec and plan are approved. Session was interrupted before develop could run. Both artifacts exist with status_detail "approved".
 
 ## Scope Tracking Task
 ```json
@@ -13,12 +13,12 @@ Scope task after plan mode completed (ExitPlanMode succeeded) but session was in
     "project": "/fake/project",
     "type": "scope",
     "priority": "P2",
-    "design": "## Current State\n- src/webhooks/sender.ts: fire-and-forget HTTP POST, no retry\n- src/webhooks/types.ts: WebhookPayload interface\n- src/lib/queue.ts: BullMQ queue wrapper, supports delayed jobs\n\n## Recommendation\nAdd retry with exponential backoff using BullMQ delayed jobs. Max 5 attempts, base delay 1s, factor 2x, jitter ±20%.\n\n## Key Files\n- Modify: src/webhooks/sender.ts (add retry logic)\n- Modify: src/webhooks/types.ts (add attempt tracking)\n- Create: src/webhooks/retry.ts (backoff calculator)\n- Create: src/webhooks/retry.test.ts\n\n## Risks\n- Queue backpressure under high failure rates\n- Duplicate delivery if job completes but ack fails\n\n## Next Steps\nPhase 1: Retry infrastructure — src/webhooks/retry.ts, backoff calculator + tests\nPhase 2: Integration — src/webhooks/sender.ts, wire retry into send path + tests",
+    "spec": "## Problem\nWebhooks are fire-and-forget with no retry. Failed deliveries are permanently lost.\n\n## Recommendation\nAdd retry with exponential backoff using existing BullMQ infrastructure. Max 5 attempts, base delay 1s, factor 2x, jitter +/-20%. Dead letter queue for permanent failures. Idempotency keys to prevent duplicates.\n\n## Key Files\n- Modify: src/webhooks/sender.ts (queue-based delivery)\n- Modify: src/webhooks/types.ts (delivery attempt tracking)\n- Create: src/webhooks/retry.ts (backoff calculator)\n- Leverage: src/lib/queue.ts (existing BullMQ wrapper)\n\n## Risks\n- Queue backpressure under high failure rates\n- Duplicate delivery if job completes but ack fails\n- No existing monitoring for retry queue depth",
+    "design": "## Implementation Plan\n\n### Phase 1: Retry infrastructure\n- Files: Create src/webhooks/retry.ts, src/webhooks/retry.test.ts\n- Approach: Implement backoff calculator with configurable base/factor/jitter. TDD with known-answer tests for backoff timing.\n\n### Phase 2: Integration\n- Files: Modify src/webhooks/sender.ts, src/webhooks/types.ts\n- Approach: Replace fire-and-forget with queue job submission. Add DeliveryAttempt type with attempt count tracking. Wire retry.ts into send path.",
+    "plan_file": "/tmp/scope-webhook-retry.md",
     "status_detail": "approved"
   }
 }
 ```
 
-TaskList() returns NO tasks with `metadata.parent_id == "500"` — no epic or child tasks exist.
-
-A plan file exists at `plans/webhook-retry.md` with the same content as metadata.design.
+TaskList() returns NO tasks with `metadata.parent_id == "500"` — no epic or child tasks exist. Develop has not run yet.

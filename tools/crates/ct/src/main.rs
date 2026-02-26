@@ -135,7 +135,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 format,
                 max_total,
                 max_file,
-            } => gitcontext::run(base, format, max_total, max_file),
+                stat,
+                cochanges,
+            } => gitcontext::run(base, format, max_total, max_file, stat, cochanges),
             cli::ToolAction::Cochanges {
                 base,
                 threshold,

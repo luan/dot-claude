@@ -194,6 +194,12 @@ pub enum ToolAction {
 
         #[arg(long, default_value_t = 200, help = "Per-file diff line threshold")]
         max_file: usize,
+
+        #[arg(long, help = "Output diff --stat instead of full diff")]
+        stat: bool,
+
+        #[arg(long, help = "Include co-change candidates in output")]
+        cochanges: bool,
     },
 
     #[command(about = "Find files frequently changed together with current changes")]

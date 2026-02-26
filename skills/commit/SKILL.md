@@ -20,6 +20,8 @@ allowed-tools:
   - AskUserQuestion
   - TaskList
   - TaskGet
+  - "Bash(ct plan archive:*)"
+  - "Bash(ct plan list:*)"
 ---
 
 # Commit
@@ -49,6 +51,14 @@ Recent commits: !`git log --oneline -5 2>/dev/null`
    ```
 
 ## Post-commit
+
+4. **Plan archive:** after successful commit, archive active plans.
+   `ct plan list --json` returns array of `{name, path}` — iterate and archive each:
+   ```
+   ct plan list --json
+   # For each entry: ct plan archive <path>
+   ```
+   Skip silently if no active plans or ct not available.
 
 If gt plugin is loaded → suggest `/gt:submit`. Otherwise → suggest `git push`.
 

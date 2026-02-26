@@ -25,7 +25,7 @@
     },
     {
       "id": "stage-failure-preserves-progress",
-      "prompt": "You are Claude running /vibe 'add user avatars'. Branch created, scope completed successfully (vibe_stage='scope', epic exists with 3 children). You invoke Skill('develop') but it errors out completely — the skill call fails with no progress made.\n\nDemonstrate error handling.",
+      "prompt": "You are Claude running /vibe 'add user avatars'. Branch created, scope completed successfully (vibe_stage='scope', scope task approved with metadata.design populated). You invoke Skill('develop') but it errors out completely — the skill call fails with no progress made.\n\nDemonstrate error handling.",
       "expectations": [
         {
           "criterion": "does-not-update-stage",
@@ -45,22 +45,22 @@
       ]
     },
     {
-      "id": "autonomous-scope-bypasses-plan-mode",
+      "id": "autonomous-scope-bypasses-review",
       "prompt": "You are Claude running /vibe 'add webhook retry with exponential backoff'. You have created the branch and are now about to invoke the Scope stage.\n\nShow the exact Skill() call you make for the scope stage. Then explain what scope does differently when invoked this way vs when the user invokes /scope directly.",
       "expectations": [
         {
           "criterion": "passes-auto-approve",
-          "description": "The Skill call includes '--auto-approve' flag: Skill('scope', args='<prompt> --no-develop --auto-approve') — this is what prevents plan mode from blocking autonomous execution",
+          "description": "The Skill call includes '--auto-approve' flag: Skill('scope', args='<prompt> --no-develop --auto-approve') — this skips user review and goes straight to approval",
           "required": true
         },
         {
-          "criterion": "explains-no-plan-mode",
-          "description": "Explains that --auto-approve causes scope to skip EnterPlanMode/ExitPlanMode, outputting the plan as text instead of blocking for user approval",
+          "criterion": "explains-both-phases-skipped",
+          "description": "Explains that --auto-approve causes scope to skip BOTH spec review and plan review — the spec (what to build) and plan (how to build it) are both auto-approved instead of stopping for user feedback at each gate",
           "required": true
         },
         {
-          "criterion": "still-produces-tasks",
-          "description": "Despite auto-approve, scope still produces the full output: research, epic, child tasks, metadata — the only thing skipped is the interactive approval gate",
+          "criterion": "scope-produces-spec-and-design",
+          "description": "Scope produces a spec (metadata.spec) and implementation plan (metadata.design) with status_detail='approved' — it does NOT create epics or tasks (develop handles that)",
           "required": true
         }
       ]

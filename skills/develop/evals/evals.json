@@ -3,90 +3,113 @@
   "skill": "skills/develop",
   "cases": [
     {
+      "id": "scope-task-creates-epic-and-tasks",
+      "prompt": "You are Claude running /develop t100. TaskGet(100) returns: metadata.type='scope', status_detail='approved', metadata.design contains a full phased design with 2 phases, file paths, and approaches for 'webhook-retry'. metadata.plan_file='/tmp/scope-webhook.md'.\n\nNo epic or child tasks exist yet. CLAUDE_CODE_TASK_LIST_ID is set.\n\nDemonstrate the full flow from Step 1 through to worker dispatch.",
+      "expectations": [
+        {
+          "criterion": "detects-scope-enters-prepare",
+          "description": "Recognizes metadata.type='scope' + status_detail='approved' and enters Step 1b (Prepare). Does NOT try to classify or dispatch the scope task as a work item.",
+          "required": true
+        },
+        {
+          "criterion": "creates-epic-with-design",
+          "description": "Creates an epic via TaskCreate with metadata.type='epic', metadata.slug, metadata.design copied from the scope task's design, and metadata.spec copied from the scope task's spec (if available). The epic is the canonical container for all child tasks.",
+          "required": true
+        },
+        {
+          "criterion": "dispatches-sonnet-with-prompt-reference",
+          "description": "Dispatches ONE subagent (model='sonnet') using the prompt from references/task-creation-prompt.md verbatim. Does NOT write an ad-hoc task creation prompt.",
+          "required": true
+        },
+        {
+          "criterion": "validates-then-finalizes",
+          "description": "After task creation: spot-checks 1-2 file paths via Read, then updates epic with children array and completes the scope task. Both TaskUpdates happen.",
+          "required": true
+        },
+        {
+          "criterion": "falls-through-to-classify-and-dispatch",
+          "description": "After preparation, falls through to Step 2 (Classify) and dispatches workers. Does NOT stop to ask the user — prepare → dispatch is seamless, matching old prepare → implement behavior.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "design-quality-precheck-blocks-vague",
+      "prompt": "You are Claude running /develop t200. TaskGet(200) returns: metadata.type='scope', status_detail='approved', metadata.design contains:\n\n'## Next Steps\\nPhase 1: Refactor the codebase to be better. Files: various. Approach: clean up.'\n\nThis design has no specific file paths and the approach is under 20 words.",
+      "expectations": [
+        {
+          "criterion": "blocks-before-epic-creation",
+          "description": "Pre-check catches the vague design (missing paths, approach under 20 words) and uses AskUserQuestion BEFORE creating any epic or tasks. Does not proceed optimistically with a bad design.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "epic-without-children-resumes-prepare",
+      "prompt": "You are Claude running /develop with no argument. TaskList finds an epic: metadata.type='epic', metadata.design populated, status='in_progress', but it has NO children (metadata.children is empty/missing). No impl_team set.\n\nDemonstrate what happens.",
+      "expectations": [
+        {
+          "criterion": "detects-incomplete-prepare",
+          "description": "Recognizes the epic has design but no children — preparation was interrupted before task creation.",
+          "required": true
+        },
+        {
+          "criterion": "skips-epic-creation-creates-tasks",
+          "description": "Enters Step 1b but skips step 2 (epic already exists). Dispatches task creation subagent, validates, finalizes with children array, then falls through to dispatch.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "plan-file-fallback-on-empty-metadata",
+      "prompt": "You are Claude running /develop t300. TaskGet(300) returns: metadata.type='scope', status_detail='approved', metadata.design is empty string '', metadata.plan_file='/tmp/scope-webhook.md'.\n\nThe plan file at /tmp/scope-webhook.md contains a full phased design.",
+      "expectations": [
+        {
+          "criterion": "reads-plan-file-as-fallback",
+          "description": "Detects metadata.design is empty, sees metadata.plan_file is set, and reads the plan file via ct plan latest as fallback. Does NOT AskUserQuestion about missing design when a plan file exists.",
+          "required": true
+        },
+        {
+          "criterion": "proceeds-with-plan-file-content",
+          "description": "Uses the plan file content as the design source for Step 1b. Creates epic and tasks from it.",
+          "required": true
+        }
+      ]
+    },
+    {
       "id": "recovery-stale-metadata",
       "prompt": "You are Claude running /develop with no argument. TaskList finds an orphaned epic (metadata.impl_team set, status in_progress). The epic has 5 children: 3 completed, 2 pending.\n\nDemonstrate the recovery flow.",
       "expectations": [
         {
           "criterion": "scans-children-first",
-          "description": "Checks all children's statuses before deciding how to recover — does not blindly re-dispatch all tasks",
+          "description": "Checks all children's statuses before deciding how to recover — does not blindly re-dispatch all tasks.",
           "required": true
         },
         {
           "criterion": "only-dispatches-pending",
-          "description": "Only dispatches the 2 pending children, does NOT re-dispatch the 3 already-completed tasks",
-          "required": true
-        },
-        {
-          "criterion": "preserves-completed-work",
-          "description": "Does not clear, reset, or re-run any completed children — their work is preserved",
+          "description": "Only dispatches the 2 pending children. Does NOT re-dispatch the 3 completed tasks — their work is preserved unconditionally.",
           "required": true
         }
       ]
     },
     {
       "id": "all-children-completed-recovery",
-      "prompt": "You are Claude running /develop with no argument. TaskList finds an orphaned epic (metadata.impl_team set, status in_progress). The epic has 4 children, ALL completed.\n\nDemonstrate what you do.",
+      "prompt": "You are Claude running /develop with no argument. TaskList finds an orphaned epic (metadata.impl_team set, status in_progress). All 4 children are completed.\n\nDemonstrate what you do.",
       "expectations": [
         {
-          "criterion": "detects-all-completed",
-          "description": "Recognizes that all children are completed — no dispatch needed",
-          "required": true
-        },
-        {
           "criterion": "skips-to-teardown",
-          "description": "Clears impl_team and proceeds directly to Teardown (acceptance + stage changes) without re-dispatching any workers",
-          "required": true
-        },
-        {
-          "criterion": "does-not-re-dispatch",
-          "description": "Does NOT spawn any workers or implementation agents for already-completed tasks",
+          "description": "Recognizes all children completed. Clears impl_team, skips directly to Teardown (acceptance + stage changes). Does NOT spawn any workers.",
           "required": true
         }
       ]
     },
     {
       "id": "worker-rescope-escalation",
-      "prompt": "You are Claude running /develop for epic 500 ('webhook-retry', slug 'webhook-retry'). Team mode, 3 leaf tasks. You dispatch worker for task 501. The worker returns with this output:\n\n\"RESCOPE: The webhook retry approach assumes idempotent endpoints, but the payment service uses non-idempotent POST for charge creation. Retrying would cause duplicate charges. Need a fundamentally different strategy — likely an outbox pattern with deduplication keys.\"\n\nTasks 502 and 503 have not started yet.\n\nDemonstrate what you do.",
+      "prompt": "You are Claude running /develop for epic 500 ('webhook-retry'). Team mode, 3 leaf tasks. Worker for task 501 returns:\n\n\"RESCOPE: The webhook retry approach assumes idempotent endpoints, but the payment service uses non-idempotent POST for charge creation.\"\n\nTasks 502 and 503 have not started.",
       "expectations": [
         {
-          "criterion": "detects-rescope-signal",
-          "description": "Recognizes the 'RESCOPE:' prefix in worker output as a design conflict signal, not a normal failure",
-          "required": true
-        },
-        {
-          "criterion": "does-not-retry-worker",
-          "description": "Does NOT re-dispatch the worker or attempt to fix the task — a RESCOPE signal means the design is wrong, not the implementation",
-          "required": true
-        },
-        {
-          "criterion": "invokes-scope-continue",
-          "description": "Invokes Skill('scope', '--continue 500') or equivalent to re-scope the epic with the new information",
-          "required": true
-        },
-        {
-          "criterion": "does-not-dispatch-remaining",
-          "description": "Does NOT dispatch tasks 502 and 503 — they depend on a design that's now invalidated",
-          "required": true
-        }
-      ]
-    },
-    {
-      "id": "worker-decomposes-task",
-      "prompt": "You are Claude running /develop for epic 600 using rolling scheduler. 4 leaf tasks initially. Worker for task 601 completes, but during execution it created 2 child tasks (601a, 601b) under task 601 and marked 601 as completed.\n\nThe scheduler re-scans descendants after the completion. Tasks 601a and 601b are now pending leaf tasks with no blockedBy.\n\nDemonstrate the scheduler behavior.",
-      "expectations": [
-        {
-          "criterion": "rescans-descendants",
-          "description": "After worker completion, re-scans the full descendant tree to discover newly-created child tasks (601a, 601b)",
-          "required": true
-        },
-        {
-          "criterion": "dispatches-new-leaves",
-          "description": "Dispatches the newly-discovered leaf tasks (601a, 601b) as part of the rolling scheduler's normal newly_ready scan — treats them like any other unblocked pending leaf",
-          "required": true
-        },
-        {
-          "criterion": "does-not-redispatch-601",
-          "description": "Does NOT re-dispatch task 601 (already completed) — only dispatches the new children",
+          "criterion": "does-not-retry-invokes-scope",
+          "description": "Detects 'RESCOPE:' signal. Does NOT retry the worker or dispatch 502/503. Invokes Skill('scope', '--continue <epicId>') to re-scope the design.",
           "required": true
         }
       ]
