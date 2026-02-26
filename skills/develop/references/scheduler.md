@@ -29,6 +29,8 @@ while tasks remain incomplete:
   or Codex background task finishes via TaskOutput).
 
   On each completion:
+    0. If worker output contains "RESCOPE:" → halt all dispatch, break loop immediately.
+       Do NOT spawn newly_ready tasks. Return RESCOPE signal to orchestrator.
     1. If worker completed its task → active_count--
        If Codex task completed:
          exit 0 → spawn Claude review worker (test + mark completed),

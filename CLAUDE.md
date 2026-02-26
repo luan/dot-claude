@@ -62,8 +62,8 @@ TDD default. Standards in `rules/test-quality.md`.
 
 ## Skill Flow
 
-brainstorm → explore → prepare → implement [acceptance] → review → commit
-After explore: `/prepare <id>`. After prepare: `/implement <epic-id>`.
+brainstorm → scope → develop [acceptance] → review → commit
+After scope: `/develop <id>`.
 
 ## Natural Language Routing
 
@@ -83,7 +83,7 @@ When user input doesn't start with `/`, check if it maps to a skill by matching 
 
 ## Session Resume
 
-On resume after compaction: if tasks exist with `metadata.impl_team` set and status `in_progress`, re-invoke `/implement` to trigger recovery.
+On resume after compaction: if tasks exist with `metadata.impl_team` set and status `in_progress`, re-invoke `/develop` to trigger recovery.
 
 ## Tasks
 
