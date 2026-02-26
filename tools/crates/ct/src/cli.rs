@@ -1,36 +1,10 @@
 use std::collections::BTreeMap;
-use std::path::Path;
 
 use crate::ansi;
+use crate::plan;
 use crate::store::{Priority, SortOrder, Status, StatusFilter, Store, Task, TaskList};
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::{Shell, generate};
-
-fn project_name(project_path: &str) -> String {
-    if project_path.is_empty() {
-        return String::from("(no project)");
-    }
-    let path = Path::new(project_path);
-    let components: Vec<&str> = path
-        .components()
-        .filter_map(|c| c.as_os_str().to_str())
-        .collect();
-
-    for (i, comp) in components.iter().enumerate() {
-        if comp.ends_with(".git") {
-            let stem = comp.strip_suffix(".git").unwrap_or(comp);
-            let rest: Vec<&str> = components[i + 1..].to_vec();
-            if rest.is_empty() {
-                return stem.to_string();
-            }
-            return format!("{}-{}", stem, rest.join("-"));
-        }
-    }
-
-    path.file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_else(|| "(no project)".to_string())
-}
 
 #[derive(Parser)]
 #[command(name = "ck")]
@@ -77,6 +51,12 @@ pub enum Command {
     Task {
         #[command(subcommand)]
         action: TaskAction,
+    },
+
+    #[command(visible_alias = "p", about = "Plan file operations")]
+    Plan {
+        #[command(subcommand)]
+        action: PlanAction,
     },
 
     #[command(visible_alias = "j", about = "Project operations")]
@@ -259,6 +239,72 @@ pub enum ProjectAction {
     Show {
         #[arg(help = "Project slug")]
         slug: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum PlanAction {
+    #[command(about = "List execution plans for the current project")]
+    List {
+        #[arg(long, help = "Output as JSON")]
+        json: bool,
+
+        #[arg(long, help = "Show plans from all projects")]
+        all: bool,
+
+        #[arg(short, long, help = "Filter by project path")]
+        project: Option<String>,
+
+        #[arg(long, help = "Show archived plans instead of active")]
+        archived: bool,
+    },
+
+    #[command(about = "Create a new plan file")]
+    Create {
+        #[arg(long, help = "Plan topic")]
+        topic: String,
+
+        #[arg(long, help = "Project path")]
+        project: String,
+
+        #[arg(long, help = "Custom slug (auto-generated if omitted)")]
+        slug: Option<String>,
+
+        #[arg(long, help = "Filename prefix")]
+        prefix: Option<String>,
+
+        #[arg(long, help = "Plan body content")]
+        body: Option<String>,
+    },
+
+    #[command(about = "Read plan file body or frontmatter")]
+    Read {
+        #[arg(help = "Plan file path")]
+        file: String,
+
+        #[arg(long, help = "Output frontmatter as JSON")]
+        frontmatter: bool,
+    },
+
+    #[command(about = "Find most recently modified plan file")]
+    Latest {
+        #[arg(long, help = "Project path (defaults to git root or cwd)")]
+        project: Option<String>,
+
+        #[arg(long, help = "Resolve this file directly instead of mtime heuristic")]
+        task_file: Option<String>,
+    },
+
+    #[command(about = "Move a plan file to archive/ subfolder")]
+    Archive {
+        #[arg(help = "Plan file path")]
+        file: String,
+    },
+
+    #[command(about = "Show plan content by ID")]
+    Show {
+        #[arg(help = "Plan ID or name")]
+        id: String,
     },
 }
 
@@ -670,6 +716,119 @@ pub fn run_prune(
     Ok(())
 }
 
+pub fn run_plans(
+    cwd: &str,
+    json: bool,
+    all: bool,
+    project: Option<String>,
+    archived: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut plans = if archived {
+        plan::list_archived_plans()
+    } else {
+        plan::list_plans()
+    };
+
+    // Always exclude plans without a project
+    plans.retain(|p| !p.project.is_empty());
+
+    if let Some(ref proj) = project {
+        plans.retain(|p| p.project.contains(proj.as_str()));
+    } else if !all {
+        plans.retain(|p| cwd.contains(&p.project));
+    }
+
+    if plans.is_empty() {
+        if all {
+            eprintln!("{}", ansi::dim("No plans found in ~/.claude/plans/"));
+        } else {
+            eprintln!(
+                "{}",
+                ansi::dim("No plans found for current project. Use --all to show all plans.")
+            );
+        }
+        return Ok(());
+    }
+
+    if json {
+        let json_plans: Vec<_> = plans
+            .iter()
+            .map(|p| {
+                serde_json::json!({
+                    "name": p.name,
+                    "title": p.title,
+                    "project": crate::planfile::project_name(&p.project),
+                    "modified": plan::format_date(p.mod_time),
+                    "size": plan::format_size(p.size),
+                })
+            })
+            .collect();
+        println!("{}", serde_json::to_string_pretty(&json_plans)?);
+    } else {
+        println!(
+            "{}",
+            ansi::bold(&format!(
+                "{:<12} {:<30} {:<42} {:<12} SIZE",
+                "PROJECT", "NAME", "TITLE", "MODIFIED"
+            ))
+        );
+        println!("{}", ansi::dim(&"-".repeat(100)));
+
+        for p in &plans {
+            let proj = crate::planfile::project_name(&p.project);
+
+            let name = if p.name.len() > 28 {
+                format!("{}...", truncate_at_char_boundary(&p.name, 25))
+            } else {
+                p.name.clone()
+            };
+
+            let title = if p.title.len() > 40 {
+                format!("{}...", truncate_at_char_boundary(&p.title, 37))
+            } else {
+                p.title.clone()
+            };
+
+            let title_col = format!("{:<42}", title);
+            println!(
+                "{} {} {} {} {}",
+                ansi::id(&format!("{:<12}", proj)),
+                ansi::dim(&format!("{:<30}", name)),
+                title_col,
+                ansi::dim(&format!("{:<12}", plan::format_date(p.mod_time))),
+                ansi::dim(&plan::format_size(p.size))
+            );
+        }
+    }
+
+    Ok(())
+}
+
+pub fn run_plan(id: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let plans = plan::list_plans();
+
+    if plans.is_empty() {
+        eprintln!("{}", ansi::dim("No plans found in ~/.claude/plans/"));
+        return Ok(());
+    }
+
+    let normalized_id = id.strip_suffix(".md").unwrap_or(id);
+
+    let found = plans.iter().find(|p| {
+        p.name == normalized_id || p.name == id || p.path.file_name().is_some_and(|f| f == id)
+    });
+
+    let Some(plan_ref) = found else {
+        eprintln!("Plan not found: {id}");
+        return Ok(());
+    };
+
+    let content = plan::load_content(&plan_ref.path);
+    println!("{content}");
+
+    Ok(())
+}
+
 pub fn run_slug(words: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     if words.is_empty() {
         return Ok(());
@@ -682,6 +841,70 @@ pub fn run_slug(words: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+pub fn run_plan_create(
+    topic: String,
+    project: String,
+    slug: Option<String>,
+    prefix: Option<String>,
+    body: Option<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut args = vec![
+        "--topic".to_string(),
+        topic,
+        "--project".to_string(),
+        project,
+    ];
+    if let Some(s) = slug {
+        args.push("--slug".to_string());
+        args.push(s);
+    }
+    if let Some(p) = prefix {
+        args.push("--prefix".to_string());
+        args.push(p);
+    }
+    if let Some(b) = body {
+        args.push("--body".to_string());
+        args.push(b);
+    }
+    crate::planfile::cmd_create(&args);
+    Ok(())
+}
+
+pub fn run_plan_read(file: String, frontmatter: bool) -> Result<(), Box<dyn std::error::Error>> {
+    let mut args = vec![file];
+    if frontmatter {
+        args.insert(0, "--frontmatter".to_string());
+    }
+    crate::planfile::cmd_read(&args);
+    Ok(())
+}
+
+pub fn run_plan_latest(
+    project: Option<String>,
+    task_file: Option<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut args = vec![];
+    if let Some(p) = project {
+        args.push("--project".to_string());
+        args.push(p);
+    }
+    if let Some(tf) = task_file {
+        args.push("--task-file".to_string());
+        args.push(tf);
+    }
+    crate::planfile::cmd_latest(&args);
+    Ok(())
+}
+
+pub fn run_plan_archive(file: String) -> Result<(), Box<dyn std::error::Error>> {
+    crate::planfile::cmd_archive(&[file]);
+    Ok(())
+}
+
+pub fn run_plan_show(id: &str) -> Result<(), Box<dyn std::error::Error>> {
+    run_plan(id)
+}
+
 pub fn run_projects(store: &Store, json: bool) -> Result<(), Box<dyn std::error::Error>> {
     // slug -> path (empty string for plan-subdir-only entries)
     let mut projects: BTreeMap<String, String> = BTreeMap::new();
@@ -690,8 +913,31 @@ pub fn run_projects(store: &Store, json: bool) -> Result<(), Box<dyn std::error:
     for list in store.list_task_lists() {
         for task in store.list_tasks(&list.id) {
             if !task.project.is_empty() {
-                let slug = project_name(&task.project);
+                let slug = crate::planfile::project_name(&task.project);
                 projects.entry(slug).or_insert(task.project);
+            }
+        }
+    }
+
+    // Source 2: plans with a non-empty project field
+    for plan in plan::list_plans() {
+        if !plan.project.is_empty() {
+            let slug = crate::planfile::project_name(&plan.project);
+            projects.entry(slug).or_insert(plan.project);
+        }
+    }
+
+    // Source 3: subdirectories of ~/.claude/plans/ (excluding "archive")
+    if let Ok(home) = std::env::var("HOME") {
+        let plans_base = std::path::PathBuf::from(home).join(".claude").join("plans");
+        if let Ok(entries) = std::fs::read_dir(&plans_base) {
+            for entry in entries.flatten() {
+                if entry.path().is_dir()
+                    && let Some(name) = entry.file_name().to_str()
+                    && name != "archive"
+                {
+                    projects.entry(name.to_string()).or_default();
+                }
             }
         }
     }
@@ -729,7 +975,7 @@ pub fn run_project_show(store: &Store, slug: &str) -> Result<(), Box<dyn std::er
     let mut project_path = String::new();
     for list in store.list_task_lists() {
         for task in store.list_tasks(&list.id) {
-            if !task.project.is_empty() && project_name(&task.project) == slug {
+            if !task.project.is_empty() && crate::planfile::project_name(&task.project) == slug {
                 project_path = task.project.clone();
                 break;
             }
@@ -738,6 +984,15 @@ pub fn run_project_show(store: &Store, slug: &str) -> Result<(), Box<dyn std::er
             break;
         }
     }
+    if project_path.is_empty() {
+        for p in plan::list_plans() {
+            if !p.project.is_empty() && crate::planfile::project_name(&p.project) == slug {
+                project_path = p.project.clone();
+                break;
+            }
+        }
+    }
+
     if project_path.is_empty() {
         eprintln!("Project not found: {slug}");
         std::process::exit(1);
@@ -799,6 +1054,20 @@ pub fn run_project_show(store: &Store, slug: &str) -> Result<(), Box<dyn std::er
             );
         }
         println!();
+    }
+
+    // Recent plans
+    let project_plans: Vec<_> = plan::list_plans()
+        .into_iter()
+        .filter(|p| p.project == project_path)
+        .take(5)
+        .collect();
+
+    if !project_plans.is_empty() {
+        println!("{}", ansi::section("Recent Plans"));
+        for p in &project_plans {
+            println!("  {} {}", ansi::dim(&p.name), p.title);
+        }
     }
 
     Ok(())
