@@ -1,5 +1,6 @@
 mod ansi;
 mod app;
+mod artifact;
 mod cli;
 mod cochanges;
 mod editor;
@@ -9,6 +10,8 @@ mod phases;
 mod plan;
 mod planfile;
 mod slug;
+mod spec;
+mod specfile;
 mod store;
 mod ui;
 
@@ -114,6 +117,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             cli::PlanAction::Archive { file } => cli::run_plan_archive(file),
             cli::PlanAction::Show { id } => cli::run_plan_show(&id),
+            cli::PlanAction::Prune {
+                days,
+                dry_run,
+                project,
+            } => cli::run_plan_prune(days, dry_run, project),
+        },
+        Some(cli::Command::Spec { action }) => match action {
+            cli::SpecAction::List {
+                json,
+                all,
+                project,
+                archived,
+            } => {
+                let (_, cwd) = store_and_cwd();
+                cli::run_specs(&cwd, json, all, project, archived)
+            }
+            cli::SpecAction::Create {
+                topic,
+                project,
+                slug,
+                prefix,
+                body,
+            } => cli::run_spec_create(topic, project, slug, prefix, body),
+            cli::SpecAction::Read { file, frontmatter } => cli::run_spec_read(file, frontmatter),
+            cli::SpecAction::Latest { project, task_file } => {
+                cli::run_spec_latest(project, task_file)
+            }
+            cli::SpecAction::Archive { file } => cli::run_spec_archive(file),
+            cli::SpecAction::Show { id } => cli::run_spec_show(&id),
+            cli::SpecAction::Prune {
+                days,
+                dry_run,
+                project,
+            } => cli::run_spec_prune(days, dry_run, project),
         },
         Some(cli::Command::Project { action }) => match action {
             cli::ProjectAction::List { json } => {
