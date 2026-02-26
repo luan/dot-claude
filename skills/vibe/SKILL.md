@@ -54,9 +54,11 @@ Generate slug: `ct tool slug "<prompt>"`. `Skill("start", args="` !`echo "${GIT_
 
 `Skill("scope", args="<prompt> --no-develop --auto-approve")`
 
-**Verify**: `TaskList()` → epic exists with children and `metadata.slug`. **Update**: `vibe_stage: "scope"`, `vibe_epic: "<epicId>"`, `vibe_slug: "<slug>"`
+`--auto-approve` skips BOTH scope's spec and plan review gates — scope produces and stores both artifacts, auto-approving each instead of stopping for feedback. Without this flag, `/scope` would halt twice: once for spec approval, once for plan approval.
 
-If `--dry-run` → stop here. Output "Dry run complete." then report plan and epic, suggest `/develop` or `/vibe --continue`.
+**Verify**: `TaskList()` → scope task with `status_detail === "approved"` and `metadata.design` populated. **Update**: `vibe_stage: "scope"`
+
+If `--dry-run` → stop here. Output "Dry run complete." then report scope task, suggest `/develop` or `/vibe --continue`.
 
 ### Develop
 
@@ -64,7 +66,7 @@ If `--dry-run` → stop here. Output "Dry run complete." then report plan and ep
 
 Note: Acceptance check runs automatically as part of develop teardown.
 
-**Verify**: all children of epic completed. **Update**: `vibe_stage: "develop"`
+**Verify**: `TaskList()` → filter children of the epic. Assert every child has `status === "completed"`. If any child is `in_progress` or `failed`, the stage is incomplete — do not proceed to commit. **Update**: `vibe_stage: "develop"`, `vibe_epic: "<epicId>"`, `vibe_slug: "<slug>"`
 
 Partial task failures: if any child is still `in_progress` (worker crashed mid-implementation), the stage is incomplete. Report per-child status: task ID, title, status (completed/in_progress/failed). Suggest `/vibe --continue` or `/develop` to retry. Only proceed to commit if all children completed OR all incomplete children produced no diff.
 

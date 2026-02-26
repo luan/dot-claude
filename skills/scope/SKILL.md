@@ -19,13 +19,13 @@ allowed-tools:
   - TeamCreate
   - TeamDelete
   - SendMessage
-  - EnterPlanMode
-  - ExitPlanMode
 ---
 
 # Scope
 
-Research → optimistic epic + tasks → plan file → plan mode approval → develop. **Never research on main thread.**
+Research → spec → approve spec → plan → approve plan → develop. **Never research on main thread.**
+
+Two-phase output: **spec** (what we're building) then **plan** (how we're building it). User approves each before proceeding.
 
 ## Interviewing
 
@@ -47,7 +47,7 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
 2. **Recommendation**: chosen approach + rationale
 3. **Key Files**: exact paths to modify/create
 4. **Risks**: edge cases, failure modes
-5. **Next Steps** — per phase: title, file paths, approach, steps
+5. **Suggested Phases** — per phase: title, file paths, approach, steps
 
 ## Escalation
 3+ independent subsystems or 3+ viable approaches → "ESCALATE: team — <reason>"
@@ -57,77 +57,90 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
 
 3. **Validate research:** spot-check ALL architectural claims. File/behavioral claims: check every odd-numbered claim (1st, 3rd, 5th...), minimum 3. Each check: Grep or Read a few lines to confirm existence — do NOT read entire files. Failed check → follow-up subagent.
 
-4. **Store findings:** TaskUpdate(taskId, metadata: {design: "\<findings\>", status_detail: "review"}). The design field must be substantive — full recommendation, per-phase breakdown with file paths, risks. If a reader can't understand the plan from metadata.design alone, it's too sparse.
+### Spec Phase (what we're building)
 
-5. **Create epic:** TaskCreate with title, Problem/Solution/Acceptance, `metadata: {project: REPO_ROOT, slug: <topic-slug>, type: "epic", priority: "P1", design: <source design>}`.
+4. **Synthesize spec** from validated research. The spec is the WHAT — it answers "what are we building and why":
+   - **Problem**: what's broken or missing
+   - **Recommendation**: chosen approach + rationale
+   - **Key Files**: paths to modify/create with roles
+   - **Risks**: edge cases, failure modes, constraints
 
-6. **Create tasks:** Dispatch ONE subagent (model="sonnet"). Read `references/task-creation-prompt.md` and use it verbatim as the subagent prompt — do NOT write an ad-hoc prompt. Each task gets `metadata.design` with goal + key files + approach.
+   The spec does NOT include implementation phases, step-by-step approaches, or task breakdowns — those belong to the plan.
 
-7. **Validate tasks:** spot-check 1-2 task file paths (Read), acceptance criteria, approach. Plus all decomposed sub-tasks. Vague → send back to subagent.
+5. **Store spec:**
+   - `TaskUpdate(taskId, metadata: {spec: "<spec content>", status_detail: "spec_review"})`
+   - `echo "<spec content>" | git notes add --force --file=- HEAD`
 
-8. **Finalize epic:** Collect child task IDs from step 6. Two updates, both required:
-   - `TaskUpdate(epicId, status: "in_progress", metadata: {children: [<child IDs>]})` — the `children` array is the canonical epic→task link (without it, discovering children requires walking all tasks by `parent_id`).
-   - `TaskUpdate(trackingTaskId, status: "completed")` — closes the scope tracking task created in step 1.
+6. **Present spec** — output as conversation text:
+   - `Spec: t<id> — <topic>`
+   - Problem statement
+   - Recommendation + rationale
+   - Key files with roles
+   - Risks and constraints
 
-9. **Write plan file:** Write `plans/<slug>.md`. This file is injected into fresh sessions as context — its format must trigger develop reliably.
+   If `--auto-approve` → skip to step 8.
+   Otherwise → stop for user review.
 
-   Example (webhook-retry epic #600, tasks #601, #602):
+7. **Spec refinement** — if user gives feedback:
+   - **Minor (no new research needed):** Revise spec from stored research + feedback. TaskUpdate revised metadata.spec. Re-archive: `echo "<revised spec>" | git notes add --force --file=- HEAD`. status_detail stays `"spec_review"`.
+   - **Major (user references unexplored code or new approach):** Dispatch follow-up research subagent with current spec as context. Merge findings. TaskUpdate merged spec. Re-archive git note.
+   - Re-present. Repeat until user approves.
+   - Always persist changes to metadata.spec before re-presenting.
 
-   ```markdown
-   # /develop webhook-retry
-   Epic: #600 | Children: #601, #602
-   Status: approved — execute immediately
+8. **Approve spec:** `TaskUpdate(taskId, metadata: {status_detail: "spec_approved"})`.
 
-   Add exponential backoff retry to webhook delivery.
+### Plan Phase (how we're building it)
 
-   ## Tasks
-   | Task | Title | Files | Approach | Blocked By |
-   |------|-------|-------|----------|------------|
-   | #601 | Add retry queue | Create: RetryQueue.swift | Redis-backed FIFO with delay scheduling | — |
-   | #602 | Wire into webhook sender | Modify: WebhookSender.swift | Replace fire-and-forget with queue dispatch | #601 |
+9. **Generate plan** from approved spec + research findings. The plan is the HOW — phased implementation approach:
+   - Per phase: title, files (Read/Modify/Create), approach, steps
+   - Dependencies between phases
+   - Research Next Steps must include file paths — develop depends on them.
 
-   ## Context
-   <design details, key decisions, verification steps>
-   ```
+10. **Store plan:**
+    1. `PLAN_FILE=$(echo "<plan content>" | ct plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "scope" 2>/dev/null)`
+    2. `TaskUpdate(taskId, metadata: {design: "<plan content>", plan_file: "$PLAN_FILE" (omit if empty), status_detail: "review"})`
 
-   **Why this format:** The H1 `# /develop <slug>` is the first line — when the plan file is loaded into a fresh session, natural language routing matches `/develop` and invokes the skill with the slug. Line 2 gives develop the epic + children IDs without searching. All values must be real IDs from the steps above — no placeholders.
+    The design field must be substantive — full phased breakdown with file paths, approaches. If a reader can't understand the plan from metadata.design alone, it's too sparse.
 
-10. **Plan mode:** EnterPlanMode. First line: `Scope: #<tracking task ID>`. Present the plan file content — the user is reviewing real tasks with real IDs, not a hypothetical outline. Reference the plan file path.
+11. **Present plan** — output as conversation text:
+    - `Plan: t<id> — <topic>`
+    - Phased approach — per phase: title, files (Read/Modify/Create), approach
+    - Dependencies
+    - `Next: /develop t<id>`
 
-   **If `--auto-approve`:** skip EnterPlanMode/ExitPlanMode — output plan as text, proceed to step 11. Used by `/vibe` for autonomous execution.
+    If `--auto-approve` → skip to step 13.
+    Otherwise → stop for user review.
 
-   Otherwise: user reviews. On approval → ExitPlanMode, proceed to step 11.
+12. **Plan refinement** — if user gives feedback:
+    - **Minor (no new files needed):** Revise from stored plan + feedback. TaskUpdate revised metadata.design.
+      If metadata.plan_file → overwrite it by writing to the existing path. Do NOT run `ct plan create` again — that generates a new file and orphans the reference in metadata.plan_file.
+    - **Major (new codebase data required):** If the user references unexplored code, asks to research something, or introduces a new architectural approach — dispatch a follow-up subagent with `metadata.design` as prior findings verbatim in the prompt. Merge new + prior. TaskUpdate merged design. Overwrite plan_file if set. When in doubt, dispatch.
+    - **Spec affected?** If feedback changes WHAT we're building (scope, goals, key files, risks) — not just HOW — update metadata.spec too and re-archive: `echo "<revised spec>" | git notes add --force --file=- HEAD`. Approach-only changes leave the spec untouched.
+    - Re-present. Repeat until user approves.
+    - Always persist changes to metadata before re-presenting — develop reads stored artifacts, not conversation context. Stale artifacts = wrong plan.
 
-   **ExitPlanMode rejected:** See Rejection Handling below.
-
-11. **Report + Develop:** Output scope task ID, epic ID + slug, phased task table (task ID, title, blockedBy per row). Then `Skill("develop", "<slug>")` immediately. Skip develop only if `--no-develop` was passed.
-
-## Rejection Handling
-
-When ExitPlanMode is rejected, ask what to change (AskUserQuestion or text). Then:
-
-- **Minor changes** (wording, acceptance criteria, approach tweaks): update existing tasks via TaskUpdate, update plan file, re-present in plan mode, retry ExitPlanMode.
-- **Scope change** (different approach, tasks need restructuring): delete affected tasks, optionally delete epic if slug changes. Re-run from step 5 or 6 depending on what changed. Update plan file.
-- **Full rejection** (wrong direction entirely): delete epic + all tasks. Re-run from step 2 (new research).
-
-Do not dead-end. Do not leave orphaned tasks from a rejected plan.
+13. **Approve plan and finalize:**
+    - `TaskUpdate(taskId, metadata: {status_detail: "approved"})`.
+    - **Spec-to-repo option:** AskUserQuestion — "Save spec as a file in the repo?" If yes, write spec to a file (e.g., `docs/specs/<slug>.md` or project-appropriate path). This lets the user commit the spec alongside implementation files.
+    - If `--no-develop` → report scope task ID, stop.
+    - Otherwise → `Skill("develop", "t<scopeTaskId>")`.
 
 ## Continuation (--continue)
 
-Resolve task: argument → task ID; bare → TaskList `type === "scope"` + `status_detail` in `["review", "approved"]`, most recent. Extract `metadata.design`.
+Resolve task: argument → task ID; bare → TaskList `type === "scope"`, `status_detail` in `["spec_review", "review", "approved"]`, most recent. Extract relevant metadata.
 
-- `status_detail === "approved"` + no epic children exist → plan was approved but tasks weren't created (interrupted session). Resume from step 5 using existing `metadata.design`.
-- Epic + children exist but no plan file → resume from step 9.
-- Otherwise → dispatch subagent with prior + new prompt, merge findings. Re-enter from step 4.
-
-## Design Refinement
-
-If user feedback during plan mode changes the recommendation, revise from stored findings + user feedback only. Do NOT read codebase files — if refinement needs new data, use `--continue` instead. Update tasks and plan file, re-propose in plan mode.
+- `status_detail === "approved"` → already approved. `Skill("develop", "t<taskId>")`.
+- `status_detail === "spec_review"` → re-present spec from metadata.spec. Resume from step 6.
+- `status_detail === "review"` → dispatch subagent with `metadata.design` as prior findings verbatim: "Prior findings: \<metadata.design\>. New prompt: \<user prompt\>. Merge both into updated findings." TaskUpdate merged. If metadata.plan_file → overwrite existing path (do NOT run `ct plan create` again). Re-enter from step 10.
 
 ## Key Rules
 
-- Main thread does NOT research the codebase — subagent does. Refinement uses stored findings only.
-- Epic + tasks are created **before** plan mode (optimistically). User reviews real tasks with real IDs, not a hypothetical outline. On rejection, update or delete — never present an empty plan.
-- Plan file at `plans/<slug>.md` is required — it's the durable artifact that survives session end and references task IDs + develop handoff.
-- Design stored in `metadata.design` on tracking task and epic. Per-task briefs in each child's `metadata.design`.
-- Research Next Steps must include file paths — task creation depends on them.
+- Main thread does NOT research — subagent does.
+- Two-phase output: spec (what) THEN plan (how). Each has its own approval gate.
+- Spec archival: `git notes add --force`. Plan archival: `ct plan create`.
+- Present findings as conversation text, not plan mode. Stop for user review at each gate.
+- Scope does NOT create epic or tasks — develop handles that.
+- metadata.spec = the spec (what). metadata.design = the plan (how). Separate fields.
+- Research Suggested Phases must include file paths — plan depends on them, develop depends on plan.
+- Refinement: minor → revise from findings; major → dispatch follow-up subagent.
+- `--auto-approve` bypasses BOTH spec and plan review gates.

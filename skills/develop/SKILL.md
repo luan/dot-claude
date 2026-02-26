@@ -16,6 +16,9 @@ allowed-tools:
   - AskUserQuestion
   - Read
   - Bash
+  - Glob
+  - Grep
+  - Write
 ---
 
 # Develop
@@ -27,14 +30,45 @@ allowed-tools:
 Resolve argument:
 - Slug (non-numeric) → `TaskList()`, match `metadata.slug`
 - `t<N>` or bare number → `TaskGet(N)`
-- No argument → first in_progress epic, else first pending epic, else first unblocked task
+- No argument → first in_progress epic, else first pending epic, else first scope task with `status_detail === "approved"`, else first unblocked task
 - Nothing found → suggest `/scope`, stop
+
+**Scope task resolution:** if resolved task has `metadata.type === "scope"` and `status_detail === "approved"` → Preparation mode (Step 1b).
+
+**Epic without children:** if resolved task has `metadata.type === "epic"` with `metadata.design` but no children → Preparation mode (Step 1b), skip epic creation.
 
 **Recovery:** Before classifying, check for orphaned epics (`metadata.impl_team` set AND `status == "in_progress"`). Only auto-recover when no explicit argument given.
 - **Children check first:** scan all children. All completed → clear `impl_team`, skip to Teardown (no re-dispatch needed). Some pending + some completed → only dispatch pending children. Never reset, re-run, or modify completed children — their work and status are preserved unconditionally.
 - Team config exists → re-enter Rolling Scheduler from current metadata counters. Re-dispatch unresponsive workers.
 - Config missing → clear `impl_team`, dispatch remaining pending children sequentially (up to 4) via Standalone prompts.
 - After recovery → skip to Teardown.
+
+## Step 1b: Prepare (from scope findings)
+
+Source: scope task's `metadata.design` (or epic's `metadata.design` if epic exists). If `metadata.design` is empty/missing and `metadata.plan_file` is set, read the plan file as fallback: `ct plan latest --task-file <plan_file>`.
+
+1. **Pre-check design quality:**
+   - Must have structured sections with file paths
+   - Standalone testing phase → merge into implementation phases
+   - Single phase spanning 3+ subsystems → AskUserQuestion
+   - Missing paths or approach under 20 words → AskUserQuestion
+
+2. **Create epic** (skip if epic already exists):
+   TaskCreate with title, Problem/Solution/Acceptance,
+   `metadata: {project: REPO_ROOT, slug: <topic-slug>, type: "epic", priority: "P1", design: <source design>, spec: <source spec if available>}`
+
+3. **Create tasks:** Dispatch ONE subagent (model="sonnet"). Read `references/task-creation-prompt.md` and pass its content verbatim as the subagent prompt — do NOT write an ad-hoc prompt. The reference contains decomposition rules, quality requirements, and format specs that must not be paraphrased.
+
+4. **Validate tasks:** spot-check 1-2 file paths (Read), acceptance criteria,
+   approach. Vague → send back to subagent.
+
+5. **Finalize:** Collect child task IDs. Two updates:
+   - `TaskUpdate(epicId, status: "in_progress", metadata: {children: [<child IDs>]})`
+   - Scope task (if source) → `TaskUpdate(scopeTaskId, status: "completed")`
+
+6. **Report:** epic ID + slug, phased task table with blockedBy.
+
+→ **Immediately fall through to Step 2 (Classify).** Do NOT pause, summarize, or ask the user to confirm. Preparation → dispatch is one continuous flow.
 
 ## Step 2: Classify
 
@@ -58,7 +92,7 @@ All modes use `Task(subagent_type="general-purpose")`. Trivial tasks use `model=
 
 Codex routing: `codex` available + leaf task → Codex first, Claude fallback. See `references/scheduler.md`.
 
-**Re-scope escape hatch:** Worker output containing `RESCOPE:` signals a fundamental design conflict (wrong approach, missing prerequisite, contradictory requirements). Do not retry — invoke `Skill("scope", "--continue <epicId>")` to re-scope, then restart dispatch from Step 2 with updated tasks.
+**Re-scope escape hatch:** Worker output containing `RESCOPE:` signals a fundamental design conflict. Immediately halt — do NOT dispatch any remaining workers and do NOT retry the RESCOPE worker. Invoke `Skill("scope", "--continue <epicId>")` to re-scope, then restart dispatch from Step 2 with updated tasks.
 
 ## Solo Mode
 

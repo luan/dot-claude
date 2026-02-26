@@ -29,9 +29,9 @@ Advisory gate — findings are reported, user decides how to proceed.
 
 ## Step 2: Gather Plan Context
 
-**Epic mode:** From `TaskGet(epicId)`: extract `metadata.design`. Not found → "No plan found — checking criteria only."
+**Epic mode:** From `TaskGet(epicId)`: extract `metadata.design`. If `metadata.plan_file` set → `ct plan latest --task-file <plan_file>`. Falls back to metadata.design. Not found → "No plan found — checking criteria only."
 
-**Task mode:** Walk `metadata.parent_id` to find root epic. Extract `metadata.design` from root for context. Falls back to task's own description.
+**Task mode:** Walk `metadata.parent_id` to find root epic. Extract `metadata.design` from root for context. If root has `metadata.plan_file` → `ct plan latest --task-file <plan_file>`. Falls back to task's own description.
 
 ## Step 3: Gather Criteria
 
@@ -83,4 +83,4 @@ Present both reports with clear labels. **PASS** → concise green summary (max 
 
 ## Step 7: Store Findings
 
-TaskUpdate target (epic or task) with `acceptance_result: {verdict, criteria_count, verifier_report, breaker_report}`.
+`ct plan create --prefix "acceptance" --topic "<target subject>" --project "$(git rev-parse --show-toplevel)"`. TaskUpdate target (epic or task) with `acceptance_result: {verdict, criteria_count, verifier_report, breaker_report}` and `plan_file: "$PLAN_FILE"` (omit if empty).

@@ -4,11 +4,11 @@
   "cases": [
     {
       "id": "git-commands-main-thread",
-      "prompt": "You are Claude running /review with no arguments. You need to gather context (git diff, git log, git status, cochanges) and then dispatch reviewer agents.\n\nDemonstrate Step 2 (Setup + Context).",
+      "prompt": "You are Claude running /review with no arguments. You need to gather context (git diff, git log, cochanges) and then dispatch reviewer agents.\n\nDemonstrate Step 2 (Setup + Context).",
       "expectations": [
         {
           "criterion": "context-gathering-efficient",
-          "description": "Git context commands (diff --stat, --name-only, git log) run in parallel in a single message, not sequentially one at a time",
+          "description": "Runs ct tool gitcontext with --stat --cochanges flags to collect all context (diff-stat, changed-files, log, cochanges) in a single command, not 4 separate git calls",
           "required": true
         },
         {

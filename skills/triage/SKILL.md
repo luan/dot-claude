@@ -54,7 +54,8 @@ Mark active: `TaskUpdate(taskId, status: "in_progress", owner: "triage")`
 
 **Store findings** in metadata.design:
 
-`TaskUpdate(taskId, metadata: {design: "<findings>", status_detail: "review"}, description: "Triage: <topic> — findings in metadata.design")`
+1. `PLAN_FILE=$(echo "<findings>" | ct plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "triage" 2>/dev/null)`
+2. `TaskUpdate(taskId, metadata: {design: "<findings>", plan_file: "$PLAN_FILE" (omit if empty), status_detail: "review"}, description: "Triage: <topic> — findings in metadata.design")`
 
 ### 4. Report
 

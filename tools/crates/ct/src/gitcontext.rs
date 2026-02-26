@@ -1,4 +1,7 @@
+use std::collections::HashSet;
 use std::process::{self, Command};
+
+use crate::cochanges;
 
 struct Context {
     branch: String,
@@ -7,6 +10,7 @@ struct Context {
     diff: String,
     truncated: bool,
     truncated_files: Vec<String>,
+    cochanges: Vec<(String, f64)>,
 }
 
 fn fatal(msg: &str) -> ! {
@@ -26,7 +30,13 @@ fn git(args: &[&str]) -> Result<String, String> {
     }
 }
 
-fn gather(base: &str, max_total: usize, max_file: usize) -> Context {
+fn gather(
+    base: &str,
+    max_total: usize,
+    max_file: usize,
+    stat: bool,
+    include_cochanges: bool,
+) -> Context {
     git(&["rev-parse", "--git-dir"]).unwrap_or_else(|_| fatal("not in a git repository"));
 
     git(&["rev-parse", "--verify", base])
@@ -54,13 +64,30 @@ fn gather(base: &str, max_total: usize, max_file: usize) -> Context {
         .map(String::from)
         .collect();
 
-    let diff_raw = git(&["diff", &format!("{base}...HEAD")]).unwrap_or_default();
-
-    let diff_lines = diff_raw.lines().count();
-    let (diff, truncated, truncated_files) = if diff_lines > max_total {
-        truncate_diff(&diff_raw, max_file)
+    let (diff, truncated, truncated_files) = if stat {
+        let stat_out = git(&["diff", &format!("{base}...HEAD"), "--stat"]).unwrap_or_default();
+        (stat_out, false, vec![])
     } else {
-        (diff_raw, false, vec![])
+        let diff_raw = git(&["diff", &format!("{base}...HEAD")]).unwrap_or_default();
+        let diff_lines = diff_raw.lines().count();
+        if diff_lines > max_total {
+            truncate_diff(&diff_raw, max_file)
+        } else {
+            (diff_raw, false, vec![])
+        }
+    };
+
+    let cochange_list = if include_cochanges {
+        let changed_set: HashSet<String> = files.iter().cloned().collect();
+        if changed_set.is_empty() {
+            vec![]
+        } else {
+            let commit_data = cochanges::get_commits_with_files(10000).unwrap_or_default();
+            let associations = cochanges::calculate_file_associations(&commit_data, 0.3, 5);
+            cochanges::collect_changed_associations(&associations, &changed_set, Some(20), base)
+        }
+    } else {
+        vec![]
     };
 
     Context {
@@ -70,6 +97,7 @@ fn gather(base: &str, max_total: usize, max_file: usize) -> Context {
         diff,
         truncated,
         truncated_files,
+        cochanges: cochange_list,
     }
 }
 
@@ -159,6 +187,13 @@ fn print_text(ctx: &Context) {
 
     println!("## Diff");
     print!("{}", ctx.diff);
+
+    if !ctx.cochanges.is_empty() {
+        println!("\n## Cochanges");
+        for (path, fraction) in &ctx.cochanges {
+            println!("{fraction:.1} {path}");
+        }
+    }
 }
 
 fn print_json(ctx: &Context) {
@@ -203,6 +238,17 @@ fn print_json(ctx: &Context) {
         };
         println!("    \"{}\"{comma}", json_str(f));
     }
+    println!("  ],");
+
+    println!("  \"cochanges\": [");
+    for (i, (path, fraction)) in ctx.cochanges.iter().enumerate() {
+        let comma = if i < ctx.cochanges.len() - 1 { "," } else { "" };
+        println!(
+            "    {{\"file\": \"{}\", \"score\": {:.1}}}{comma}",
+            json_str(path),
+            fraction
+        );
+    }
     println!("  ]");
 
     println!("}}");
@@ -213,13 +259,15 @@ pub fn run(
     format: String,
     max_total: usize,
     max_file: usize,
+    stat: bool,
+    include_cochanges: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if format != "text" && format != "json" {
         eprintln!("invalid format \"{format}\": must be \"text\" or \"json\"");
         std::process::exit(1);
     }
 
-    let ctx = gather(&base, max_total, max_file);
+    let ctx = gather(&base, max_total, max_file, stat, include_cochanges);
 
     match format.as_str() {
         "json" => print_json(&ctx),

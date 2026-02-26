@@ -3,225 +3,249 @@
   "skill": "/Users/luan.santos/.claude/skills/scope",
   "cases": [
     {
-      "id": "happy-path-creates-tasks",
-      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope add webhook retry with exponential backoff'. The project root is /fake/project. CLAUDE_CODE_TASK_LIST_ID is set.\n\nYou complete steps 1-4: create tracking task (ID 100), dispatch research subagent (returns findings in fixtures/approved-plan.md), validate findings, store in metadata.design.\n\nNow demonstrate steps 5-11. Show every tool call.",
+      "id": "happy-path-spec-then-plan",
+      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope add webhook retry with exponential backoff'. The project root is /fake/project. CLAUDE_CODE_TASK_LIST_ID is set.\n\nDemonstrate the full flow: create tracking task, dispatch research subagent, validate findings, synthesize spec, present spec, get user approval of spec, then generate plan, present plan, and stop for plan review.\n\nResearch subagent returns findings in fixtures/research-findings.md.",
       "files": [
-        "fixtures/approved-plan.md"
+        "fixtures/research-findings.md"
       ],
       "expectations": [
         {
-          "criterion": "creates-epic-before-plan-mode",
-          "description": "Creates the epic (step 5) BEFORE entering plan mode (step 10). The epic exists with metadata.type='epic', metadata.slug, metadata.design, so the plan can reference real IDs.",
+          "criterion": "spec-presented-first",
+          "description": "After research and validation, a spec is synthesized and presented FIRST. The spec covers WHAT we're building: problem statement, recommendation, key files, risks. It does NOT include implementation phases or step-by-step approach — those belong to the plan.",
           "required": true
         },
         {
-          "criterion": "creates-tasks-before-plan-mode",
-          "description": "Dispatches task creation subagent (step 6) and validates tasks (step 7) BEFORE entering plan mode. Tasks have real IDs that appear in the plan.",
+          "criterion": "spec-stops-for-approval",
+          "description": "After presenting the spec, execution stops and waits for user approval. The plan (phased implementation approach) is NOT generated or presented until the spec is explicitly approved.",
           "required": true
         },
         {
-          "criterion": "writes-plan-file",
-          "description": "Writes plans/<slug>.md with H1 '# /develop <slug>' as first line, 'Epic: #<id> | Children: #<id>, ...' as line 2, then task table with real IDs, files, approach, blockedBy. Format matches the concrete example in step 9.",
+          "criterion": "plan-generated-after-spec-approval",
+          "description": "Only after user approves the spec does scope generate the implementation plan (phased approach with file paths, steps, approaches). The plan is a separate artifact stored in metadata.design, distinct from the spec in metadata.spec.",
           "required": true
         },
         {
-          "criterion": "plan-mode-shows-real-ids",
-          "description": "Plan mode presentation references real task IDs (not placeholders). First line is 'Scope: #100'. User reviews concrete tasks, not a hypothetical outline.",
+          "criterion": "plan-stops-for-review",
+          "description": "After presenting the plan, execution stops and waits for user review before proceeding to develop. Includes 'Next: /develop t<id>'.",
           "required": true
         },
         {
-          "criterion": "develop-handoff",
-          "description": "After ExitPlanMode succeeds, invokes Skill('develop', '<slug>') immediately without stopping to ask.",
-          "required": true
-        },
-        {
-          "criterion": "finalizes-both-tasks",
-          "description": "TaskUpdate(epicId, status: 'in_progress', metadata: {children: [IDs]}) and TaskUpdate(trackingTaskId, status: 'completed') — both happen.",
+          "criterion": "does-not-create-epic-or-tasks",
+          "description": "Scope ONLY produces spec + plan. It does NOT create an epic or tasks. Epic and task creation are develop's job.",
           "required": true
         }
       ]
     },
     {
-      "id": "rejection-minor-update",
-      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope add webhook retry with exponential backoff'. CLAUDE_CODE_TASK_LIST_ID is set. You complete steps 1-10: research, validate, store findings, create epic #200, create tasks #201-203, validate, finalize, write plan file, enter plan mode with real task IDs.\n\nYou call ExitPlanMode but the user REJECTS it. The user says: 'Task 202 should use an outbox pattern instead of direct retry. Also change the acceptance criteria for 203 to include idempotency check.'\n\nDemonstrate what you do next.",
-      "files": [
-        "fixtures/approved-plan.md"
-      ],
-      "expectations": [
-        {
-          "criterion": "updates-existing-tasks",
-          "description": "Uses TaskUpdate to modify tasks #202 and #203 with the requested changes — does NOT delete and recreate them. Minor changes update in place.",
-          "required": true
-        },
-        {
-          "criterion": "updates-plan-file",
-          "description": "Updates the plan file (plans/<slug>.md) to reflect the changes to tasks 202 and 203. The plan file stays in sync with task metadata.",
-          "required": true
-        },
-        {
-          "criterion": "re-presents-in-plan-mode",
-          "description": "Re-enters plan mode (or stays in it) to present the updated plan with the same task IDs. Does not skip straight to develop.",
-          "required": true
-        },
-        {
-          "criterion": "preserves-other-tasks",
-          "description": "Does NOT delete or modify task #201 or the epic #200 — only the tasks the user asked to change are modified.",
-          "required": true
-        }
-      ]
-    },
-    {
-      "id": "rejection-scope-change",
-      "prompt": "You are Claude following the scope skill instructions. You've completed steps 1-10 for '/scope add webhook retry'. Epic #300, tasks #301-303 exist. Plan file written. You're in plan mode.\n\nExitPlanMode rejected. User says: 'Actually, we should use an event-driven architecture with message queues instead of HTTP retry. This is a completely different approach.'\n\nDemonstrate rejection handling.",
+      "id": "spec-refinement-persists",
+      "prompt": "You are Claude following the scope skill instructions. You completed research for '/scope add webhook retry'. Tracking task #100 with metadata.spec populated and status_detail='spec_review'. Spec has been presented to the user.\n\nUser says: 'I think we should use a dead letter queue instead of just retry. Also add idempotency keys.'\n\nDemonstrate spec refinement.",
       "files": [],
       "expectations": [
         {
-          "criterion": "deletes-affected-tasks",
-          "description": "Deletes or marks as cancelled the existing tasks #301-303 since the approach is fundamentally different. Does not leave orphaned tasks from the rejected plan.",
+          "criterion": "revises-spec-not-plan",
+          "description": "Revises the spec (what we're building) based on feedback. Does NOT generate or modify a plan — the plan doesn't exist yet because the spec hasn't been approved.",
           "required": true
         },
         {
-          "criterion": "re-researches",
-          "description": "Dispatches new research subagent for the event-driven approach (step 2), since this is a different approach requiring new codebase investigation — not just a refinement from stored findings.",
+          "criterion": "persists-before-re-presenting",
+          "description": "TaskUpdate with revised metadata.spec happens BEFORE re-presenting the spec to the user. Downstream skills read stored artifacts, not conversation context.",
           "required": true
         },
         {
-          "criterion": "creates-new-tasks",
-          "description": "Creates new tasks for the event-driven approach. The user reviews a new plan with new task IDs, not a patched version of the old plan.",
+          "criterion": "stays-in-spec-review",
+          "description": "status_detail remains 'spec_review' after refinement. Does NOT advance to plan generation or 'review' status.",
           "required": true
         }
       ]
     },
     {
-      "id": "continue-post-approval-skips-research",
-      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope --continue'. CLAUDE_CODE_TASK_LIST_ID is set.\n\nTaskList() finds task 500 (see fixtures/post-plan-no-tasks.md): metadata.type='scope', status='in_progress', status_detail='approved', metadata.design is populated. But no epic or child tasks exist.\n\nDemonstrate the full --continue workflow from this state.",
+      "id": "auto-approve-both-phases",
+      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope add webhook retry --auto-approve'. CLAUDE_CODE_TASK_LIST_ID is set.\n\nYou complete research and validation. Now demonstrate the full flow through spec and plan with --auto-approve.\n\nResearch subagent returns findings in fixtures/research-findings.md.",
       "files": [
-        "fixtures/post-plan-no-tasks.md"
+        "fixtures/research-findings.md"
       ],
       "expectations": [
         {
-          "criterion": "detects-approved-no-tasks",
-          "description": "Recognizes that the scope task has status_detail='approved' with design populated, but no epic or child tasks exist — the session was interrupted.",
+          "criterion": "spec-auto-approved",
+          "description": "With --auto-approve, the spec is produced and stored but user review is skipped — does NOT stop for user feedback on the spec.",
           "required": true
         },
         {
-          "criterion": "skips-research",
-          "description": "Does NOT dispatch a research subagent or re-enter plan mode. The plan was already approved.",
+          "criterion": "plan-auto-approved",
+          "description": "The plan is also auto-approved — does NOT stop for user feedback on the plan either. Both phases skip review.",
           "required": true
         },
         {
-          "criterion": "creates-epic-and-tasks",
-          "description": "Proceeds to create epic (step 5) and dispatch task creation subagent (step 6). Uses the existing metadata.design as the source.",
+          "criterion": "both-artifacts-stored",
+          "description": "Both metadata.spec and metadata.design are populated. Both archival procedures run (git notes for spec, ct plan create for plan).",
           "required": true
         },
         {
-          "criterion": "completes-normally",
-          "description": "Runs steps 5-11 to completion: epic created, tasks created, validated, finalized, plan file written, report + develop invoked.",
+          "criterion": "invokes-develop-with-task-id",
+          "description": "After both phases complete, sets status_detail='approved' and invokes Skill('develop', 't<scopeTaskId>') with the explicit task ID.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "plan-refinement-after-spec",
+      "prompt": "You are Claude following the scope skill instructions. Spec for '/scope add webhook retry' was approved. Tracking task #100 with metadata.spec populated, metadata.design populated, metadata.plan_file set. status_detail is 'review'.\n\nUser says: 'Use an outbox pattern instead of direct retry for the first phase.'\n\nDemonstrate plan refinement.",
+      "files": [],
+      "expectations": [
+        {
+          "criterion": "approach-feedback-stays-in-plan",
+          "description": "This feedback ('use an outbox pattern instead of direct retry') changes the HOW (approach for phase 1), not the WHAT. So metadata.spec is unchanged and only metadata.design is revised. If feedback had changed what we're building, both spec and plan would be updated.",
+          "required": true
+        },
+        {
+          "criterion": "updates-design-before-re-presenting",
+          "description": "TaskUpdate with revised metadata.design happens BEFORE re-presenting the plan. Overwrites plan_file if it exists (does NOT create a new file).",
+          "required": true
+        },
+        {
+          "criterion": "approval-sets-status-and-invokes-develop",
+          "description": "After user approves plan: TaskUpdate status_detail='approved', then Skill('develop', 't100'). Task ID is passed explicitly.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "spec-plan-archival",
+      "prompt": "You are Claude following the scope skill instructions. You have completed research for '/scope add webhook retry'. Demonstrate the archival procedure for BOTH the spec (after spec approval) and the plan (after plan generation).\n\nShow the exact commands/calls used to archive each artifact.",
+      "files": [],
+      "expectations": [
+        {
+          "criterion": "spec-uses-git-notes",
+          "description": "Spec is archived using 'git notes add' — the spec content is attached as a git note to HEAD. ct plan create is NOT used for the spec.",
+          "required": true
+        },
+        {
+          "criterion": "plan-uses-ct-plan-create",
+          "description": "Plan is archived using 'ct plan create' with --prefix 'scope' — the existing archival mechanism. git notes is NOT used for the plan. Plan file path stored in metadata.plan_file.",
+          "required": true
+        },
+        {
+          "criterion": "both-stored-in-metadata",
+          "description": "Spec stored in metadata.spec AND plan stored in metadata.design. Both fields are populated as separate metadata entries.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "spec-to-repo-option",
+      "prompt": "You are Claude following the scope skill instructions. Both spec and plan are approved for '/scope add webhook retry'. Tracking task #100. User is about to proceed to develop.\n\nDemonstrate the spec-to-repo option that should be offered at the end.",
+      "files": [],
+      "expectations": [
+        {
+          "criterion": "offers-spec-file-option",
+          "description": "After plan approval, AskUserQuestion offers the option to save the spec as a file in the repository. This is optional — user can decline.",
+          "required": true
+        },
+        {
+          "criterion": "writes-file-if-accepted",
+          "description": "If user accepts, writes the spec content as a markdown file in the repo. The file will be included in the eventual commit alongside implementation files.",
+          "required": true
+        },
+        {
+          "criterion": "proceeds-regardless",
+          "description": "Whether user accepts or declines the spec file option, scope proceeds to invoke develop (or stop if --no-develop).",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "continue-spec-review",
+      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope --continue'. CLAUDE_CODE_TASK_LIST_ID is set.\n\nTaskList() finds task 500: metadata.type='scope', status='in_progress', status_detail='spec_review', metadata.spec populated.\n\nDemonstrate the --continue workflow for a task in spec review.",
+      "files": [],
+      "expectations": [
+        {
+          "criterion": "resumes-spec-not-plan",
+          "description": "Detects status_detail='spec_review' and re-presents the spec for user review. Does NOT skip to plan generation or invoke develop.",
+          "required": true
+        },
+        {
+          "criterion": "handles-feedback-or-approval",
+          "description": "If user provides feedback, enters spec refinement loop. If user approves, proceeds to plan generation.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "continue-plan-review",
+      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope --continue add more detail about error handling'. CLAUDE_CODE_TASK_LIST_ID is set.\n\nTaskList() finds task 500: metadata.type='scope', status='in_progress', status_detail='review', metadata.spec populated, metadata.design populated, metadata.plan_file='/tmp/scope-webhook.md'.\n\nDemonstrate the --continue workflow for a task in plan review.",
+      "files": [],
+      "expectations": [
+        {
+          "criterion": "dispatches-with-prior-findings",
+          "description": "Dispatches a research subagent with both the prior metadata.design AND the new prompt. The subagent merges, not replaces.",
+          "required": true
+        },
+        {
+          "criterion": "overwrites-plan-file-not-creates-new",
+          "description": "Updates metadata.design AND overwrites the existing plan file (metadata.plan_file). Does NOT create a new plan file.",
+          "required": true
+        },
+        {
+          "criterion": "re-enters-plan-presentation",
+          "description": "After merging, re-enters the plan presentation flow. Does NOT re-present the spec (already approved). Does not skip to approval.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "continue-approved-invokes-develop",
+      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope --continue'. CLAUDE_CODE_TASK_LIST_ID is set.\n\nTaskList() finds task 500: metadata.type='scope', status='in_progress', status_detail='approved', metadata.spec populated, metadata.design populated.\n\nDemonstrate the --continue workflow.",
+      "files": [],
+      "expectations": [
+        {
+          "criterion": "detects-approved-skips-to-develop",
+          "description": "Recognizes status_detail='approved' and immediately invokes Skill('develop', 't500'). Does NOT re-research, re-present spec or plan, or re-enter any review loop.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "major-feedback-dispatches-subagent",
+      "prompt": "You are Claude following the scope skill instructions. Spec approved, plan presented for '/scope add webhook retry'. Tracking task #100, status_detail='review'.\n\nUser says: 'Actually, I think we need to use an event-driven architecture with message queues instead. Can you research how our codebase handles async messaging?'\n\nDemonstrate plan refinement with major feedback.",
+      "files": [],
+      "expectations": [
+        {
+          "criterion": "dispatches-subagent-for-new-research",
+          "description": "Recognizes this needs new codebase data and dispatches a follow-up research subagent. Does NOT attempt to revise from stored findings alone — the user explicitly asked to research something new.",
+          "required": true
+        },
+        {
+          "criterion": "merges-and-persists",
+          "description": "Merges new research with existing plan, then persists to metadata.design AND overwrites plan file if exists. metadata.spec is NOT modified — the spec (what) was already approved.",
           "required": true
         }
       ]
     },
     {
       "id": "no-task-tools-guard",
-      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope add webhook retry with exponential backoff'. The project root is /fake/project.\n\nHowever, CLAUDE_CODE_TASK_LIST_ID is NOT set. TaskCreate, TaskUpdate, TaskGet, TaskList calls will fail or be unavailable.\n\nDemonstrate what happens.",
+      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope add webhook retry'. CLAUDE_CODE_TASK_LIST_ID is NOT set.\n\nDemonstrate what happens.",
       "files": [],
       "expectations": [
         {
-          "criterion": "detects-missing-task-tools",
-          "description": "Detects early (before dispatching research) that task tools are unavailable because CLAUDE_CODE_TASK_LIST_ID is not set",
-          "required": true
-        },
-        {
-          "criterion": "does-not-silently-fail",
-          "description": "Does NOT proceed through the full workflow and silently produce a plan with no tasks. Either warns the user upfront or fails with a clear message.",
-          "required": true
-        },
-        {
-          "criterion": "actionable-guidance",
-          "description": "Tells the user how to fix it (set CLAUDE_CODE_TASK_LIST_ID) or offers a degraded mode",
-          "required": true
-        }
-      ]
-    },
-    {
-      "id": "plan-file-is-durable-artifact",
-      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope add webhook retry with exponential backoff'. CLAUDE_CODE_TASK_LIST_ID is set. Tracking task #100. Research done. Epic #600 created with child tasks #601 and #602.\n\nShow: (1) what the plan file contains, (2) what plan mode shows, (3) what happens after approval. Focus on whether the plan file and plan mode reference real task IDs and develop handoff.",
-      "files": [
-        "fixtures/approved-plan.md"
-      ],
-      "expectations": [
-        {
-          "criterion": "plan-file-has-task-ids",
-          "description": "The plan file (plans/<slug>.md) contains a task table with real numeric IDs (#601, #602), not placeholders. Each row has title, files, approach, blockedBy.",
-          "required": true
-        },
-        {
-          "criterion": "plan-file-title-is-develop",
-          "description": "The plan file's H1 title is '# /develop <slug>' (e.g., '# /develop webhook-retry'). This is the FIRST LINE — not a footer or 'Next Step' section. When loaded into a fresh session, natural language routing matches '/develop' in the title and triggers the skill.",
-          "required": true
-        },
-        {
-          "criterion": "plan-file-line2-has-epic-children",
-          "description": "Line 2 of the plan file is 'Epic: #<epicId> | Children: #<id1>, #<id2>, ...' with real numeric IDs. This gives develop everything it needs to find work without TaskList scanning.",
-          "required": true
-        },
-        {
-          "criterion": "plan-mode-anchors-scope-id",
-          "description": "Plan mode presentation starts with 'Scope: #100' — the actual numeric tracking task ID.",
-          "required": true
-        },
-        {
-          "criterion": "epic-stores-children",
-          "description": "Step 8 updates the epic's metadata with a children array [601, 602] — the canonical epic→task link.",
-          "required": true
-        }
-      ]
-    },
-    {
-      "id": "fresh-session-plan-triggers-develop",
-      "prompt": "You are Claude Code starting a FRESH session. You have NO prior conversation context. The system has injected the following plan file content as context:\n\n---\nA plan file exists from plan mode at: /Users/someone/project/plans/webhook-retry.md\n\nPlan contents:\n\n# /develop webhook-retry\nEpic: #600 | Children: #601, #602\n\nAdd exponential backoff retry to webhook delivery.\n\n## Tasks\n| Task | Title | Files | Approach | Blocked By |\n|------|-------|-------|----------|------------|\n| #601 | Add retry queue | Create: RetryQueue.swift | Redis-backed FIFO with delay scheduling | — |\n| #602 | Wire into webhook sender | Modify: WebhookSender.swift | Replace fire-and-forget with queue dispatch | #601 |\n\n## Context\nRetry uses exponential backoff with jitter. Max 5 attempts.\n\nIf this plan is relevant to the current work and not already complete, continue working on it.\n---\n\nThe user says nothing — the plan file IS the input. Demonstrate what you do.",
-      "files": [],
-      "expectations": [
-        {
-          "criterion": "invokes-develop-skill",
-          "description": "Invokes Skill('develop', 'webhook-retry') or equivalent — recognizes '# /develop webhook-retry' as a skill invocation via natural language routing and acts on it.",
-          "required": true
-        },
-        {
-          "criterion": "passes-slug-not-epic-id",
-          "description": "Passes the slug 'webhook-retry' to the develop skill, NOT the epic ID. The slug is the argument develop needs to find the plan file and resolve the epic.",
-          "required": true
-        },
-        {
-          "criterion": "does-not-re-research",
-          "description": "Does NOT dispatch a research subagent, re-scope the work, or ask the user what to do. The plan file is complete — the correct action is to execute it immediately.",
-          "required": true
-        },
-        {
-          "criterion": "does-not-ask-permission",
-          "description": "Does NOT ask the user 'Should I proceed?' or 'Would you like me to start development?' — the plan file's instruction 'continue working on it' plus the H1 '/develop' is a clear directive.",
+          "criterion": "detects-early-and-stops",
+          "description": "The shell guard at the top detects CLAUDE_CODE_TASK_LIST_ID is unset and outputs a warning BEFORE any research is dispatched. Tells the user to set it in .claude/settings.json.",
           "required": true
         }
       ]
     },
     {
       "id": "validation-stays-lightweight",
-      "prompt": "You are Claude following the scope skill instructions. The research subagent returns findings that reference 8 source files with claims like 'SyncEngine.swift exports the main sync loop' and 'HTTPSyncProtocolClient.swift handles retry logic'.\n\nDemonstrate step 3 (Validate research). Show the exact tool calls you make.",
+      "prompt": "You are Claude following the scope skill instructions. The research subagent returns findings referencing 8 files with claims like 'SyncEngine.swift exports the main sync loop' and 'HTTPSyncProtocolClient.swift handles retry logic'.\n\nDemonstrate step 3 (Validate research).",
       "files": [],
       "expectations": [
         {
           "criterion": "spot-checks-not-full-reads",
-          "description": "Uses Grep or short Read calls (a few lines) to confirm claims exist — does NOT read entire source files. Validation is spot-checking, not research.",
+          "description": "Uses Grep or short Read (a few lines) to confirm claims. Does NOT read entire files — validation is spot-checking, not research.",
           "required": true
         },
         {
           "criterion": "checks-odd-numbered-minimum-3",
-          "description": "Checks every odd-numbered file/behavioral claim (1st, 3rd, 5th...) with minimum 3 checks.",
-          "required": true
-        },
-        {
-          "criterion": "no-new-research",
-          "description": "Does NOT explore files beyond what the subagent mentioned or read related files. Main thread validates existing claims only.",
+          "description": "Checks every odd-numbered claim (1st, 3rd, 5th...) with minimum 3 checks. ALL architectural claims are checked.",
           "required": true
         }
       ]

@@ -4,7 +4,7 @@
   "cases": [
     {
       "id": "edit-skill-activates",
-      "prompt": "You are Claude with the writing-skills skill loaded. The user says: 'Update the scope skill step 5 to include task IDs in the plan mode presentation.'\n\nThis requires editing skills/scope/SKILL.md. Demonstrate what you do BEFORE making the edit. Show your process.",
+      "prompt": "You are Claude with the writing-skills skill loaded. The user says: 'Update the scope skill step 5 to include risk severity ratings in the findings presentation.'\n\nThis requires editing skills/scope/SKILL.md. Demonstrate what you do BEFORE making the edit. Show your process.",
       "files": [],
       "expectations": [
         {
