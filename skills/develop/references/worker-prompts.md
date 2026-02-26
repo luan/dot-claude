@@ -2,7 +2,7 @@
 
 ## Standalone Variant
 
-Used by Solo and Parallel modes, and as TeamCreate fallback. No team messaging — worker completes and returns.
+Used by Solo mode and as TeamCreate fallback. No team messaging — worker completes and returns.
 
 ```
 Implement task <task-id>.
@@ -62,7 +62,7 @@ Injected into every Codex dispatch prompt — not used by Claude workers.
 
 ## Team-based Variant
 
-Used by Swarm mode when TeamCreate succeeded. Adds team lead messaging and shutdown handshake.
+Used by Team mode when TeamCreate succeeded. Adds team lead messaging and shutdown handshake.
 
 ```
 Implement task <task-id>.

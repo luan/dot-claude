@@ -7,9 +7,9 @@ Skills are SKILL.md files with YAML frontmatter. Claude loads them based on desc
 - `context: fork` → runs as isolated subagent
 - `allowed-tools` → restricts tool access
 
-## Implement Skill State Model
+## Develop Skill State Model
 
-The implement skill (`skills/implement/SKILL.md`) tracks state only via:
+The develop skill (`skills/develop/SKILL.md`) tracks state only via:
 1. Task status fields (pending/in_progress/completed)
 2. Task `metadata.owner` ("solo", "worker-<taskId>")
 3. Team config file at `~/.claude/teams/<name>/config.json`
@@ -33,14 +33,14 @@ What SURVIVES compaction:
 - CLAUDE.md (always injected fresh as system-reminder)
 - All rules/*.md files (injected fresh)
 - All skill SKILL.md files currently loaded
-- Task state in Linear (queryable via TaskGet/TaskList)
+- Task state (queryable via TaskGet/TaskList)
 - Team config files (readable from filesystem)
 - Git state (queryable)
 
 What is LOST during compaction:
 - The rolling scheduler loop state (active_count, dispatch_count map)
 - Knowledge that a team exists and is active
-- Knowledge that `implement` skill is active/in-progress
+- Knowledge that `develop` skill is active/in-progress
 - Which tasks are "in flight" (workers running but task still in_progress)
 - The orchestration pattern (main thread = orchestrator, not implementer)
 
@@ -48,7 +48,7 @@ What is LOST during compaction:
 
 Vibe skill stores `metadata.vibe_stage` in a task — survives compaction.
 `/vibe --continue` reads vibe_stage to resume from last checkpoint.
-But implement has no equivalent checkpoint/resume mechanism.
+Develop has recovery logic: checks for orphaned epics with `metadata.impl_team` set.
 
 ## Context Warning Hook
 

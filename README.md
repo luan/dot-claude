@@ -7,9 +7,8 @@ for AI-assisted development.
 
 ```bash
 /vibe "add user authentication"      # Full pipeline, hands-off
-/explore "add user authentication"   # Research + design
-/prepare <task-id>                   # Create epic + phased tasks
-/implement <epic-id>                 # Execute (solo or swarm)
+/scope "add user authentication"     # Research, design, create tasks
+/develop <epic-id>                   # Execute (solo or swarm)
 /review                              # Adversarial code review
 /commit                              # Conventional commit
 ```
@@ -17,22 +16,19 @@ for AI-assisted development.
 ## Pipeline
 
 ```
-brainstorm|explore → prepare → implement → split-commit → review → commit
+brainstorm → scope → develop → split-commit → review → commit
 ```
 
 - **brainstorm**: Collaborative design for greenfield features
-- **explore**: Research codebase, produce phased design plan
-- **prepare**: Convert plan into epic + task briefs (no code)
-- **implement**: Workers own TDD from briefs (auto solo/swarm)
+- **scope**: Research codebase, design, and create implementation tasks
+- **develop**: Workers own TDD from briefs (auto solo/swarm)
 - **split-commit**: Repackage branch into clean, tested commits
 - **review**: Adversarial review with built-in fix loop + polish
 - **commit**: Conventional commit
 
 Other skills: `/test-plan`, `/triage`, `/debugging`, `/next`, `/start`,
-`/split-commit`, `/gt`, `/git-surgeon`, `/pr-description`,
-`/pr-fix-comments`, `/pr-fix-gha`, `/pr-reviewers`,
-`/bootstrap:web`, `/bootstrap:caddy`, `/frontend-design`,
-`/writing-skills`
+`/split-commit`, `/gt`, `/acceptance`, `/pr:descr`,
+`/pr:comments`, `/frontend-design`
 
 ## License
 

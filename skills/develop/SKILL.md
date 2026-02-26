@@ -1,6 +1,6 @@
 ---
-name: implement
-description: "Execute an epic or task — auto-detects solo vs team mode, dispatches subagents. Triggers: 'implement', 'execute the plan', 'build this', 'code this plan', 'start implementing', 'go implement', 'kick off the tasks', 'run this epic', epic/task ID. Do NOT use when: a full autonomous end-to-end workflow is needed — use /vibe instead."
+name: develop
+description: "Execute an epic or task — auto-detects solo vs team mode, dispatches subagents. Triggers: 'develop', 'implement', 'execute the plan', 'build this', 'code this plan', 'start implementing', 'go implement', 'kick off the tasks', 'run this epic', epic/task ID. Do NOT use when: a full autonomous end-to-end workflow is needed — use /vibe instead."
 argument-hint: "[<epic-slug>|t<id>|<id>] [--solo]"
 user-invocable: true
 allowed-tools:
@@ -18,7 +18,7 @@ allowed-tools:
   - Bash
 ---
 
-# Implement
+# Develop
 
 **IMMEDIATELY dispatch.** Never implement on main thread.
 
@@ -28,7 +28,7 @@ Resolve argument:
 - Slug (non-numeric) → `TaskList()`, match `metadata.slug`
 - `t<N>` or bare number → `TaskGet(N)`
 - No argument → first in_progress epic, else first pending epic, else first unblocked task
-- Nothing found → suggest `/explore` then `/prepare`, stop
+- Nothing found → suggest `/scope`, stop
 
 **Recovery:** Before classifying, check for orphaned epics (`metadata.impl_team` set AND `status == "in_progress"`). Only auto-recover when no explicit argument given.
 - Team config exists → re-enter Rolling Scheduler from current metadata counters. Re-dispatch unresponsive workers.

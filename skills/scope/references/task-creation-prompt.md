@@ -30,6 +30,7 @@ TaskCreate:
     priority: <inherit from epic, default "P2">
     parent_id: "<epic-id>"
     depth: 1  # 1 = phase task; sub-tasks get depth 2; leaves get depth 3
+    design: "<compact summary: goal + key files + approach strategy>"
 
 Decomposition rule: if a phase has 3+ distinct implementation concerns
 (each touching different files/components), split into sub-tasks.
@@ -58,6 +59,7 @@ even if code within each task stays flat.
 - Each task = one logical unit (one feature/fix/change)
 - **TDD is per-task, never a separate phase.** Every task includes writing tests
   (red-green-refactor). Dedicated "testing" phases → fold into implementation tasks.
+- Every task must have `metadata.design` — compact summary of goal + key files + approach
 ```
 
-Task titles MUST start with "Phase N:" — implement uses this for sequencing.
+Task titles MUST start with "Phase N:" — develop uses this for sequencing.
