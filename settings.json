@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/notify.sh"
+            "command": "ct notify"
           }
         ]
       }

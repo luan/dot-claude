@@ -4,6 +4,7 @@ mod cli;
 mod cochanges;
 mod editor;
 mod gitcontext;
+mod notify;
 mod phases;
 mod slug;
 mod store;
@@ -18,7 +19,7 @@ use clap::{CommandFactory, Parser};
 use crossterm::event::{self, Event, KeyEventKind};
 use crossterm::execute;
 use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
-use notify::{RecursiveMode, Watcher};
+use fs_notify::{RecursiveMode, Watcher};
 
 enum AppEvent {
     Terminal(Event),
@@ -98,6 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 cli::run_project_show(&store, &slug)
             }
         },
+        Some(cli::Command::Notify) => notify::run(),
         Some(cli::Command::Tool { action }) => match action {
             cli::ToolAction::Slug { words } => cli::run_slug(words),
             cli::ToolAction::Phases { file } => phases::run_phases(file),
@@ -189,21 +191,22 @@ fn run_loop(
 
     // Filesystem watcher on the tasks base directory
     let fs_tx = tx;
-    let mut watcher = notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
-        if let Ok(evt) = res {
-            let dominated_by_json = evt.paths.iter().any(|p| {
-                p.extension().is_some_and(|ext| ext == "json")
-                    && !p
-                        .file_name()
-                        .unwrap_or_default()
-                        .to_string_lossy()
-                        .starts_with(".tmp-")
-            });
-            if dominated_by_json {
-                let _ = fs_tx.send(AppEvent::FsChange);
+    let mut watcher =
+        fs_notify::recommended_watcher(move |res: fs_notify::Result<fs_notify::Event>| {
+            if let Ok(evt) = res {
+                let dominated_by_json = evt.paths.iter().any(|p| {
+                    p.extension().is_some_and(|ext| ext == "json")
+                        && !p
+                            .file_name()
+                            .unwrap_or_default()
+                            .to_string_lossy()
+                            .starts_with(".tmp-")
+                });
+                if dominated_by_json {
+                    let _ = fs_tx.send(AppEvent::FsChange);
+                }
             }
-        }
-    })?;
+        })?;
     watcher.watch(app.tasks_base_path(), RecursiveMode::Recursive)?;
 
     loop {
