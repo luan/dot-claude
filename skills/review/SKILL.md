@@ -1,13 +1,18 @@
 ---
 name: review
-description: "Adversarial code review dispatching parallel reviewer agents across correctness, security, architecture, and performance lenses. Triggers: 'review', 'review my changes', 'check this code', 'code review'. Use --team for 3-perspective mode. Do NOT use when: investigating unknown bug — use /debugging."
+description: "Thorough adversarial code review covering correctness, security, architecture, and performance. Triggers: 'review', 'review my changes', 'check this code', 'code review'. Use --team for 3-perspective mode. Do NOT use when: investigating unknown bug — use /debugging."
 argument-hint: "[base..head | file-list | PR#] [--against <issue-id>] [--team] [--continue]"
 user-invocable: true
 allowed-tools:
   - Task
   - AskUserQuestion
   - Read
-  - Bash
+  - "Bash(git diff:*)"
+  - "Bash(git log:*)"
+  - "Bash(git status:*)"
+  - "Bash(ct tool:*)"
+  - "Bash(gh pr:*)"
+  - "Bash(gh api:*)"
   - TaskCreate
   - TaskUpdate
   - TaskList
