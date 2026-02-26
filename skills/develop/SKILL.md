@@ -1,6 +1,6 @@
 ---
 name: develop
-description: "Execute an epic or task — auto-detects solo vs team mode, dispatches subagents. Triggers: 'develop', 'implement', 'execute the plan', 'build this', 'code this plan', 'start implementing', 'go implement', 'kick off the tasks', 'run this epic', epic/task ID. Do NOT use when: a full autonomous end-to-end workflow is needed — use /vibe instead."
+description: "Execute implementation for an epic or individual task. Triggers: 'develop', 'execute the plan', 'build this', 'code this plan', 'kick off the tasks', 'run this epic', 'run the plan', epic/task ID. Do NOT use when: a full autonomous end-to-end workflow is needed — use /vibe instead."
 argument-hint: "[<epic-slug>|t<id>|<id>] [--solo]"
 user-invocable: true
 allowed-tools:
@@ -31,6 +31,7 @@ Resolve argument:
 - Nothing found → suggest `/scope`, stop
 
 **Recovery:** Before classifying, check for orphaned epics (`metadata.impl_team` set AND `status == "in_progress"`). Only auto-recover when no explicit argument given.
+- **Children check first:** scan all children. All completed → clear `impl_team`, skip to Teardown (no re-dispatch needed). Some pending + some completed → only dispatch pending children. Never reset, re-run, or modify completed children — their work and status are preserved unconditionally.
 - Team config exists → re-enter Rolling Scheduler from current metadata counters. Re-dispatch unresponsive workers.
 - Config missing → clear `impl_team`, dispatch remaining pending children sequentially (up to 4) via Standalone prompts.
 - After recovery → skip to Teardown.
@@ -46,7 +47,7 @@ Resolve argument:
 
 ## Pre-compute Context
 
-After classifying, write `metadata: {breadcrumb: "Epic > Phase > ...", epic_design: "<design>"}` to each leaf task. Implement-worker and standalone workers use this instead of re-walking ancestors.
+After classifying, write `metadata: {breadcrumb: "Epic > Phase > ...", epic_design: "<design>"}` to each leaf task. Source `epic_design` from the root epic's `metadata.design` (populated by scope). Implement-worker and standalone workers use this instead of re-walking ancestors.
 
 ## Worker Dispatch
 
@@ -56,6 +57,8 @@ All modes use `Task(subagent_type="general-purpose")`. Trivial tasks use `model=
 - **Team-based** (Team): adds SendMessage + shutdown handshake
 
 Codex routing: `codex` available + leaf task → Codex first, Claude fallback. See `references/scheduler.md`.
+
+**Re-scope escape hatch:** Worker output containing `RESCOPE:` signals a fundamental design conflict (wrong approach, missing prerequisite, contradictory requirements). Do not retry — invoke `Skill("scope", "--continue <epicId>")` to re-scope, then restart dispatch from Step 2 with updated tasks.
 
 ## Solo Mode
 

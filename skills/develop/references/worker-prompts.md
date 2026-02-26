@@ -28,6 +28,8 @@ Implement task <task-id>.
 - Never invoke Skill("commit") — orchestrator handles commits
 - Only modify files in your task scope
 - Bug found elsewhere → TaskCreate(subject: "Found: ...", metadata: {type: "bug", priority: "P2", project: "<repo root>"})
+- Task too large (3+ subsystems, unclear approach) → TaskCreate child tasks under current task, mark current task completed. Scheduler picks up children automatically.
+- Fundamental design conflict (wrong approach, missing prerequisite, contradictory requirements) → stop immediately, report "RESCOPE: <reason>" in output. Do not attempt workarounds.
 ```
 
 ## Codex Conventions Component
@@ -89,4 +91,6 @@ Implement task <task-id>.
 - Never run git commands
 - Never invoke Skill("commit") — orchestrator handles commits
 - Bug found elsewhere → TaskCreate(subject: "Found: ...", metadata: {type: "bug", priority: "P2", project: "<repo root>"})
+- Task too large (3+ subsystems, unclear approach) → TaskCreate child tasks under current task, SendMessage "DECOMPOSED: <task-id> into N subtasks" to team lead. Mark current task completed.
+- Fundamental design conflict → stop, SendMessage "RESCOPE: <reason>" to team lead. Do not attempt workarounds.
 ```
