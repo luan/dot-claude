@@ -6,12 +6,12 @@ Two modes: **Eval** (measure) and **Improve** (iterate). Both share the same gra
 
 Runs the skill against test cases and reports pass/fail. Use to check acceptance criteria or regression-test after edits.
 
-1. **Init workspace** — `uv run scripts/init_workspace.py <skill-path>` creates `v0/skill/`, `evals.json`, `history.json`, `grading/`
-2. **Define test cases** — populate `evals.json` with prompts and expectations (see `references/schemas.md`)
+1. **Init workspace** — `uv run scripts/init_workspace.py <skill-path>` creates `v0/skill/`, `history.json`, `grading/` in the workspace, and `<skill>/evals/evals.json` if missing
+2. **Define test cases** — populate `<skill>/evals/evals.json` with prompts and expectations (see `references/schemas.md`). Fixtures go in `<skill>/evals/fixtures/`.
 3. **Execute** — `agents/executor.md` runs the skill on each test case, writes output to workspace
 4. **Grade** — `agents/grader.md` scores each output against expectations, writes `grading/<case_id>_v<N>_run<R>.json`
-5. **Aggregate** — `uv run scripts/aggregate_results.py <workspace>` computes pass rates and prints summary
-6. **Report** — display aggregate table, flag failing cases
+5. **Aggregate** — `uv run scripts/aggregate_results.py <workspace>` computes pass rates and scores, prints dual tables (pass-rate + score)
+6. **Report** — display aggregate tables, flag failing cases
 
 ## Improve Mode
 
@@ -30,16 +30,17 @@ Iterates on the skill until it meets quality targets. Use when eval reveals the 
    - No improvement in 2 consecutive iterations
    - Time budget exhausted
    - User says stop
-4. **Best version wins** — not necessarily the latest; pick the version with highest pass rate from `history.json`
+4. **Best version wins** — not necessarily the latest; pick the version with highest pass rate and score from `history.json`. Compare using score trends (mean ± range across runs) when pass rates are tied.
 
 ## Eval Quality Loop
 
 Run this check before improving the skill itself. Lax evals waste improvement cycles.
 
-**If grader passes everything on the first run (100% v0 pass rate), the evals are too easy.** Tighten `evals.json` before proceeding.
+**If grader passes everything on the first run (100% v0 pass rate), the evals are too easy.** Tighten `evals.json` before proceeding. Similarly, **if all criteria score 5 on baseline**, the evals lack discrimination — a perfect score on attempt one means the rubric isn't testing anything hard.
 
 Signs of lax grading:
 - All cases pass on baseline
+- All criteria score 5 on baseline (ceiling effect)
 - Criteria use vague words ("appropriate", "reasonable", "good")
 - Every criterion is `required: false`
 - No criterion tests a concrete, falsifiable property

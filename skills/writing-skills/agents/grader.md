@@ -29,10 +29,16 @@ Review a transcript and output artifacts, then determine whether each expectatio
 For each expectation:
 
 1. **Search for evidence** in transcript and output artifacts
-2. **Determine verdict**:
-   - **PASS**: Clear evidence the expectation is true AND reflects genuine compliance, not surface-level
-   - **FAIL**: No evidence, contradicting evidence, or superficial compliance
-3. **Cite evidence**: Quote specific text from artifacts or transcript
+2. **Assign a score (1-5)** using the rubric in `references/schemas.md`:
+   - **5** — Structurally unavoidable; redundant enforcement, no exploitable gaps
+   - **4** — Met well; clear instruction with minor gaps
+   - **3** — Met minimally; present but skippable under pressure
+   - **2** — Partially addressed; significant gaps
+   - **1** — Criterion unaddressed or contradicted
+3. **Derive passed**: `score >= 3 → passed: true`
+4. **Cite evidence**: Quote specific text from artifacts or transcript. `reasoning` must justify the specific score level — explain why NOT the score above.
+
+**Calibration:** Ask "could a capable but time-pressured model plausibly skip or misapply this?" — if yes, not a 5. Never reference previous scores, prior versions, or what changed. Grade the artifact as-is.
 
 ### Step 3: Check Writing-Skills Convention Compliance
 
@@ -83,11 +89,14 @@ The output **must** match the `grading.json` schema in `references/schemas.md`:
   "case_id": "case-01",
   "version": 0,
   "run": 1,
+  "overall_score": 4.0,
+  "required_score": 4.0,
   "results": [
     {
       "criterion": "frontmatter",
+      "score": 4,
       "passed": true,
-      "reasoning": "Frontmatter contains name: 'my-skill', description: 'Use when...'"
+      "reasoning": "Frontmatter contains name: 'my-skill', description: 'Use when...' — nuanced triggers but missing one edge case"
     }
   ],
   "overall": "pass",
@@ -108,7 +117,8 @@ The output **must** match the `grading.json` schema in `references/schemas.md`:
 ```
 
 **Field rules:**
-- `results`: One entry per expectation from evals.json. `criterion` matches the evals.json criterion label. `reasoning` cites evidence from artifacts.
+- `results`: One entry per expectation from evals.json. `criterion` matches the evals.json criterion label. `score` is an integer 1-5 per the rubric. `passed` is derived: `score >= 3`. `reasoning` must justify the specific score level.
+- `overall_score`: Mean of all `score` values (float, one decimal). `required_score`: mean of scores where the expectation has `required: true`. Compute as: `overall_score = round(mean(all scores), 1)`, `required_score = round(mean(required scores), 1)`.
 - `overall`: `"pass"` only when every `required: true` expectation has `passed: true`.
 - `convention_compliance`: Always include all five keys. Each has `passed` (bool) and `details` (string).
 - `claims`: Array of objects with `claim`, `verified`, `evidence`. From Step 4.

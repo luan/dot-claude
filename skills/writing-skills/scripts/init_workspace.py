@@ -36,7 +36,18 @@ def main() -> None:
         else skill_path.parent / f"{skill_path.name}-workspace"
     )
 
-    # Create directory structure
+    # Ensure skill has evals/ directory with evals.json
+    evals_dir = skill_path / "evals"
+    evals_path = evals_dir / "evals.json"
+    if not evals_path.exists():
+        evals_dir.mkdir(parents=True, exist_ok=True)
+        evals = {"version": "1.0", "skill": str(skill_path), "cases": []}
+        evals_path.write_text(json.dumps(evals, indent=2) + "\n")
+        print(f"Created {evals_path}")
+    else:
+        print(f"Evals found: {evals_path}")
+
+    # Create workspace directory structure (runtime artifacts only)
     v0_skill = workspace / "v0" / "skill"
     grading_dir = workspace / "grading"
     v0_skill.mkdir(parents=True, exist_ok=True)
@@ -49,15 +60,6 @@ def main() -> None:
     else:
         print("v0/skill/ already populated, skipping copy")
 
-    # Write starter evals.json (won't overwrite)
-    evals_path = workspace / "evals.json"
-    if not evals_path.exists():
-        evals = {"version": "1.0", "skill": str(skill_path), "cases": []}
-        evals_path.write_text(json.dumps(evals, indent=2) + "\n")
-        print(f"Created {evals_path}")
-    else:
-        print("evals.json already exists, skipping")
-
     # Write empty history.json (won't overwrite)
     history_path = workspace / "history.json"
     if not history_path.exists():
@@ -69,6 +71,7 @@ def main() -> None:
                     "description": "baseline",
                     "git_hash": None,
                     "path": "v0/skill",
+                    "average_score": None,
                 }
             ],
             "current_version": 0,
@@ -79,6 +82,7 @@ def main() -> None:
         print("history.json already exists, skipping")
 
     print(f"\nWorkspace ready: {workspace}")
+    print(f"Evals: {evals_path}")
 
 
 if __name__ == "__main__":
