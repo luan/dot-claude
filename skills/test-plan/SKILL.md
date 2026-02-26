@@ -37,10 +37,11 @@ Use injected Stat/Files above for the no-args case. Override with $ARGUMENTS:
 | file list    | `git diff HEAD -- <files>` |
 | `#123`       | `gh pr diff 123`           |
 
-**Early exit.** ALL files trivial → `## Test Plan: No Manual Testing Required` + stat output.
+**Early exit.** ALL files trivial (after excluding never-trivial files) → `## Test Plan: No Manual Testing Required` + stat output.
 
-Trivial: *.md, *.txt, LICENSE, CHANGELOG, comment-only, whitespace-only, CI metadata.
-**Never trivial:** SKILL.md, CLAUDE.md, *.mdx — executable specs that change agent behavior. Analyze with code rigor: what behavior changed, what could break, what to verify.
+Trivial: *.md (except SKILL.md, CLAUDE.md, *.mdx), *.txt, LICENSE, CHANGELOG, comment-only, whitespace-only, CI metadata.
+
+SKILL.md, CLAUDE.md, and *.mdx are **never trivial** — executable specs that change agent behavior. Analyze with code rigor: what behavior changed, what could break, what to verify.
 
 ## Step 2: Analyze
 
