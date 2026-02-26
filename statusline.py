@@ -1,7 +1,7 @@
 #!/usr/bin/env uv run
 """Two-line Claude Code statusline with dot progress bars and quota tracking."""
 
-import json, os, sys, subprocess, time
+import json, os, re, sys, subprocess, time
 from datetime import datetime, timezone
 
 # Ayu Dark palette
@@ -240,7 +240,14 @@ def fetch_usage():
         raw = _run(
             ["security", "find-generic-password", "-s", "Claude Code-credentials", "-w"]
         )
-        token = json.loads(raw).get("claudeAiOauth", {}).get("accessToken")
+        # macOS may hex-encode keychain values containing binary prefixes
+        try:
+            creds = json.loads(raw)
+            token = creds.get("claudeAiOauth", {}).get("accessToken")
+        except (json.JSONDecodeError, ValueError):
+            decoded = bytes.fromhex(raw).decode("utf-8", errors="replace")
+            m = re.search(r'"accessToken"\s*:\s*"(sk-ant-[^"]+)"', decoded)
+            token = m.group(1) if m else None
         if not token:
             return None
 
