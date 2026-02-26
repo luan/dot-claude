@@ -44,8 +44,8 @@ Skip Steps 2–6. Decompose, dispatch children, verify.
 
 1. **Create children** — one per concern. Each: `metadata: {parent_id: task.id, depth: (task.metadata.depth ?? 0) + 1, ...inherited}`.
 2. **Dispatch** — up to 4 concurrent `Task(subagent_type="general-purpose")` using Sub-Worker Prompt (Step 2). Each child's breadcrumb = parent breadcrumb + current task subject.
-3. **Wait** for all children.
-4. `Skill("acceptance", args=task.id)` — PASS → complete task. FAIL → report, do not complete.
+3. **Verify children** — after all agents return, `TaskGet` each child. Any child still `in_progress` → report which completed and which failed, do NOT proceed to acceptance or mark parent complete.
+4. All children completed → `Skill("acceptance", args=task.id)` — PASS → complete task. FAIL → report, do not complete.
 
 ## Step 2: Claim Task
 
@@ -80,9 +80,13 @@ Implement task <task-id>.
 - Bug elsewhere → TaskCreate(subject: "Found: ...", metadata: {type: "bug", priority: "P2", project: "<repo root>"})
 ```
 
+## Step 3.5: Verify Sub-Worker
+
+`TaskGet(<task-id>)` after sub-worker returns. If status is still `in_progress` (worker crashed or failed to complete), return failure to caller — do NOT proceed to Step 4.
+
 ## Step 4: Complete Task
 
-`TaskUpdate(taskId, status: "completed", metadata: {completedAt: "<ISO 8601>"})` — mark complete here, not inside sub-worker.
+Only if Step 3.5 confirms no failure. `TaskUpdate(taskId, status: "completed", metadata: {completedAt: "<ISO 8601>"})` — mark complete here, not inside sub-worker.
 
 ## Step 5: Return
 
