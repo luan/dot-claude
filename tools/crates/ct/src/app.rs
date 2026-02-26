@@ -8,8 +8,9 @@ use std::collections::HashSet;
 use std::path::Path;
 
 use crate::editor;
+use crate::plan;
 use crate::store::{Status, Store, Task, TaskList};
-use crate::ui::{confirm, create, detail, help, list, status, theme};
+use crate::ui::{confirm, create, detail, help, list, plan_detail, plans, status, theme};
 
 fn truncate_at_char_boundary(s: &str, max_bytes: usize) -> &str {
     if s.len() <= max_bytes {
@@ -23,12 +24,20 @@ fn truncate_at_char_boundary(s: &str, max_bytes: usize) -> &str {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+enum Tab {
+    Tasks,
+    Plans,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum Screen {
     List,
     Detail,
     Status,
     Confirm,
     Create,
+    Plans,
+    PlanDetail,
     Help,
 }
 
@@ -39,11 +48,14 @@ pub struct App {
     list_idx: usize,
     screen: Screen,
     prev_screen: Screen,
+    active_tab: Tab,
     list: list::ListState,
     detail: Option<detail::DetailState>,
     status_picker: Option<status::StatusPickerState>,
     confirm: Option<confirm::ConfirmState>,
     create_form: Option<create::CreateState>,
+    plans_state: Option<plans::PlansState>,
+    plan_detail: Option<plan_detail::PlanDetailState>,
     help_scroll: u16,
     status_msg: String,
     pub should_quit: bool,
@@ -67,6 +79,10 @@ impl App {
             .iter()
             .position(|l| l.id == active_list)
             .unwrap_or(0);
+        let all_plans: Vec<_> = plan::list_plans()
+            .into_iter()
+            .filter(|p| !p.project.is_empty())
+            .collect();
         Self {
             store,
             active_list,
@@ -74,11 +90,14 @@ impl App {
             list_idx,
             screen: Screen::List,
             prev_screen: Screen::List,
+            active_tab: Tab::Tasks,
             list: list::ListState::new(tasks),
             detail: None,
             status_picker: None,
             confirm: None,
             create_form: None,
+            plans_state: Some(plans::PlansState::new(all_plans)),
+            plan_detail: None,
             help_scroll: 0,
             status_msg: String::new(),
             should_quit: false,
@@ -97,7 +116,11 @@ impl App {
         }
 
         // Help toggle (works from most screens)
-        if key.code == KeyCode::Char('?') && self.screen != Screen::Help && !self.list.searching {
+        if key.code == KeyCode::Char('?')
+            && self.screen != Screen::Help
+            && !self.list.searching
+            && !self.plans_state.as_ref().is_some_and(|p| p.searching)
+        {
             self.prev_screen = self.screen;
             self.help_scroll = 0;
             self.screen = Screen::Help;
@@ -126,6 +149,8 @@ impl App {
             Screen::Status => self.handle_status_key(key),
             Screen::Confirm => self.handle_confirm_key(key),
             Screen::Create => self.handle_create_key(key),
+            Screen::Plans => self.handle_plans_key(key),
+            Screen::PlanDetail => self.handle_plan_detail_key(key),
             Screen::Help => {} // handled above
         }
     }
@@ -235,6 +260,8 @@ impl App {
                 self.status_msg = "Reloaded".to_string();
             }
             KeyCode::Char('L') => self.cycle_task_list(),
+            KeyCode::Tab | KeyCode::Char('2') => self.switch_tab(Tab::Plans),
+            KeyCode::Char('1') => self.switch_tab(Tab::Tasks),
             KeyCode::Char('z') if self.list.tree_view => {
                 self.list.pending_z = true;
             }
@@ -297,6 +324,14 @@ impl App {
             KeyCode::Char('s') => self.open_status_picker(),
             KeyCode::Char('e') => self.open_editor(),
             KeyCode::Char('D') => self.open_confirm(),
+            KeyCode::Char('p') => {
+                let project = self.detail.as_ref().map(|d| d.task.project.clone());
+                if let Some(ps) = &mut self.plans_state {
+                    ps.project_filter = project.filter(|p| !p.is_empty());
+                    ps.reload_plans();
+                }
+                self.switch_tab(Tab::Plans);
+            }
             _ => {}
         }
     }
@@ -404,6 +439,108 @@ impl App {
             KeyCode::Char(c) => form.type_char(c),
             _ => {}
         }
+    }
+
+    fn handle_plans_key(&mut self, key: KeyEvent) {
+        let Some(ps) = &mut self.plans_state else {
+            return;
+        };
+
+        if ps.searching {
+            match key.code {
+                KeyCode::Esc => {
+                    ps.searching = false;
+                    ps.query.clear();
+                    ps.search_input.clear();
+                    ps.filter();
+                }
+                KeyCode::Enter => {
+                    ps.searching = false;
+                }
+                KeyCode::Backspace => {
+                    ps.search_input.pop();
+                    ps.query = ps.search_input.clone();
+                    ps.filter();
+                }
+                KeyCode::Char(c) => {
+                    ps.search_input.push(c);
+                    ps.query = ps.search_input.clone();
+                    ps.filter();
+                }
+                _ => {}
+            }
+            return;
+        }
+
+        match key.code {
+            KeyCode::Char('q') => self.should_quit = true,
+            KeyCode::Tab | KeyCode::Char('1') => self.switch_tab(Tab::Tasks),
+            KeyCode::Char('2') => self.switch_tab(Tab::Plans),
+            KeyCode::Char('j') | KeyCode::Down => ps.next(),
+            KeyCode::Char('k') | KeyCode::Up => ps.prev(),
+            KeyCode::Char('g') => ps.home(),
+            KeyCode::Char('G') => ps.end(),
+            KeyCode::Char('A') => ps.cycle_source(),
+            KeyCode::Char('e') if ps.source == plans::PlanSource::Active => {
+                if let Some(p) = ps.selected_plan().cloned() {
+                    let path = p.path.to_string_lossy().to_string();
+                    self.prev_screen = self.screen;
+                    self.editor_request = Some(EditorRequest {
+                        path,
+                        task_id: String::new(), // empty = plan edit
+                        list_id: String::new(),
+                    });
+                }
+            }
+            KeyCode::Char('/') => {
+                ps.searching = true;
+                ps.search_input.clear();
+                ps.query.clear();
+            }
+            KeyCode::Enter => {
+                if let Some(p) = ps.selected_plan().cloned() {
+                    self.plan_detail = Some(plan_detail::PlanDetailState::new(p));
+                    self.screen = Screen::PlanDetail;
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_plan_detail_key(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Char('q') => self.should_quit = true,
+            KeyCode::Esc => self.screen = Screen::Plans,
+            KeyCode::Char('j') | KeyCode::Down => {
+                if let Some(pd) = &mut self.plan_detail {
+                    pd.scroll_down();
+                }
+            }
+            KeyCode::Char('k') | KeyCode::Up => {
+                if let Some(pd) = &mut self.plan_detail {
+                    pd.scroll_up();
+                }
+            }
+            KeyCode::Char(' ') | KeyCode::PageDown => {
+                if let Some(pd) = &mut self.plan_detail {
+                    pd.page_down(10);
+                }
+            }
+            KeyCode::Char('b') | KeyCode::PageUp => {
+                if let Some(pd) = &mut self.plan_detail {
+                    pd.page_up(10);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn switch_tab(&mut self, tab: Tab) {
+        self.active_tab = tab;
+        self.screen = match tab {
+            Tab::Tasks => Screen::List,
+            Tab::Plans => Screen::Plans,
+        };
     }
 
     // Actions
@@ -583,6 +720,13 @@ impl App {
         }
     }
 
+    pub fn reload_plans(&mut self) {
+        if let Some(ps) = &mut self.plans_state {
+            ps.reload_plans();
+        }
+        self.screen = self.prev_screen;
+    }
+
     fn refresh_detail(&mut self, task_id: &str) {
         if let Some(task) = self.store.load_task(&self.active_list, task_id) {
             let children: Vec<Task> = self
@@ -620,13 +764,13 @@ impl App {
 
         match self.screen {
             Screen::List => {
-                self.render_header(f, header_area, "tasks");
+                self.render_tab_header(f, header_area);
                 list::render_filter_bar(f, filter_bar_area, &self.list);
                 list::render_list(f, body_area, &mut self.list);
                 self.render_footer(
                     f,
                     footer_area,
-                    "j/k:move  enter:detail  n:new  s:status  p/a/d:quick-status  e:edit  D:delete  f:filter  T:tree  /:search  R:reload  L:list  ?:help  q:quit",
+                    "j/k:move  enter:detail  n:new  s:status  p/a/d:quick-status  e:edit  D:delete  f:filter  T:tree  /:search  R:reload  L:list  tab/2:plans  ?:help  q:quit",
                 );
             }
             Screen::Detail => {
@@ -649,7 +793,7 @@ impl App {
                 self.render_footer(
                     f,
                     footer_area,
-                    "j/k:scroll  space/b:page  s:status  e:edit  D:delete  esc:back  q:quit",
+                    "j/k:scroll  space/b:page  s:status  e:edit  D:delete  p:plans  esc:back  q:quit",
                 );
             }
             Screen::Status => {
@@ -676,13 +820,78 @@ impl App {
                 }
                 self.render_footer(f, footer_area, "tab:next-field  ctrl+d:save  esc:cancel");
             }
+            Screen::Plans => {
+                self.render_tab_header(f, header_area);
+                if let Some(ps) = &self.plans_state {
+                    plans::render_plans_filter_bar(f, filter_bar_area, ps);
+                }
+                if let Some(ps) = &mut self.plans_state {
+                    plans::render_plans(f, body_area, ps);
+                }
+                self.render_footer(
+                    f,
+                    footer_area,
+                    "j/k:move  enter:open  e:edit  /:search  A:source  tab/1:tasks  q:quit",
+                );
+            }
+            Screen::PlanDetail => {
+                let title = self
+                    .plan_detail
+                    .as_ref()
+                    .map(|pd| {
+                        let t = if pd.plan.title.is_empty() {
+                            &pd.plan.name
+                        } else {
+                            &pd.plan.title
+                        };
+                        if t.chars().count() > 40 {
+                            format!("{}...", truncate_at_char_boundary(t, 37))
+                        } else {
+                            t.clone()
+                        }
+                    })
+                    .unwrap_or_default();
+                self.render_header(f, header_area, &title);
+                let _ = filter_bar_area;
+                if let Some(pd) = &self.plan_detail {
+                    plan_detail::render_plan_detail(f, body_area, pd);
+                }
+                self.render_footer(f, footer_area, "j/k:scroll  space/b:page  esc:back  q:quit");
+            }
             Screen::Help => {
                 self.render_header(f, header_area, "help");
                 let _ = filter_bar_area;
-                self.help_scroll = help::render_help(f, body_area, self.help_scroll);
+                let plans_ctx =
+                    self.prev_screen == Screen::Plans || self.prev_screen == Screen::PlanDetail;
+                self.help_scroll = help::render_help(f, body_area, self.help_scroll, plans_ctx);
                 self.render_footer(f, footer_area, "j/k:scroll  g/G:top/bottom  ?/esc:close");
             }
         }
+    }
+
+    fn render_tab_header(&self, f: &mut Frame, area: Rect) {
+        let brand = " ck ";
+        let tasks_label = "[ 1 Tasks ]";
+        let plans_label = "[ 2 Plans ]";
+        let sep = "  ";
+
+        let brand_width = brand.len() as u16;
+        let tabs_width = (tasks_label.len() + sep.len() + plans_label.len()) as u16;
+        let gap = area.width.saturating_sub(brand_width + tabs_width);
+
+        let (tasks_style, plans_style) = match self.active_tab {
+            Tab::Tasks => (theme::header_style(), theme::header_dim_style()),
+            Tab::Plans => (theme::header_dim_style(), theme::header_style()),
+        };
+
+        let line = Line::from(vec![
+            Span::styled(brand, theme::header_style()),
+            Span::styled(" ".repeat(gap as usize), Style::default().bg(theme::ACCENT)),
+            Span::styled(tasks_label, tasks_style),
+            Span::styled(sep, Style::default().bg(theme::ACCENT)),
+            Span::styled(plans_label, plans_style),
+        ]);
+        f.render_widget(line, area);
     }
 
     fn render_header(&self, f: &mut Frame, area: Rect, title: &str) {
