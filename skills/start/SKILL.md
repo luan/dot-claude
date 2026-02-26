@@ -32,7 +32,7 @@ Create branch + optionally link task. User-invoked only — this skill never cre
    - AskUserQuestion: "Create a task for this branch?"
    - If yes → `TaskCreate` with subject from branch name. Type inferred from branch name: `"feat"` for feature work, `"fix"` for bugfixes, `"chore"` otherwise. Priority defaults to P2.
    - Link: `TaskUpdate(taskId, status: "in_progress", metadata: {branch: "<branch-name>"})`
-6. Report branch + task, suggest `/explore` or `/implement`
+6. Report branch + task, suggest `/scope` or `/develop`
 
 ## Error Handling
 

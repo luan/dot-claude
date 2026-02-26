@@ -16,7 +16,7 @@ allowed-tools:
 
 # Triage
 
-Convert user feedback into ONE task with phased design — directly consumable by `/prepare`. Does NOT implement; creates actionable work items for later scheduling.
+Convert user feedback into ONE task with phased design — directly consumable by `/scope`. Does NOT implement; creates actionable work items for later scheduling.
 
 ## Context
 
@@ -42,7 +42,7 @@ Break feedback ($ARGUMENTS) into individual findings:
 
 ### 3. Create Single Issue with Phased Design
 
-TaskCreate: subject "Triage: <brief-summary>", acceptance criteria (all feedback addressed, phased structure, consumable by /prepare), metadata `{project: <repo root>, type: "triage", priority: "P2"}`.
+TaskCreate: subject "Triage: <brief-summary>", acceptance criteria (all feedback addressed, phased structure, consumable by /scope), metadata `{project: <repo root>, type: "triage", priority: "P2"}`.
 
 Description includes phased findings — bugs first because they block testing improvements:
 - **Phase 1**: Bugs (highest priority first within phase)
@@ -63,9 +63,9 @@ Mark active: `TaskUpdate(taskId, status: "in_progress", owner: "triage")`
 
 **Findings**: N items (X bugs, Y tasks, Z features)
 
-**Next**: TaskUpdate to modify findings if needed, `/prepare t<id>` to create epic.
+**Next**: TaskUpdate to modify findings if needed, `/scope t<id>` to create epic.
 ```
 
 ## Error Handling
 - TaskCreate fails → show error, retry once, then report
-- Ambiguous feedback → AskUserQuestion before creating — wrong classification wastes downstream prepare/implement effort
+- Ambiguous feedback → AskUserQuestion before creating — wrong classification wastes downstream scope/develop effort

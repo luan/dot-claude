@@ -1,6 +1,6 @@
 ---
 name: vibe
-description: "Fully autonomous development workflow from prompt to commit. Triggers: /vibe, 'vibe this', 'autonomous workflow', 'just do it all', 'build this end-to-end', 'full pipeline', 'handle everything', 'do everything from scratch'. Do NOT use when: only implementing already-prepared tasks — use /implement instead."
+description: "Fully autonomous development workflow from prompt to commit. Triggers: /vibe, 'vibe this', 'autonomous workflow', 'just do it all', 'build this end-to-end', 'full pipeline', 'handle everything', 'do everything from scratch'. Do NOT use when: only implementing already-prepared tasks — use /develop instead."
 allowed-tools: Bash, Read, Glob, Skill, TaskCreate, TaskUpdate, TaskGet, TaskList
 argument-hint: "<prompt> [--no-branch] [--continue] [--dry-run]"
 user-invocable: true
@@ -8,14 +8,14 @@ user-invocable: true
 
 # Vibe
 
-Run the full pipeline (explore → prepare → implement → commit) from a single prompt.
+Run the full pipeline (scope → develop → commit) from a single prompt.
 
 ## Arguments
 
 - `<prompt>` — what to build (required unless `--continue`)
 - `--no-branch` — skip branch creation, use current branch
 - `--continue` — resume from last completed stage
-- `--dry-run` — explore + prepare only, stop before implement
+- `--dry-run` — scope only, stop before develop
 
 If no prompt and no `--continue` → tell user: `/vibe <what to build>`, stop.
 
@@ -42,7 +42,7 @@ TaskUpdate(taskId, status: "in_progress", owner: "vibe")
 
 Run stages sequentially. Before each stage, output the stage announcement (`[N/M] Stage`) as text BEFORE the `Skill()` invocation — the user must see progress before work begins. After each succeeds, update `metadata.vibe_stage` before proceeding.
 
-**Stage numbering `[N/M]`:** M = total stages that will actually run. Base: 5 (branch, explore, prepare, implement, commit). Subtract skipped stages: `--no-branch` → 4, `--dry-run` → 3 (or 2 with both flags). N counts only executed stages, not skipped ones.
+**Stage numbering `[N/M]`:** M = total stages that will actually run. Base: 4 (branch, scope, develop, commit). Subtract skipped stages: `--no-branch` → 3, `--dry-run` → 2 (or 1 with both flags). N counts only executed stages, not skipped ones.
 
 ### Branch (skip if `--no-branch` or already on non-main branch)
 

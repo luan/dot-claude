@@ -1,6 +1,6 @@
 ---
 name: acceptance
-description: "Validate implementation against acceptance criteria using dual-agent verification. Works on epics (all descendants) or individual tasks. Triggers: 'accept', 'acceptance check', 'verify implementation', 'did it work', 'check my implementation'. Also invoked automatically by /implement after completion."
+description: "Validate implementation against acceptance criteria using dual-agent verification. Works on epics (all descendants) or individual tasks. Triggers: 'accept', 'acceptance check', 'verify implementation', 'did it work', 'check my implementation'. Also invoked automatically by /develop after completion."
 argument-hint: "[<task-id>|<epic-id>]"
 user-invocable: true
 allowed-tools:

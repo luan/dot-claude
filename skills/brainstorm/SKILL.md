@@ -1,6 +1,6 @@
 ---
 name: brainstorm
-description: "Collaborative design for greenfield features and new ideas. Triggers: 'brainstorm', 'ideate', 'new feature design', 'help me think through', 'what should we build', 'help me design', 'think through X with me', 'I want to build something new'. Do NOT use when: the user wants to investigate an existing codebase or research a specific technical question — use /explore instead."
+description: "Collaborative design for greenfield features and new ideas. Triggers: 'brainstorm', 'ideate', 'new feature design', 'help me think through', 'what should we build', 'help me design', 'think through X with me', 'I want to build something new'. Do NOT use when: the user wants to investigate an existing codebase or research a specific technical question — use /scope instead."
 argument-hint: "<idea or topic>"
 user-invocable: true
 allowed-tools:
@@ -20,7 +20,7 @@ allowed-tools:
 
 # Brainstorm
 
-Turn vague ideas into actionable designs through collaborative dialogue. For greenfield work — use `/explore` for existing system research.
+Turn vague ideas into actionable designs through collaborative dialogue. For greenfield work — use `/scope` for existing system research.
 
 **Main thread only.** Interactive dialogue can't be delegated; context scanning uses a subagent.
 
@@ -32,7 +32,7 @@ Do NOT invoke implementation skills, write code, or take implementation action u
 
 ### 1. Create Work Task
 
-TaskCreate: subject "Brainstorm: <topic>", acceptance criteria (design stored as Problem/Approaches/Design/Next Steps, user approved each section), metadata `{project: <repo root>, type: "explore", priority: "P2"}`. Then `TaskUpdate(taskId, status: "in_progress", owner: "brainstorm")`.
+TaskCreate: subject "Brainstorm: <topic>", acceptance criteria (design stored as Problem/Approaches/Design/Next Steps, user approved each section), metadata `{project: <repo root>, type: "brainstorm", priority: "P2"}`. Then `TaskUpdate(taskId, status: "in_progress", owner: "brainstorm")`.
 
 ### 2. Scan Project Context + Start Interview
 
@@ -85,14 +85,14 @@ Problem: <1 sentence>
 Approach: <1 sentence>
 Phases:
 1. <title> — <key files>
-Next: /explore t<id>
+Next: /scope t<id>
 ```
 
 ### 8. Stop
 
-User reviews design before proceeding — do not auto-invoke explore.
+User reviews design before proceeding — do not auto-invoke scope.
 
 ## Key Rules
 
-- Next Steps must include file paths — explore depends on them
+- Next Steps must include file paths — scope depends on them
 - YAGNI: push back on scope creep during interview
