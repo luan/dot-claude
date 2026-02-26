@@ -1,0 +1,121 @@
+{
+  "version": "1.0",
+  "skill": "/Users/luan.santos/.claude/skills/writing-skills",
+  "cases": [
+    {
+      "id": "edit-skill-activates",
+      "prompt": "You are Claude with the writing-skills skill loaded. The user says: 'Update the scope skill step 5 to include task IDs in the plan mode presentation.'\n\nThis requires editing skills/scope/SKILL.md. Demonstrate what you do BEFORE making the edit. Show your process.",
+      "files": [],
+      "expectations": [
+        {
+          "criterion": "activates-writing-skills",
+          "description": "Recognizes this is a skill edit and activates/follows writing-skills conventions before making changes — does not jump straight to editing the file",
+          "required": true
+        },
+        {
+          "criterion": "checks-evals-exist",
+          "description": "Checks whether the target skill has evals (looks for <skill>/evals/evals.json) before or alongside making the edit",
+          "required": true
+        },
+        {
+          "criterion": "reads-skill-first",
+          "description": "Reads the full target skill file before editing, per skills-editing.md 'read top-to-bottom after editing'",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "eval-hard-gate-enforced",
+      "prompt": "You are Claude with the writing-skills skill loaded. You've just finished editing skills/review/SKILL.md — adding a new criterion to the review checklist. The skill has evals at skills/review/evals/evals.json.\n\nDemonstrate what you do AFTER making the edit. Show the complete post-edit workflow.",
+      "files": [],
+      "expectations": [
+        {
+          "criterion": "runs-evals-after-edit",
+          "description": "Runs the eval pipeline (update evals if needed, grade, aggregate) on the edited skill. Does NOT skip evals or treat them as optional.",
+          "required": true
+        },
+        {
+          "criterion": "updates-eval-criteria",
+          "description": "If the edit introduces new behavior, adds or updates eval criteria to cover it — does not just re-run old evals unchanged",
+          "required": true
+        },
+        {
+          "criterion": "reports-results",
+          "description": "Reports eval results (scores/pass-rate) to the user before considering the edit complete",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "no-evals-blocks-edit",
+      "prompt": "You are Claude with the writing-skills skill loaded. The user says: 'Add a new section to skills/debugging/SKILL.md for handling flaky tests.'\n\nThe debugging skill has NO evals directory — skills/debugging/evals/ does not exist.\n\nDemonstrate what you do.",
+      "files": [],
+      "expectations": [
+        {
+          "criterion": "detects-missing-evals",
+          "description": "Detects that the target skill has no evals before or during the edit process",
+          "required": true
+        },
+        {
+          "criterion": "creates-evals-before-shipping",
+          "description": "Creates evals for the skill (at minimum covering the new behavior) before considering the edit complete. Does NOT ship the edit without evals.",
+          "required": true
+        },
+        {
+          "criterion": "does-not-skip-silently",
+          "description": "Does NOT silently skip the eval requirement. Either creates evals or explicitly tells the user evals are needed.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "run-evals-mode",
+      "prompt": "You are Claude with the writing-skills skill loaded. The user says: '/writing-skills --run-evals skills/scope'\n\nThe scope skill has evals at skills/scope/evals/evals.json with 5 test cases. A workspace exists at skills/scope-workspace/ with existing grading files.\n\nDemonstrate the --run-evals workflow.",
+      "files": [],
+      "expectations": [
+        {
+          "criterion": "finds-evals",
+          "description": "Locates and reads skills/scope/evals/evals.json to find test cases",
+          "required": true
+        },
+        {
+          "criterion": "inits-workspace-if-needed",
+          "description": "Checks for workspace existence and initializes via init_workspace.py if missing",
+          "required": true
+        },
+        {
+          "criterion": "executes-grade-aggregate",
+          "description": "Runs the eval pipeline: execute cases, grade outputs, then aggregate results via aggregate_results.py",
+          "required": true
+        },
+        {
+          "criterion": "reports-scores",
+          "description": "Reports per-skill score summary including pass rate and mean scores, not just pass/fail",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "evals-in-skill-dir-not-workspace",
+      "prompt": "You are Claude with the writing-skills skill loaded. The user says: 'Create evals for the brainstorm skill.'\n\nDemonstrate where you create the evals.json and fixtures.",
+      "files": [],
+      "expectations": [
+        {
+          "criterion": "creates-in-skill-evals-dir",
+          "description": "Creates evals.json at skills/brainstorm/evals/evals.json (inside the skill directory), NOT in a workspace",
+          "required": true
+        },
+        {
+          "criterion": "fixtures-in-evals-dir",
+          "description": "Any fixture files are created under skills/brainstorm/evals/fixtures/, NOT in a workspace fixtures/ directory",
+          "required": true
+        },
+        {
+          "criterion": "version-controlled-location",
+          "description": "The chosen location for evals is version-controlled (not gitignored), so evals persist across clones",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

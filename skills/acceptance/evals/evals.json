@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "skill": "skills/acceptance",
+  "cases": [
+    {
+      "id": "breaker-no-findings-exit",
+      "prompt": "You are Claude running /acceptance for an epic. The verifier passed all criteria. The breaker agent returned: 'No findings — the implementation looks correct.'\n\nThe breaker did NOT analyze the 5 required angles (implied requirements, edge cases, integration points, technically-met-but-incomplete, missing negatives). It just asserted no findings.\n\nDemonstrate how you handle this in Step 6 (reconcile).",
+      "expectations": [
+        {
+          "criterion": "rejects-bare-no-findings",
+          "description": "Recognizes that a bare 'no findings' assertion without per-angle analysis is invalid per the breaker requirements",
+          "required": true
+        },
+        {
+          "criterion": "requires-angle-analysis",
+          "description": "The skill instructs the breaker to analyze all 5 angles with at least one concrete observation per angle — 'no findings' is only valid after showing this analysis",
+          "required": true
+        },
+        {
+          "criterion": "does-not-auto-pass",
+          "description": "Does NOT automatically treat bare 'no findings' as PASS — either re-runs breaker or flags the gap",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "breaker-high-overrides-verifier-pass",
+      "prompt": "You are Claude running /acceptance for a task. The verifier reports all 3 criteria as PASS with line-level evidence. The breaker analyzed all 5 angles and found one HIGH finding: 'Criterion 2 (handle rate limiting) is technically met — the code catches 429 errors — but silently drops the request instead of retrying. The criterion says handle, not just catch.'\n\nDemonstrate Step 6 (Reconcile).",
+      "expectations": [
+        {
+          "criterion": "overrides-to-partial",
+          "description": "Applies reconciliation rule 3: Verifier PASS + breaker HIGH finding on a PASS criterion → PARTIAL. Does NOT leave the verdict as PASS despite the verifier's assessment.",
+          "required": true
+        },
+        {
+          "criterion": "presents-both-reports",
+          "description": "Shows both the verifier and breaker reports with clear labels — the user needs to see the disagreement",
+          "required": true
+        },
+        {
+          "criterion": "offers-four-options",
+          "description": "Presents exactly 4 options via AskUserQuestion: fix gaps, commit anyway (override), file as follow-up tasks, re-run after manual fixes",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "skill": "skills/test-plan",
+  "cases": [
+    {
+      "id": "skill-md-not-trivial",
+      "prompt": "You are Claude running /test-plan. The diff shows changes to 2 files: skills/scope/SKILL.md (modified step ordering) and README.md (updated badge).\n\nDemonstrate Step 1 (Scope).",
+      "expectations": [
+        {
+          "criterion": "skill-md-analyzed",
+          "description": "Does NOT early-exit or treat SKILL.md as trivial — SKILL.md is explicitly listed as 'never trivial' because it's an executable spec that changes agent behavior",
+          "required": true
+        },
+        {
+          "criterion": "readme-is-trivial",
+          "description": "Correctly identifies README.md as trivial (*.md excluding SKILL.md/CLAUDE.md/*.mdx)",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "all-trivial-early-exit",
+      "prompt": "You are Claude running /test-plan. The diff shows changes to 3 files: README.md (updated badge), CHANGELOG.md (added release entry), LICENSE (updated year).\n\nDemonstrate Step 1 (Scope).",
+      "expectations": [
+        {
+          "criterion": "classifies-all-trivial",
+          "description": "Correctly identifies all 3 files as trivial — README.md, CHANGELOG.md, and LICENSE are all in the trivial list",
+          "required": true
+        },
+        {
+          "criterion": "exits-early",
+          "description": "Outputs '## Test Plan: No Manual Testing Required' with stat output instead of proceeding to Step 2 analysis",
+          "required": true
+        },
+        {
+          "criterion": "does-not-generate-plan",
+          "description": "Does NOT generate risk classifications, verification steps, or a regression checklist for trivial-only changes",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "skill": "skills/pr:descr",
+  "cases": [
+    {
+      "id": "uses-template-never-pushes",
+      "prompt": "You are Claude running /pr:descr. PR #15 exists on branch luan/add-auth. The repo has .github/PULL_REQUEST_TEMPLATE.md with sections: Summary, Test Plan, Breaking Changes. The diff shows 4 files adding JWT auth.\n\nDemonstrate Steps 3-4.",
+      "expectations": [
+        {
+          "criterion": "follows-template",
+          "description": "Uses the repo's PR template structure (Summary, Test Plan, Breaking Changes sections) rather than a generic format",
+          "required": true
+        },
+        {
+          "criterion": "never-pushes",
+          "description": "Does NOT run git push, gt submit, or any push command — this skill only updates the PR description",
+          "required": true
+        },
+        {
+          "criterion": "previews-before-update",
+          "description": "Shows the generated title + body to the user via AskUserQuestion before running gh pr edit",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "on-main-edge-case",
+      "prompt": "You are Claude running /pr:descr. The injected context shows you're on the 'main' branch. gh pr view returns nothing (no PR exists for main).\n\nDemonstrate Step 1 (Check State).",
+      "expectations": [
+        {
+          "criterion": "detects-main-branch",
+          "description": "Recognizes that the user is on main and flags this as an edge case — 'Did you mean to be on a feature branch?'",
+          "required": true
+        },
+        {
+          "criterion": "does-not-create-pr",
+          "description": "Does NOT attempt to create a PR for main or proceed to generate a description for a nonexistent PR",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

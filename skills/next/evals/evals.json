@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "skill": "skills/next",
+  "cases": [
+    {
+      "id": "trunk-blocked-task-skip",
+      "prompt": "You are Claude running /next on trunk (main branch). TaskList returns 3 tasks for this project:\n- Task #10: priority P1, status pending, blockedBy: [11]\n- Task #11: priority P2, status pending, no blockers\n- Task #12: priority P2, status in_progress, no blockers\n\nDemonstrate the Trunk Path.",
+      "expectations": [
+        {
+          "criterion": "checks-blockers",
+          "description": "Recognizes Task #10 is blocked by #11 (which is not completed) and does not pick it despite being highest priority",
+          "required": true
+        },
+        {
+          "criterion": "prefers-in-progress",
+          "description": "At same priority (P2), prefers Task #12 (in_progress) over Task #11 (pending) — resuming started work avoids duplicate effort",
+          "required": false
+        },
+        {
+          "criterion": "presents-before-dispatch",
+          "description": "Shows what it picked and why via AskUserQuestion before dispatching to a skill",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "feature-branch-ci-failing",
+      "prompt": "You are Claude running /next on branch luan/add-auth. gh pr view shows PR #15 (draft, CI failing). gh pr checks shows 2 failures: lint and unit tests. There are 2 in_progress tasks for this project.\n\nDemonstrate the Feature Branch Path.",
+      "expectations": [
+        {
+          "criterion": "gathers-pr-state",
+          "description": "Gathers PR state including review decision, CI status, and comments — does not skip PR context gathering on a feature branch with a PR",
+          "required": true
+        },
+        {
+          "criterion": "prioritizes-ci-fix",
+          "description": "Suggests fixing CI failures as the highest-priority next action — CI failing takes precedence over other actions like addressing comments or continuing tasks",
+          "required": true
+        },
+        {
+          "criterion": "does-not-auto-dispatch",
+          "description": "Presents the suggestion via AskUserQuestion with alternatives — does not automatically start fixing CI without user confirmation",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

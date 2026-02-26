@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "skill": "skills/commit",
+  "cases": [
+    {
+      "id": "no-confirmation-flow",
+      "prompt": "You are Claude running /commit. git status shows 3 staged files in the auth module. git diff --cached shows clean changes adding token refresh logic. Recent commits follow conventional format.\n\nDemonstrate the commit flow.",
+      "expectations": [
+        {
+          "criterion": "no-confirmation-prompt",
+          "description": "Does NOT use AskUserQuestion or ask the user to confirm the commit message before executing. Proceeds directly from message generation to git commit execution.",
+          "required": true
+        },
+        {
+          "criterion": "conventional-format",
+          "description": "Generates a conventional commit message: type(scope): description, max 72 chars, lowercase, imperative mood",
+          "required": true
+        },
+        {
+          "criterion": "heredoc-execution",
+          "description": "Uses HEREDOC format (cat <<'EOF') for the git commit command, not inline -m with quotes",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "hook-rejects-commit",
+      "prompt": "You are Claude running /commit. You executed git commit and it FAILED — a pre-commit lint hook rejected the commit with 'error: trailing whitespace on line 42 of auth.py'. The commit never landed.\n\nDemonstrate recovery.",
+      "expectations": [
+        {
+          "criterion": "does-not-amend",
+          "description": "Does NOT use --amend, because the original commit never landed — amending would modify the wrong (previous) commit",
+          "required": true
+        },
+        {
+          "criterion": "new-commit-after-fix",
+          "description": "After fixing the lint issue, creates a NEW commit rather than amending",
+          "required": true
+        },
+        {
+          "criterion": "explains-before-retry",
+          "description": "Shows the error to the user and explains the issue before attempting any fix. Does not silently retry.",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "skill": "skills/review",
+  "cases": [
+    {
+      "id": "git-commands-main-thread",
+      "prompt": "You are Claude running /review with no arguments. You need to gather context (git diff, git log, git status, cochanges) and then dispatch reviewer agents.\n\nDemonstrate Step 2 (Setup + Context).",
+      "expectations": [
+        {
+          "criterion": "context-gathering-efficient",
+          "description": "Git context commands (diff --stat, --name-only, git log) run in parallel in a single message, not sequentially one at a time",
+          "required": true
+        },
+        {
+          "criterion": "review-work-in-subagents",
+          "description": "All actual review analysis is dispatched to Task subagents — main thread only gathers context and consolidates, does not perform review analysis itself",
+          "required": true
+        },
+        {
+          "criterion": "consolidation-on-main-thread",
+          "description": "Main thread handles consolidation (spot-check, deduplicate, consensus) rather than delegating it — this requires seeing all reviewer outputs together",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "file-split-mode-triggers",
+      "prompt": "You are Claude running /review with no arguments. git diff --name-only shows 18 changed files across 4 directories (auth/, api/, models/, tests/). No --team flag.\n\nDemonstrate Step 1 (Scope + Mode) and Step 3 (Dispatch).",
+      "expectations": [
+        {
+          "criterion": "selects-file-split",
+          "description": "Selects File-Split mode because ≥15 files changed and --team was not specified. Does NOT use Solo mode (which is for <15 files).",
+          "required": true
+        },
+        {
+          "criterion": "groups-approximately-8",
+          "description": "Groups files into ~8 files per agent for dispatch, not one agent per file or one agent for all 18",
+          "required": true
+        },
+        {
+          "criterion": "dispatches-in-one-message",
+          "description": "Spawns all reviewer agents in a single message (ONE message with multiple Task calls), not sequentially one at a time",
+          "required": true
+        }
+      ]
+    }
+  ]
+}
