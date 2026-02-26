@@ -31,7 +31,7 @@ Branch: !`git branch --show-current 2>/dev/null`
 
 1. **Detect PR**: Use injected context above. If empty, ask user.
 
-2. **Verify branch**: Compare injected Branch vs PR headRefName — mismatch → ask user.
+2. **Verify branch**: Compare injected Branch vs PR headRefName — mismatch → ask user and **stop**. Do not proceed to Step 3 until the user confirms or switches branches.
 
 3. **Fetch comments**:
 
