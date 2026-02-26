@@ -70,12 +70,12 @@ Highest-priority unblocked item. Skip: completed, deleted, `status_detail === "r
 
 Read via TaskGet. Route by signal:
 - Type `bug` → `/debugging`
-- Title "Brainstorm:" or "Needs brainstorm" → `/brainstorm`
-- Title "Explore:" or "Needs explore" → `/explore`
-- Has design, no children → `/prepare`
-- Has children or is leaf → `/implement`
-- **Default** → `/explore` — cheapest to course-correct from
-- No Approach/Design → `/explore`; approach but no phases → `/brainstorm`
+- Title "Needs brainstorm" → `/brainstorm`
+- Title "Brainstorm:" or "Scope:" → `/scope` (brainstorm done → scope is next)
+- Has design, no children → `/develop`
+- Has children or is leaf → `/develop`
+- No Approach/Design → `/scope`
+- **Default** → `/scope` — cheapest to course-correct from
 
 ### 4. Present + Dispatch
 

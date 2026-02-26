@@ -1,6 +1,6 @@
 ---
 name: test-plan
-description: "Analyze current diff, classify changes by risk, and produce structured manual test plan. Triggers: 'test plan', 'what should I test', 'manual testing', 'verification steps', 'QA checklist'. Exits early for trivial changes. Do NOT use when: writing automated tests — use /implement with TDD. Do NOT use when: reviewing code quality — use /review instead."
+description: "Analyze current diff, classify changes by risk, and produce structured manual test plan. Triggers: 'test plan', 'what should I test', 'manual testing', 'verification steps', 'QA checklist'. Exits early for trivial changes. Do NOT use when: writing automated tests — use /develop with TDD. Do NOT use when: reviewing code quality — use /review instead."
 argument-hint: "[base..head | file-list | PR#]"
 user-invocable: true
 model: sonnet

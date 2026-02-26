@@ -1,6 +1,6 @@
 ---
 name: implement-worker
-description: "Internal skill. Implements a single task: claims it, runs TDD + build via sub-worker. Invoked by implement and other orchestrators."
+description: "Internal skill. Implements a single task: claims it, runs TDD + build via sub-worker. Invoked by develop and other orchestrators."
 argument-hint: "<task-id>"
 user-invocable: false
 allowed-tools:
@@ -21,9 +21,9 @@ Single-task mini-orchestrator. Receives a task ID, spawns a code-only sub-worker
 
 `TaskGet(<task-id>)` — capture description and metadata.
 
-**Pre-computed context** (set by implement): if `metadata.breadcrumb` and `metadata.epic_design` exist, use them directly — skip ancestor walk.
+**Pre-computed context** (set by develop): if `metadata.breadcrumb` and `metadata.epic_design` exist, use them directly — skip ancestor walk.
 
-**Fallback** (invoked outside implement): if `metadata.parent_id` exists, walk ancestor chain to epic root:
+**Fallback** (invoked outside develop): if `metadata.parent_id` exists, walk ancestor chain to epic root:
 1. Repeatedly `TaskGet(parent_id)` until no `parent_id`
 2. Build breadcrumb root-first, excluding current task: `"Epic > Phase > ..."`
 3. Source `metadata.design` from root epic

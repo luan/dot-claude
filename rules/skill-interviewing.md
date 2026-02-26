@@ -14,7 +14,7 @@ Match question complexity to situation:
 
 ## End-of-Skill: Continue or Confirm
 
-When a skill finishes, there's usually an obvious next step in the pipeline (explore→prepare, prepare→implement, implement→review).
+When a skill finishes, there's usually an obvious next step in the pipeline (scope→develop, develop→review).
 
 **Do not passively suggest and stop** ("Next: /review" then silence). Either:
 1. **Proceed automatically** — invoke the next skill directly
@@ -22,13 +22,12 @@ When a skill finishes, there's usually an obvious next step in the pipeline (exp
 
 ### When to stop vs auto-proceed
 
-**Stop** when the skill produced output that needs human verification before the next step acts on it.
-- explore → prepare (findings become tasks — wrong findings → wrong plan)
-- brainstorm → explore (design needs technical validation before becoming tasks)
-- implement → user verification (user must verify functionality before review, or review risks blessing regressions)
+**Auto-proceed** when the preceding skill already gated its output.
+- scope → develop (plan-mode approval already gates the design; task creation is mechanical)
 
-**Auto-proceed** when the next step is mechanical or self-correcting:
-- prepare → implement (user already validated the analysis)
+**Stop** when the skill produced output that needs human verification before the next step acts on it.
+- brainstorm → scope (design needs technical validation before becoming tasks)
+- develop → user verification (user must verify functionality before review, or review risks blessing regressions)
 
 Never present formulaic menus with "Done for now" filler options. If the user wants to stop, they'll just... stop.
 
