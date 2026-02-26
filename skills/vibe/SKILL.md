@@ -50,29 +50,23 @@ Generate slug: `ct tool slug "<prompt>"`. `Skill("start", args="luan/<slug>")`
 
 **Verify**: `git branch --show-current` returns new branch. **Update**: `vibe_stage: "branch"`
 
-### Explore
+### Scope
 
-`Skill("explore", args="<prompt>")`
+`Skill("scope", args="<prompt> --no-develop --auto-approve")`
 
-**Verify**: `ct plan latest` succeeds. **Update**: `vibe_stage: "explore"`
+**Verify**: `TaskList()` → epic exists with children and `metadata.slug`. **Update**: `vibe_stage: "scope"`, `vibe_epic: "<epicId>"`, `vibe_slug: "<slug>"`
 
-### Prepare
+If `--dry-run` → stop here. Output "Dry run complete." then report plan and epic, suggest `/develop` or `/vibe --continue`.
 
-`Skill("prepare")`
+### Develop
 
-**Verify**: `TaskList()` → epic exists with children and `metadata.slug`. **Update**: `vibe_stage: "prepare"`, `vibe_epic: "<epicId>"`, `vibe_slug: "<slug>"`
+`Skill("develop")`
 
-If `--dry-run` → stop here. Output "Dry run complete." then report plan and epic, suggest `/implement` or `/vibe --continue`.
+Note: Acceptance check runs automatically as part of develop teardown.
 
-### Implement
+**Verify**: all children of epic completed. **Update**: `vibe_stage: "develop"`
 
-`Skill("implement")`
-
-Note: Acceptance check runs automatically as part of implement teardown.
-
-**Verify**: all children of epic completed. **Update**: `vibe_stage: "implement"`
-
-Partial task failures (some children completed, some didn't) are not a stage failure — continue to commit if `git diff --stat` is non-empty.
+Partial task failures: if any child is still `in_progress` (worker crashed mid-implementation), the stage is incomplete. Report per-child status: task ID, title, status (completed/in_progress/failed). Suggest `/vibe --continue` or `/develop` to retry. Only proceed to commit if all children completed OR all incomplete children produced no diff.
 
 ### Commit
 

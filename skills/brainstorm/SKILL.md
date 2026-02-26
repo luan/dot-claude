@@ -44,7 +44,7 @@ Dispatch Task (subagent_type="Explore", run_in_background=true): scan for tech s
 
 AskUserQuestion, ONE per turn — wait for answer before next. Prefer multiple-choice.
 
-**Upfront spec:** If the prompt already contains constraints, scope, and success criteria, skip to step 4 — acknowledge by citing 2+ concrete details from the user's spec (specific numbers, names, requirements).
+**Upfront spec:** Only skip interview if the prompt has ALL three: explicit scope boundaries (non-goals stated), measurable constraints, and testable success criteria. Acknowledge by citing 2+ concrete details from the user's spec. When in doubt, interview.
 
 **Sequence** (adapt, skip irrelevant):
 1. **Purpose** — What problem? Who's it for?
