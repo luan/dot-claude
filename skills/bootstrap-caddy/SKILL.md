@@ -1,5 +1,5 @@
 ---
-name: bootstrap:caddy
+name: bootstrap-caddy
 description: "Register a project in the local dev routing system. Triggers: 'register project', 'add to caddy', 'bootstrap caddy', 'dev routing'."
 argument-hint: "<project-name> [port]"
 user-invocable: true
@@ -12,7 +12,7 @@ Register a project in the local subdomain routing system (`https://<project>.loc
 
 ## Step 1: Parse arguments
 
-First word after `/bootstrap:caddy` = project name. Optional second word = port override.
+First word after `/bootstrap-caddy` = project name. Optional second word = port override.
 
 **If empty, ask via AskUserQuestion.** Do NOT infer from context or working directory.
 

@@ -1,5 +1,5 @@
 ---
-name: pr:ci
+name: pr-ci
 description: "Fix failing CI/GitHub Actions checks. Triggers: 'fix CI', 'fix GHA', 'build failing', 'tests failing in CI', 'checks red'."
 user-invocable: true
 disable-model-invocation: true
