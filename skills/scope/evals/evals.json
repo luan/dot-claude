@@ -11,7 +11,12 @@
       "expectations": [
         {
           "criterion": "spec-presented-first",
-          "description": "After research and validation, a spec is synthesized and presented FIRST. The spec covers WHAT we're building: problem statement, recommendation (strategy-level), key files (existing code landscape — NOT files to create/modify), risks. It does NOT include implementation phases, file change lists, or code-level changes like 'add X to Y' — those belong to the plan.",
+          "description": "After research and validation, a spec is synthesized and presented FIRST. The spec covers WHAT we're building: problem statement, recommendation (target-state, present tense), architecture context (conceptual code landscape — NOT files to create/modify), risks. It does NOT include implementation phases, file change lists, or code-level changes like 'add X to Y' — those belong to the plan.",
+          "required": true
+        },
+        {
+          "criterion": "spec-is-timeless-target-state",
+          "description": "The spec's Recommendation describes the target system in present tense, as if already implemented ('Webhook delivery uses exponential backoff via BullMQ'). Avoids transition verbs (add, replace, migrate, move, change). After implementation, the spec reads as a valid specification of the system, not a dated change request.",
           "required": true
         },
         {
@@ -227,13 +232,18 @@
       "files": [],
       "expectations": [
         {
-          "criterion": "key-files-are-existing-code",
-          "description": "The spec's Key Files section references EXISTING code that explains the current landscape (e.g., SyncChangeQueue.swift is in-memory, SyncPersistenceClient.swift only persists marker/birthday, MemoryDatabase.swift shows GRDB patterns). It does NOT list files to create (SyncDatabase.swift, SyncQueueRecord.swift) or describe modifications ('add persistence backing', 'add Codable conformance').",
+          "criterion": "architecture-context-is-conceptual",
+          "description": "The spec's Architecture Context section describes the existing code landscape conceptually — by module role and pattern, not by hardcoded file path. E.g., 'the sync queue module (in-memory, fire-and-forget)', 'the persistence client (currently limited to marker/birthday)', 'existing GRDB patterns in the Memory module'. File paths may appear parenthetically but the description stands without them. Does NOT list files to create or describe modifications.",
           "required": true
         },
         {
           "criterion": "recommendation-is-strategy-not-code",
           "description": "The recommendation describes the chosen approach at a strategy level ('dedicated GRDB database for sync state persistence') without specifying code changes, file modifications, or implementation steps. Rationale explains WHY this approach, not WHAT code to write.",
+          "required": true
+        },
+        {
+          "criterion": "spec-is-timeless-target-state",
+          "description": "The Recommendation describes the target system in present tense ('sync state persists in a dedicated GRDB database with atomic transactions'), not as a transition ('add persistence to the sync queue'). The Problem section may describe current state, but the Recommendation reads as a specification of the target system — valid as a reference document after implementation.",
           "required": true
         },
         {
@@ -268,6 +278,28 @@
         {
           "criterion": "checks-odd-numbered-minimum-3",
           "description": "Checks every odd-numbered claim (1st, 3rd, 5th...) with minimum 3 checks. ALL architectural claims are checked.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "spec-timelessness",
+      "prompt": "You are Claude following the scope skill instructions. Research subagent returns findings for '/scope add webhook retry with exponential backoff':\n\n## Current State\n- src/webhooks/sender.ts: fire-and-forget HTTP POST, no retry logic\n- src/webhooks/types.ts: WebhookPayload interface, DeliveryStatus enum\n- src/lib/queue.ts: BullMQ queue wrapper, supports delayed jobs and retries\n\n## Analysis\nThe codebase already has BullMQ infrastructure. Adding retry to webhooks should leverage the existing queue wrapper.\n\nKey decisions:\n- Exponential backoff: base 1s, factor 2x, max 5 attempts, jitter +/-20%\n- Dead letter queue for permanently failed deliveries\n- Idempotency keys to prevent duplicate delivery\n\n## Recommended Approach\nUse BullMQ delayed jobs for retry with exponential backoff.\n\nSynthesize the spec from these findings. Show ONLY the spec content.\n\nCRITICAL: The research findings use change language ('adding retry', 'should leverage'). The spec must describe the TARGET SYSTEM, not the transition.",
+      "files": [],
+      "expectations": [
+        {
+          "criterion": "recommendation-uses-present-tense",
+          "description": "The Recommendation section describes the target system in present tense, as if already implemented. Uses phrases like 'Webhook delivery uses exponential backoff' or 'Failed deliveries move to a dead letter queue' — NOT 'Add retry', 'Replace fire-and-forget with queue-based delivery', 'Change sender to use BullMQ'.",
+          "required": true
+        },
+        {
+          "criterion": "no-transition-verbs-in-recommendation",
+          "description": "The Recommendation avoids transition verbs: add, replace, migrate, move, change, convert, switch, introduce, implement, create. These describe what to DO, not what the system IS. The Problem section MAY reference current state, but Recommendation must be target-state only.",
+          "required": true
+        },
+        {
+          "criterion": "readable-post-implementation",
+          "description": "The spec as a whole would still make sense and be accurate as a reference document AFTER implementation. Someone reading it after the work is done would understand what the system does, not what was changed. It's a timeless specification, not a time-bound change request.",
           "required": true
         }
       ]

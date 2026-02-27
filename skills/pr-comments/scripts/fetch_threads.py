@@ -108,8 +108,9 @@ def fetch_unresolved_threads(repo: str, pr_number: int) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Fetch unresolved PR review threads")
     parser.add_argument("--pr", type=int, required=True, help="PR number")
+    parser.add_argument("--repo", type=str, help="owner/name (default: detect from cwd)")
     args = parser.parse_args()
-    repo = detect_repo()
+    repo = args.repo or detect_repo()
     fetch_unresolved_threads(repo, args.pr)
 
 

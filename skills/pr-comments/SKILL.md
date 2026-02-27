@@ -25,6 +25,7 @@ Fix unresolved review comments from a PR.
 ## Context
 
 PR: !`gh pr view --json number,headRefName -q '{number,headRefName}' 2>/dev/null`
+Repo: !`gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null`
 Branch: !`git branch --show-current 2>/dev/null`
 
 ## Steps
@@ -36,7 +37,7 @@ Branch: !`git branch --show-current 2>/dev/null`
 3. **Fetch comments** (execute directly — never prefix with `python3`/`uv run`):
 
    ```bash
-   scripts/fetch_threads.py --pr <PR>
+   scripts/fetch_threads.py --pr <PR> --repo <Repo>
    ```
 
    Display as numbered list with file:line, author, preview. Ask "Which comment(s) to fix?" — options: "Fix all" / "Other"

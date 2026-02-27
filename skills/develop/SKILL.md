@@ -113,4 +113,6 @@ Every task dispatches via subagent. TeamCreate always runs.
 
 After all workers:
 1. `Skill("acceptance", args="<epicId>")`.
-2. `git add -u`, ask about untracked files, show `git diff --cached --stat`. Stop — user verifies before review.
+2. **Reconcile spec** — if `metadata.spec` exists on epic (or parent scope task):
+   Dispatch a subagent (model="sonnet"): input is the spec content + `git diff` (full diff, not just names — the subagent needs to see what changed). Prompt: "Compare this spec against the implementation diff. Update the spec so its Recommendation and Architecture Context accurately describe the system as implemented. Timeless present-tense format: no transition language ('changed from X to Y', 'previously', 'was updated'). Return the updated spec only, or 'NO_CHANGES' if it already matches." If updated: overwrite `metadata.spec`; overwrite `metadata.spec_file` if set; grep repo for the spec filename (e.g., `docs/specs/`) and overwrite if committed.
+3. `git add -u`, ask about untracked files, show `git diff --cached --stat`. Stop — user verifies before review.

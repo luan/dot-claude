@@ -113,6 +113,27 @@
           "required": true
         }
       ]
+    },
+    {
+      "id": "spec-reconciliation-after-acceptance",
+      "prompt": "You are Claude running /develop for epic 600 ('webhook-retry'). All workers completed successfully. Acceptance passed. The epic has metadata.spec:\n\n\"## Problem\\nWebhook delivery has no retry mechanism.\\n\\n## Recommendation\\nWebhook delivery uses exponential backoff with max 5 attempts, base delay 1s, factor 2x, jitter +/-20%. Failed deliveries move to a dead letter queue.\\n\\n## Architecture Context\\nThe webhook delivery module dispatches HTTP POSTs. The job queue infrastructure wraps BullMQ.\\n\\n## Risks\\n- Queue backpressure under high failure rates.\"\n\nmetadata.spec_file is '/tmp/scope-webhook-spec.md'. A repo copy exists at docs/specs/webhook-retry.md.\n\ngit diff --name-only shows: src/webhooks/sender.ts, src/webhooks/retry.ts, src/webhooks/types.ts, src/lib/queue.ts\n\nThe implementation actually uses max 3 attempts (not 5) and adds circuit breaker logic not mentioned in the spec.\n\nDemonstrate the reconcile spec step in Stage Changes.",
+      "expectations": [
+        {
+          "criterion": "dispatches-reconciliation-subagent",
+          "description": "After acceptance passes, dispatches a subagent with the spec content and changed file list to reconcile the spec against implementation. Does NOT skip this step.",
+          "required": true
+        },
+        {
+          "criterion": "updates-all-spec-locations",
+          "description": "When the subagent returns an updated spec: updates metadata.spec, overwrites the spec_file path, and overwrites the repo copy (docs/specs/webhook-retry.md). All three locations are kept in sync.",
+          "required": true
+        },
+        {
+          "criterion": "spec-remains-timeless",
+          "description": "The reconciled spec maintains timeless present-tense format. It now says 'max 3 attempts' (matching implementation) and includes circuit breaker behavior. It does NOT use transition language like 'changed from 5 to 3 attempts'.",
+          "required": true
+        }
+      ]
     }
   ]
 }

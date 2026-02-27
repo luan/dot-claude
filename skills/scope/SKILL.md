@@ -59,13 +59,14 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
 
 ### Spec Phase (what we're building)
 
-4. **Synthesize spec** from validated research. The spec is the WHAT — it answers "what are we building and why":
-   - **Problem**: what's broken or missing
-   - **Recommendation**: chosen approach + rationale (strategy-level — WHY this approach, not WHAT code to change)
-   - **Key Files**: existing code relevant to the problem — where current behavior lives, what patterns exist. Orients the reader to the landscape. No Modify/Create annotations, no files-to-create, no change descriptions. The reader should understand where the relevant code lives today, not what to do with it.
+4. **Synthesize spec** from validated research. The spec is a **timeless target-state document** — after implementation it should read as a valid specification of the system, not as a dated change request. Write it as if the system already works this way.
+
+   - **Problem**: what's broken or missing — the only section that may describe current broken state. This is motivational context explaining WHY the spec exists.
+   - **Recommendation**: the target behavior in present tense. Strategy-level — WHY this approach, not WHAT code to change. "Webhook delivery uses exponential backoff via BullMQ" not "Add exponential backoff to webhook delivery." Avoid transition verbs (add, replace, migrate, move, change X to Y) — those describe what to DO, not what the system IS.
+   - **Architecture Context**: describe the relevant code landscape in present tense, as it will look post-implementation. Module roles, patterns, architectural layers — not hardcoded file paths. Describe components by what they do ("the webhook delivery module", "the job queue infrastructure"), not by path. If paths help orient the reader, include them parenthetically, but the description must stand without them. No Modify/Create annotations, no files-to-create, no change descriptions.
    - **Risks**: edge cases, failure modes, constraints
 
-   The spec does NOT include: implementation phases, step-by-step approaches, task breakdowns, files to create/modify, or specific code changes (e.g., "add Codable conformance to X", "create Y.swift", "SyncChangeQueue.swift — add persistence backing"). Those belong to the plan. If your Key Files table has a "Role" column with Modify/Create, you've written a plan disguised as a spec — remove it and list only existing paths with what they currently do.
+   The spec does NOT include: implementation phases, step-by-step approaches, task breakdowns, files to create/modify, or specific code changes (e.g., "add Codable conformance to X", "create Y.swift", "SyncChangeQueue.swift — add persistence backing"). Those belong to the plan.
 
 5. **Store spec:**
    - `SPEC_FILE=$(echo "<spec content>" | ct spec create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "scope" 2>/dev/null)`
@@ -75,7 +76,7 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
    - `Spec: t<id> — <topic>`
    - Problem statement
    - Recommendation + rationale
-   - Key files (existing code landscape)
+   - Architecture context (code landscape)
    - Risks and constraints
 
    If `--auto-approve` → skip to step 8.
