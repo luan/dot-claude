@@ -21,3 +21,5 @@ paths:
 **Dead code:** Remove immediately. Use #[cfg(test)] for test-only.
 
 **Imports:** All `use` at file top. No inline imports.
+
+**No section-divider comments:** Do not generate `// ─── Section Name ───` or similar box-drawing/ruler comments above functions. The function name is the label.
