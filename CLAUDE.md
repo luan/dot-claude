@@ -10,3 +10,4 @@
 10. When saving memories, consider if a universal rule would be more useful → `~/.claude/rules/<topic>.md`
 11. Skills flow: brainstorm → scope → develop [acceptance] → review → commit
 12. On resume after compaction: if tasks exist with `metadata.impl_team` set and status `in_progress`, re-invoke `/develop` to trigger recovery.
+13. Skill scripts use relative paths (e.g. `scripts/foo.py`). The cwd at execution time is the user's project, not the skill directory. Before running a relative script path, locate the actual file with Glob (e.g. `**/scripts/foo.py`) and use the absolute result.
