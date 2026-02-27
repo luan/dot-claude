@@ -1,5 +1,5 @@
 ---
-name: pr:comments
+name: pr-comments
 description: "Fix unresolved PR review comments. Triggers: 'fix comments', 'fix PR comments', 'address review feedback'."
 user-invocable: true
 disable-model-invocation: false
@@ -33,9 +33,7 @@ Branch: !`git branch --show-current 2>/dev/null`
 
 2. **Verify branch**: Compare injected Branch vs PR headRefName — mismatch → ask user and **stop**. Do not proceed to Step 3 until the user confirms or switches branches.
 
-3. **Fetch comments**:
-
-   First verify `scripts/fetch_threads.py` exists (check repo root and `~/.claude/scripts/`). If missing, fall back to `gh api repos/{owner}/{repo}/pulls/{PR}/comments`.
+3. **Fetch comments** (execute directly — never prefix with `python3`/`uv run`):
 
    ```bash
    scripts/fetch_threads.py --pr <PR>

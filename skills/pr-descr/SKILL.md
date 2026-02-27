@@ -1,5 +1,5 @@
 ---
-name: pr:descr
+name: pr-descr
 description: "Update PR title and description from branch context. Triggers: 'pr description', 'update PR', 'PR title', 'describe PR'."
 user-invocable: true
 model: sonnet

@@ -1,5 +1,5 @@
 ---
-name: bootstrap:web
+name: bootstrap-web
 description: "Bootstrap a new web project with the preferred stack. Triggers: 'bootstrap web', 'new webapp', 'scaffold project', 'new web project'."
 argument-hint: "<project-name> [description]"
 user-invocable: true
@@ -25,7 +25,7 @@ First word = project name (directory under `~/src/`). Remaining = description. I
 
 ## Dev Routing
 
-Invoke `Skill(bootstrap:caddy, "<project-name>")` to assign a port and create `https://<project>.localhost`. Use returned port in vite.config.ts, URL in `.env` (`WEBAUTHN_ORIGIN`). If infrastructure missing, stop and tell user.
+Invoke `Skill(bootstrap-caddy, "<project-name>")` to assign a port and create `https://<project>.localhost`. Use returned port in vite.config.ts, URL in `.env` (`WEBAUTHN_ORIGIN`). If infrastructure missing, stop and tell user.
 
 ## Research Phase
 
