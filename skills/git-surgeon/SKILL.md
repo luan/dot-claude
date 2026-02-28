@@ -1,6 +1,6 @@
 ---
 name: git-surgeon
-description: Non-interactive hunk-level git operations — stage, unstage, discard, undo, fixup, and split by hunk ID. Triggers: "stage this hunk", "split commit", "partial stage", "discard hunk", "selective staging", "commit separately", "separate commits".
+description: 'Non-interactive hunk-level git operations — stage, unstage, discard, undo, fixup, and split by hunk ID. Triggers: "stage this hunk", "split commit", "partial stage", "discard hunk", "selective staging", "commit separately", "separate commits".'
 ---
 
 # git-surgeon
@@ -74,17 +74,21 @@ git-surgeon split HEAD \
 ## Workflows
 
 **Typical:**
+
 1. `hunks` → IDs → `show <id>` → inspect → `commit <id1> <id2> -m "msg"`
 2. Partial: `commit <id>:5-30 -m "msg"`
 
 **Fixup:**
+
 1. `stage <id1> <id2>` → `fixup <sha>` (HEAD → amend; older → autosquash rebase)
 2. Unstaged changes preserved
 
 **Undo:**
+
 1. `hunks --commit <sha>` → `undo <id> --from <sha>` → changes appear as unstaged mods
 
 **Split:**
+
 1. `hunks --commit <sha>` (use `--full` for line numbers)
 2. `split <sha> --pick <id1> -m "first" --rest-message "second"`
 3. Multiple `-m` → subject + body. `id:range` for partial; commas for non-contiguous

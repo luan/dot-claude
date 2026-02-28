@@ -2,6 +2,7 @@
   "env": {
     "BASH_DEFAULT_TIMEOUT_MS": "300000",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "ENABLE_LSP_TOOL": "1",
     "GIT_USERNAME": "luan"
   },
   "includeCoAuthoredBy": false,
@@ -35,14 +36,6 @@
     "rust-analyzer-lsp@claude-plugins-official": true,
     "swift-lsp@claude-plugins-official": true,
     "gt@local": true
-  },
-  "extraKnownMarketplaces": {
-    "local": {
-      "source": {
-        "source": "directory",
-        "path": "~/.claude/local-plugins"
-      }
-    }
   },
   "alwaysThinkingEnabled": true,
   "promptSuggestionEnabled": true,
