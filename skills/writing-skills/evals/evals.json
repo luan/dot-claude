@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "skill": "/Users/luan.santos/.claude/skills/writing-skills",
+  "skill": "skills/writing-skills",
   "cases": [
     {
       "id": "edit-skill-activates",

@@ -8,12 +8,12 @@
       "expectations": [
         {
           "criterion": "prefixes-branch",
-          "description": "Normalizes the branch name to luan/fix-auth-timeout (adds luan/ prefix)",
+          "description": "Normalizes the branch name by prefixing with ${GIT_USERNAME:-$(whoami)} per the start skill convention",
           "required": true
         },
         {
           "criterion": "uses-gt-create",
-          "description": "Uses Skill(gt:gt, 'create luan/fix-auth-timeout') instead of git checkout -b, because gt plugin is loaded",
+          "description": "Uses Skill(gt:gt, 'create ${GIT_USERNAME}/fix-auth-timeout') instead of git checkout -b because gt plugin is loaded",
           "required": true
         },
         {
@@ -25,7 +25,7 @@
     },
     {
       "id": "branch-already-exists",
-      "prompt": "You are Claude running /start fix-auth-timeout. The gt plugin is NOT loaded. git checkout -b luan/fix-auth-timeout fails with 'fatal: a branch named luan/fix-auth-timeout already exists'.\n\nDemonstrate error handling.",
+      "prompt": "You are Claude running /start fix-auth-timeout. The gt plugin is NOT loaded. git checkout -b ${GIT_USERNAME}/fix-auth-timeout fails with 'fatal: a branch named ${GIT_USERNAME}/fix-auth-timeout already exists'.\n\nDemonstrate error handling.",
       "expectations": [
         {
           "criterion": "detects-conflict",

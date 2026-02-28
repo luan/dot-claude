@@ -421,9 +421,6 @@ impl App {
                     branch: String::new(),
                     status_detail: String::new(),
                     project: String::new(),
-                    plan_file: String::new(),
-                    spec_file: String::new(),
-                    slug: String::new(),
                     raw: serde_json::Value::Null,
                 };
 

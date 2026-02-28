@@ -20,7 +20,7 @@
     },
     {
       "id": "branch-mismatch-detected",
-      "prompt": "You are Claude running /pr:comments. The injected context shows PR #42 with headRefName 'luan/add-auth', but git branch --show-current returns 'luan/fix-typo'. The branches don't match.\n\nDemonstrate Step 2 (Verify branch).",
+      "prompt": "You are Claude running /pr:comments. The injected context shows PR #42 with headRefName 'alice/add-auth', but git branch --show-current returns 'alice/fix-typo'. The branches don't match.\n\nDemonstrate Step 2 (Verify branch).",
       "expectations": [
         {
           "criterion": "detects-mismatch",

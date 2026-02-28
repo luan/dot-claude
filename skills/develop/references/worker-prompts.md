@@ -39,7 +39,7 @@ Injected into every Codex dispatch prompt — not used by Claude workers.
 ```
 {codex_conventions}
 
-## Project Conventions (injected from ~/.claude)
+## Project Conventions (injected from $HOME/.claude)
 
 ### Code Style
 - Clarity over brevity. No clever one-liners that obscure intent.

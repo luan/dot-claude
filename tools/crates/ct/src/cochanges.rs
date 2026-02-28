@@ -138,41 +138,6 @@ fn get_files_on_branch(base: &str) -> HashSet<String> {
         .collect()
 }
 
-pub fn collect_changed_associations(
-    associations: &HashMap<String, HashMap<String, f64>>,
-    changed_files: &HashSet<String>,
-    max_files: Option<usize>,
-    base: &str,
-) -> Vec<(String, f64)> {
-    let base_files = get_files_on_branch(base);
-
-    let mut max_fractions: HashMap<String, f64> = HashMap::new();
-    for file_path in changed_files {
-        if let Some(related) = associations.get(file_path) {
-            for (other_file, &fraction) in related {
-                if changed_files.contains(other_file) {
-                    continue;
-                }
-                let entry = max_fractions.entry(other_file.clone()).or_insert(0.0);
-                if fraction > *entry {
-                    *entry = fraction;
-                }
-            }
-        }
-    }
-
-    let mut sorted: Vec<(String, f64)> = max_fractions.into_iter().collect();
-    sorted.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-
-    let limit = max_files.unwrap_or(usize::MAX);
-    sorted
-        .into_iter()
-        .filter(|(path, _)| Path::new(path).exists() || base_files.contains(path))
-        .take(limit)
-        .map(|(path, frac)| (path, (frac * 10.0).floor() / 10.0))
-        .collect()
-}
-
 pub fn output_changed_associations(
     associations: &HashMap<String, HashMap<String, f64>>,
     changed_files: &HashSet<String>,

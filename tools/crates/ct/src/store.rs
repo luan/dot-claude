@@ -95,9 +95,6 @@ pub struct Task {
     pub branch: String,
     pub status_detail: String,
     pub project: String,
-    pub plan_file: String,
-    pub spec_file: String,
-    pub slug: String,
     pub raw: Value,
 }
 
@@ -162,9 +159,6 @@ impl Task {
             branch: meta_str("branch"),
             status_detail: meta_str("status_detail"),
             project: meta_str("project"),
-            plan_file: meta_str("plan_file"),
-            spec_file: meta_str("spec_file"),
-            slug: meta_str("slug"),
             raw: raw_val,
         }
     }
@@ -197,9 +191,6 @@ impl Task {
                 set_or_delete(m, "parent_id", &self.parent_id);
                 set_or_delete(m, "branch", &self.branch);
                 set_or_delete(m, "status_detail", &self.status_detail);
-                set_or_delete(m, "plan_file", &self.plan_file);
-                set_or_delete(m, "spec_file", &self.spec_file);
-                set_or_delete(m, "slug", &self.slug);
             }
         }
         val
