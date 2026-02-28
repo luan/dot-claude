@@ -19,57 +19,53 @@
 .tmp/
 .temp/
 
-# Cache
-.cache/
-cache/
-
-# Node
-node_modules/
-
 # Python
 __pycache__/
 *.py[cod]
 
-# IDE lock files
-ide/*.lock
+# Rust build artifacts
+tools/target
+target
 
-# Generated
-shell-snapshots/
+# Claude Code runtime — project-level .claude/ dir
+.claude/settings.local.json
+.claude/agent-memory/
+.claude/session-env/
+.claude/shell-snapshots/
+.claude/debug/
+.claude/plans/
+.claude/todos/
+.claude/projects/
+.claude/tasks/
+.claude/teams/
+.claude/history.jsonl
+.claude/file-history/
+.claude/paste-cache/
+.claude/backups/
+.claude/cache/
+.claude/stats-cache.json
+.claude/mcp-needs-auth-cache.json
+.claude/usage-data/
+.claude/telemetry/
 
-# Analytics / tracking
-statsig/
-
-# AI local context
-.ai.local/
-
-# Claude Code session data
+# Claude Code runtime — root-level (leftover from old ~/.claude structure)
 todos/
 projects/
-.claude/settings.local.json
-local/
 history.jsonl
 file-history
 debug
 paste-cache
 plans
 specs/
-telemetry
-stats-cache.json
 tasks
-chrome
-.agents/
-image-cache
 teams
-usage-data
-
-# Plugins (track config + bootstrap only)
-plugins/*
-!plugins/config.json
-!plugins/bootstrap/
-tools/target
-target
+shell-snapshots/
 backups
+cache/
+stats-cache.json
 mcp-needs-auth-cache.json
-/icons
+usage-data
+telemetry
+
+# Skills workspaces
 /skills/*-workspace/
-.credentials.json
