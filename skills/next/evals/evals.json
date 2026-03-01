@@ -25,7 +25,7 @@
     },
     {
       "id": "feature-branch-ci-failing",
-      "prompt": "You are Claude running /next on branch luan/add-auth. gh pr view shows PR #15 (draft, CI failing). gh pr checks shows 2 failures: lint and unit tests. There are 2 in_progress tasks for this project.\n\nDemonstrate the Feature Branch Path.",
+      "prompt": "You are Claude running /next on branch alice/add-auth. gh pr view shows PR #15 (draft, CI failing). gh pr checks shows 2 failures: lint and unit tests. There are 2 in_progress tasks for this project.\n\nDemonstrate the Feature Branch Path.",
       "expectations": [
         {
           "criterion": "gathers-pr-state",

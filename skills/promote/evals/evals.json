@@ -1,0 +1,54 @@
+{
+  "version": "1.0",
+  "skill": "skills/promote",
+  "cases": [
+    {
+      "id": "promote-skill-to-shared",
+      "prompt": "You are Claude running /promote. The user says: 'promote my experimental skill at $HOME/.claude/skills/my-new-skill to the shared plugin'. One git-backed plugin is available at $HOME/AI/my-plugin.\n\nDemonstrate the full flow.",
+      "expectations": [
+        {
+          "criterion": "runs-promote-script",
+          "description": "Runs promote.py via uv with the source path and resolved plugin dir as arguments",
+          "required": true
+        },
+        {
+          "criterion": "uses-plugin-root",
+          "description": "Uses $CLAUDE_PLUGIN_ROOT in the script path — does NOT hardcode a cache or absolute path",
+          "required": true
+        },
+        {
+          "criterion": "reports-and-reminds",
+          "description": "Reports what moved and where, then reminds user to commit",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "promote-no-target",
+      "prompt": "You are Claude running /promote. The user says: 'promote $HOME/.claude/skills/my-skill'. Multiple git-backed plugins are available.\n\nDemonstrate Step 2 (Choose target plugin).",
+      "expectations": [
+        {
+          "criterion": "discovers-plugins",
+          "description": "Lists available git-backed plugins discovered from $HOME/.claude/local-plugins/plugins/",
+          "required": true
+        },
+        {
+          "criterion": "asks-before-running",
+          "description": "Asks user to choose target plugin via AskUserQuestion before running the script",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "destination-exists",
+      "prompt": "You are Claude running /promote. promote.py exits with 'Error: destination already exists'.\n\nDemonstrate error handling.",
+      "expectations": [
+        {
+          "criterion": "surfaces-error",
+          "description": "Surfaces the conflict to the user — does NOT overwrite the destination automatically",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

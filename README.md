@@ -1,48 +1,85 @@
-# ~/.claude
+# dot-claude
 
-Claude Code configuration. Skills, rules, and workflows
-for AI-assisted development.
+Personal Claude Code plugin — skills, rules, and tools for AI-assisted development.
 
-## New User Setup
+## Why a plugin?
 
-1. **Set your username**
-   Add `"GIT_USERNAME": "<your-handle>"` to the `env` block in `settings.json` or `settings.local.json`. This controls branch prefixes and other user-specific behaviour.
+This repo used to be a drop-in `$HOME/.claude` directory. That bundled personal config (settings, hooks, keybindings) with shareable skills and rules into one repo, creating several problems:
 
-2. **Install the `ct` CLI**
-   ```bash
-   cd ~/.claude/tools && cargo install --path crates/ct
-   ```
-   Requires Rust (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`).
+- **Not shareable.** Cloning someone else's `$HOME/.claude` overwrites your own config.
+- **Not composable.** You can't use skills from two repos — only one `$HOME/.claude` exists.
+- **Secrets in scope.** `settings.json`, API tokens, and local state lived alongside skills that should be public.
 
-3. **Reinstall plugins**
-   Plugin state is not committed. Open Claude Code and reinstall plugins via the plugin manager.
+Converting to a Claude Code plugin solves all three. Skills, rules, and agents ship as a plugin that anyone can install alongside their own config. Personal settings stay in `$HOME/.claude` where they belong.
 
-## Quick Start
+## Setup
+
+```
+$HOME/.claude/
+├── local-plugins/
+│   ├── .claude-plugin/marketplace.json   ← declares local plugins
+│   └── plugins/
+│       └── dot-claude → $HOME/AI/dot-claude
+├── settings.json     ← enabledPlugins: dot-claude@local
+├── CLAUDE.md         ← personal global instructions
+└── rules/            ← personal global rules
+```
+
+Install:
 
 ```bash
-/vibe "add user authentication"      # Full pipeline, hands-off
-/scope "add user authentication"     # Research, design, create tasks
-/develop <epic-id>                   # Execute (solo or swarm)
-/review                              # Adversarial code review
-/commit                              # Conventional commit
+git clone <repo-url> $HOME/AI/dot-claude
+mkdir -p $HOME/.claude/local-plugins/plugins
+ln -sf $HOME/AI/dot-claude $HOME/.claude/local-plugins/plugins/dot-claude
 ```
+
+Then in `$HOME/.claude/settings.json`:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "local": { "source": { "source": "directory", "path": "<home>/.claude/local-plugins" } }
+  },
+  "enabledPlugins": { "dot-claude@local": true }
+}
+```
+
+## What's in here
+
+### Skills
+
+```
+/vibe           Full autonomous pipeline: scope → develop → commit
+/scope          Research codebase, design, create implementation tasks
+/develop        Execute epic/tasks (auto solo or swarm)
+/brainstorm     Collaborative design for greenfield features
+/review         Adversarial code review with fix loop
+/commit         Conventional commit
+/start          Create branch (gt or git)
+/next           Resume branch work or pick next item from board
+/split-commit   Repackage branch into clean vertical commits
+/debugging      Systematic root cause investigation
+/triage         Convert feedback into phased tasks (no implementation)
+/test-plan      Manual test plan from current diff
+/acceptance     Verify implementation against acceptance criteria
+/pr-descr       Update PR title/description from branch context
+/pr-comments    Fix unresolved PR review comments
+/frontend-design  Production-grade UI design
+/git-surgeon    Hunk-level git operations
+/promote        Move skill/rule from personal to shared plugin
+/sync-plugins   Pull latest updates for all plugins
+/writing-skills Create and edit Claude Code skills
+```
+
+### Rules
+
+Language-specific conventions (Rust, Python, Swift, Svelte 5, Cargo) plus skill authoring guides.
 
 ## Pipeline
 
 ```
 brainstorm → scope → develop → split-commit → review → commit
 ```
-
-- **brainstorm**: Collaborative design for greenfield features
-- **scope**: Research codebase, design, and create implementation tasks
-- **develop**: Workers own TDD from briefs (auto solo/swarm)
-- **split-commit**: Repackage branch into clean, tested commits
-- **review**: Adversarial review with built-in fix loop + polish
-- **commit**: Conventional commit
-
-Other skills: `/test-plan`, `/triage`, `/debugging`, `/next`, `/start`,
-`/split-commit`, `/gt`, `/acceptance`, `/pr:descr`,
-`/pr:comments`, `/frontend-design`
 
 ## License
 

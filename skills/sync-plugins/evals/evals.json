@@ -1,0 +1,54 @@
+{
+  "version": "1.0",
+  "skill": "skills/sync-plugins",
+  "cases": [
+    {
+      "id": "sync-all",
+      "prompt": "You are Claude running /sync-plugins with no arguments. Two git-backed plugins are available.\n\nDemonstrate the full flow.",
+      "expectations": [
+        {
+          "criterion": "runs-sync-script",
+          "description": "Runs sync.py via uv with no arguments",
+          "required": true
+        },
+        {
+          "criterion": "uses-plugin-root",
+          "description": "Uses $CLAUDE_PLUGIN_ROOT in the script path — does NOT hardcode a cache or absolute path",
+          "required": true
+        },
+        {
+          "criterion": "reports-per-plugin",
+          "description": "Reports results for each plugin — which updated, which were already current",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "sync-one",
+      "prompt": "You are Claude running /sync-plugins my-work-plugin.\n\nDemonstrate the single-plugin flow.",
+      "expectations": [
+        {
+          "criterion": "passes-name-as-argument",
+          "description": "Passes 'my-work-plugin' as the argument to sync.py — only that plugin is synced",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "sync-failure",
+      "prompt": "You are Claude running /sync-plugins. sync.py reports a FAILED result for one plugin (non-fast-forward diverge).\n\nDemonstrate error handling.",
+      "expectations": [
+        {
+          "criterion": "surfaces-error",
+          "description": "Surfaces the failure message to the user clearly",
+          "required": true
+        },
+        {
+          "criterion": "no-auto-fix",
+          "description": "Does NOT attempt to reset, force-merge, or fix the diverge automatically — lets the user decide",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

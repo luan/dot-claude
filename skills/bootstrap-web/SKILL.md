@@ -12,7 +12,7 @@ Scaffold a new SvelteKit web app. Researches current ecosystem state before scaf
 
 ## Arguments
 
-First word = project name (directory under `~/src/`). Remaining = description. If no name, ask with AskUserQuestion.
+First word = project name (directory under `$HOME/src/`). Remaining = description. If no name, ask with AskUserQuestion.
 
 ## Fixed Stack (non-negotiable)
 
@@ -54,7 +54,7 @@ Use answers to select fonts (Google Fonts), build OKLCH palette, shape layout pe
 
 ## Scaffold
 
-Create project at `~/src/<project-name>` using research results for exact packages/APIs.
+Create project at `$HOME/src/<project-name>` using research results for exact packages/APIs.
 
 **Constraints:**
 - Never hardcode versions — `bun add <package>` resolves latest
@@ -69,7 +69,7 @@ Create project at `~/src/<project-name>` using research results for exact packag
 ## Quality Gate
 
 ```bash
-cd ~/src/<project-name> && bun run prepare && bun run check
+cd $HOME/src/<project-name> && bun run prepare && bun run check
 ```
 
 Both must pass. Fix type errors before returning — never ship a broken scaffold. If failures persist after 2 fix attempts, report the specific errors.
