@@ -4,7 +4,7 @@
   "cases": [
     {
       "id": "uses-template-never-pushes",
-      "prompt": "You are Claude running /pr:descr. PR #15 exists on branch luan/add-auth. The repo has .github/PULL_REQUEST_TEMPLATE.md with sections: Summary, Test Plan, Breaking Changes. The diff shows 4 files adding JWT auth.\n\nDemonstrate Steps 3-4.",
+      "prompt": "You are Claude running /pr:descr. PR #15 exists on branch alice/add-auth. The repo has .github/PULL_REQUEST_TEMPLATE.md with sections: Summary, Test Plan, Breaking Changes. The diff shows 4 files adding JWT auth.\n\nDemonstrate Steps 3-4.",
       "expectations": [
         {
           "criterion": "follows-template",

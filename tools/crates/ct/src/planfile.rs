@@ -5,17 +5,122 @@ use std::path::{Path, PathBuf};
 use std::process;
 use std::time::SystemTime;
 
-use crate::artifact;
-
-pub use crate::artifact::project_name;
-
 fn fatal(msg: &str) -> ! {
     eprintln!("planfile: {msg}");
     process::exit(1);
 }
 
+pub fn project_name(project_path: &str) -> String {
+    if project_path.is_empty() {
+        return String::from("(no project)");
+    }
+    let path = Path::new(project_path);
+    let components: Vec<&str> = path
+        .components()
+        .filter_map(|c| c.as_os_str().to_str())
+        .collect();
+
+    // Walk backwards looking for a `.git` directory component.
+    // If found, use `{repo}-{remaining}` so worktrees get unique names.
+    // e.g. /src/repo.git/wt1 → "repo-wt1", /src/repo.git/wt2 → "repo-wt2"
+    for (i, comp) in components.iter().enumerate() {
+        if comp.ends_with(".git") {
+            let stem = comp.strip_suffix(".git").unwrap_or(comp);
+            let rest: Vec<&str> = components[i + 1..].to_vec();
+            if rest.is_empty() {
+                return stem.to_string();
+            }
+            return format!("{}-{}", stem, rest.join("-"));
+        }
+    }
+
+    // No .git parent — use the last component as before.
+    path.file_name()
+        .unwrap_or_else(|| fatal("invalid project path"))
+        .to_string_lossy()
+        .to_string()
+}
+
 pub fn plans_dir(project_path: &str) -> PathBuf {
-    artifact::artifact_dir(project_path, "plans")
+    let home = env::var("HOME").unwrap_or_else(|_| fatal("cannot determine home directory"));
+    plans_dir_with_base(project_path, Path::new(&home))
+}
+
+pub fn plans_dir_with_base(project_path: &str, base: &Path) -> PathBuf {
+    let name = project_name(project_path);
+    base.join(".claude").join("plans").join(name)
+}
+
+fn yaml_quote(s: &str) -> String {
+    if s.contains(':')
+        || s.contains('{')
+        || s.contains('}')
+        || s.contains('[')
+        || s.contains(']')
+        || s.contains('&')
+        || s.contains('*')
+        || s.contains('?')
+        || s.contains('|')
+        || s.contains('>')
+        || s.contains('!')
+        || s.contains('%')
+        || s.contains('@')
+        || s.contains('`')
+        || s.contains('#')
+        || s.contains(',')
+        || s.contains('"')
+        || s.contains('\'')
+        || s.contains('\n')
+        || s.contains('\\')
+        || s.starts_with(' ')
+        || s.ends_with(' ')
+    {
+        let escaped = s.replace('\\', "\\\\").replace('"', "\\\"");
+        format!("\"{escaped}\"")
+    } else {
+        s.to_string()
+    }
+}
+
+pub fn parse_frontmatter(content: &str) -> (Option<&str>, &str) {
+    let delim = "---\n";
+    if !content.starts_with(delim) {
+        return (None, content);
+    }
+
+    let rest = &content[delim.len()..];
+    if let Some(end) = rest.find("\n---\n") {
+        let yaml = &rest[..end];
+        let body = &rest[end + 5..];
+        (Some(yaml), body)
+    } else if let Some(yaml) = rest.strip_suffix("\n---") {
+        (Some(yaml), "")
+    } else {
+        (None, content)
+    }
+}
+
+pub fn parse_yaml_map(yaml: &str) -> Vec<(String, String)> {
+    yaml.lines()
+        .filter_map(|line| {
+            let line = line.trim();
+            if line.is_empty() {
+                return None;
+            }
+            let idx = line.find(':')?;
+            let key = line[..idx].trim().to_string();
+            let mut val = line[idx + 1..].trim().to_string();
+            // Strip quotes
+            if val.len() >= 2
+                && ((val.starts_with('"') && val.ends_with('"'))
+                    || (val.starts_with('\'') && val.ends_with('\'')))
+            {
+                val = val[1..val.len() - 1].to_string();
+                val = val.replace("\\\"", "\"").replace("\\\\", "\\");
+            }
+            Some((key, val))
+        })
+        .collect()
 }
 
 pub fn cmd_create(args: &[String]) {
@@ -87,12 +192,12 @@ pub fn cmd_create(args: &[String]) {
             .unwrap_or_else(|e| fatal(&format!("reading stdin: {e}")));
     }
 
-    let now = artifact::chrono_rfc3339();
+    let now = chrono_rfc3339();
 
     let mut buf = String::new();
     buf.push_str("---\n");
-    buf.push_str(&format!("topic: {}\n", artifact::yaml_quote(&topic)));
-    buf.push_str(&format!("project: {}\n", artifact::yaml_quote(&project)));
+    buf.push_str(&format!("topic: {}\n", yaml_quote(&topic)));
+    buf.push_str(&format!("project: {}\n", yaml_quote(&project)));
     buf.push_str(&format!("created: {now}\n"));
     buf.push_str("---\n");
     if !body.is_empty() {
@@ -104,6 +209,35 @@ pub fn cmd_create(args: &[String]) {
 
     fs::write(&full_path, &buf).unwrap_or_else(|e| fatal(&format!("writing file: {e}")));
     println!("{}", full_path.display());
+}
+
+fn chrono_rfc3339() -> String {
+    // ISO 8601 / RFC 3339 without external deps
+    let duration = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default();
+    let secs = duration.as_secs();
+
+    // days since epoch
+    let mut days = (secs / 86400) as i64;
+    let day_secs = (secs % 86400) as u32;
+    let hours = day_secs / 3600;
+    let minutes = (day_secs % 3600) / 60;
+    let seconds = day_secs % 60;
+
+    // year/month/day from days since epoch
+    days += 719468; // shift to year 0
+    let era = if days >= 0 { days } else { days - 146096 } / 146097;
+    let doe = (days - era * 146097) as u32;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let y = yoe as i64 + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = if m <= 2 { y + 1 } else { y };
+
+    format!("{year:04}-{m:02}-{d:02}T{hours:02}:{minutes:02}:{seconds:02}Z")
 }
 
 pub fn cmd_read(args: &[String]) {
@@ -125,13 +259,13 @@ pub fn cmd_read(args: &[String]) {
     let content =
         fs::read_to_string(&file_path).unwrap_or_else(|e| fatal(&format!("reading file: {e}")));
 
-    let (yaml, body) = artifact::parse_frontmatter(&content);
+    let (yaml, body) = parse_frontmatter(&content);
 
     if frontmatter_mode {
         match yaml {
             None => println!("{{}}"),
             Some(y) => {
-                let pairs = artifact::parse_yaml_map(y);
+                let pairs = parse_yaml_map(y);
                 print!("{{");
                 for (i, (k, v)) in pairs.iter().enumerate() {
                     if i > 0 {
@@ -242,10 +376,10 @@ pub fn cmd_archive(args: &[String]) {
     let content = fs::read_to_string(path).unwrap_or_else(|e| fatal(&format!("reading file: {e}")));
 
     // Extract project path from frontmatter to locate the git repo
-    let (yaml, _) = artifact::parse_frontmatter(&content);
+    let (yaml, _) = parse_frontmatter(&content);
     let project = yaml
         .map(|y| {
-            artifact::parse_yaml_map(y)
+            parse_yaml_map(y)
                 .into_iter()
                 .find(|(k, _)| k == "project")
                 .map(|(_, v)| v)
@@ -296,8 +430,6 @@ pub fn cmd_archive(args: &[String]) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::artifact::{chrono_rfc3339, parse_frontmatter, parse_yaml_map, yaml_quote};
-
     #[test]
     fn worktree_path_gets_repo_prefix() {
         assert_eq!(project_name("/Users/me/src/repo.git/wt1"), "repo-wt1");
@@ -324,7 +456,7 @@ mod tests {
 
     #[test]
     fn task_file_returns_specified_path() {
-        let tmp = std::env::temp_dir().join(format!("ck-latest-test-{}", std::process::id()));
+        let tmp = env::temp_dir().join(format!("ck-latest-test-{}", std::process::id()));
         std::fs::create_dir_all(&tmp).unwrap();
 
         let plan = tmp.join("my-plan.md");
@@ -354,11 +486,11 @@ mod tests {
 
     #[test]
     fn cmd_create_frontmatter_has_no_status_field() {
-        let tmp = std::env::temp_dir().join(format!("ck-test-{}", std::process::id()));
+        let tmp = env::temp_dir().join(format!("ck-test-{}", std::process::id()));
         let project_path = "/some/project";
 
-        // Use artifact_dir_with_base to get the expected directory without mutating HOME.
-        let project_dir = crate::artifact::artifact_dir_with_base(project_path, "plans", &tmp);
+        // Use plans_dir_with_base to get the expected directory without mutating HOME.
+        let project_dir = plans_dir_with_base(project_path, &tmp);
         std::fs::create_dir_all(&project_dir).unwrap();
 
         let slug = crate::slug::slug("Test Topic");

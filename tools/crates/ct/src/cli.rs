@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 
 use crate::ansi;
 use crate::plan;
-use crate::spec;
 use crate::store::{Priority, SortOrder, Status, StatusFilter, Store, Task, TaskList};
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::{Shell, generate};
@@ -58,12 +57,6 @@ pub enum Command {
     Plan {
         #[command(subcommand)]
         action: PlanAction,
-    },
-
-    #[command(visible_alias = "s", about = "Spec file operations")]
-    Spec {
-        #[command(subcommand)]
-        action: SpecAction,
     },
 
     #[command(visible_alias = "j", about = "Project operations")]
@@ -201,12 +194,6 @@ pub enum ToolAction {
 
         #[arg(long, default_value_t = 200, help = "Per-file diff line threshold")]
         max_file: usize,
-
-        #[arg(long, help = "Output diff --stat instead of full diff")]
-        stat: bool,
-
-        #[arg(long, help = "Include co-change candidates in output")]
-        cochanges: bool,
     },
 
     #[command(about = "Find files frequently changed together with current changes")]
@@ -318,96 +305,6 @@ pub enum PlanAction {
     Show {
         #[arg(help = "Plan ID or name")]
         id: String,
-    },
-
-    #[command(about = "Archive plan files older than N days")]
-    Prune {
-        #[arg(long, default_value_t = 30, help = "Age threshold in days")]
-        days: u64,
-
-        #[arg(long, help = "Dry run — print what would be archived")]
-        dry_run: bool,
-
-        #[arg(short, long, help = "Filter by project path")]
-        project: Option<String>,
-    },
-}
-
-#[derive(Subcommand)]
-pub enum SpecAction {
-    #[command(about = "List specs for the current project")]
-    List {
-        #[arg(long, help = "Output as JSON")]
-        json: bool,
-
-        #[arg(long, help = "Show specs from all projects")]
-        all: bool,
-
-        #[arg(short, long, help = "Filter by project path")]
-        project: Option<String>,
-
-        #[arg(long, help = "Show archived specs instead of active")]
-        archived: bool,
-    },
-
-    #[command(about = "Create a new spec file")]
-    Create {
-        #[arg(long, help = "Spec topic")]
-        topic: String,
-
-        #[arg(long, help = "Project path")]
-        project: String,
-
-        #[arg(long, help = "Custom slug (auto-generated if omitted)")]
-        slug: Option<String>,
-
-        #[arg(long, help = "Filename prefix")]
-        prefix: Option<String>,
-
-        #[arg(long, help = "Spec body content")]
-        body: Option<String>,
-    },
-
-    #[command(about = "Read spec file body or frontmatter")]
-    Read {
-        #[arg(help = "Spec file path")]
-        file: String,
-
-        #[arg(long, help = "Output frontmatter as JSON")]
-        frontmatter: bool,
-    },
-
-    #[command(about = "Find most recently modified spec file")]
-    Latest {
-        #[arg(long, help = "Project path (defaults to git root or cwd)")]
-        project: Option<String>,
-
-        #[arg(long, help = "Resolve this file directly instead of mtime heuristic")]
-        task_file: Option<String>,
-    },
-
-    #[command(about = "Move a spec file to archive/ subfolder")]
-    Archive {
-        #[arg(help = "Spec file path")]
-        file: String,
-    },
-
-    #[command(about = "Show spec content by ID")]
-    Show {
-        #[arg(help = "Spec ID or name")]
-        id: String,
-    },
-
-    #[command(about = "Archive spec files older than N days")]
-    Prune {
-        #[arg(long, default_value_t = 30, help = "Age threshold in days")]
-        days: u64,
-
-        #[arg(long, help = "Dry run — print what would be archived")]
-        dry_run: bool,
-
-        #[arg(short, long, help = "Filter by project path")]
-        project: Option<String>,
     },
 }
 
@@ -643,18 +540,6 @@ pub fn run_show(
         if !task.project.is_empty() {
             println!("{} {}", ansi::label("Project:"), ansi::id(&task.project));
         }
-
-        if !task.plan_file.is_empty() {
-            println!("{} {}", ansi::label("Plan File:"), task.plan_file);
-        }
-
-        if !task.spec_file.is_empty() {
-            println!("{} {}", ansi::label("Spec File:"), task.spec_file);
-        }
-
-        if !task.slug.is_empty() {
-            println!("{} {}", ansi::label("Slug:"), task.slug);
-        }
     }
 
     Ok(())
@@ -696,9 +581,6 @@ pub fn run_create(
         branch: String::new(),
         status_detail: String::new(),
         project: String::new(),
-        plan_file: String::new(),
-        spec_file: String::new(),
-        slug: String::new(),
         raw: serde_json::Value::Null,
     };
 
@@ -1186,282 +1068,6 @@ pub fn run_project_show(store: &Store, slug: &str) -> Result<(), Box<dyn std::er
         for p in &project_plans {
             println!("  {} {}", ansi::dim(&p.name), p.title);
         }
-    }
-
-    Ok(())
-}
-
-// ── Spec operations ──────────────────────────────────────────────────────────
-
-pub fn run_specs(
-    cwd: &str,
-    json: bool,
-    all: bool,
-    project: Option<String>,
-    archived: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let mut specs = if archived {
-        spec::list_archived_specs()
-    } else {
-        spec::list_specs()
-    };
-
-    specs.retain(|s| !s.project.is_empty());
-
-    if let Some(ref proj) = project {
-        specs.retain(|s| s.project.contains(proj.as_str()));
-    } else if !all {
-        specs.retain(|s| cwd.contains(&s.project));
-    }
-
-    if specs.is_empty() {
-        if all {
-            eprintln!("{}", ansi::dim("No specs found in ~/.claude/specs/"));
-        } else {
-            eprintln!(
-                "{}",
-                ansi::dim("No specs found for current project. Use --all to show all specs.")
-            );
-        }
-        return Ok(());
-    }
-
-    if json {
-        let json_specs: Vec<_> = specs
-            .iter()
-            .map(|s| {
-                serde_json::json!({
-                    "name": s.name,
-                    "title": s.title,
-                    "project": crate::planfile::project_name(&s.project),
-                    "modified": plan::format_date(s.mod_time),
-                    "size": plan::format_size(s.size),
-                })
-            })
-            .collect();
-        println!("{}", serde_json::to_string_pretty(&json_specs)?);
-    } else {
-        println!(
-            "{}",
-            ansi::bold(&format!(
-                "{:<12} {:<30} {:<42} {:<12} SIZE",
-                "PROJECT", "NAME", "TITLE", "MODIFIED"
-            ))
-        );
-        println!("{}", ansi::dim(&"-".repeat(100)));
-
-        for s in &specs {
-            let proj = crate::planfile::project_name(&s.project);
-
-            let name = if s.name.len() > 28 {
-                format!("{}...", truncate_at_char_boundary(&s.name, 25))
-            } else {
-                s.name.clone()
-            };
-
-            let title = if s.title.len() > 40 {
-                format!("{}...", truncate_at_char_boundary(&s.title, 37))
-            } else {
-                s.title.clone()
-            };
-
-            let title_col = format!("{:<42}", title);
-            println!(
-                "{} {} {} {} {}",
-                ansi::id(&format!("{:<12}", proj)),
-                ansi::dim(&format!("{:<30}", name)),
-                title_col,
-                ansi::dim(&format!("{:<12}", plan::format_date(s.mod_time))),
-                ansi::dim(&plan::format_size(s.size))
-            );
-        }
-    }
-
-    Ok(())
-}
-
-pub fn run_spec(id: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let specs = spec::list_specs();
-
-    if specs.is_empty() {
-        eprintln!("{}", ansi::dim("No specs found in ~/.claude/specs/"));
-        return Ok(());
-    }
-
-    let normalized_id = id.strip_suffix(".md").unwrap_or(id);
-
-    let found = specs.iter().find(|s| {
-        s.name == normalized_id || s.name == id || s.path.file_name().is_some_and(|f| f == id)
-    });
-
-    let Some(spec_ref) = found else {
-        eprintln!("Spec not found: {id}");
-        return Ok(());
-    };
-
-    let content = spec::load_content(&spec_ref.path);
-    println!("{content}");
-
-    Ok(())
-}
-
-pub fn run_spec_create(
-    topic: String,
-    project: String,
-    slug: Option<String>,
-    prefix: Option<String>,
-    body: Option<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let mut args = vec![
-        "--topic".to_string(),
-        topic,
-        "--project".to_string(),
-        project,
-    ];
-    if let Some(s) = slug {
-        args.push("--slug".to_string());
-        args.push(s);
-    }
-    if let Some(p) = prefix {
-        args.push("--prefix".to_string());
-        args.push(p);
-    }
-    if let Some(b) = body {
-        args.push("--body".to_string());
-        args.push(b);
-    }
-    crate::specfile::cmd_create(&args);
-    Ok(())
-}
-
-pub fn run_spec_read(file: String, frontmatter: bool) -> Result<(), Box<dyn std::error::Error>> {
-    let mut args = vec![file];
-    if frontmatter {
-        args.insert(0, "--frontmatter".to_string());
-    }
-    crate::specfile::cmd_read(&args);
-    Ok(())
-}
-
-pub fn run_spec_latest(
-    project: Option<String>,
-    task_file: Option<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let mut args = vec![];
-    if let Some(p) = project {
-        args.push("--project".to_string());
-        args.push(p);
-    }
-    if let Some(tf) = task_file {
-        args.push("--task-file".to_string());
-        args.push(tf);
-    }
-    crate::specfile::cmd_latest(&args);
-    Ok(())
-}
-
-pub fn run_spec_archive(file: String) -> Result<(), Box<dyn std::error::Error>> {
-    crate::specfile::cmd_archive(&[file]);
-    Ok(())
-}
-
-pub fn run_spec_show(id: &str) -> Result<(), Box<dyn std::error::Error>> {
-    run_spec(id)
-}
-
-// ── Prune operations ─────────────────────────────────────────────────────────
-
-pub fn run_plan_prune(
-    days: u64,
-    dry_run: bool,
-    project: Option<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    run_artifact_prune("plans", days, dry_run, project)
-}
-
-pub fn run_spec_prune(
-    days: u64,
-    dry_run: bool,
-    project: Option<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    run_artifact_prune("specs", days, dry_run, project)
-}
-
-fn run_artifact_prune(
-    kind: &str,
-    days: u64,
-    dry_run: bool,
-    project: Option<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let Some(home) = dirs::home_dir() else {
-        eprintln!("Cannot determine home directory");
-        return Ok(());
-    };
-    let base = home.join(".claude").join(kind);
-    let threshold = std::time::Duration::from_secs(days * 86400);
-    let now = std::time::SystemTime::now();
-    let mut archived_count = 0u32;
-
-    let Ok(project_dirs) = std::fs::read_dir(&base) else {
-        eprintln!(
-            "{}",
-            ansi::dim(&format!("No {kind} found in ~/.claude/{kind}/"))
-        );
-        return Ok(());
-    };
-
-    for dir_entry in project_dirs.flatten() {
-        if !dir_entry.path().is_dir() {
-            continue;
-        }
-        let dir_name = dir_entry.file_name().to_string_lossy().to_string();
-        if dir_name == "archive" {
-            continue;
-        }
-        if let Some(ref proj) = project
-            && !dir_name.contains(proj.as_str())
-        {
-            continue;
-        }
-
-        let Ok(files) = std::fs::read_dir(dir_entry.path()) else {
-            continue;
-        };
-        for file_entry in files.flatten() {
-            let path = file_entry.path();
-            if path.is_dir() || path.extension().is_none_or(|ext| ext != "md") {
-                continue;
-            }
-            let Ok(meta) = file_entry.metadata() else {
-                continue;
-            };
-            let Ok(modified) = meta.modified() else {
-                continue;
-            };
-            let Ok(age) = now.duration_since(modified) else {
-                continue;
-            };
-            if age < threshold {
-                continue;
-            }
-
-            let path_str = path.to_string_lossy().to_string();
-            if dry_run {
-                println!("would archive: {path_str}");
-            } else {
-                let args = [path_str.clone()];
-                if kind == "plans" {
-                    crate::planfile::cmd_archive(&args);
-                } else {
-                    crate::specfile::cmd_archive(&args);
-                }
-                archived_count += 1;
-            }
-        }
-    }
-
-    if !dry_run && archived_count > 0 {
-        println!("Archived {archived_count} {kind} file(s)");
     }
 
     Ok(())

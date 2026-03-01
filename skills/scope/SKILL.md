@@ -123,7 +123,7 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
 
 13. **Approve plan and finalize:**
     - `TaskUpdate(taskId, metadata: {status_detail: "approved"})`.
-    - **Spec-to-repo option:** AskUserQuestion — "Save spec as a file in the repo?" If yes: write spec content to `docs/specs/<slug>.md` (or project-appropriate path). The spec already exists in `~/.claude/specs/` — this copies it into the project tree so it can be committed alongside implementation files.
+    - **Spec-to-repo option:** AskUserQuestion — "Save spec as a file in the repo?" If yes: write spec content to `docs/specs/<slug>.md` (or project-appropriate path). The spec already exists in `$HOME/.claude/specs/` — this copies it into the project tree so it can be committed alongside implementation files.
     - If `--no-develop` → report scope task ID, stop.
     - Otherwise → `Skill("develop", "t<scopeTaskId>")`.
 
