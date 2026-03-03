@@ -7,7 +7,6 @@ allowed-tools:
   - "Bash(git checkout:*)"
   - "Bash(git branch:*)"
   - "Bash(git rev-parse:*)"
-  - AskUserQuestion
   - TaskCreate
   - TaskUpdate
   - TaskList

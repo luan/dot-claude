@@ -8,7 +8,6 @@ allowed-tools:
   - Read
   - Glob
   - Grep
-  - AskUserQuestion
   - TaskList
   - TaskGet
 ---
@@ -69,6 +68,7 @@ Highest-priority unblocked item. Skip: completed, deleted, `status_detail === "r
 ### 3. Classify
 
 Read via TaskGet. Route by signal:
+
 - Type `bug` → `/debugging`
 - Title "Needs brainstorm" → `/brainstorm`
 - Title "Brainstorm:" or "Scope:" → `/scope` (brainstorm done → scope is next)

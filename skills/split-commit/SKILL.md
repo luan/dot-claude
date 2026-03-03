@@ -5,7 +5,6 @@ argument-hint: "[base-branch] [--test='command']"
 user-invocable: true
 allowed-tools:
   - Task
-  - AskUserQuestion
   - Bash
 ---
 
@@ -50,6 +49,7 @@ Present plan via AskUserQuestion: commit count, test commands, each commit + key
 ## Phase 2: Execute
 
 After approval, collapse into unstaged changes:
+
 ```bash
 git reset --soft <base> && git reset HEAD
 ```
@@ -73,6 +73,7 @@ After last commit: `git diff --stat` — report remaining unstaged.
 **On failure**: spawn fix subagent, then re-invoke execution subagent for remaining commits.
 
 After all commits, verify:
+
 ```bash
 git status          # should be clean
 git log --oneline <base>..HEAD   # N clean commits

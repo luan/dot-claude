@@ -40,7 +40,7 @@ TaskUpdate(taskId, status: "in_progress", owner: "vibe")
 
 ## Pipeline
 
-Run stages sequentially. Before each stage, output the stage announcement (`[N/M] Stage`) as text BEFORE the `Skill()` invocation — the user must see progress before work begins. After each succeeds, update `metadata.vibe_stage` before proceeding.
+Run stages sequentially in one continuous turn — **never pause, summarize, or wait for user input between stages.** Before each stage, output the stage announcement (`[N/M] Stage`) as text BEFORE the `Skill()` invocation. After each succeeds, update `metadata.vibe_stage` and immediately invoke the next stage.
 
 **Stage numbering `[N/M]`:** M = total stages that will actually run. Base: 4 (branch, scope, develop, commit). Subtract skipped stages: `--no-branch` → 3, `--dry-run` → 2 (or 1 with both flags). N counts only executed stages, not skipped ones.
 
@@ -59,6 +59,8 @@ Generate slug: `ct tool slug "<prompt>"`. `Skill("start", args="` !`echo "${GIT_
 **Verify**: `TaskList()` → scope task with `status_detail === "approved"` and `metadata.design` populated. **Update**: `vibe_stage: "scope"`
 
 If `--dry-run` → stop here. Output "Dry run complete." then report scope task, suggest `/develop` or `/vibe --continue`.
+
+→ **Immediately invoke Develop.** Do NOT output scope results, pause, or wait for user input — scope already gated its output via auto-approve.
 
 ### Develop
 

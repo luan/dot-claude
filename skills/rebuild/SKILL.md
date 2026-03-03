@@ -6,7 +6,6 @@ user-invocable: true
 disable-model-invocation: true
 allowed-tools:
   - Task
-  - AskUserQuestion
   - Bash
   - Read
   - Edit
@@ -44,6 +43,7 @@ Present via AskUserQuestion: commit count, tests, each message + files + planned
 ## Phase 2: Execute
 
 After approval, collapse into unstaged changes (soft reset preserves content, second reset unstages so hunks can be re-staged selectively):
+
 ```bash
 git reset --soft <base> && git reset HEAD
 ```

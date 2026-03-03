@@ -9,7 +9,6 @@ allowed-tools:
   - TaskList
   - TaskUpdate
   - Bash
-  - AskUserQuestion
   - Read
   - Glob
   - Grep
@@ -68,6 +67,7 @@ Two parallel `Task(subagent_type="general-purpose")` agents:
 ## Step 6: Reconcile and Present
 
 Reconciliation rules (applied before presenting):
+
 1. Verifier FAIL → **FAIL**
 2. Verifier PARTIAL → **PARTIAL**
 3. Verifier PASS + breaker HIGH findings on PASS/N/A criteria → **PARTIAL** (breaker caught what verifier missed)
@@ -76,6 +76,7 @@ Reconciliation rules (applied before presenting):
 Present both reports with clear labels. **PASS** → concise green summary (max 5 lines, no per-criterion breakdown), done.
 
 **PARTIAL/FAIL** → AskUserQuestion with exactly 4 options:
+
 1. **Fix gaps** → spawn fix agent with FAIL/PARTIAL criteria as scope, re-run from Step 4
 2. **Commit anyway (override)** → note override in findings, proceed to Step 7
 3. **File as follow-up tasks** → TaskCreate per gap (`metadata: {type: "bug", priority: "P2", parent_id: epicId}`), proceed to Step 7
