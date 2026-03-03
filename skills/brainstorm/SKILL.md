@@ -6,7 +6,6 @@ user-invocable: true
 allowed-tools:
   - Task
   - Skill
-  - AskUserQuestion
   - Bash
   - Read
   - Glob
@@ -47,6 +46,7 @@ AskUserQuestion, ONE per turn — wait for answer before next. Prefer multiple-c
 **Upfront spec:** Only skip interview if the prompt has ALL three: explicit scope boundaries (non-goals stated), measurable constraints, and testable success criteria. Acknowledge by citing 2+ concrete details from the user's spec. When in doubt, interview.
 
 **Sequence** (adapt, skip irrelevant):
+
 1. **Purpose** — What problem? Who's it for?
 2. **Scope** — Minimum useful version? (YAGNI gate)
 3. **Constraints** — Performance, compatibility, security, timeline?

@@ -10,7 +10,6 @@ allowed-tools:
   - TaskList
   - TaskGet
   - Skill
-  - AskUserQuestion
   - Bash
   - Read
   - Glob
@@ -53,14 +52,13 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
 3+ independent subsystems or 3+ viable approaches → "ESCALATE: team — <reason>"
 ```
 
-   **On "ESCALATE: team":** TeamCreate, dispatch 3 agents (mode: "plan") — Researcher, Architect, Skeptic. Synthesize: Architect's approach + contradictions vs Skeptic. TeamDelete.
+**On "ESCALATE: team":** TeamCreate, dispatch 3 agents (mode: "plan") — Researcher, Architect, Skeptic. Synthesize: Architect's approach + contradictions vs Skeptic. TeamDelete.
 
 3. **Validate research:** spot-check ALL architectural claims. File/behavioral claims: check every odd-numbered claim (1st, 3rd, 5th...), minimum 3. Each check: Grep or Read a few lines to confirm existence — do NOT read entire files. Failed check → follow-up subagent.
 
 ### Spec Phase (what we're building)
 
 4. **Synthesize spec** from validated research. The spec is a **timeless target-state document** — after implementation it should read as a valid specification of the system, not as a dated change request. Write it as if the system already works this way.
-
    - **Problem**: what's broken or missing — the only section that may describe current broken state. This is motivational context explaining WHY the spec exists.
    - **Recommendation**: the target behavior in present tense. Strategy-level — WHY this approach, not WHAT code to change. "Webhook delivery uses exponential backoff via BullMQ" not "Add exponential backoff to webhook delivery." Avoid transition verbs (add, replace, migrate, move, change X to Y) — those describe what to DO, not what the system IS.
    - **Architecture Context**: describe the relevant code landscape in present tense, as it will look post-implementation. Module roles, patterns, architectural layers — not hardcoded file paths. Describe components by what they do ("the webhook delivery module", "the job queue infrastructure"), not by path. If paths help orient the reader, include them parenthetically, but the description must stand without them. No Modify/Create annotations, no files-to-create, no change descriptions.

@@ -15,7 +15,6 @@ allowed-tools:
   - "Bash(gh pr list:*)"
   - "Bash(cat *PULL_REQUEST_TEMPLATE*)"
   - Read
-  - AskUserQuestion
 ---
 
 # PR Description
@@ -37,6 +36,7 @@ BASE: !`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/r
 Use injected context above. If PR is empty, tell user and stop.
 
 **Edge cases — ask before proceeding:**
+
 - **On main:** "You're on main. Did you mean to be on a feature branch?"
 - **Uncommitted changes:** "Describe from just committed, or include uncommitted too?"
 - **No commits ahead:** "Branch has no commits ahead. Describe uncommitted changes?"
@@ -62,6 +62,7 @@ If diff is large, use `--stat` first and read key files.
 ## Step 4: Preview and Update
 
 Show title + body. Add observations only if genuinely useful:
+
 - WHY is unclear → ask user for context
 - Unrelated changes mixed in → suggest splitting
 - Too large for one review → suggest multiple PRs

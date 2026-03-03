@@ -17,7 +17,6 @@ allowed-tools:
   - Read
   - Glob
   - Grep
-  - AskUserQuestion
   - TaskList
   - TaskGet
   - "Bash(ct plan archive:*)"
