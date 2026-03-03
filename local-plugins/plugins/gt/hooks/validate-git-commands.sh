@@ -14,9 +14,13 @@ deny() {
   exit 2
 }
 
-# git push — use /gt:submit
-[[ "$command" =~ (^|[;\&\|])\ *git\ +push ]] && \
-  deny "BLOCKED: raw 'git push' in Graphite repo. Use /gt:submit instead."
+# Read trunk name from Graphite config
+trunk=$(jq -r '.trunk // "main"' "$git_dir/.graphite_repo_config" 2>/dev/null)
+current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || true)
+
+# git push — allow on trunk, block on stacked branches
+[[ "$command" =~ (^|[;\&\|])\ *git\ +push ]] && [[ "$current_branch" != "$trunk" ]] && \
+  deny "BLOCKED: raw 'git push' on stacked branch. Use /gt:submit instead."
 
 # gh pr create — use /gt:submit
 [[ "$command" =~ (^|[;\&\|])\ *gh\ +pr\ +create ]] && \
