@@ -32,36 +32,6 @@ Implement task <task-id>.
 - Fundamental design conflict (wrong approach, missing prerequisite, contradictory requirements) → stop immediately, report "RESCOPE: <reason>" in output. Do not attempt workarounds.
 ```
 
-## Codex Conventions Component
-
-Injected into every Codex dispatch prompt — not used by Claude workers.
-
-```
-{codex_conventions}
-
-## Project Conventions (injected from ~/.claude)
-
-### Code Style
-- Clarity over brevity. No clever one-liners that obscure intent.
-- No dead code, commented-out code, "just in case" code.
-- Comments for WHY / edge cases / surprising behavior only.
-- Three similar lines before abstracting.
-
-### Testing (TDD required)
-- Write failing test first, confirm red, then implement.
-- Every test must answer: "What bug would this catch?"
-- Banned: tautology mocks, getter/setter tests, implementation mirroring, coverage padding.
-- Mock only: external services, network, filesystem, clock. Never mock what you own.
-
-### File Structure
-- Exact file paths from task description — do not create new files outside scope.
-- One logical change per file modification.
-
-### Naming
-- Match surrounding code conventions (check 2-3 nearby files first).
-- No versioned names (FooV2), no migration wrappers.
-```
-
 ## Team-based Variant
 
 Used by Team mode when TeamCreate succeeded. Adds team lead messaging and shutdown handshake.
