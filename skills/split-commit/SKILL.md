@@ -5,7 +5,6 @@ argument-hint: "[base-branch] [--test='command']"
 user-invocable: true
 allowed-tools:
   - Task
-  - AskUserQuestion
   - Bash
 ---
 

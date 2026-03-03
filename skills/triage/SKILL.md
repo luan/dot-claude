@@ -11,7 +11,6 @@ allowed-tools:
   - TaskCreate
   - TaskUpdate
   - Write
-  - AskUserQuestion
 ---
 
 # Triage

@@ -10,7 +10,6 @@ allowed-tools:
   - TaskList
   - TaskGet
   - Skill
-  - AskUserQuestion
   - Bash
   - Read
   - Glob
@@ -53,7 +52,7 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
 3+ independent subsystems or 3+ viable approaches → "ESCALATE: team — <reason>"
 ```
 
-   **On "ESCALATE: team":** TeamCreate, dispatch 3 agents (mode: "plan") — Researcher, Architect, Skeptic. Synthesize: Architect's approach + contradictions vs Skeptic. TeamDelete.
+**On "ESCALATE: team":** TeamCreate, dispatch 3 agents (mode: "plan") — Researcher, Architect, Skeptic. Synthesize: Architect's approach + contradictions vs Skeptic. TeamDelete.
 
 3. **Validate research:** spot-check ALL architectural claims. File/behavioral claims: check every odd-numbered claim (1st, 3rd, 5th...), minimum 3. Each check: Grep or Read a few lines to confirm existence — do NOT read entire files. Failed check → follow-up subagent.
 

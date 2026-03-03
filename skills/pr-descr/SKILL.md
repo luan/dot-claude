@@ -15,7 +15,6 @@ allowed-tools:
   - "Bash(gh pr list:*)"
   - "Bash(cat *PULL_REQUEST_TEMPLATE*)"
   - Read
-  - AskUserQuestion
 ---
 
 # PR Description

@@ -9,7 +9,6 @@ allowed-tools:
   - TaskList
   - TaskUpdate
   - Bash
-  - AskUserQuestion
   - Read
   - Glob
   - Grep

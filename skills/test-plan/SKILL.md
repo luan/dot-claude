@@ -11,7 +11,6 @@ allowed-tools:
   - Read
   - Glob
   - Grep
-  - AskUserQuestion
 ---
 
 # Test Plan

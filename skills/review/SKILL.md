@@ -5,7 +5,6 @@ argument-hint: "[base..head | file-list | PR#] [--against <issue-id>] [--team] [
 user-invocable: true
 allowed-tools:
   - Task
-  - AskUserQuestion
   - Read
   - "Bash(git diff:*)"
   - "Bash(git log:*)"

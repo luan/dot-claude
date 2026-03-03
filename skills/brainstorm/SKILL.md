@@ -6,7 +6,6 @@ user-invocable: true
 allowed-tools:
   - Task
   - Skill
-  - AskUserQuestion
   - Bash
   - Read
   - Glob

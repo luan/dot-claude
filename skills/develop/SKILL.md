@@ -13,7 +13,6 @@ allowed-tools:
   - TaskUpdate
   - TaskList
   - TaskGet
-  - AskUserQuestion
   - Read
   - Bash
   - Glob
@@ -90,8 +89,6 @@ All modes use `Task(subagent_type="general-purpose")`. Trivial tasks use `model=
 - **Standalone** (Solo/fallback): no messaging, returns directly
 - **Team-based** (Team): adds SendMessage + shutdown handshake
 
-Codex routing: `codex` available + leaf task → Codex first, Claude fallback. See `references/scheduler.md`.
-
 **Re-scope escape hatch:** Worker output containing `RESCOPE:` signals a fundamental design conflict. Immediately halt — do NOT dispatch any remaining workers and do NOT retry the RESCOPE worker. Invoke `Skill("scope", "--continue <epicId>")` to re-scope, then restart dispatch from Step 2 with updated tasks.
 
 ## Solo Mode
@@ -104,10 +101,10 @@ Codex routing: `codex` available + leaf task → Codex first, Claude fallback. S
 
 Every task dispatches via subagent. TeamCreate always runs.
 
-1. **Setup:** `TeamCreate(team_name="impl-<slug>")`. If fails → fall back to standalone sequential dispatch (up to 4 concurrent). Detect Codex via `which codex`.
+1. **Setup:** `TeamCreate(team_name="impl-<slug>")`. If fails → fall back to standalone sequential dispatch (up to 4 concurrent).
 2. **Dispatch:** 4+ leaves with blockedBy chains → **Rolling Scheduler:** dispatch unblocked tasks (up to 4 concurrent), re-scan after each completion to dispatch newly unblocked tasks. See `references/scheduler.md`. Otherwise → dispatch all tasks at once (up to 4 concurrent).
 3. **Verify:** Full test suite. Red → spawn fix agent (max 2 cycles). Still red → escalate to user.
-4. **Teardown:** Clear all impl_* metadata, complete epic, TeamDelete → Stage Changes.
+4. **Teardown:** Clear all impl\_\* metadata, complete epic, TeamDelete → Stage Changes.
 
 ## Stage Changes
 

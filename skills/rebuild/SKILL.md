@@ -6,7 +6,6 @@ user-invocable: true
 disable-model-invocation: true
 allowed-tools:
   - Task
-  - AskUserQuestion
   - Bash
   - Read
   - Edit

@@ -8,7 +8,6 @@ allowed-tools:
   - Read
   - Glob
   - Grep
-  - AskUserQuestion
   - TaskList
   - TaskGet
 ---
