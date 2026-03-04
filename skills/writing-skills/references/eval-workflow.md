@@ -47,6 +47,17 @@ Signs of lax grading:
 
 Fix: rewrite expectations with specific, measurable criteria. Add `required: true` to must-have properties. Add edge-case test cases that probe known failure modes.
 
+## Executor Routing
+
+Which executor to use is determined by the `skill` field in the target skill's `evals.json`:
+
+| `skill` field value | Executor | Use case |
+|---|---|---|
+| Contains `"writing-skills"` | `agents/executor.md` | Writing-skills skill authoring evals |
+| Any other value | `agents/behavioral-executor.md` | Domain skill behavioral correctness evals |
+
+Read `evals.json` before spawning any executor agent. If the `skill` field is absent, treat it as a domain skill and use `agents/behavioral-executor.md`.
+
 ## Graceful Degradation (No Subagents)
 
 When subagents are unavailable (permission restrictions, context limits), the main agent runs the pipeline inline with reduced rigor.
