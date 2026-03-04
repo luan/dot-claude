@@ -4,7 +4,7 @@ description: "Fix unresolved PR review comments. Triggers: 'fix comments', 'fix 
 user-invocable: true
 disable-model-invocation: false
 allowed-tools:
-  - "Bash(scripts/fetch_threads.py *)"
+  - "Bash(*fetch_threads.py *)"
   - "Bash(gh pr view *)"
   - "Bash(gh pr list *)"
   - "Bash(git add *)"
@@ -37,7 +37,7 @@ Branch: !`git branch --show-current 2>/dev/null`
 3. **Fetch comments** (execute directly — never prefix with `python3`/`uv run`):
 
    ```bash
-   scripts/fetch_threads.py --pr <PR> --repo <Repo>
+   ${CLAUDE_SKILL_DIR}/scripts/fetch_threads.py --pr <PR> --repo <Repo>
    ```
 
    Display as numbered list with file:line, author, preview. Ask "Which comment(s) to fix?" — options: "Fix all" / "Other"

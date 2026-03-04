@@ -50,7 +50,7 @@ TaskCreate `metadata: {type: "review", project: REPO_ROOT}`, in_progress. `--con
 
 ## Step 3: Dispatch Reviewers
 
-All Task agents, spawn in ONE message. Prompts in `references/reviewer-prompts.md`. `--against`: append plan adherence to every prompt.
+All Task agents, spawn in ONE message. Prompts in `${CLAUDE_SKILL_DIR}/references/reviewer-prompts.md`. `--against`: append plan adherence to every prompt.
 
 - **Solo**: Correctness & Security + Architecture & Performance
 - **File-Split**: Combined lens per ~8-file group
