@@ -73,10 +73,14 @@ description: "Use when..." # REQUIRED for discovery
 argument-hint: "[issue-number]"
 disable-model-invocation: true # User-only
 user-invocable: false # Claude-only
-allowed-tools: Read, Grep, Glob
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
 model: opus
 context: fork # Subagent
 agent: Explore # Subagent type
+skills: [other-skill] # Auto-load for subagents
 ---
 ```
 
@@ -87,6 +91,7 @@ agent: Explore # Subagent type
 | `disable-model-invocation: true` | User-only |
 | `user-invocable: false` | Claude-only |
 | `context: fork` | Isolated subagent |
+| `skills: [a, b]` | Auto-load skills for subagents |
 
 ## Description Field (Critical)
 
@@ -117,6 +122,7 @@ description: Use when reviewing PRs, approving code changes, or assessing code q
 | `$ARGUMENTS` | All args |
 | `$ARGUMENTS[N]` or `$N` | Specific arg (0-indexed) |
 | `${CLAUDE_SESSION_ID}` | Session ID |
+| `${CLAUDE_SKILL_DIR}` | Absolute path to skill's directory |
 
 ## Dynamic Context
 
@@ -259,24 +265,24 @@ Edit procedure: see **Editing a Skill** at the top.
 
 | Component | Path | Role |
 |-----------|------|------|
-| Executor | `agents/executor.md` | Runs skill against test prompts, produces transcripts |
-| Grader | `agents/grader.md` | Scores outputs against expectations (1-5 rubric) |
-| Comparator | `agents/comparator.md` | Blind A/B comparison between skill versions |
-| Analyzer | `agents/analyzer.md` | Post-hoc analysis with improvement suggestions |
+| Executor | `${CLAUDE_SKILL_DIR}/agents/executor.md` | Runs skill against test prompts, produces transcripts |
+| Grader | `${CLAUDE_SKILL_DIR}/agents/grader.md` | Scores outputs against expectations (1-5 rubric) |
+| Comparator | `${CLAUDE_SKILL_DIR}/agents/comparator.md` | Blind A/B comparison between skill versions |
+| Analyzer | `${CLAUDE_SKILL_DIR}/agents/analyzer.md` | Post-hoc analysis with improvement suggestions |
 
 ### Eval Mode (Measure)
 
-1. Init workspace: `uv run scripts/init_workspace.py <skill-path>`
+1. Init workspace: `uv run ${CLAUDE_SKILL_DIR}/scripts/init_workspace.py <skill-path>`
 2. Define test cases in `<skill>/evals/evals.json` (see `references/schemas.md`). Fixtures in `<skill>/evals/fixtures/`.
-3. Execute each case with `agents/executor.md`
-4. Grade each output with `agents/grader.md` (1-5 scored rubric)
-5. Aggregate: `uv run scripts/aggregate_results.py <workspace>` (dual tables: pass-rate + scores)
+3. Execute each case with `${CLAUDE_SKILL_DIR}/agents/executor.md`
+4. Grade each output with `${CLAUDE_SKILL_DIR}/agents/grader.md` (1-5 scored rubric)
+5. Aggregate: `uv run ${CLAUDE_SKILL_DIR}/scripts/aggregate_results.py <workspace>` (dual tables: pass-rate + scores)
 
 ### Improve Mode (Iterate)
 
 1. Run Eval mode to establish v0 baseline — if 100% pass or all scores 5, evals are too easy; tighten first
 2. Per iteration: execute 3x per case → grade → blind compare → analyze
-3. Apply analyzer suggestions, snapshot: `uv run scripts/copy_version.py <workspace>`
+3. Apply analyzer suggestions, snapshot: `uv run ${CLAUDE_SKILL_DIR}/scripts/copy_version.py <workspace>`
 4. Stop when: target reached, no improvement for 2 iterations, or user says stop
 5. Best version wins (not necessarily latest) — check `history.json` scores
 
@@ -297,13 +303,13 @@ Run each step inline instead of spawning agents:
 | Full pipeline | Single-agent fallback |
 |---|---|
 | Executor agent runs cases | Main agent runs inline |
-| Separate grader agent | Main agent grades following `agents/grader.md` inline |
+| Separate grader agent | Main agent grades following `${CLAUDE_SKILL_DIR}/agents/grader.md` inline |
 | Blind comparator picks winner | Skipped — can't blind yourself |
 | Analyzer suggests changes | Main agent analyzes diffs directly |
 
 Always mention when using this path: _"Running in single-agent mode — no blind comparison, reduced rigor."_
 
-For detailed workflow and schemas, see `references/eval-workflow.md` and `references/schemas.md`.
+For detailed workflow and schemas, see `${CLAUDE_SKILL_DIR}/references/eval-workflow.md` and `${CLAUDE_SKILL_DIR}/references/schemas.md`.
 
 ## Troubleshooting
 

@@ -36,7 +36,7 @@ Advisory gate — findings are reported, user decides how to proceed.
 
 **Epic mode:** Recursively collect all descendants via `metadata.parent_id` chains. No descendants → stop: "Run /scope first."
 
-Orphaned task detection: flag any task where `status == "pending"` but parent `status == "completed"`. Advisory warning only — never blocks acceptance. See `references/scenarios.md`.
+Orphaned task detection: flag any task where `status == "pending"` but parent `status == "completed"`. Advisory warning only — never blocks acceptance. See `${CLAUDE_SKILL_DIR}/references/scenarios.md`.
 
 Group criteria by subtree: grouping nodes become section headers, leaves have `## Acceptance Criteria` extracted. Missing section → `⚠ No acceptance criteria defined`. Format:
 
