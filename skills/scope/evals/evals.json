@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "skill": "/Users/luan.santos/.claude/skills/scope",
+  "skill": "skills/scope",
   "cases": [
     {
       "id": "happy-path-spec-then-plan",
