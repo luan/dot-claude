@@ -702,6 +702,10 @@ pub fn run_create(
         plan_file: String::new(),
         spec_file: String::new(),
         slug: String::new(),
+        vibe_stage: String::new(),
+        vibe_epic: String::new(),
+        vibe_prompt: String::new(),
+        session_id: String::new(),
         raw: serde_json::Value::Null,
     };
 

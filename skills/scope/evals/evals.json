@@ -30,6 +30,11 @@
           "required": true
         },
         {
+          "criterion": "codex-reviews-both-artifacts",
+          "description": "Codex review runs on both the spec (step 5, before storing) and the plan (step 11, before storing). Each review uses codex exec with --sandbox read-only, --ephemeral, -C, -o flags. No -m flag passed.",
+          "required": true
+        },
+        {
           "criterion": "plan-stops-for-review",
           "description": "After presenting the plan, execution stops and waits for user review before proceeding to develop. Includes 'Next: /develop t<id>'.",
           "required": true
@@ -300,6 +305,89 @@
         {
           "criterion": "readable-post-implementation",
           "description": "The spec as a whole would still make sense and be accurate as a reference document AFTER implementation. Someone reading it after the work is done would understand what the system does, not what was changed. It's a timeless specification, not a time-bound change request.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "codex-review-spec",
+      "prompt": "You are Claude following the scope skill instructions. You have synthesized a spec for '/scope add webhook retry with exponential backoff'. The spec is:\n\n## Problem\nWebhook delivery is fire-and-forget with no retry mechanism.\n\n## Recommendation\nWebhook delivery uses exponential backoff via BullMQ delayed jobs.\n\n## Architecture Context\nThe webhook delivery module handles HTTP POST dispatch. The job queue infrastructure (BullMQ) supports delayed jobs and retries.\n\n## Risks\n- Queue backpressure under high volume\n\nDemonstrate step 5 (codex review of spec). Show the codex invocation and how you handle the output.",
+      "files": [],
+      "expectations": [
+        {
+          "criterion": "invokes-codex-exec",
+          "description": "Runs codex via 'codex exec' with --sandbox read-only, --ephemeral, -C (project root), -o (output file), and reads from stdin (-). Does NOT pass -m (uses default model).",
+          "required": true
+        },
+        {
+          "criterion": "review-prompt-is-spec-focused",
+          "description": "The codex prompt asks for gaps, ambiguities, edge cases, feasibility — and explicitly tells codex NOT to suggest implementation details (it's a WHAT doc).",
+          "required": true
+        },
+        {
+          "criterion": "reads-output-and-incorporates",
+          "description": "After codex runs, reads the output file and evaluates the feedback. High-severity actionable issues are incorporated into the spec before storing. Low/med or intentional choices are noted but don't block.",
+          "required": true
+        },
+        {
+          "criterion": "codex-runs-before-store",
+          "description": "The codex review happens AFTER spec synthesis (step 4) but BEFORE storing (step 6). Revisions from codex feedback are included in the stored artifact.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "codex-review-plan",
+      "prompt": "You are Claude following the scope skill instructions. Spec is approved. You have generated a plan for '/scope add webhook retry'. The plan includes phases for queue setup, retry logic, and monitoring. The approved spec describes target-state webhook delivery with exponential backoff.\n\nDemonstrate step 11 (codex review of plan). Show the codex invocation and how you handle the output.",
+      "files": [],
+      "expectations": [
+        {
+          "criterion": "invokes-codex-for-plan",
+          "description": "Runs codex exec with same flags as spec review. The prompt includes the approved spec content and asks codex to verify the plan covers all spec requirements.",
+          "required": true
+        },
+        {
+          "criterion": "plan-review-checks-spec-coverage",
+          "description": "The codex prompt specifically asks whether the plan fully implements the approved spec — checking for coverage gaps, missing phases, dependency issues.",
+          "required": true
+        },
+        {
+          "criterion": "codex-runs-before-plan-store",
+          "description": "The codex review happens AFTER plan generation (step 10) but BEFORE storing (step 12). Revisions from codex feedback are included in the stored plan.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "codex-failure-proceeds",
+      "prompt": "You are Claude following the scope skill instructions. You synthesized a spec. When you run codex exec for the spec review (step 5), it fails with a timeout error.\n\nDemonstrate how you handle the failure.",
+      "files": [],
+      "expectations": [
+        {
+          "criterion": "proceeds-without-blocking",
+          "description": "Codex failure does NOT block the workflow. The spec is stored and presented as normal. The failure is logged/noted but does not prevent progress.",
+          "required": true
+        },
+        {
+          "criterion": "no-retry-loop",
+          "description": "Does NOT retry codex repeatedly. Single attempt, then proceed. Codex review is best-effort.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "auto-approve-still-runs-codex",
+      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope add webhook retry --auto-approve'. You have completed research, synthesized a spec, and are about to store it.\n\nDemonstrate that codex review still runs even with --auto-approve.",
+      "files": [],
+      "expectations": [
+        {
+          "criterion": "codex-runs-with-auto-approve",
+          "description": "Even with --auto-approve, the codex review step runs for both spec and plan. Auto-approve bypasses USER review gates, but codex review is a separate quality gate that always runs.",
+          "required": true
+        },
+        {
+          "criterion": "codex-feedback-incorporated",
+          "description": "High-severity codex feedback is still incorporated into the artifact before storing, same as without --auto-approve.",
           "required": true
         }
       ]

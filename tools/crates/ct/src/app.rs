@@ -10,9 +10,10 @@ use std::path::Path;
 use crate::editor;
 use crate::plan;
 use crate::spec;
-use crate::store::{Status, Store, Task, TaskList};
+use crate::store::{self, Status, Store, Task, TaskList};
 use crate::ui::{
     confirm, create, detail, help, list, plan_detail, plans, spec_detail, specs, status, theme,
+    vibe, vibe_detail,
 };
 
 fn truncate_at_char_boundary(s: &str, max_bytes: usize) -> &str {
@@ -31,6 +32,7 @@ enum Tab {
     Tasks,
     Plans,
     Specs,
+    Vibe,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -44,6 +46,8 @@ enum Screen {
     PlanDetail,
     Specs,
     SpecDetail,
+    Vibe,
+    VibeDetail,
     Help,
 }
 
@@ -64,6 +68,8 @@ pub struct App {
     plan_detail: Option<plan_detail::PlanDetailState>,
     specs_state: Option<specs::SpecsState>,
     spec_detail: Option<spec_detail::SpecDetailState>,
+    vibe_state: Option<vibe::VibeState>,
+    vibe_detail: Option<vibe_detail::VibeDetailState>,
     help_scroll: u16,
     status_msg: String,
     pub should_quit: bool,
@@ -91,6 +97,10 @@ impl App {
             .into_iter()
             .filter(|p| !p.project.is_empty())
             .collect();
+        let vibe_trackers: Vec<Task> = store::find_vibe_trackers(&tasks)
+            .into_iter()
+            .cloned()
+            .collect();
         Self {
             store,
             active_list,
@@ -108,6 +118,8 @@ impl App {
             plan_detail: None,
             specs_state: Some(specs::SpecsState::new(spec::list_specs())),
             spec_detail: None,
+            vibe_state: Some(vibe::VibeState::new(vibe_trackers)),
+            vibe_detail: None,
             help_scroll: 0,
             status_msg: String::new(),
             should_quit: false,
@@ -131,6 +143,7 @@ impl App {
             && !self.list.searching
             && !self.plans_state.as_ref().is_some_and(|p| p.searching)
             && !self.specs_state.as_ref().is_some_and(|s| s.searching)
+            && !self.vibe_state.as_ref().is_some_and(|v| v.searching)
         {
             self.prev_screen = self.screen;
             self.help_scroll = 0;
@@ -164,6 +177,8 @@ impl App {
             Screen::PlanDetail => self.handle_plan_detail_key(key),
             Screen::Specs => self.handle_specs_key(key),
             Screen::SpecDetail => self.handle_spec_detail_key(key),
+            Screen::Vibe => self.handle_vibe_key(key),
+            Screen::VibeDetail => self.handle_vibe_detail_key(key),
             Screen::Help => {} // handled above
         }
     }
@@ -439,6 +454,10 @@ impl App {
                     plan_file: String::new(),
                     spec_file: String::new(),
                     slug: String::new(),
+                    vibe_stage: String::new(),
+                    vibe_epic: String::new(),
+                    vibe_prompt: String::new(),
+                    session_id: String::new(),
                     raw: serde_json::Value::Null,
                 };
 
@@ -1035,11 +1054,9 @@ impl App {
         let sep = "  ";
 
         let brand_width = brand.len() as u16;
-        let tabs_width = (tasks_label.len()
-            + sep.len()
-            + plans_label.len()
-            + sep.len()
-            + specs_label.len()) as u16;
+        let tabs_width =
+            (tasks_label.len() + sep.len() + plans_label.len() + sep.len() + specs_label.len())
+                as u16;
         let gap = area.width.saturating_sub(brand_width + tabs_width);
 
         let dim = theme::header_dim_style();
