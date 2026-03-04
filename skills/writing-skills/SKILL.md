@@ -37,7 +37,7 @@ Untested edits cause silent regressions. Non-negotiable.
 
 | Location | Path | Scope |
 |----------|------|-------|
-| Personal | `~/.claude/skills/<name>/SKILL.md` | All projects |
+| Personal | `$HOME/.claude/skills/<name>/SKILL.md` | All projects |
 | Project | `.claude/skills/<name>/SKILL.md` | This project |
 | Plugin | `<plugin>/skills/<name>/SKILL.md` | Where enabled |
 

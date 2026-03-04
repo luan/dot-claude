@@ -19,14 +19,14 @@ First word after `/bootstrap-caddy` = project name. Optional second word = port 
 ## Step 2: Check prerequisites
 
 ```bash
-test -f ~/.config/dev-routing/Caddyfile && test -f ~/.config/dev-routing/ports.json && echo "OK" || echo "MISSING"
+test -f $HOME/.config/dev-routing/Caddyfile && test -f $HOME/.config/dev-routing/ports.json && echo "OK" || echo "MISSING"
 ```
 
-If "MISSING", stop: "Dev routing infrastructure not found at `~/.config/dev-routing/`. Set it up via dotfiles first."
+If "MISSING", stop: "Dev routing infrastructure not found at `$HOME/.config/dev-routing/`. Set it up via dotfiles first."
 
 ## Step 3: Read port registry
 
-Read `~/.config/dev-routing/ports.json`:
+Read `$HOME/.config/dev-routing/ports.json`:
 
 ```json
 {"nextPort": 5200, "projects": {"name": 5200, ...}}
@@ -41,11 +41,11 @@ If project exists → report `https://<project>.localhost → localhost:<port>` 
 
 ## Step 5: Update port registry
 
-Add project to `projects` with assigned port. If auto-assigned, increment `nextPort`. Write back to `~/.config/dev-routing/ports.json`.
+Add project to `projects` with assigned port. If auto-assigned, increment `nextPort`. Write back to `$HOME/.config/dev-routing/ports.json`.
 
 ## Step 6: Create Caddy site config
 
-Write `~/.config/dev-routing/sites/<project>.caddy`:
+Write `$HOME/.config/dev-routing/sites/<project>.caddy`:
 
 ```
 <project>.localhost {
@@ -55,7 +55,7 @@ Write `~/.config/dev-routing/sites/<project>.caddy`:
 
 ## Step 7: Configure project dev server
 
-Check if `~/src/<project>` exists. If not, skip — report the port for later setup.
+Check if `$HOME/src/<project>` exists. If not, skip — report the port for later setup.
 
 If exists:
 
@@ -68,7 +68,7 @@ Bun auto-loads `.env`, so `process.env.DEV_PORT` works in vite.config.ts without
 ## Step 8: Reload Caddy
 
 ```bash
-caddy reload --config ~/.config/dev-routing/Caddyfile 2>&1 || caddy start --config ~/.config/dev-routing/Caddyfile 2>&1
+caddy reload --config $HOME/.config/dev-routing/Caddyfile 2>&1 || caddy start --config $HOME/.config/dev-routing/Caddyfile 2>&1
 ```
 
 ## Step 9: Report
