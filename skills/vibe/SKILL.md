@@ -22,9 +22,10 @@ If no prompt and no `--continue` → tell user: `/vibe <what to build>`, stop.
 ## Resume (`--continue`)
 
 1. `TaskList()` → find task with `metadata.vibe_stage` present and `status == "in_progress"`
-2. Read `metadata.vibe_stage` for resume point, `metadata.vibe_prompt` as prompt
-3. Skip to the stage after `vibe_stage`
-4. Not found → tell user no pipeline to resume, stop
+2. If multiple matches: filter by `metadata.session_id` matching the current session (from compaction recovery context or session state). Ignore trackers from other sessions.
+3. Read `metadata.vibe_stage` for resume point, `metadata.vibe_prompt` as prompt
+4. Skip to the stage after `vibe_stage`
+5. Not found → tell user no pipeline to resume, stop
 
 ## Fresh Start
 
@@ -33,7 +34,7 @@ TaskCreate(
   subject: "Vibe: <prompt (truncated 60 chars)>",
   description: "<full prompt>",
   activeForm: "Vibing",
-  metadata: { type: "epic", priority: "P2", vibe_prompt: "<full prompt>", vibe_stage: "started" }
+  metadata: { type: "epic", priority: "P2", vibe_prompt: "<full prompt>", vibe_stage: "started", session_id: "424c8b3a-c116-4af4-acc9-3bcf312910c5" }
 )
 TaskUpdate(taskId, status: "in_progress", owner: "vibe")
 ```

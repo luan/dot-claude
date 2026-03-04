@@ -175,6 +175,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 stat,
                 cochanges,
             } => gitcontext::run(base, format, max_total, max_file, stat, cochanges),
+            cli::ToolAction::CompactionRecovery => cli::run_compaction_recovery(),
             cli::ToolAction::Cochanges {
                 base,
                 threshold,

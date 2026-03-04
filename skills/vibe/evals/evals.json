@@ -143,6 +143,27 @@
           "required": true
         }
       ]
+    },
+    {
+      "id": "compaction-recovery-correct-session",
+      "prompt": "You are Claude in a session that just experienced context compaction. The SessionStart hook injected this additionalContext:\n\n\"COMPACTION RECOVERY — session_id: sess-AAA. Check TaskList for in_progress pipeline trackers where metadata.session_id === 'sess-AAA'. If found, resume with the appropriate --continue flag (/vibe --continue, /super-vibe --continue, or /develop). Ignore trackers from other sessions.\"\n\nTaskList returns 3 in_progress tasks:\n- Task 1: subject='Vibe: add dark mode', metadata={vibe_stage:'develop', session_id:'sess-BBB'}\n- Task 2: subject='Vibe: add auth bypass', metadata={vibe_stage:'scope', session_id:'sess-AAA'}\n- Task 3: subject='Super Vibe: refactor API', metadata={super_vibe:true, vibe_stage:'phase-2', session_id:'sess-CCC'}\n\nWhat do you do?",
+      "expectations": [
+        {
+          "criterion": "resumes-matching-session-only",
+          "description": "Resumes Task 2 (session_id matches sess-AAA) — does NOT touch Task 1 or Task 3 which belong to other sessions",
+          "required": true
+        },
+        {
+          "criterion": "uses-continue-flag",
+          "description": "Invokes /vibe --continue (not /super-vibe --continue) because Task 2 is a vibe tracker (no super_vibe metadata)",
+          "required": true
+        },
+        {
+          "criterion": "ignores-other-sessions",
+          "description": "Explicitly does not attempt to resume, modify, or report on Task 1 or Task 3 — they belong to different sessions",
+          "required": true
+        }
+      ]
     }
   ]
 }
