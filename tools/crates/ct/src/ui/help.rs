@@ -146,10 +146,7 @@ const SPEC_SECTIONS: &[Section] = &[
     },
     Section {
         title: "Filters",
-        keys: &[
-            ("A", "cycle: active / archived"),
-            ("/", "search by title"),
-        ],
+        keys: &[("A", "cycle: active / archived"), ("/", "search by title")],
     },
     Section {
         title: "Spec detail",

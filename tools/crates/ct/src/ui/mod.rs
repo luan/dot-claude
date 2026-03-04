@@ -9,3 +9,5 @@ pub mod spec_detail;
 pub mod specs;
 pub mod status;
 pub mod theme;
+pub mod vibe;
+pub mod vibe_detail;
