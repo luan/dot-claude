@@ -122,6 +122,43 @@ const PLAN_SECTIONS: &[Section] = &[
     },
 ];
 
+const VIBE_SECTIONS: &[Section] = &[
+    Section {
+        title: "Navigation",
+        keys: &[
+            ("j/k", "move up / down"),
+            ("enter", "open vibe detail"),
+            ("esc", "back"),
+            ("q", "quit"),
+        ],
+    },
+    Section {
+        title: "Tabs",
+        keys: &[
+            ("tab / 1", "switch to Tasks tab"),
+            ("2", "switch to Plans tab"),
+            ("3", "switch to Specs tab"),
+            ("4", "switch to Vibe tab"),
+        ],
+    },
+    Section {
+        title: "Filters",
+        keys: &[("A", "toggle completed"), ("/", "search by prompt / stage")],
+    },
+    Section {
+        title: "Vibe detail",
+        keys: &[
+            ("j/k", "scroll"),
+            ("space / b", "page down / up"),
+            ("esc", "back to list"),
+        ],
+    },
+    Section {
+        title: "Other",
+        keys: &[("?", "toggle this help")],
+    },
+];
+
 const SPEC_SECTIONS: &[Section] = &[
     Section {
         title: "Navigation",
@@ -248,8 +285,11 @@ pub fn render_help(
     scroll: u16,
     plans_context: bool,
     specs_context: bool,
+    vibe_context: bool,
 ) -> u16 {
-    if specs_context {
+    if vibe_context {
+        render_sections(f, area, VIBE_SECTIONS, scroll)
+    } else if specs_context {
         render_sections(f, area, SPEC_SECTIONS, scroll)
     } else if plans_context {
         render_sections(f, area, PLAN_SECTIONS, scroll)

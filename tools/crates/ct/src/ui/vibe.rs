@@ -112,15 +112,16 @@ fn stage_display(stage: &str) -> String {
     if idx <= 5 {
         format!("[{}/6]", idx + 1)
     } else {
-        format!("[?/6]")
+        "[?/6]".to_string()
     }
 }
 
 fn truncate(s: &str, max: usize) -> String {
-    if s.len() <= max {
+    if s.chars().count() <= max {
         s.to_string()
     } else {
-        format!("{}…", &s[..max.saturating_sub(1)])
+        let end: String = s.chars().take(max.saturating_sub(1)).collect();
+        format!("{end}…")
     }
 }
 

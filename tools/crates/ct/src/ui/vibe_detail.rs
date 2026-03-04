@@ -56,9 +56,9 @@ fn build_pipeline_line(current_index: usize) -> Line<'static> {
         if i > 0 {
             spans.push(Span::raw(" "));
         }
-        let (icon, style) = if i < current_index {
+        let (icon, style) = if current_index < STAGES.len() && i < current_index {
             ("✓", Style::default().fg(theme::GREEN))
-        } else if i == current_index {
+        } else if current_index < STAGES.len() && i == current_index {
             ("→", Style::default().fg(theme::ACCENT))
         } else {
             (" ", Style::default().fg(theme::MUTED))
@@ -69,7 +69,7 @@ fn build_pipeline_line(current_index: usize) -> Line<'static> {
 }
 
 fn build_progress_line(current_index: usize, total: usize) -> Line<'static> {
-    let completed = current_index;
+    let completed = current_index.min(total);
     let filled = if total == 0 {
         0
     } else {
