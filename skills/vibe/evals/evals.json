@@ -66,6 +66,27 @@
       ]
     },
     {
+      "id": "branch-to-scope-no-pause",
+      "prompt": "You are Claude running /vibe 'add auth passthrough for tests'. You just invoked Skill('start', args='luan/auth-passthrough') and it returned successfully: branch created, and /start suggested 'suggest /scope or /develop'. git branch --show-current confirms you're on the new branch.\n\nWhat do you do immediately after updating vibe_stage to 'branch'?",
+      "expectations": [
+        {
+          "criterion": "immediately-invokes-scope",
+          "description": "Immediately invokes Skill('scope', args='<prompt> --no-develop --auto-approve') — does NOT pause, suggest next steps, output branch results, or wait for user input",
+          "required": true
+        },
+        {
+          "criterion": "outputs-stage-announcement-first",
+          "description": "Outputs the stage announcement (e.g., '[2/4] Scope') as text BEFORE invoking Skill('scope')",
+          "required": true
+        },
+        {
+          "criterion": "ignores-start-suggestions",
+          "description": "Does NOT echo or act on /start's 'suggest /scope or /develop' output — treats it as noise and proceeds with the pipeline",
+          "required": true
+        }
+      ]
+    },
+    {
       "id": "scope-to-develop-no-pause",
       "prompt": "You are Claude running /vibe 'add dark mode toggle'. Branch created (vibe_stage='branch'). You just invoked Skill('scope', args='add dark mode toggle --no-develop --auto-approve') and it returned successfully. TaskList shows a scope task with status_detail='approved' and metadata.design populated. --dry-run was NOT passed.\n\nWhat do you do immediately after updating vibe_stage to 'scope'?",
       "expectations": [

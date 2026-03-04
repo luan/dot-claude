@@ -26,8 +26,9 @@ current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || true)
 [[ "$command" =~ (^|[;\&\|])\ *gh\ +pr\ +create ]] && \
   deny "BLOCKED: raw 'gh pr create' in Graphite repo. Use /gt:submit instead."
 
-# git rebase — use /gt:restack
+# git rebase — allow --abort/--continue/--skip (recovery), block new rebases
 [[ "$command" =~ (^|[;\&\|])\ *git\ +rebase ]] && \
+  ! [[ "$command" =~ git\ +rebase\ +--(abort|continue|skip) ]] && \
   deny "BLOCKED: raw 'git rebase' in Graphite repo. Use /gt:restack instead."
 
 # git checkout -b — use /gt:gt create or /start

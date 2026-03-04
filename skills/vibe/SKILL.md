@@ -50,6 +50,8 @@ Generate slug: `ct tool slug "<prompt>"`. `Skill("start", args="` !`echo "${GIT_
 
 **Verify**: `git branch --show-current` returns new branch. **Update**: `vibe_stage: "branch"`
 
+→ **Immediately invoke Scope.** Ignore any suggestions from `/start` — the pipeline continues without pause.
+
 ### Scope
 
 `Skill("scope", args="<prompt> --no-develop --auto-approve")`
