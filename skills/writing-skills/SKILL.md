@@ -1,7 +1,7 @@
 ---
 name: writing-skills
 description: "Create, edit, improve, evaluate, and troubleshoot Claude Code agent skills. Use when making a new skill, editing ANY file under a skills/ directory (SKILL.md, references, scripts, evals), modifying skill metadata, refactoring skill instructions, improving skill discoverability, debugging why a skill isn't activating, running skill evals, or reviewing skill best practices. Also activates via rules/skills-editing.md when any skills/**/* file is touched. Triggers: 'new skill', 'edit skill', 'update skill', 'fix skill', 'skill not working', 'SKILL.md', 'skill metadata', 'eval skill', 'test skill', 'improve skill', 'run evals', 'skill quality'."
-argument-hint: "[--run-evals [<skill-path>|all]]"
+argument-hint: "[--run-evals [<skill-path>|<folder>|all]]"
 ---
 
 # Writing Skills
@@ -260,6 +260,7 @@ Edit procedure: see **Editing a Skill** at the top.
 | Component | Path | Role |
 |-----------|------|------|
 | Executor | `agents/executor.md` | Runs skill against test prompts, produces transcripts |
+| Behavioral Executor | `agents/behavioral-executor.md` | Simulates domain skill invocation for behavioral correctness evals |
 | Grader | `agents/grader.md` | Scores outputs against expectations (1-5 rubric) |
 | Comparator | `agents/comparator.md` | Blind A/B comparison between skill versions |
 | Analyzer | `agents/analyzer.md` | Post-hoc analysis with improvement suggestions |
@@ -282,13 +283,16 @@ Edit procedure: see **Editing a Skill** at the top.
 
 ### --run-evals Mode
 
-`/writing-skills --run-evals <skill-path>` or `/writing-skills --run-evals all`
+`/writing-skills --run-evals <skill-path|folder|all>`
 
-1. **Find skills:** specific path, or glob all `skills/*/evals/evals.json`
-2. **Per skill:** init workspace if needed → execute each case → grade → aggregate
+1. **Find skills:**
+   - Specific skill path → use directly
+   - `all` → glob `skills/*/evals/evals.json` from cwd
+   - Folder path → glob `<folder>/**/skills/*/evals/evals.json`
+2. **Per skill:** init workspace if needed → execute each case → grade → aggregate. Executor selection is based on the `skill` field in `evals.json` — see `references/eval-workflow.md` for routing details.
 3. **Report:** per-skill score summary, flag regressions vs previous version
 
-Use after any skill edit to verify no regressions. Use `all` before major commits touching multiple skills.
+Use after any skill edit to verify no regressions. Pass a folder to run across a whole repo or plugin directory (e.g. `/writing-skills --run-evals ~/Mollie/mollie-claude-plugins`).
 
 ### Without Subagents
 

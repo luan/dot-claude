@@ -42,6 +42,11 @@ For each expectation:
 
 ### Step 3: Check Writing-Skills Convention Compliance
 
+**Behavioral run detection**: Check the transcript's `## Skill` section for `Type: behavioral`.
+
+- If `Type: behavioral` is present: output all five convention_compliance keys as `{"passed": null, "details": "N/A - behavioral run"}` and skip the rest of Step 3. Convention checks are not applicable to domain skill behavioral evals.
+- If `Type: behavioral` is NOT present: proceed with the convention checks below.
+
 Beyond explicit expectations, verify these conventions against the actual artifacts:
 
 **Frontmatter**: Valid YAML with required `name` + `description`. Name has no "claude"/"anthropic". Description <1024 chars, single line. Description is what+when triggers, NOT workflow details.
