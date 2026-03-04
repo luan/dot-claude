@@ -292,6 +292,7 @@ impl App {
             KeyCode::Char('1') => self.switch_tab(Tab::Tasks),
             KeyCode::Char('2') => self.switch_tab(Tab::Plans),
             KeyCode::Char('3') => self.switch_tab(Tab::Specs),
+            KeyCode::Char('4') => self.switch_tab(Tab::Vibe),
             KeyCode::Char('z') if self.list.tree_view => {
                 self.list.pending_z = true;
             }
@@ -515,6 +516,7 @@ impl App {
             KeyCode::Char('1') => self.switch_tab(Tab::Tasks),
             KeyCode::Char('2') => self.switch_tab(Tab::Plans),
             KeyCode::Char('3') => self.switch_tab(Tab::Specs),
+            KeyCode::Char('4') => self.switch_tab(Tab::Vibe),
             KeyCode::Char('j') | KeyCode::Down => ps.next(),
             KeyCode::Char('k') | KeyCode::Up => ps.prev(),
             KeyCode::Char('g') => ps.home(),
@@ -607,10 +609,11 @@ impl App {
 
         match key.code {
             KeyCode::Char('q') => self.should_quit = true,
-            KeyCode::Tab => self.switch_tab(Tab::Tasks),
+            KeyCode::Tab => self.switch_tab(Tab::Vibe),
             KeyCode::Char('1') => self.switch_tab(Tab::Tasks),
             KeyCode::Char('2') => self.switch_tab(Tab::Plans),
             KeyCode::Char('3') => self.switch_tab(Tab::Specs),
+            KeyCode::Char('4') => self.switch_tab(Tab::Vibe),
             KeyCode::Char('j') | KeyCode::Down => ss.next(),
             KeyCode::Char('k') | KeyCode::Up => ss.prev(),
             KeyCode::Char('g') => ss.home(),
@@ -670,12 +673,109 @@ impl App {
         }
     }
 
+    fn handle_vibe_key(&mut self, key: KeyEvent) {
+        let Some(vs) = &mut self.vibe_state else {
+            return;
+        };
+
+        if vs.searching {
+            match key.code {
+                KeyCode::Esc => {
+                    vs.searching = false;
+                    vs.query.clear();
+                    vs.search_input.clear();
+                    vs.filter();
+                }
+                KeyCode::Enter => {
+                    vs.searching = false;
+                }
+                KeyCode::Backspace => {
+                    vs.search_input.pop();
+                    vs.query = vs.search_input.clone();
+                    vs.filter();
+                }
+                KeyCode::Char(c) => {
+                    vs.search_input.push(c);
+                    vs.query = vs.search_input.clone();
+                    vs.filter();
+                }
+                _ => {}
+            }
+            return;
+        }
+
+        match key.code {
+            KeyCode::Char('q') => self.should_quit = true,
+            KeyCode::Tab => self.switch_tab(Tab::Tasks),
+            KeyCode::Char('1') => self.switch_tab(Tab::Tasks),
+            KeyCode::Char('2') => self.switch_tab(Tab::Plans),
+            KeyCode::Char('3') => self.switch_tab(Tab::Specs),
+            KeyCode::Char('4') => self.switch_tab(Tab::Vibe),
+            KeyCode::Char('j') | KeyCode::Down => vs.next(),
+            KeyCode::Char('k') | KeyCode::Up => vs.prev(),
+            KeyCode::Char('g') => vs.home(),
+            KeyCode::Char('G') => vs.end(),
+            KeyCode::Char('A') => {
+                vs.show_completed = !vs.show_completed;
+                vs.filter();
+            }
+            KeyCode::Char('/') => {
+                vs.searching = true;
+                vs.search_input.clear();
+                vs.query.clear();
+            }
+            KeyCode::Enter => {
+                if let Some(tracker) = vs.selected_vibe().cloned() {
+                    let children: Vec<Task> = store::find_vibe_children(
+                        &self.store.list_tasks(&self.active_list),
+                        &tracker.id,
+                    )
+                    .into_iter()
+                    .cloned()
+                    .collect();
+                    self.vibe_detail = Some(vibe_detail::VibeDetailState::new(tracker, children));
+                    self.screen = Screen::VibeDetail;
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_vibe_detail_key(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Char('q') => self.should_quit = true,
+            KeyCode::Esc => self.screen = Screen::Vibe,
+            KeyCode::Char('j') | KeyCode::Down => {
+                if let Some(vd) = &mut self.vibe_detail {
+                    vd.scroll_down();
+                }
+            }
+            KeyCode::Char('k') | KeyCode::Up => {
+                if let Some(vd) = &mut self.vibe_detail {
+                    vd.scroll_up();
+                }
+            }
+            KeyCode::Char(' ') | KeyCode::PageDown => {
+                if let Some(vd) = &mut self.vibe_detail {
+                    vd.page_down(10);
+                }
+            }
+            KeyCode::Char('b') | KeyCode::PageUp => {
+                if let Some(vd) = &mut self.vibe_detail {
+                    vd.page_up(10);
+                }
+            }
+            _ => {}
+        }
+    }
+
     fn switch_tab(&mut self, tab: Tab) {
         self.active_tab = tab;
         self.screen = match tab {
             Tab::Tasks => Screen::List,
             Tab::Plans => Screen::Plans,
             Tab::Specs => Screen::Specs,
+            Tab::Vibe => Screen::Vibe,
         };
     }
 
@@ -853,6 +953,28 @@ impl App {
         {
             let task_id = d.task.id.clone();
             self.refresh_detail(&task_id);
+        }
+
+        // Refresh vibe state
+        let all_tasks = self.store.list_tasks(&self.active_list);
+        let vibe_trackers: Vec<Task> = store::find_vibe_trackers(&all_tasks)
+            .into_iter()
+            .cloned()
+            .collect();
+        if let Some(vs) = &mut self.vibe_state {
+            let prev_show = vs.show_completed;
+            let prev_query = vs.query.clone();
+            let prev_selected = vs.table_state.selected();
+            *vs = vibe::VibeState::new(vibe_trackers);
+            vs.show_completed = prev_show;
+            vs.query = prev_query.clone();
+            vs.search_input = prev_query;
+            vs.filter();
+            if let Some(idx) = prev_selected
+                && idx < vs.filtered.len()
+            {
+                vs.table_state.select(Some(idx));
+            }
         }
     }
 
@@ -1032,6 +1154,40 @@ impl App {
                 }
                 self.render_footer(f, footer_area, "j/k:scroll  space/b:page  esc:back  q:quit");
             }
+            Screen::Vibe => {
+                self.render_tab_header(f, header_area);
+                if let Some(vs) = &self.vibe_state {
+                    vibe::render_vibes_filter_bar(f, filter_bar_area, vs);
+                }
+                if let Some(vs) = &mut self.vibe_state {
+                    vibe::render_vibes(f, body_area, vs);
+                }
+                self.render_footer(
+                    f,
+                    footer_area,
+                    "j/k:move  enter:open  /:search  A:completed  tab/1:tasks  ?:help  q:quit",
+                );
+            }
+            Screen::VibeDetail => {
+                let title = self
+                    .vibe_detail
+                    .as_ref()
+                    .map(|vd| {
+                        let t = &vd.tracker.vibe_prompt;
+                        if t.chars().count() > 40 {
+                            format!("{}...", truncate_at_char_boundary(t, 37))
+                        } else {
+                            t.clone()
+                        }
+                    })
+                    .unwrap_or_default();
+                self.render_header(f, header_area, &title);
+                let _ = filter_bar_area;
+                if let Some(vd) = &self.vibe_detail {
+                    vibe_detail::render_vibe_detail(f, body_area, vd);
+                }
+                self.render_footer(f, footer_area, "j/k:scroll  space/b:page  esc:back  q:quit");
+            }
             Screen::Help => {
                 self.render_header(f, header_area, "help");
                 let _ = filter_bar_area;
@@ -1039,8 +1195,16 @@ impl App {
                     self.prev_screen == Screen::Specs || self.prev_screen == Screen::SpecDetail;
                 let plans_ctx =
                     self.prev_screen == Screen::Plans || self.prev_screen == Screen::PlanDetail;
-                self.help_scroll =
-                    help::render_help(f, body_area, self.help_scroll, plans_ctx, specs_ctx);
+                let vibe_ctx =
+                    self.prev_screen == Screen::Vibe || self.prev_screen == Screen::VibeDetail;
+                self.help_scroll = help::render_help(
+                    f,
+                    body_area,
+                    self.help_scroll,
+                    plans_ctx,
+                    specs_ctx,
+                    vibe_ctx,
+                );
                 self.render_footer(f, footer_area, "j/k:scroll  g/G:top/bottom  ?/esc:close");
             }
         }
@@ -1051,20 +1215,26 @@ impl App {
         let tasks_label = "[ 1 Tasks ]";
         let plans_label = "[ 2 Plans ]";
         let specs_label = "[ 3 Specs ]";
+        let vibe_label = "[ 4 Vibe ]";
         let sep = "  ";
 
         let brand_width = brand.len() as u16;
-        let tabs_width =
-            (tasks_label.len() + sep.len() + plans_label.len() + sep.len() + specs_label.len())
-                as u16;
+        let tabs_width = (tasks_label.len()
+            + sep.len()
+            + plans_label.len()
+            + sep.len()
+            + specs_label.len()
+            + sep.len()
+            + vibe_label.len()) as u16;
         let gap = area.width.saturating_sub(brand_width + tabs_width);
 
         let dim = theme::header_dim_style();
         let bright = theme::header_style();
-        let (tasks_style, plans_style, specs_style) = match self.active_tab {
-            Tab::Tasks => (bright, dim, dim),
-            Tab::Plans => (dim, bright, dim),
-            Tab::Specs => (dim, dim, bright),
+        let (tasks_style, plans_style, specs_style, vibe_style) = match self.active_tab {
+            Tab::Tasks => (bright, dim, dim, dim),
+            Tab::Plans => (dim, bright, dim, dim),
+            Tab::Specs => (dim, dim, bright, dim),
+            Tab::Vibe => (dim, dim, dim, bright),
         };
 
         let sep_style = Style::default().bg(theme::ACCENT);
@@ -1076,6 +1246,8 @@ impl App {
             Span::styled(plans_label, plans_style),
             Span::styled(sep, sep_style),
             Span::styled(specs_label, specs_style),
+            Span::styled(sep, sep_style),
+            Span::styled(vibe_label, vibe_style),
         ]);
         f.render_widget(line, area);
     }
