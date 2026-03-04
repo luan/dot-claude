@@ -105,6 +105,26 @@ Threshold: `score >= 3 → passed: true`. 1-5 scale (not 1-10): fewer false-prec
 }
 ```
 
+### Behavioral Run Variant
+
+Detected when the transcript's `## Skill` section contains `Type: behavioral` (written by `behavioral-executor.md`).
+
+**`convention_compliance` in behavioral runs:** all five keys carry `{"passed": null, "details": "N/A - behavioral run"}` — the convention checks are not applicable because behavioral skills have no SKILL.md artifact to inspect.
+
+```json
+"convention_compliance": {
+  "frontmatter":           { "passed": null, "details": "N/A - behavioral run" },
+  "description_field":     { "passed": null, "details": "N/A - behavioral run" },
+  "token_efficiency":      { "passed": null, "details": "N/A - behavioral run" },
+  "progressive_disclosure":{ "passed": null, "details": "N/A - behavioral run" },
+  "type_alignment":        { "passed": null, "details": "N/A - behavioral run" }
+}
+```
+
+**Score math** is identical in both run types: `overall` and `overall_score` derive exclusively from the `results` array (expectations). `convention_compliance` is a diagnostic field — it never contributes to score math in either variant.
+
+**`metrics.json` in behavioral runs:** `artifact_type` is `"behavioral"` instead of the usual skill-type categories (e.g. `"discipline"`, `"procedure"`).
+
 **`score` → `passed` derivation:** `passed = score >= 3`. The `passed` field is always present for backwards compatibility but is derived from `score`. Never set `passed` independently.
 
 **`overall_score`:** Mean of all criteria scores (float, one decimal). `required_score`: mean of scores where the criterion has `required: true`.
