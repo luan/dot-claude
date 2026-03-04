@@ -97,12 +97,49 @@
         },
         {
           "criterion": "outputs-stage-announcement-first",
-          "description": "Outputs the stage announcement (e.g., '[3/4] Develop') as text BEFORE invoking Skill('develop')",
+          "description": "Outputs the stage announcement (e.g., '[3/6] Develop') as text BEFORE invoking Skill('develop')",
           "required": true
         },
         {
           "criterion": "no-scope-results-summary",
           "description": "Does NOT output scope results, phase breakdowns, key files, or any summary of what scope produced — proceeds directly to develop",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "develop-to-simplify-to-review",
+      "prompt": "You are Claude running /vibe 'add rate limiting middleware'. All prior stages completed (branch, scope, develop). vibe_stage='develop'. All epic children show status='completed'. git diff --stat shows changes across 5 files.\n\nWhat do you do immediately after updating vibe_stage to 'develop'?",
+      "expectations": [
+        {
+          "criterion": "invokes-simplify-first",
+          "description": "Immediately invokes Skill('simplify') — does NOT skip to review or commit",
+          "required": true
+        },
+        {
+          "criterion": "invokes-review-after-simplify",
+          "description": "After simplify completes, invokes Skill('review') before proceeding to commit",
+          "required": true
+        },
+        {
+          "criterion": "no-pause-between-stages",
+          "description": "Does NOT pause, summarize develop results, or wait for user input between develop → simplify → review → commit",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "full-pipeline-stage-count",
+      "prompt": "You are Claude about to run /vibe 'add search feature'. No flags passed. You're on the main branch.\n\nList all stages in order with their stage numbers [N/M].",
+      "expectations": [
+        {
+          "criterion": "six-stages-total",
+          "description": "M = 6 for the full pipeline: branch, scope, develop, simplify, review, commit",
+          "required": true
+        },
+        {
+          "criterion": "correct-order",
+          "description": "Stages are ordered: [1/6] Branch, [2/6] Scope, [3/6] Develop, [4/6] Simplify, [5/6] Review, [6/6] Commit",
           "required": true
         }
       ]
