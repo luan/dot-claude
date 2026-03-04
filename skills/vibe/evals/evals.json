@@ -66,8 +66,24 @@
       ]
     },
     {
+      "id": "start-receives-tracker-id",
+      "prompt": "You are Claude running /vibe 'add search feature'. You just created the vibe tracker task (task #55). You're about to invoke the Branch stage.\n\nShow the exact Skill('start') call you would make, including all arguments.",
+      "expectations": [
+        {
+          "criterion": "passes-tracker-id",
+          "description": "The Skill call passes the tracker task ID (55) as the second argument to /start — e.g., Skill('start', args='luan/add-search-feature 55') — so /start links to the existing tracker instead of asking to create a new task",
+          "required": true
+        },
+        {
+          "criterion": "includes-branch-name",
+          "description": "The first argument is a properly prefixed branch name derived from the prompt slug",
+          "required": true
+        }
+      ]
+    },
+    {
       "id": "branch-to-scope-no-pause",
-      "prompt": "You are Claude running /vibe 'add auth passthrough for tests'. You just invoked Skill('start', args='luan/auth-passthrough') and it returned successfully: branch created, and /start suggested 'suggest /scope or /develop'. git branch --show-current confirms you're on the new branch.\n\nWhat do you do immediately after updating vibe_stage to 'branch'?",
+      "prompt": "You are Claude running /vibe 'add auth passthrough for tests'. You just invoked Skill('start', args='luan/auth-passthrough 42') and it returned successfully: branch created and linked to task #42, and /start suggested 'suggest /scope or /develop'. git branch --show-current confirms you're on the new branch.\n\nWhat do you do immediately after updating vibe_stage to 'branch'?",
       "expectations": [
         {
           "criterion": "immediately-invokes-scope",

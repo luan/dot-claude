@@ -47,7 +47,9 @@ Run stages sequentially in one continuous turn — **never pause, summarize, or 
 
 ### Branch (skip if `--no-branch` or already on non-main branch)
 
-Generate slug: `ct tool slug "<prompt>"`. `Skill("start", args="` !`echo "${GIT_USERNAME:-$(whoami)}"` `/<slug>")`
+Generate slug: `ct tool slug "<prompt>"`. `Skill("start", args="` !`echo "${GIT_USERNAME:-$(whoami)}"` `/<slug> <trackerId>")`
+
+Pass the tracker task ID as the second arg so `/start` links to it instead of asking to create a new task.
 
 **Verify**: `git branch --show-current` returns new branch. **Update**: `vibe_stage: "branch"`
 
