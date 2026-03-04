@@ -209,6 +209,9 @@ pub enum ToolAction {
         cochanges: bool,
     },
 
+    #[command(about = "Emit compaction-recovery context for SessionStart hooks")]
+    CompactionRecovery,
+
     #[command(about = "Find files frequently changed together with current changes")]
     Cochanges {
         #[arg(
@@ -945,6 +948,71 @@ pub fn run_plan(id: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("{content}");
 
     Ok(())
+}
+
+pub fn run_compaction_recovery() -> Result<(), Box<dyn std::error::Error>> {
+    let input: serde_json::Value =
+        serde_json::from_reader(std::io::stdin().lock()).unwrap_or_else(|_| serde_json::json!({}));
+    let output = compaction_recovery_output(&input);
+    println!("{}", serde_json::to_string(&output)?);
+    Ok(())
+}
+
+fn compaction_recovery_output(input: &serde_json::Value) -> serde_json::Value {
+    let session_id = input
+        .get("session_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+
+    serde_json::json!({
+        "hookSpecificOutput": {
+            "hookEventName": "SessionStart",
+            "additionalContext": format!(
+                "COMPACTION RECOVERY — session_id: {session_id}. \
+                 Check TaskList for in_progress pipeline trackers where \
+                 metadata.session_id === '{session_id}'. If found, resume \
+                 with the appropriate --continue flag (/vibe --continue, \
+                 /super-vibe --continue, or /develop). Ignore trackers \
+                 from other sessions."
+            )
+        }
+    })
+}
+
+#[cfg(test)]
+mod compaction_recovery_tests {
+    use super::*;
+
+    #[test]
+    fn extracts_session_id() {
+        let input = serde_json::json!({"session_id": "abc-123", "source": "compact"});
+        let output = compaction_recovery_output(&input);
+        let ctx = output["hookSpecificOutput"]["additionalContext"]
+            .as_str()
+            .unwrap();
+        assert!(ctx.contains("abc-123"));
+        assert!(ctx.contains("metadata.session_id === 'abc-123'"));
+    }
+
+    #[test]
+    fn missing_session_id_falls_back() {
+        let input = serde_json::json!({"source": "compact"});
+        let output = compaction_recovery_output(&input);
+        let ctx = output["hookSpecificOutput"]["additionalContext"]
+            .as_str()
+            .unwrap();
+        assert!(ctx.contains("unknown"));
+    }
+
+    #[test]
+    fn empty_input() {
+        let input = serde_json::json!({});
+        let output = compaction_recovery_output(&input);
+        assert_eq!(
+            output["hookSpecificOutput"]["hookEventName"],
+            "SessionStart"
+        );
+    }
 }
 
 pub fn run_slug(words: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
