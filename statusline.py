@@ -29,7 +29,7 @@ SUBSCRIPT = str.maketrans(
 GIT_CACHE = "/tmp/claude-statusline-git"
 GIT_TTL = 5
 USAGE_CACHE = "/tmp/claude-statusline-usage.json"
-USAGE_TTL = 60
+USAGE_TTL = 120
 VERSION_CACHE = "/tmp/claude-statusline-version"
 VERSION_TTL = 3600
 UPDATE_ICON = "\U000f0047"
@@ -224,6 +224,82 @@ def git_info(cwd):
     return result or None
 
 
+CODEXBAR_SNAPSHOT = os.path.expanduser(
+    "~/Library/Group Containers/group.com.steipete.codexbar/widget-snapshot.json"
+)
+
+
+def _usage_from_codexbar():
+    """Read usage from CodexBar's widget snapshot (no API call needed)."""
+    try:
+        with open(CODEXBAR_SNAPSHOT) as f:
+            snap = json.load(f)
+        for entry in snap.get("entries", []):
+            if entry.get("provider") != "claude":
+                continue
+            primary = entry.get("primary") or {}
+            secondary = entry.get("secondary") or {}
+            result = {}
+            if "usedPercent" in primary:
+                result["five_hour"] = {
+                    "utilization": primary["usedPercent"],
+                    "resets_at": primary.get("resetsAt"),
+                }
+            if "usedPercent" in secondary:
+                result["seven_day"] = {
+                    "utilization": secondary["usedPercent"],
+                    "resets_at": secondary.get("resetsAt"),
+                }
+            if result:
+                return result
+    except Exception:
+        pass
+    return None
+
+
+def _usage_from_oauth(version=""):
+    """Fetch usage from Anthropic OAuth API."""
+    raw = _run(
+        ["security", "find-generic-password", "-s", "Claude Code-credentials", "-w"]
+    )
+    try:
+        creds = json.loads(raw)
+        token = creds.get("claudeAiOauth", {}).get("accessToken")
+    except (json.JSONDecodeError, ValueError):
+        decoded = bytes.fromhex(raw).decode("utf-8", errors="replace")
+        m = re.search(r'"accessToken"\s*:\s*"(sk-ant-[^"]+)"', decoded)
+        token = m.group(1) if m else None
+    if not token:
+        return None
+
+    result = subprocess.check_output(
+        [
+            "curl",
+            "-s",
+            "--max-time",
+            "5",
+            "-H",
+            "Accept: application/json",
+            "-H",
+            f"Authorization: Bearer {token}",
+            "-H",
+            "anthropic-beta: oauth-2025-04-20",
+            "-H",
+            f"User-Agent: claude-code/{version or '0.0.0'}",
+            "https://api.anthropic.com/api/oauth/usage",
+        ],
+        stderr=subprocess.DEVNULL,
+        text=True,
+        timeout=8,
+    ).strip()
+
+    if result:
+        parsed = json.loads(result)
+        if "five_hour" in parsed or "seven_day" in parsed:
+            return parsed
+    return None
+
+
 def fetch_usage(version=""):
     cached = read_cache(USAGE_CACHE, USAGE_TTL)
     if cached is not None:
@@ -232,50 +308,29 @@ def fetch_usage(version=""):
         except Exception:
             pass
 
-    try:
-        raw = _run(
-            ["security", "find-generic-password", "-s", "Claude Code-credentials", "-w"]
-        )
+    # Try CodexBar snapshot first (instant, no API call)
+    usage = _usage_from_codexbar()
+
+    # Fall back to OAuth API
+    if not usage:
         try:
-            creds = json.loads(raw)
-            token = creds.get("claudeAiOauth", {}).get("accessToken")
-        except (json.JSONDecodeError, ValueError):
-            decoded = bytes.fromhex(raw).decode("utf-8", errors="replace")
-            m = re.search(r'"accessToken"\s*:\s*"(sk-ant-[^"]+)"', decoded)
-            token = m.group(1) if m else None
-        if not token:
-            return None
+            usage = _usage_from_oauth(version)
+        except Exception:
+            pass
 
-        result = subprocess.check_output(
-            [
-                "curl",
-                "-s",
-                "--max-time",
-                "5",
-                "-H",
-                "Accept: application/json",
-                "-H",
-                f"Authorization: Bearer {token}",
-                "-H",
-                "anthropic-beta: oauth-2025-04-20",
-                "-H",
-                f"User-Agent: claude-code/{version or '0.0.0'}",
-                "https://api.anthropic.com/api/oauth/usage",
-            ],
-            stderr=subprocess.DEVNULL,
-            text=True,
-            timeout=8,
-        ).strip()
+    if usage:
+        write_cache(USAGE_CACHE, json.dumps(usage))
+        return usage
 
-        if result:
-            parsed = json.loads(result)
+    # Preserve last good cache on failure
+    cached = read_cache(USAGE_CACHE, USAGE_TTL * 10)
+    if cached:
+        try:
+            parsed = json.loads(cached)
             if "five_hour" in parsed or "seven_day" in parsed:
-                write_cache(USAGE_CACHE, result)
                 return parsed
-    except Exception:
-        pass
-
-    write_cache(USAGE_CACHE, "")
+        except Exception:
+            pass
     return None
 
 
