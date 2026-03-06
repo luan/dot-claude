@@ -32,7 +32,7 @@ Run all stages in one continuous turn — **never pause between phases.**
 
 ### [1] Initial Scope
 
-`Skill("scope", args="<prompt> --auto-approve")`
+`Skill("scope", args="<prompt> --auto")`
 
 **Verify**: scope task with `status_detail === "approved"`, `metadata.spec` and `metadata.design` populated.
 
@@ -49,7 +49,7 @@ If `--dry-run` → stop. Report phases, suggest `/super-vibe --continue`.
 For each phase in order:
 
 1. **Branch**: `Skill("gt:gt", args="create <slug>-p<N>")` — stacks on previous branch
-2. **Re-scope**: `Skill("scope", args="Phase <N> of <original prompt>: <phase title and goal>. Context: this is phase <N> of <total> in a stacked plan. Prior phases already landed: <list completed phase titles>. Spec from initial scope: <original spec summary>. --auto-approve")` — scope researches the current codebase (which now includes prior phases' code) and produces a design grounded in reality.
+2. **Re-scope**: `Skill("scope", args="Phase <N> of <original prompt>: <phase title and goal>. Context: this is phase <N> of <total> in a stacked plan. Prior phases already landed: <list completed phase titles>. Spec from initial scope: <original spec summary>. --auto")` — scope researches the current codebase (which now includes prior phases' code) and produces a design grounded in reality.
 3. **Develop**: `Skill("develop")` — detects the phase scope task, creates tasks, executes. Develop marks the phase scope task completed when done.
 4. **Simplify**: `Skill("simplify")`
 5. **Review**: `Skill("review")` — fix issues inline

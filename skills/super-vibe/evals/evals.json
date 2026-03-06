@@ -33,8 +33,8 @@
           "required": true
         },
         {
-          "criterion": "uses-auto-approve",
-          "description": "The re-scope uses --auto-approve so it doesn't pause for user review mid-pipeline",
+          "criterion": "uses-auto",
+          "description": "The re-scope uses --auto so it doesn't pause for user review mid-pipeline",
           "required": true
         }
       ]

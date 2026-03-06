@@ -69,20 +69,20 @@
       ]
     },
     {
-      "id": "auto-approve-both-phases",
-      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope add webhook retry --auto-approve'. CLAUDE_CODE_TASK_LIST_ID is set.\n\nYou complete research and validation. Now demonstrate the full flow through spec and plan with --auto-approve.\n\nResearch subagent returns findings in fixtures/research-findings.md.",
+      "id": "auto-both-phases",
+      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope add webhook retry --auto'. CLAUDE_CODE_TASK_LIST_ID is set.\n\nYou complete research and validation. Now demonstrate the full flow through spec and plan with --auto.\n\nResearch subagent returns findings in fixtures/research-findings.md.",
       "files": [
         "fixtures/research-findings.md"
       ],
       "expectations": [
         {
-          "criterion": "spec-auto-approved",
-          "description": "With --auto-approve, the spec is produced and stored but user review is skipped — does NOT stop for user feedback on the spec.",
+          "criterion": "spec-auto",
+          "description": "With --auto, the spec is produced and stored but user review is skipped — does NOT stop for user feedback on the spec.",
           "required": true
         },
         {
-          "criterion": "plan-auto-approved",
-          "description": "The plan is also auto-approved — does NOT stop for user feedback on the plan either. Both phases skip review.",
+          "criterion": "plan-auto",
+          "description": "The plan is also auto'd — does NOT stop for user feedback on the plan either. Both phases skip review.",
           "required": true
         },
         {
@@ -376,18 +376,18 @@
       ]
     },
     {
-      "id": "auto-approve-still-runs-codex",
-      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope add webhook retry --auto-approve'. You have completed research, synthesized a spec, and are about to store it.\n\nDemonstrate that codex review still runs even with --auto-approve.",
+      "id": "auto-still-runs-codex",
+      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope add webhook retry --auto'. You have completed research, synthesized a spec, and are about to store it.\n\nDemonstrate that codex review still runs even with --auto.",
       "files": [],
       "expectations": [
         {
-          "criterion": "codex-runs-with-auto-approve",
-          "description": "Even with --auto-approve, the codex review step runs for both spec and plan. Auto-approve bypasses USER review gates, but codex review is a separate quality gate that always runs.",
+          "criterion": "codex-runs-with-auto",
+          "description": "Even with --auto, the codex review step runs for both spec and plan. Auto-approve bypasses USER review gates, but codex review is a separate quality gate that always runs.",
           "required": true
         },
         {
           "criterion": "codex-feedback-incorporated",
-          "description": "High-severity codex feedback is still incorporated into the artifact before storing, same as without --auto-approve.",
+          "description": "High-severity codex feedback is still incorporated into the artifact before storing, same as without --auto.",
           "required": true
         }
       ]
