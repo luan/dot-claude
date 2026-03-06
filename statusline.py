@@ -269,7 +269,7 @@ def fetch_usage(version=""):
 
         if result:
             parsed = json.loads(result)
-            if "error" not in parsed and ("five_hour" in parsed or "seven_day" in parsed):
+            if "five_hour" in parsed or "seven_day" in parsed:
                 write_cache(USAGE_CACHE, result)
                 return parsed
     except Exception:
