@@ -4,6 +4,7 @@ description: "Recommend PR reviewers based on code ownership. Triggers: 'who sho
 model: sonnet
 context: fork
 agent: general-purpose
+argument-hint: "[--auto]"
 user-invocable: true
 disable-model-invocation: true
 allowed-tools:
@@ -48,6 +49,6 @@ Recommend reviewers based on code expertise while spreading review load.
 
    **Never say** "Reviewed your recent PRs" as positive signal.
 
-   Ask: "Add these reviewers?"
+   `--auto` → add recommended reviewers directly. Without `--auto` → ask: "Add these reviewers?"
 
 7. **Add**: `gh pr edit <PR> --add-reviewer alice,bob,carol`

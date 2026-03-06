@@ -1,6 +1,7 @@
 ---
 name: pr-comments
 description: "Fix unresolved PR review comments. Triggers: 'fix comments', 'fix PR comments', 'address review feedback'."
+argument-hint: "[--auto]"
 user-invocable: true
 disable-model-invocation: false
 allowed-tools:
@@ -20,7 +21,7 @@ allowed-tools:
 
 Fix unresolved review comments from a PR.
 
-**Safety: NEVER auto-pushes. NEVER replies to or resolves threads — only fetches and fixes locally.**
+**Safety: NEVER replies to or resolves threads — only fetches and fixes locally. Push requires confirmation (unless `--auto`). `--auto` auto-resolves bot comments only (not human comments).**
 
 ## Context
 
@@ -40,9 +41,9 @@ Branch: !`git branch --show-current 2>/dev/null`
    ${CLAUDE_SKILL_DIR}/scripts/fetch_threads.py --pr <PR> --repo <Repo>
    ```
 
-   Display as numbered list with file:line, author, preview. Ask "Which comment(s) to fix?" — options: "Fix all" / "Other"
+   `--auto` → fix all comments, auto-resolve bot comments (author is a bot/app). Without `--auto` → display as numbered list with file:line, author, preview. Ask "Which comment(s) to fix?" — options: "Fix all" / "Other"
 
-4. **Plan fixes**: For each comment, read code, create one-line fix description. Ask "Ready to execute?"
+4. **Plan fixes**: For each comment, read code, create one-line fix description. `--auto` → proceed. Without `--auto` → ask "Ready to execute?"
 
 5. **Execute**: Apply fixes, summarize changes.
 
@@ -50,4 +51,4 @@ Branch: !`git branch --show-current 2>/dev/null`
 
 7. **Commit**: Use `Skill(commit)` to generate message and commit.
 
-8. **Push** (optional): Ask first. Use `Skill(gt:submit)` if gt plugin is loaded, otherwise `git push`.
+8. **Push** (optional): `--auto` → push automatically. Without `--auto` → ask first. Use `Skill(gt:submit)` if gt plugin is loaded, otherwise `git push`.

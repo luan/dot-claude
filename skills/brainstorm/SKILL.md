@@ -1,7 +1,7 @@
 ---
 name: brainstorm
 description: "Collaborative design for greenfield features and new ideas. Triggers: 'brainstorm', 'ideate', 'new feature design', 'help me think through', 'what should we build', 'help me design', 'think through X with me', 'I want to build something new'. Do NOT use when: the user wants to investigate an existing codebase or research a specific technical question — use /scope instead."
-argument-hint: "<idea or topic>"
+argument-hint: "<idea or topic> [--auto]"
 user-invocable: true
 allowed-tools:
   - Task
@@ -41,7 +41,9 @@ Dispatch Task (subagent_type="Explore", run_in_background=true): scan for tech s
 
 ### 3. Interview
 
-AskUserQuestion, ONE per turn — wait for answer before next. Prefer multiple-choice.
+`--auto` → skip interview entirely. Infer purpose, scope, constraints, and success criteria from the initial prompt and project context scan.
+
+Without `--auto`: AskUserQuestion, ONE per turn — wait for answer before next. Prefer multiple-choice.
 
 **Upfront spec:** Only skip interview if the prompt has ALL three: explicit scope boundaries (non-goals stated), measurable constraints, and testable success criteria. Acknowledge by citing 2+ concrete details from the user's spec. When in doubt, interview.
 
@@ -61,11 +63,11 @@ Stop when you can propose approaches. Usually 3-5 questions, never >7. Stay tech
 
 Check background scan completed. Incorporate findings into approaches.
 
-Lead with recommendation + justification referencing user's constraints. Non-recommended: 2-3 sentences + downside vs recommended. Be opinionated. Ask user to pick or refine. All rejected → ask what's missing, propose new approaches.
+Lead with recommendation + justification referencing user's constraints. Non-recommended: 2-3 sentences + downside vs recommended. Be opinionated. `--auto` → auto-select the recommended approach. Without `--auto` → ask user to pick or refine. All rejected → ask what's missing, propose new approaches.
 
 ### 5. Present Design Sections
 
-Scale to complexity. After each section, confirm before proceeding.
+Scale to complexity. `--auto` → skip per-section confirmations. Without `--auto` → confirm before proceeding after each section.
 
 Include only relevant: architecture, data flow, API surface, error handling, testing.
 

@@ -1,7 +1,7 @@
 ---
 name: next
 description: "Context-aware dispatch: resumes branch work if on a feature branch, otherwise picks the next work item from the board. Triggers: 'next', 'what next', 'pick up next task', 'resume', 'where was I', 'continue working'."
-argument-hint: "[branch-name|PR#]"
+argument-hint: "[branch-name|PR#] [--auto]"
 user-invocable: true
 allowed-tools:
   - Bash
@@ -79,7 +79,9 @@ Read via TaskGet. Route by signal:
 
 ### 4. Present + Dispatch
 
-AskUserQuestion: recommended action first ("(Recommended)"), 1-2 alternatives, brief rationale. Invoke chosen skill with task ID. "Skip" → next candidate.
+`--auto` → invoke the recommended action directly without presenting alternatives.
+
+Without `--auto` → AskUserQuestion: recommended action first ("(Recommended)"), 1-2 alternatives, brief rationale. Invoke chosen skill with task ID. "Skip" → next candidate.
 
 ## Key Rules
 

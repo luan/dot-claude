@@ -1,7 +1,7 @@
 ---
 name: review
 description: "Thorough adversarial code review covering correctness, security, architecture, and performance. Triggers: 'review', 'review my changes', 'check this code', 'code review'. Use --team for 3-perspective mode. Do NOT use when: investigating unknown bug — use /debugging."
-argument-hint: "[base..head | file-list | PR#] [--against <issue-id>] [--team] [--continue]"
+argument-hint: "[base..head | file-list | PR#] [--against <issue-id>] [--team] [--continue] [--auto]"
 user-invocable: true
 allowed-tools:
   - Task
@@ -75,6 +75,8 @@ Store via `ct plan create --topic "<topic>" --project "$(git rev-parse --show-to
 
 !`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Return findings to caller. Don't fix." || echo "AskUserQuestion: Fix all / Fix critical+high / Fix critical only / Skip fixes"`
 
+`--auto` → Fix critical+high automatically (skip AskUserQuestion).
+
 ## Step 5: Fix + Re-review Loop
 
 Spawn agent with FIX items → fix, verify, self-check (remove debug artifacts, low-value comments, unused imports), report.
@@ -83,6 +85,6 @@ Re-run Step 3, max 4 iterations. Track fixed_issues by (file, description) — n
 
 ## Step 6: Summary + Next
 
-Output: Fixes Applied, Ignored, Remaining. Remaining + interactive: multiSelect to defer. Close: TaskUpdate → completed. Next via AskUserQuestion.
+Output: Fixes Applied, Ignored, Remaining. `--auto` → skip defer selection, complete task, stop. Without `--auto` → Remaining + interactive: multiSelect to defer. Close: TaskUpdate → completed. Next via AskUserQuestion.
 
 **Receiving feedback:** Verify claims by reading the file. Push back with evidence when feedback breaks functionality.

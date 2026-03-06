@@ -1,7 +1,7 @@
 ---
 name: start
 description: "Create a new branch and optionally link to a task. Uses Graphite (gt) if available, falls back to git. Triggers: 'start', 'start new branch', 'begin work on'. User-invoked only — branches are not created autonomously."
-argument-hint: "<branch-name> [task-id]"
+argument-hint: "<branch-name> [task-id] [--auto]"
 user-invocable: true
 allowed-tools:
   - "Bash(git checkout:*)"
@@ -28,8 +28,9 @@ Create branch + optionally link task. User-invoked only — this skill never cre
 4. If task ID provided:
    - `TaskUpdate(taskId, status: "in_progress", metadata: {branch: "<branch-name>"})`
 5. If no task ID:
-   - AskUserQuestion: "Create a task for this branch?"
-   - If yes → `TaskCreate` with subject from branch name. Type inferred from branch name: `"feat"` for feature work, `"fix"` for bugfixes, `"chore"` otherwise. Priority defaults to P2.
+   - `--auto` → auto-create task (type inferred from branch name, P2 priority).
+   - Without `--auto` → AskUserQuestion: "Create a task for this branch?"
+   - If yes (or `--auto`) → `TaskCreate` with subject from branch name. Type inferred from branch name: `"feat"` for feature work, `"fix"` for bugfixes, `"chore"` otherwise. Priority defaults to P2.
    - Link: `TaskUpdate(taskId, status: "in_progress", metadata: {branch: "<branch-name>"})`
 6. Report branch + task, suggest `/scope` or `/develop`
 

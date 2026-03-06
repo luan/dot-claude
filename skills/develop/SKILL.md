@@ -1,7 +1,7 @@
 ---
 name: develop
 description: "Execute implementation for an epic or individual task. Triggers: 'develop', 'execute the plan', 'build this', 'code this plan', 'kick off the tasks', 'run this epic', 'run the plan', epic/task ID. Do NOT use when: a full autonomous end-to-end workflow is needed — use /vibe instead."
-argument-hint: "[<epic-slug>|t<id>|<id>] [--solo]"
+argument-hint: "[<epic-slug>|t<id>|<id>] [--solo] [--auto]"
 user-invocable: true
 allowed-tools:
   - Task
@@ -51,8 +51,8 @@ Source: scope task's `metadata.design` (or epic's `metadata.design` if epic exis
 1. **Pre-check design quality:**
    - Must have structured sections with file paths
    - Standalone testing phase → merge into implementation phases
-   - Single phase spanning 3+ subsystems → AskUserQuestion
-   - Missing paths or approach under 20 words → AskUserQuestion
+   - Single phase spanning 3+ subsystems → `--auto`: proceed anyway. Otherwise AskUserQuestion.
+   - Missing paths or approach under 20 words → `--auto`: proceed with best-effort. Otherwise AskUserQuestion.
 
 2. **Create epic** (skip if epic already exists):
    TaskCreate with title, Problem/Solution/Acceptance,
@@ -78,7 +78,7 @@ Source: scope task's `metadata.design` (or epic's `metadata.design` if epic exis
 - No descendants → **Solo**
 - 2+ leaves → **Team**
 
-**Readiness check (Team):** 2+ tasks lack `## Files` or `## Approach` → AskUserQuestion before dispatching any workers.
+**Readiness check (Team):** 2+ tasks lack `## Files` or `## Approach` → `--auto`: proceed with dispatch anyway. Otherwise AskUserQuestion before dispatching any workers.
 
 ## Pre-compute Context
 
