@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Modifier, Style};
@@ -39,10 +41,11 @@ pub struct SpecsState {
     pub query: String,
     pub search_input: String,
     pub source: SpecSource,
+    pub link_counts: HashMap<String, usize>,
 }
 
 impl SpecsState {
-    pub fn new(specs: Vec<Spec>) -> Self {
+    pub fn new(specs: Vec<Spec>, link_counts: HashMap<String, usize>) -> Self {
         let mut table_state = TableState::default();
         if !specs.is_empty() {
             table_state.select(Some(0));
@@ -55,6 +58,7 @@ impl SpecsState {
             query: String::new(),
             search_input: String::new(),
             source: SpecSource::Active,
+            link_counts,
         }
     }
 
@@ -142,7 +146,7 @@ impl SpecsState {
 }
 
 pub fn render_specs(f: &mut Frame, area: Rect, state: &mut SpecsState) {
-    let header = Row::new(vec!["Project", "Date", "Size", "Title"])
+    let header = Row::new(vec!["Project", "Date", "Size", "Tasks", "Title"])
         .style(
             Style::default()
                 .fg(theme::SUBTEXT)
@@ -160,6 +164,17 @@ pub fn render_specs(f: &mut Frame, area: Rect, state: &mut SpecsState) {
                 &s.title
             };
             let proj = planfile::project_name(&s.project);
+            let path_key = s.path.to_string_lossy();
+            let task_count = state
+                .link_counts
+                .get(path_key.as_ref())
+                .copied()
+                .unwrap_or(0);
+            let task_label = if task_count == 0 {
+                "\u{2014}".to_string()
+            } else {
+                task_count.to_string()
+            };
             Row::new(vec![
                 Cell::from(Span::styled(proj, theme::muted_style())),
                 Cell::from(Span::styled(
@@ -170,6 +185,7 @@ pub fn render_specs(f: &mut Frame, area: Rect, state: &mut SpecsState) {
                     plan::format_size(s.size),
                     theme::muted_style(),
                 )),
+                Cell::from(Span::styled(task_label, theme::muted_style())),
                 Cell::from(Span::raw(title)),
             ])
         })
@@ -178,6 +194,7 @@ pub fn render_specs(f: &mut Frame, area: Rect, state: &mut SpecsState) {
     let widths = [
         Constraint::Length(12),
         Constraint::Length(12),
+        Constraint::Length(6),
         Constraint::Length(6),
         Constraint::Fill(1),
     ];
@@ -220,4 +237,20 @@ pub fn render_specs_filter_bar(f: &mut Frame, area: Rect, state: &SpecsState) {
     ));
 
     f.render_widget(Line::from(spans), area);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn specs_state_stores_link_counts() {
+        let mut counts = HashMap::new();
+        counts.insert("/specs/a.md".to_string(), 3);
+        counts.insert("/specs/b.md".to_string(), 1);
+        let state = SpecsState::new(vec![], counts.clone());
+        assert_eq!(state.link_counts.get("/specs/a.md"), Some(&3));
+        assert_eq!(state.link_counts.get("/specs/b.md"), Some(&1));
+        assert_eq!(state.link_counts.get("/specs/missing.md"), None);
+    }
 }

@@ -101,6 +101,9 @@ impl App {
             .into_iter()
             .cloned()
             .collect();
+        let plan_counts = store::plan_link_counts(&tasks);
+        let spec_counts = store::spec_link_counts(&tasks);
+        let vibe_state = vibe::VibeState::new(vibe_trackers, &tasks);
         Self {
             store,
             active_list,
@@ -114,11 +117,11 @@ impl App {
             status_picker: None,
             confirm: None,
             create_form: None,
-            plans_state: Some(plans::PlansState::new(all_plans)),
+            plans_state: Some(plans::PlansState::new(all_plans, plan_counts)),
             plan_detail: None,
-            specs_state: Some(specs::SpecsState::new(spec::list_specs())),
+            specs_state: Some(specs::SpecsState::new(spec::list_specs(), spec_counts)),
             spec_detail: None,
-            vibe_state: Some(vibe::VibeState::new(vibe_trackers)),
+            vibe_state: Some(vibe_state),
             vibe_detail: None,
             help_scroll: 0,
             status_msg: String::new(),
@@ -540,7 +543,7 @@ impl App {
             }
             KeyCode::Enter => {
                 if let Some(p) = ps.selected_plan().cloned() {
-                    self.plan_detail = Some(plan_detail::PlanDetailState::new(p));
+                    self.plan_detail = Some(plan_detail::PlanDetailState::new(p, &self.list.tasks));
                     self.screen = Screen::PlanDetail;
                 }
             }
@@ -637,7 +640,7 @@ impl App {
             }
             KeyCode::Enter => {
                 if let Some(s) = ss.selected_spec().cloned() {
-                    self.spec_detail = Some(spec_detail::SpecDetailState::new(s));
+                    self.spec_detail = Some(spec_detail::SpecDetailState::new(s, &self.list.tasks));
                     self.screen = Screen::SpecDetail;
                 }
             }
@@ -956,8 +959,7 @@ impl App {
         }
 
         // Refresh vibe state
-        let all_tasks = self.store.list_tasks(&self.active_list);
-        let vibe_trackers: Vec<Task> = store::find_vibe_trackers(&all_tasks)
+        let vibe_trackers: Vec<Task> = store::find_vibe_trackers(&self.list.tasks)
             .into_iter()
             .cloned()
             .collect();
@@ -965,7 +967,7 @@ impl App {
             let prev_show = vs.show_completed;
             let prev_query = vs.query.clone();
             let prev_selected = vs.table_state.selected();
-            *vs = vibe::VibeState::new(vibe_trackers);
+            *vs = vibe::VibeState::new(vibe_trackers, &self.list.tasks);
             vs.show_completed = prev_show;
             vs.query = prev_query.clone();
             vs.search_input = prev_query;
@@ -976,10 +978,19 @@ impl App {
                 vs.table_state.select(Some(idx));
             }
         }
+
+        // Refresh link counts for plans and specs
+        if let Some(ps) = &mut self.plans_state {
+            ps.link_counts = store::plan_link_counts(&self.list.tasks);
+        }
+        if let Some(ss) = &mut self.specs_state {
+            ss.link_counts = store::spec_link_counts(&self.list.tasks);
+        }
     }
 
     pub fn reload_plans(&mut self) {
         if let Some(ps) = &mut self.plans_state {
+            ps.link_counts = store::plan_link_counts(&self.list.tasks);
             ps.reload_plans();
         }
         self.screen = self.prev_screen;

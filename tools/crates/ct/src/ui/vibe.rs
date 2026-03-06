@@ -4,11 +4,15 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Cell, Row, Table, TableState};
 
+use std::collections::HashMap;
+
+use crate::planfile;
 use crate::store::{self, Task};
 use crate::ui::theme;
 
 pub struct VibeState {
     pub items: Vec<Task>,
+    pub child_count_map: HashMap<String, (usize, usize)>,
     pub filtered: Vec<Task>,
     pub table_state: TableState,
     pub searching: bool,
@@ -18,14 +22,16 @@ pub struct VibeState {
 }
 
 impl VibeState {
-    pub fn new(items: Vec<Task>) -> Self {
+    pub fn new(items: Vec<Task>, all_tasks: &[Task]) -> Self {
         let mut table_state = TableState::default();
         if !items.is_empty() {
             table_state.select(Some(0));
         }
+        let child_count_map = store::child_counts(all_tasks);
         let filtered = items.clone();
         Self {
             items,
+            child_count_map,
             filtered,
             table_state,
             searching: false,
@@ -116,6 +122,13 @@ fn stage_display(stage: &str) -> String {
     }
 }
 
+fn progress_display(counts: &HashMap<String, (usize, usize)>, id: &str) -> String {
+    match counts.get(id) {
+        Some(&(done, total)) => format!("{done}/{total}"),
+        None => "\u{2014}".to_string(),
+    }
+}
+
 fn truncate(s: &str, max: usize) -> String {
     if s.chars().count() <= max {
         s.to_string()
@@ -137,13 +150,17 @@ pub fn render_vibes(f: &mut Frame, area: Rect, state: &mut VibeState) {
         return;
     }
 
-    let header = Row::new(vec!["ID", "Stage", "Status", "Prompt"])
-        .style(
-            Style::default()
-                .fg(theme::SUBTEXT)
-                .add_modifier(Modifier::BOLD),
-        )
-        .bottom_margin(0);
+    let child_counts = &state.child_count_map;
+
+    let header = Row::new(vec![
+        "ID", "Project", "Stage", "Progress", "Status", "Prompt",
+    ])
+    .style(
+        Style::default()
+            .fg(theme::SUBTEXT)
+            .add_modifier(Modifier::BOLD),
+    )
+    .bottom_margin(0);
 
     let rows: Vec<Row> = state
         .filtered
@@ -152,7 +169,15 @@ pub fn render_vibes(f: &mut Frame, area: Rect, state: &mut VibeState) {
             Row::new(vec![
                 Cell::from(Span::styled(&t.id, theme::muted_style())),
                 Cell::from(Span::styled(
+                    planfile::project_name(&t.project),
+                    theme::muted_style(),
+                )),
+                Cell::from(Span::styled(
                     stage_display(&t.vibe_stage),
+                    theme::muted_style(),
+                )),
+                Cell::from(Span::styled(
+                    progress_display(child_counts, &t.id),
                     theme::muted_style(),
                 )),
                 Cell::from(Span::styled(
@@ -166,6 +191,8 @@ pub fn render_vibes(f: &mut Frame, area: Rect, state: &mut VibeState) {
 
     let widths = [
         Constraint::Length(6),
+        Constraint::Length(12),
+        Constraint::Length(8),
         Constraint::Length(8),
         Constraint::Length(12),
         Constraint::Fill(1),
@@ -225,22 +252,26 @@ mod tests {
         }))
     }
 
+    fn new_state(items: Vec<Task>) -> VibeState {
+        VibeState::new(items, &[])
+    }
+
     #[test]
     fn new_selects_first_when_non_empty() {
-        let state = VibeState::new(vec![make_vibe("1", "branch", "in_progress", "test")]);
+        let state = new_state(vec![make_vibe("1", "branch", "in_progress", "test")]);
         assert_eq!(state.table_state.selected(), Some(0));
         assert_eq!(state.filtered.len(), 1);
     }
 
     #[test]
     fn new_selects_none_when_empty() {
-        let state = VibeState::new(vec![]);
+        let state = new_state(vec![]);
         assert_eq!(state.table_state.selected(), None);
     }
 
     #[test]
     fn filter_hides_completed_by_default() {
-        let mut state = VibeState::new(vec![
+        let mut state = new_state(vec![
             make_vibe("1", "branch", "in_progress", "a"),
             make_vibe("2", "commit", "completed", "b"),
         ]);
@@ -251,7 +282,7 @@ mod tests {
 
     #[test]
     fn filter_shows_completed_when_toggled() {
-        let mut state = VibeState::new(vec![
+        let mut state = new_state(vec![
             make_vibe("1", "branch", "in_progress", "a"),
             make_vibe("2", "commit", "completed", "b"),
         ]);
@@ -262,7 +293,7 @@ mod tests {
 
     #[test]
     fn filter_by_query_matches_prompt() {
-        let mut state = VibeState::new(vec![
+        let mut state = new_state(vec![
             make_vibe("1", "branch", "in_progress", "build ui"),
             make_vibe("2", "scope", "in_progress", "fix bug"),
         ]);
@@ -274,7 +305,7 @@ mod tests {
 
     #[test]
     fn filter_by_query_matches_stage() {
-        let mut state = VibeState::new(vec![
+        let mut state = new_state(vec![
             make_vibe("1", "branch", "in_progress", "a"),
             make_vibe("2", "scope", "in_progress", "b"),
         ]);
@@ -286,7 +317,7 @@ mod tests {
 
     #[test]
     fn filter_clamps_selection_when_filtered_shrinks() {
-        let mut state = VibeState::new(vec![
+        let mut state = new_state(vec![
             make_vibe("1", "branch", "in_progress", "a"),
             make_vibe("2", "scope", "in_progress", "b"),
             make_vibe("3", "develop", "in_progress", "c"),
@@ -299,7 +330,7 @@ mod tests {
 
     #[test]
     fn selected_vibe_returns_correct_task() {
-        let state = VibeState::new(vec![
+        let state = new_state(vec![
             make_vibe("1", "branch", "in_progress", "a"),
             make_vibe("2", "scope", "in_progress", "b"),
         ]);
@@ -309,7 +340,7 @@ mod tests {
 
     #[test]
     fn next_advances_selection() {
-        let mut state = VibeState::new(vec![
+        let mut state = new_state(vec![
             make_vibe("1", "branch", "in_progress", "a"),
             make_vibe("2", "scope", "in_progress", "b"),
         ]);
@@ -319,14 +350,14 @@ mod tests {
 
     #[test]
     fn next_clamps_at_end() {
-        let mut state = VibeState::new(vec![make_vibe("1", "branch", "in_progress", "a")]);
+        let mut state = new_state(vec![make_vibe("1", "branch", "in_progress", "a")]);
         state.next();
         assert_eq!(state.table_state.selected(), Some(0));
     }
 
     #[test]
     fn prev_decrements_selection() {
-        let mut state = VibeState::new(vec![
+        let mut state = new_state(vec![
             make_vibe("1", "branch", "in_progress", "a"),
             make_vibe("2", "scope", "in_progress", "b"),
         ]);
@@ -337,14 +368,14 @@ mod tests {
 
     #[test]
     fn prev_clamps_at_zero() {
-        let mut state = VibeState::new(vec![make_vibe("1", "branch", "in_progress", "a")]);
+        let mut state = new_state(vec![make_vibe("1", "branch", "in_progress", "a")]);
         state.prev();
         assert_eq!(state.table_state.selected(), Some(0));
     }
 
     #[test]
     fn home_selects_first() {
-        let mut state = VibeState::new(vec![
+        let mut state = new_state(vec![
             make_vibe("1", "branch", "in_progress", "a"),
             make_vibe("2", "scope", "in_progress", "b"),
         ]);
@@ -355,7 +386,7 @@ mod tests {
 
     #[test]
     fn end_selects_last() {
-        let mut state = VibeState::new(vec![
+        let mut state = new_state(vec![
             make_vibe("1", "branch", "in_progress", "a"),
             make_vibe("2", "scope", "in_progress", "b"),
         ]);
@@ -376,6 +407,19 @@ mod tests {
     #[test]
     fn stage_display_unknown_stage() {
         assert_eq!(stage_display("bogus"), "[?/6]");
+    }
+
+    #[test]
+    fn progress_display_with_children() {
+        let mut counts = HashMap::new();
+        counts.insert("1".to_string(), (3, 12));
+        assert_eq!(progress_display(&counts, "1"), "3/12");
+    }
+
+    #[test]
+    fn progress_display_no_children() {
+        let counts = HashMap::new();
+        assert_eq!(progress_display(&counts, "1"), "\u{2014}");
     }
 
     #[test]
