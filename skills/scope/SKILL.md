@@ -1,7 +1,7 @@
 ---
 name: scope
 description: "Research an existing codebase and create phased implementation tasks with design context. Triggers: 'scope', 'research', 'investigate', 'design', 'architect', 'plan a feature', 'how does X work', 'figure out', 'best way to', 'state of the art', 'which lib/tool', 'create tasks from plan'. Also use when an implementation request contains an unresolved technology choice. Do NOT use when: the user wants to brainstorm design options for a greenfield feature — use /brainstorm instead."
-argument-hint: "<prompt> [--continue] [--no-develop] [--auto-approve]"
+argument-hint: "<prompt> [--continue] [--no-develop] [--auto]"
 user-invocable: true
 allowed-tools:
   - Task
@@ -79,7 +79,7 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
    - Architecture context (code landscape)
    - Risks and constraints
 
-   If `--auto-approve` → skip to step 9.
+   If `--auto` → skip to step 9.
    Otherwise → stop for user review.
 
 8. **Spec refinement** — if user gives feedback:
@@ -112,7 +112,7 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
     - Dependencies
     - `Next: /develop t<id>`
 
-    If `--auto-approve` → skip to step 15.
+    If `--auto` → skip to step 15.
     Otherwise → stop for user review.
 
 14. **Plan refinement** — if user gives feedback:
@@ -167,4 +167,4 @@ Resolve task: argument → task ID; bare → TaskList `type === "scope"`, `statu
 - metadata.spec = the spec (what). metadata.design = the plan (how). Separate fields.
 - Research Suggested Phases must include file paths — plan depends on them, develop depends on plan.
 - Refinement: minor → revise from findings; major → dispatch follow-up subagent.
-- `--auto-approve` bypasses BOTH spec and plan review gates (codex review still runs).
+- `--auto` bypasses BOTH spec and plan review gates (codex review still runs).

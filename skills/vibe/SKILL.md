@@ -57,15 +57,15 @@ Pass the tracker task ID as the second arg so `/start` links to it instead of as
 
 ### Scope
 
-`Skill("scope", args="<prompt> --no-develop --auto-approve")`
+`Skill("scope", args="<prompt> --no-develop --auto")`
 
-`--auto-approve` skips BOTH scope's spec and plan review gates — scope produces and stores both artifacts, auto-approving each instead of stopping for feedback. Without this flag, `/scope` would halt twice: once for spec approval, once for plan approval.
+`--auto` skips BOTH scope's spec and plan review gates — scope produces and stores both artifacts, auto-approving each instead of stopping for feedback. Without this flag, `/scope` would halt twice: once for spec approval, once for plan approval.
 
 **Verify**: `TaskList()` → scope task with `status_detail === "approved"`, `metadata.spec` and `metadata.design` populated. **Update**: `vibe_stage: "scope"`
 
 If `--dry-run` → stop here. Output "Dry run complete." then report scope task, suggest `/develop` or `/vibe --continue`.
 
-→ **Immediately invoke Develop.** Do NOT output scope results, pause, or wait for user input — scope already gated its output via auto-approve.
+→ **Immediately invoke Develop.** Do NOT output scope results, pause, or wait for user input — scope already gated its output via --auto.
 
 ### Develop
 

@@ -49,13 +49,13 @@
       "prompt": "You are Claude running /vibe 'add webhook retry with exponential backoff'. You have created the branch and are now about to invoke the Scope stage.\n\nShow the exact Skill() call you make for the scope stage. Then explain what scope does differently when invoked this way vs when the user invokes /scope directly.",
       "expectations": [
         {
-          "criterion": "passes-auto-approve",
-          "description": "The Skill call includes '--auto-approve' flag: Skill('scope', args='<prompt> --no-develop --auto-approve') — this skips user review and goes straight to approval",
+          "criterion": "passes-auto",
+          "description": "The Skill call includes '--auto' flag: Skill('scope', args='<prompt> --no-develop --auto') — this skips user review and goes straight to approval",
           "required": true
         },
         {
           "criterion": "explains-both-phases-skipped",
-          "description": "Explains that --auto-approve causes scope to skip BOTH spec review and plan review — the spec (what to build) and plan (how to build it) are both auto-approved instead of stopping for user feedback at each gate",
+          "description": "Explains that --auto causes scope to skip BOTH spec review and plan review — the spec (what to build) and plan (how to build it) are both auto'd instead of stopping for user feedback at each gate",
           "required": true
         },
         {
@@ -87,7 +87,7 @@
       "expectations": [
         {
           "criterion": "immediately-invokes-scope",
-          "description": "Immediately invokes Skill('scope', args='<prompt> --no-develop --auto-approve') — does NOT pause, suggest next steps, output branch results, or wait for user input",
+          "description": "Immediately invokes Skill('scope', args='<prompt> --no-develop --auto') — does NOT pause, suggest next steps, output branch results, or wait for user input",
           "required": true
         },
         {
@@ -104,7 +104,7 @@
     },
     {
       "id": "scope-to-develop-no-pause",
-      "prompt": "You are Claude running /vibe 'add dark mode toggle'. Branch created (vibe_stage='branch'). You just invoked Skill('scope', args='add dark mode toggle --no-develop --auto-approve') and it returned successfully. TaskList shows a scope task with status_detail='approved' and metadata.design populated. --dry-run was NOT passed.\n\nWhat do you do immediately after updating vibe_stage to 'scope'?",
+      "prompt": "You are Claude running /vibe 'add dark mode toggle'. Branch created (vibe_stage='branch'). You just invoked Skill('scope', args='add dark mode toggle --no-develop --auto') and it returned successfully. TaskList shows a scope task with status_detail='approved' and metadata.design populated. --dry-run was NOT passed.\n\nWhat do you do immediately after updating vibe_stage to 'scope'?",
       "expectations": [
         {
           "criterion": "immediately-invokes-develop",
