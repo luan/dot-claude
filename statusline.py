@@ -30,8 +30,6 @@ GIT_CACHE = "/tmp/claude-statusline-git"
 GIT_TTL = 5
 USAGE_CACHE = "/tmp/claude-statusline-usage.json"
 USAGE_TTL = 60
-BEADS_CACHE = "/tmp/claude-statusline-beads"
-BEADS_TTL = 10
 VERSION_CACHE = "/tmp/claude-statusline-version"
 VERSION_TTL = 3600
 UPDATE_ICON = "\U000f0047"
@@ -106,13 +104,11 @@ def quota_color(utilization, remaining_secs, window_secs):
         if utilization >= 50:
             return ORANGE
         return CYAN
-    # How many "units" (hours for 5h, days for 7d) remain?
     is_daily = window_secs > 86400
     unit_secs = 86400 if is_daily else 3600
     total_units = window_secs / unit_secs
     remaining_units = max(remaining_secs / unit_secs, 0.1)
     remaining_pct = 100 - utilization
-    # How much quota per remaining unit vs even pace
     per_unit = remaining_pct / remaining_units
     even_pace = 100 / total_units
     if per_unit >= even_pace * 0.7:
@@ -228,7 +224,7 @@ def git_info(cwd):
     return result or None
 
 
-def fetch_usage():
+def fetch_usage(version=""):
     cached = read_cache(USAGE_CACHE, USAGE_TTL)
     if cached is not None:
         try:
@@ -240,7 +236,6 @@ def fetch_usage():
         raw = _run(
             ["security", "find-generic-password", "-s", "Claude Code-credentials", "-w"]
         )
-        # macOS may hex-encode keychain values containing binary prefixes
         try:
             creds = json.loads(raw)
             token = creds.get("claudeAiOauth", {}).get("accessToken")
@@ -264,7 +259,7 @@ def fetch_usage():
                 "-H",
                 "anthropic-beta: oauth-2025-04-20",
                 "-H",
-                "User-Agent: claude-code/2.1.34",
+                f"User-Agent: claude-code/{version or '0.0.0'}",
                 "https://api.anthropic.com/api/oauth/usage",
             ],
             stderr=subprocess.DEVNULL,
@@ -273,24 +268,15 @@ def fetch_usage():
         ).strip()
 
         if result:
-            json.loads(result)  # validate
-            write_cache(USAGE_CACHE, result)
-            return json.loads(result)
+            parsed = json.loads(result)
+            if "error" not in parsed and ("five_hour" in parsed or "seven_day" in parsed):
+                write_cache(USAGE_CACHE, result)
+                return parsed
     except Exception:
         pass
 
     write_cache(USAGE_CACHE, "")
     return None
-
-
-def beads_task(cwd, sid=""):
-    if not cwd or not sid:
-        return None
-    try:
-        with open(f"/tmp/claude-beads-task-{sid}") as f:
-            return f.read().strip() or None
-    except OSError:
-        return None
 
 
 # -- Main --
@@ -359,7 +345,7 @@ def main():
     if gi:
         parts2.append(gi)
 
-    quota = fetch_usage()
+    quota = fetch_usage(version)
     if quota:
         FIVE_HOURS = 5 * 3600
         SEVEN_DAYS = 7 * 24 * 3600
@@ -393,11 +379,6 @@ def main():
 
     if parts2:
         sys.stdout.write("\n" + SEP.join(parts2))
-
-    # === LINE 3: beads task (if active) ===
-    bt = beads_task(cwd, sid)
-    if bt:
-        sys.stdout.write(f"\n{YELLOW} {bt}{RESET}")
 
 
 if __name__ == "__main__":
