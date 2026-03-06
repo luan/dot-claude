@@ -1,6 +1,7 @@
 ---
 name: pr-ci
 description: "Fix failing CI/GitHub Actions checks. Triggers: 'fix CI', 'fix GHA', 'build failing', 'tests failing in CI', 'checks red'."
+argument-hint: "[--auto]"
 user-invocable: true
 disable-model-invocation: true
 allowed-tools:
@@ -25,7 +26,7 @@ allowed-tools:
 
 Fix failed GitHub Actions checks.
 
-**Safety: NEVER rebases. Push optional + requires confirmation.**
+**Safety: NEVER rebases. Push optional + requires confirmation (unless `--auto`).**
 
 ## Steps
 
@@ -38,7 +39,7 @@ Fix failed GitHub Actions checks.
    gh pr checks <PR> --json name,state,bucket,link
    ```
 
-   Display as numbered list, ask "Which to fix?"
+   `--auto` → fix all failed checks. Without `--auto` → display as numbered list, ask "Which to fix?"
 
 4. **Fetch logs**:
 
@@ -47,13 +48,13 @@ Fix failed GitHub Actions checks.
    gh run view <RUN_ID> --log-failed
    ```
 
-5. **Plan fixes**: Identify root cause, create concise plan. Ask "Ready to execute?"
+5. **Plan fixes**: Identify root cause, create concise plan. `--auto` → proceed. Without `--auto` → ask "Ready to execute?"
 
 6. **Execute**: Apply fixes, summarize changes.
 
-7. **Commit**: Ask first, suggest message like `fix: resolve CI failures`
+7. **Commit**: `--auto` → commit with suggested message. Without `--auto` → ask first, suggest message like `fix: resolve CI failures`.
 
-8. **Push** (optional): Ask first. Use `Skill(gt:submit)` if gt plugin is loaded, otherwise `git push`.
+8. **Push** (optional): `--auto` → push automatically. Without `--auto` → ask first. Use `Skill(gt:submit)` if gt plugin is loaded, otherwise `git push`.
 
 ## Common Failures & Remediation
 
