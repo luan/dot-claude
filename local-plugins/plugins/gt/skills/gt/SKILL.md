@@ -97,12 +97,19 @@ git-surgeon commit <id>:5-30 -m "message"      # partial hunk by lines
 
 Then `gt create -m "msg"` picks up commit into new stack branch.
 
+## Commit Messages
+
+`gt create -am` messages follow the same conventional commit format as `/commit`:
+`type(scope): description` — max 72 chars, lowercase, no period, imperative mood.
+
+To write a good message: analyze the staged diff (or all changes if nothing staged), determine the primary type and scope, describe the WHY not the WHAT.
+
 ## Common Workflows
 
 | Task | Commands |
 |------|----------|
-| Start new work | `gt create -am "msg"` |
-| Add to stack | `gt create -am "msg"` |
+| Start new work | `gt create -am "feat(auth): add token refresh"` |
+| Add to stack | `gt create -am "fix(auth): handle expired tokens"` |
 | Push changes | `gt ss` (or `gt ss -u` for existing) |
 | Update from main | `gt sync` |
 | Amend current | `gt modify -a` |
