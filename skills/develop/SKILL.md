@@ -108,6 +108,15 @@ Every task dispatches via subagent. TeamCreate always runs.
 3. **Verify:** Full test suite. Red → spawn fix agent (max 2 cycles). Still red → escalate to user.
 4. **Teardown:** Clear all impl\_\* metadata, complete epic, TeamDelete → Stage Changes.
 
+## Completion Summary
+
+After teardown (all workers finished, epic verified), before staging:
+
+1. Collect child task IDs from `metadata.children`. Count N = number of completed children.
+2. Run `git diff --stat HEAD~<N>` to get changed files list. Run `git rev-parse HEAD~<N>` and `git rev-parse HEAD` for commit range.
+3. Derive a one-line summary from child task subjects (combine into a single sentence describing what was built).
+4. `TaskUpdate(epicId, metadata: {completion_summary: {files_changed: [<paths from diff --stat>], commit_range: "<base_sha>..<head_sha>", summary: "<one-line description>"}})`.
+
 ## Stage Changes
 
 After all workers:

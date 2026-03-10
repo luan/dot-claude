@@ -3,94 +3,98 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "running /supervibe 'build full auth system'. about to invoke the initial scope.\n\nwhat arguments do you pass to Skill('scope')?",
-      "expected_output": "Scope prompt tells scope this is a stacked-PR plan, each phase becomes its own PR, design vertical slices, avoid micro/mega-phases, max 5 PRs. Includes --auto flag.",
+      "prompt": "/supervibe 'build full auth system with JWT, RBAC, session management, and OAuth2 provider integration'\n\ndemonstrate the superscope step — what do you call and what do you store on the tracker?",
+      "expected_output": "Reads references/superscope.md. Calls scope with a multi-phase-aware prompt that instructs vertical slices, ≤5 phases, per-phase file lists + dependencies + verification. After scope completes, extracts end_state, structured phases array, and distilled research findings. Stores all on tracker.",
       "expectations": [
-        "Scope prompt instructs vertical slices, avoids micro-phases and mega-phases, caps at 5 PRs",
-        "Scope prompt tells scope this is a stacked-PR plan where each phase becomes its own PR",
-        "Includes --auto flag"
+        "Reads ${CLAUDE_SKILL_DIR}/references/superscope.md before calling scope",
+        "Scope prompt instructs: vertical slices, ≤5 phases, per-phase file plans with Read/Modify/Create, explicit dependencies, verification criteria",
+        "Stores metadata.end_state, metadata.phases (structured array), and metadata.superscope_findings on the tracker",
+        "Validates: phases cover end-state, each is vertical, count ≤5, roughly balanced"
       ]
     },
     {
       "id": 2,
-      "prompt": "running /supervibe 'build full auth system'. scope completed. metadata.spec Recommendation describes JWT auth with RBAC, session management, and OAuth2. metadata.design has 3 phases.\n\nwhat do you do before starting phase execution?",
-      "expected_output": "Extracts end-state from spec Recommendation (JWT, RBAC, sessions, OAuth2) into metadata.end_state. Extracts phases into metadata.phases. Validates phases cover the full end-state — all 4 capabilities must map to at least one phase. Stores scope estimate.",
+      "prompt": "/supervibe 'add webhook system with retry and monitoring'. superscope produced 2 phases: Phase 1 (webhook model + DB schema) and Phase 2 (webhook delivery with retries). metadata.end_state mentions delivery, retries, AND a monitoring dashboard.\n\nthe monitoring dashboard has no corresponding phase. what do you do?",
+      "expected_output": "Identifies the coverage gap — monitoring dashboard is in end_state but no phase delivers it. Re-invokes scope with specific feedback about the missing capability. Does not proceed to execution.",
       "expectations": [
-        "Extracts end-state vision from metadata.spec Recommendation and stores as metadata.end_state",
-        "Validates phases collectively cover the full end-state (JWT, RBAC, sessions, OAuth2) — re-invokes scope if gaps",
-        "Stores phase list in metadata.phases"
+        "Identifies monitoring dashboard capability is unrealized across all phases",
+        "Re-invokes scope with specific feedback about the gap",
+        "Does NOT start phase execution with an incomplete plan"
       ]
     },
     {
       "id": 3,
-      "prompt": "running /supervibe 'add webhook system with retry and monitoring'. scope produced 2 phases: Phase 1 (webhook model + DB schema) and Phase 2 (webhook delivery with retries). end-state mentions delivery, retries, AND a monitoring dashboard.\n\nthe monitoring dashboard has no corresponding phase. what do you do?",
-      "expected_output": "Identifies that monitoring dashboard has no phase. Re-invokes scope with feedback about the gap. Does not start execution with an incomplete plan.",
+      "prompt": "/supervibe 'build auth system'. superscope done, starting phase 1. demonstrate how you dispatch the phase agent and what you pass to /vibe.",
+      "expected_output": "Spawns an Agent with isolation='worktree'. The agent runs /vibe with the phase plan, prior results (none for phase 1), end-state vision, and superscope findings. Uses --no-branch --no-review flags.",
       "expectations": [
-        "Identifies monitoring dashboard capability has no corresponding phase",
-        "Re-invokes scope with specific feedback about the missing monitoring phase",
-        "Does NOT start execution with the incomplete plan"
+        "Dispatches Agent with isolation: 'worktree' for filesystem isolation",
+        "Agent's prompt includes: phase plan (title, goal, files), end-state vision, superscope findings",
+        "Vibe flags include --no-branch and --no-review",
+        "Agent prompt includes prior phase results (empty for phase 1, populated for later phases)"
       ]
     },
     {
       "id": 4,
-      "prompt": "running /supervibe --continue. tracker: metadata.active_phase=3, metadata.locked_at='2026-03-09T14:20:00Z'. current time: 2026-03-09T14:35:00Z (15 min ago).\n\nwhat do you do?",
-      "expected_output": "Recognizes the lock is active (15 min < 30 min threshold). Exits without resuming — another session is working on phase 3. Reports that the pipeline is active and when it was locked.",
+      "prompt": "/supervibe 'build auth system'. phase 1 agent just returned successfully with worktree path /tmp/wt-abc and branch sv-auth-p1. what do you do before starting phase 2?",
+      "expected_output": "Merges the worktree branch into main with a descriptive commit message. Records phase_results[1] with commit SHA, files changed, summary, deviations. Cleans up worktree and branch. Updates vibe_stage to 'phase-1'.",
       "expectations": [
-        "Recognizes active_phase set + locked_at <30 min ago means another session is working",
-        "Exits without attempting to resume — does not start phase 4 or re-run phase 3",
-        "Tells user the pipeline is active and how long ago it was locked"
+        "Merges worktree branch to main: git merge with --no-ff and descriptive message",
+        "Records metadata.phase_results[1] with: status, commit SHA, files_changed, summary",
+        "Cleans up: git worktree remove + git branch -d",
+        "Updates vibe_stage to 'phase-1' AFTER successful merge"
       ]
     },
     {
       "id": 5,
-      "prompt": "running /supervibe 'add webhook system'. phase 1 develop just completed. what verification steps happen before moving to phase 2?",
-      "expected_output": "Runs acceptance (--auto), then build check (detects build system from repo), then logs diff size to metadata.phase_sizes. Then simplify, review, commit. Broken build is a hard stop.",
+      "prompt": "/supervibe 'build auth system'. phase 2 agent failed during develop step with error 'Type error in UserRole.ts:42'. what do you do?",
+      "expected_output": "Does NOT merge the worktree — discards it so main stays clean. Records phase_results[2] with failed status, step='develop', and the error. Does NOT update vibe_stage (stays at 'phase-1'). Reports failure and suggests --continue.",
       "expectations": [
-        "Runs Skill('acceptance', args='--auto') to verify phase 1",
-        "Runs project build command (detecting build system). Broken build = hard stop",
-        "Logs diff size to metadata.phase_sizes"
+        "Does NOT merge the failed worktree — main branch stays clean",
+        "Records metadata.phase_results[2] with status: 'failed', step: 'develop', error details",
+        "Does NOT update vibe_stage — stays at 'phase-1' for correct resume",
+        "Suggests /supervibe --continue"
       ]
     },
     {
       "id": 6,
-      "prompt": "running /supervibe 'add webhook system'. phase 1 complete, starting phase 2 (webhook delivery). branch created. what do you pass to scope for the re-scope?",
-      "expected_output": "Re-scope includes: phase number and title, original prompt context, list of completed prior phases, end-state vision from metadata.end_state, instruction to produce a balanced vertical slice, --auto flag.",
+      "prompt": "/supervibe --continue. tracker: super_vibe=true, status='in_progress', vibe_stage='phase-2', phase_results has phases 1-2 completed, phases array has 4 total, end_state populated, superscope_findings populated.\n\nwhat do you do?",
+      "expected_output": "Resumes at phase 3. Reads phase plan from metadata.phases[2], prior results from metadata.phase_results (phases 1-2), end_state, and superscope_findings. Assembles rich context prompt and dispatches phase 3 agent with worktree isolation.",
       "expectations": [
-        "Re-scope call includes end-state vision from metadata.end_state",
-        "Includes list of completed prior phases for context",
-        "Instructs scope to produce a balanced vertical slice with --auto flag"
+        "Resumes at phase 3 (next after vibe_stage='phase-2')",
+        "Reads phases, phase_results, end_state, superscope_findings from task metadata — does not re-run superscope",
+        "Phase 3 agent prompt includes prior results from phases 1-2 (summaries, files changed, deviations)",
+        "Dispatches agent with worktree isolation"
       ]
     },
     {
       "id": 7,
-      "prompt": "running /supervibe 'build auth system'. 4 phases planned. phases 1-4 all complete. metadata.end_state: JWT auth, RBAC, session management, OAuth2. but OAuth2 was never implemented in any phase.\n\nwhat happens at teardown?",
-      "expected_output": "Final progress gate catches that OAuth2 is unrealized. Does NOT submit the stack. Reports the gap and suggests adding phases for OAuth2.",
+      "prompt": "/supervibe --continue. tracker: super_vibe=true, status='in_progress', vibe_stage='phase-1', phase_results[2] has status='failed', step='develop', error='Type error in UserRole.ts:42'. phases array has 4 total.\n\nwhat do you do?",
+      "expected_output": "Retries phase 2 (the failed phase). The phase agent gets the error context from phase_results[2].error so scope/develop can account for the prior failure. Does not skip to phase 3.",
       "expectations": [
-        "Identifies OAuth2 from end-state was never realized",
-        "Does NOT submit the stack",
-        "Suggests adding phases for the missing OAuth2 work"
+        "Retries phase 2 (failed phase), does not skip to phase 3",
+        "Phase agent prompt includes the error from the prior failure: 'Type error in UserRole.ts:42'",
+        "Prior phase results from phase 1 (completed) are included for context"
       ]
     },
     {
       "id": 8,
-      "prompt": "running /supervibe 'refactor data layer'. 5 phases planned, phases 1-3 done. phase 4 build check fails.\n\nwhat do you do?",
-      "expected_output": "Stops immediately — broken build is a hard stop. Does not attempt phase 5 or submit. Keeps vibe_stage at 'phase-3'. Leaves active_phase set for watchdog retry. Reports that build check in phase 4 failed.",
+      "prompt": "/supervibe 'build auth system'. all 4 phases completed. metadata.end_state: 'JWT auth, RBAC, session management, OAuth2'. phase_results show JWT, RBAC, and sessions implemented but OAuth2 was never built.\n\nwhat happens at teardown?",
+      "expected_output": "End-state coverage check catches that OAuth2 is unrealized. Does NOT complete the tracker. Reports the gap and suggests adding phases for OAuth2.",
       "expectations": [
-        "Does NOT attempt phase 5 or submit",
-        "Does NOT update vibe_stage to 'phase-4' — stays at 'phase-3'",
-        "Reports which STEP in phase 4 failed (build check), not just 'phase 4 failed'",
-        "Leaves active_phase set so watchdog can retry"
+        "Identifies OAuth2 from end-state was never realized across completed phases",
+        "Does NOT mark tracker as completed",
+        "Reports the specific gap and suggests additional phases"
       ]
     },
     {
       "id": 9,
-      "prompt": "running /supervibe --continue. tracker: super_vibe=true, status='in_progress', vibe_stage='phase-2', metadata.phases has 4 phases, metadata.end_state populated, active_phase=null, locked_at=null.\n\nwhat do you do?",
-      "expected_output": "Resumes at phase 3 (next after vibe_stage='phase-2'). Reads phases from metadata.phases and end-state from metadata.end_state — does not re-run scope. Confirms no active lock before proceeding.",
+      "prompt": "/supervibe --dry-run 'refactor entire data layer to use repository pattern'. demonstrate what happens.",
+      "expected_output": "Runs superscope (full research + phase decomposition) but stops before phase execution. Reports the end-state vision, phase plan with per-phase file lists and dependencies, and sizing estimate. Suggests /supervibe --continue to start execution.",
       "expectations": [
-        "Skips to phase 3 (next after vibe_stage='phase-2')",
-        "Reads phase list from metadata.phases, not by re-running scope",
-        "Reads metadata.end_state for use in re-scope calls",
-        "Verifies active_phase is null / lock expired before proceeding"
+        "Runs superscope (reads references/superscope.md, calls scope with multi-phase prompt)",
+        "Stops after superscope — does NOT start phase execution",
+        "Reports phase plan with enough detail for the user to evaluate",
+        "Suggests /supervibe --continue to begin execution"
       ]
     }
   ]

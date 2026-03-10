@@ -73,6 +73,15 @@
         "Updates all three locations: metadata.spec, spec_file path, repo copy at docs/specs/webhook-retry.md.",
         "Reconciled spec is present-tense ('max 3 attempts', 'circuit breaker monitors failure rate') — no transition language."
       ]
+    },
+    {
+      "id": 9,
+      "prompt": "/develop\n\nepic 700 cache-layer just finished — all 3 child tasks completed (t701: 'Add Redis cache client', t702: 'Cache invalidation on write', t703: 'Cache warm-up on deploy'). Teardown is done, about to stage changes. The 3 tasks produced 3 commits touching src/cache/client.ts, src/cache/invalidation.ts, src/cache/warmup.ts, and tests/cache.test.ts",
+      "expected_output": "Before staging, runs git diff --stat HEAD~3 and git rev-parse to get commit range. Derives summary from child subjects. Stores metadata.completion_summary on the epic with files_changed array, commit_range, and a one-line summary combining the three child subjects.",
+      "expectations": [
+        "Runs git diff --stat HEAD~N where N = number of completed children (3). Collects file paths from the output.",
+        "Stores metadata.completion_summary with files_changed, commit_range (base..head SHAs), and a summary derived from child task subjects — not a generic description."
+      ]
     }
   ]
 }

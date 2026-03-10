@@ -11,3 +11,5 @@
 11. Skills flow: brainstorm → scope → develop [acceptance] → review → commit
 12. On resume after compaction: if tasks exist with `metadata.impl_team` set and status `in_progress`, re-invoke `/develop` to trigger recovery.
 13. Skill scripts: use `${CLAUDE_SKILL_DIR}` in SKILL.md to reference skill-local files (scripts, references, agents). Expands to the skill's absolute directory at load time.
+
+@RTK.md

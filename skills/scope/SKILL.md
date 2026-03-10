@@ -52,6 +52,13 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
 3+ independent subsystems or 3+ viable approaches → "ESCALATE: team — <reason>"
 ```
 
+**Warm-start (rich context in prompt):** When the prompt already contains detailed research context — file locations, architecture patterns, prior findings, phase plans (e.g., from supervibe/superscope) — the research subagent does **targeted validation** instead of broad exploration:
+   - Validate that referenced files exist and match described exports/patterns
+   - Check for recent changes (git log) that might invalidate the context
+   - Fill gaps the context doesn't cover (e.g., missing error paths, untouched subsystems)
+   - Skip broad codebase exploration — the context already provides it
+   - The subagent prompt should include the provided context and say: "Prior research is provided below. Validate and fill gaps — do NOT re-explore what's already covered."
+
 **On "ESCALATE: team":** TeamCreate, dispatch 3 agents (mode: "plan") — Researcher, Architect, Skeptic. Synthesize: Architect's approach + contradictions vs Skeptic. TeamDelete.
 
 3. **Validate research:** spot-check ALL architectural claims (wrong architecture = wrong plan). File/behavioral claims: check every odd-numbered claim (1st, 3rd, 5th...), minimum 3. Each check: Grep or Read a few lines — do NOT read entire files. Failed check → follow-up subagent.
@@ -66,7 +73,7 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
 
    The spec excludes implementation details: phases, task breakdowns, files to create/modify, specific code changes. Those belong to the plan.
 
-5. **Codex review (spec):** See [Codex Review](#codex-review). Prompt: gaps, ambiguities, edge cases, feasibility. "This is a WHAT document — do NOT suggest implementation details." High-severity actionable issues → revise. Best-effort — if codex fails, proceed.
+5. **Codex review (spec):** See [Codex Review](#codex-review). Prompt: gaps, ambiguities, edge cases, feasibility. "This is a WHAT document — do NOT suggest implementation details." High-severity actionable issues → revise. Best-effort — if codex fails, proceed. **Skip if `--auto`** — codex review is best-effort and adds latency; when scope runs as an inner call (vibe/supervibe), speed matters more.
 
 6. **Store spec:**
    - `SPEC_FILE=$(echo "<spec content>" | ct spec create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "scope" 2>/dev/null)`
@@ -88,7 +95,7 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
     - Dependencies between phases
     - Research Next Steps must include file paths — develop depends on them.
 
-11. **Codex review (plan):** See [Codex Review](#codex-review). Prompt: spec coverage gaps, missing phases, dependency issues. "The approved spec is: \<metadata.spec\>. Does this plan fully implement it?" High-severity → revise. Best-effort.
+11. **Codex review (plan):** See [Codex Review](#codex-review). Prompt: spec coverage gaps, missing phases, dependency issues. "The approved spec is: \<metadata.spec\>. Does this plan fully implement it?" High-severity → revise. Best-effort. **Skip if `--auto`** — same rationale as step 5.
 
 12. **Store plan:**
     1. If a previous metadata.plan_file exists from a prior scope run for this project, archive it first: `ct plan archive <old_plan_file> 2>/dev/null`
@@ -154,4 +161,4 @@ Resolve task: argument → task ID; bare → TaskList `type === "scope"`, `statu
 - metadata.spec = spec. metadata.design = plan. Separate fields.
 - Research Suggested Phases must include file paths — plan and develop depend on them.
 - Refinement: minor → revise from findings; major → dispatch follow-up subagent.
-- `--auto` bypasses both user review gates (codex review still runs).
+- `--auto` bypasses both user review gates AND codex reviews (speed over polish for inner calls).

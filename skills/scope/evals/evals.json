@@ -29,11 +29,11 @@
     {
       "id": 3,
       "prompt": "/scope add webhook retry --auto\n\nwe have bullmq already, the service is in src/webhooks/. need retry + dlq + monitoring",
-      "expected_output": "Runs the full scope pipeline autonomously: research, spec (with codex review), plan (with codex review), both stored, then invokes develop. Both user review gates are skipped but codex reviews still run.",
+      "expected_output": "Runs the full scope pipeline autonomously: research, spec, plan, both stored, then invokes develop. Both user review gates AND codex reviews are skipped for speed.",
       "expectations": [
         "With --auto, spec is produced and stored but user review is skipped \u2014 does NOT stop for feedback on spec or plan.",
         "Both metadata.spec and metadata.design are populated. Both ct spec create and ct plan create run. Both file paths stored in metadata.",
-        "Codex review runs on BOTH artifacts even with --auto \u2014 auto skips user gates, not codex quality gates.",
+        "Codex reviews are skipped with --auto \u2014 auto bypasses both user gates and codex reviews for speed (inner-call optimization).",
         "After both phases: status_detail='approved', then Skill('develop', 't<scopeTaskId>')."
       ],
       "files": [
@@ -163,10 +163,10 @@
     {
       "id": 17,
       "prompt": "/scope add webhook retry --auto\n\njust finished synthesizing the spec. want to make sure codex review still runs even though we're in auto mode",
-      "expected_output": "Confirms codex review runs for both spec and plan even with --auto. Auto bypasses user review gates but codex is a separate quality gate. High-severity codex feedback still gets incorporated.",
+      "expected_output": "With --auto, codex reviews are skipped along with user review gates. This is an intentional speed optimization for inner calls (vibe/supervibe). For interactive usage without --auto, codex reviews run normally.",
       "expectations": [
-        "--auto skips user review gates but codex review runs for both artifacts.",
-        "High-severity codex feedback is incorporated before storing, same as without --auto."
+        "--auto skips BOTH user review gates AND codex reviews for speed.",
+        "Without --auto, codex reviews run normally on both artifacts. --auto is the fast path for inner calls."
       ]
     },
     {
@@ -187,6 +187,17 @@
         "TaskUpdate with status_detail=\"approved\" happens BEFORE or IN THE SAME TURN as presenting \"Next: /develop\" \u2014 not in a separate later step",
         "The plan presentation includes Next: /develop t<id> so the user knows what to do next",
         "If the user runs /develop in a fresh session after seeing this presentation, status_detail is already \"approved\" and develop proceeds without error"
+      ]
+    },
+    {
+      "id": 20,
+      "prompt": "/scope add retry logic to webhook sender --auto\n\n## Prior Research (from superscope)\n\n### Key Files\n- src/webhooks/sender.ts — fire-and-forget HTTP POST, no retry. Exports `sendWebhook(payload: WebhookPayload): Promise<void>`\n- src/webhooks/types.ts — `WebhookPayload`, `DeliveryStatus` (enum: pending/delivered/failed), `WebhookConfig`\n- src/lib/queue.ts — BullMQ wrapper with `enqueueDelayed(job, delayMs)`, used by email service already\n- src/lib/config.ts — environment config loader, has `WEBHOOK_TIMEOUT_MS` but no retry config\n- src/webhooks/__tests__/sender.test.ts — existing tests for fire-and-forget path\n\n### Architecture\n- Express backend, BullMQ for async jobs, PostgreSQL for state\n- Queue pattern established in email service (src/email/retry.ts uses enqueueDelayed)\n- No DLQ pattern exists yet — failed jobs are logged and dropped\n\n### Phase Plan\n1. Add retry config + types (WebhookRetryConfig, extend DeliveryStatus with 'retrying')\n2. Implement retry logic using BullMQ delayed jobs, following email service pattern\n3. Add DLQ table + failed webhook persistence\n4. Add monitoring/alerting hooks",
+      "expected_output": "Research subagent does targeted validation (confirms files exist, checks exports match, looks for recent changes) instead of broad codebase exploration. Skips codex reviews (--auto). Produces spec and plan faster by leveraging the provided context rather than re-discovering it.",
+      "expectations": [
+        "Research subagent receives the prior context and does targeted validation — confirms referenced files exist and match described exports/patterns, checks for recent changes. Does NOT do broad codebase exploration.",
+        "Subagent prompt includes the provided context with instructions like 'validate and fill gaps, do NOT re-explore what is already covered'.",
+        "Codex reviews are skipped (--auto). User review gates are skipped (--auto). Pipeline runs research → spec → plan → develop without stopping.",
+        "The spec and plan incorporate the provided file paths and architecture without re-discovering them from scratch."
       ]
     }
   ]

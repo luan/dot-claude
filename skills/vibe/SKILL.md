@@ -14,6 +14,7 @@ Full pipeline (scope → develop → simplify → review → commit) from a sing
 
 - `<prompt>` — what to build (required unless `--continue`)
 - `--no-branch` — skip branch creation, use current branch
+- `--no-review` — skip review stage (used by supervibe to keep phases lean)
 - `--continue` — resume from last completed stage
 - `--dry-run` — scope only, stop before develop
 
@@ -43,7 +44,7 @@ TaskUpdate(taskId, status: "in_progress", owner: "vibe")
 
 Run stages sequentially in one continuous turn — the whole point of /vibe is zero user intervention. Before each stage, output `[N/M] Stage` as text BEFORE the `Skill()` call. After each succeeds, update `metadata.vibe_stage` and immediately invoke next.
 
-**Stage numbering `[N/M]`:** M = total stages that will run. Base: 6 (branch, scope, develop, simplify, review, commit). Subtract skipped stages: `--no-branch` → 5, `--dry-run` → 2 (or 1 with both flags). N counts only executed stages.
+**Stage numbering `[N/M]`:** M = total stages that will run. Base: 6 (branch, scope, develop, simplify, review, commit). Subtract skipped stages: `--no-branch` → 5, `--no-review` → 5, `--dry-run` → 2. Combine flags to subtract more. N counts only executed stages.
 
 ### Branch (skip if `--no-branch` or already on non-main branch)
 
@@ -87,7 +88,7 @@ Reviews changed code for reuse, quality, and efficiency, then fixes issues.
 
 **Update**: `vibe_stage: "simplify"` → Immediately invoke Review.
 
-### Review
+### Review (skip if `--no-review`)
 
 `Skill("review")`
 
