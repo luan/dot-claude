@@ -39,3 +39,11 @@ When user feedback after a skill's output substantively changes the design (new 
 - Next-skill invocations read from stored artifacts, not conversation context
 - Critical for cross-session continuity: user may invoke the next skill in a fresh session
 - Stale artifacts + fresh session = wrong plan = wrong implementation
+
+## Cross-Session Handoff
+
+When a skill finishes and the next step is in a different skill (scope→develop), the handoff metadata MUST be written before the session can end:
+
+- `/scope` presenting a plan with `Next: /develop` → set `status_detail: "approved"` at the same time as presenting. Don't wait for explicit "approved" text — presenting `Next: /develop` IS the approval gate.
+- Any task metadata that the next skill reads (`status_detail`, `design`, `spec`) must be fully populated before outputting the `Next:` line.
+- The user may run the next skill in a fresh session with no conversation context — only task metadata survives.

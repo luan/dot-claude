@@ -27,7 +27,7 @@ allowed-tools:
 
 Recommend reviewers based on code expertise while spreading review load.
 
-**"Reviewed your PRs" = PENALTY.** Rotating reviewers prevents knowledge silos and balances workload — the same reviewer on every PR misses patterns that fresh perspectives catch and creates review bottlenecks when that person is unavailable.
+Rotating reviewers prevents knowledge silos and balances workload — the same reviewer on every PR misses patterns fresh eyes catch and creates bottlenecks when that person is unavailable. Recent-reviewer overlap is penalized, not rewarded.
 
 ## Steps
 

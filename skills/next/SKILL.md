@@ -39,7 +39,7 @@ Branch, status, commits from Context. If PR exists: `gh pr view --json title,sta
 
 ### 2. Stale Branch Check
 
-List local feature branches (`git branch --list '<pattern>/*'` — adapt pattern to repo's naming convention). Cross-reference against in_progress tasks' `metadata.branch`. Unmatched branches are potentially stale. **Caveat:** not all skills set `metadata.branch`, so absence doesn't confirm staleness. Never auto-delete; surface for awareness only.
+List local feature branches, cross-reference against in_progress tasks' `metadata.branch`. Unmatched branches are potentially stale (but not all skills set `metadata.branch`, so absence doesn't confirm staleness). Surface for awareness only — never auto-delete.
 
 ### 3. Summarize + Suggest
 
@@ -51,7 +51,7 @@ Tasks: N active, M pending
 Stale branches: <list> (if any)
 ```
 
-Suggest next action (priority order): CI failing → fix checks; changes requested → address comments; unresolved comments → respond; active tasks → continue; draft+passing → mark ready; approved → merge; no PR → /commit then /gt:submit; all clear → wait for review.
+Suggest next action by priority: CI failing → fix checks; changes requested → address comments; unresolved comments → respond; active tasks → continue; draft+passing → mark ready; approved → merge; no PR → /commit then /gt:submit; all clear → wait for review.
 
 ---
 
@@ -59,11 +59,11 @@ Suggest next action (priority order): CI failing → fix checks; changes request
 
 ### 1. Prune + Read Board
 
-Run `ct task prune --days 7` silently (note if tasks pruned). TaskList filtered by `metadata.project === repoRoot`. Split: pending, in_progress (without status_detail). Sort by priority (P1→P3), then creation order.
+Run `ct task prune --days 7` silently. TaskList filtered by `metadata.project === repoRoot`. Split: pending, in_progress (without status_detail). Sort by priority (P1→P3), then creation order.
 
 ### 2. Pick Top Candidate
 
-Highest-priority unblocked item. Skip: completed, deleted, `status_detail === "review"`. A task is blocked if any ID in its `blockedBy` array has status !== "completed" — check via TaskGet. Prefer in_progress over pending at same priority — resuming started work avoids duplicate effort.
+Highest-priority unblocked item. Skip: completed, deleted, `status_detail === "review"`. Blocked = any `blockedBy` ID with status !== "completed". Prefer in_progress over pending at same priority — resuming avoids duplicate effort.
 
 ### 3. Classify
 
@@ -79,13 +79,13 @@ Read via TaskGet. Route by signal:
 
 ### 4. Present + Dispatch
 
-`--auto` → invoke the recommended action directly without presenting alternatives.
+`--auto` → invoke recommended action directly.
 
-Without `--auto` → AskUserQuestion: recommended action first ("(Recommended)"), 1-2 alternatives, brief rationale. Invoke chosen skill with task ID. "Skip" → next candidate.
+Without `--auto` → AskUserQuestion: recommended action first ("(Recommended)"), 1-2 alternatives, brief rationale. "Skip" → next candidate.
 
 ## Key Rules
 
-- Never dispatch without showing what you picked and why
-- Never skip reading the issue — description drives classification
+- Always show what you picked and why before dispatching
+- Always read the task description — it drives classification
 - No actionable tasks → say so plainly
 - This skill discovers work, it doesn't create it

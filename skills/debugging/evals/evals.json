@@ -1,47 +1,34 @@
 {
-  "version": "1.0",
-  "skill": "skills/debugging",
-  "cases": [
+  "skill_name": "debugging",
+  "evals": [
     {
-      "id": "no-fix-before-investigation",
-      "prompt": "You are Claude running /debugging. The user reports: 'The API returns 500 on POST /users when the email field contains a plus sign like user+tag@example.com.'\n\nYou have access to the codebase. Demonstrate your approach.",
+      "id": 1,
+      "prompt": "hey so our api is returning 500 on POST /users when the email has a plus sign like user+tag@example.com. can you figure out what's going on? the endpoint is in src/routes/users.ts and validation is in src/lib/validate.ts",
+      "expected_output": "Reads the relevant files (users.ts, validate.ts), traces the data flow from request to error, examines the validation logic for plus-sign handling, and forms an evidence-based hypothesis before suggesting any code change. No fix is proposed until the root cause is identified through investigation.",
       "expectations": [
-        {
-          "criterion": "investigates-first",
-          "description": "Enters Phase 1 (Root Cause Investigation) before proposing any fix — reads error output, traces data flow, gathers evidence at component boundaries",
-          "required": true
-        },
-        {
-          "criterion": "no-premature-fix",
-          "description": "Does NOT propose a fix, write code, or suggest 'try changing X' before completing investigation. A hypothesis is formed with evidence, not guessed.",
-          "required": true
-        },
-        {
-          "criterion": "single-hypothesis",
-          "description": "Forms a single testable hypothesis ('X is root cause because Y') with supporting evidence before testing",
-          "required": false
-        }
+        "Enters Phase 1 — reads error-related files, traces data flow through the endpoint and validation layer before proposing any fix",
+        "Does NOT suggest a fix, write code, or say 'try changing X' before completing investigation with evidence",
+        "Forms a testable hypothesis with supporting evidence ('X causes this because Y') before moving to Phase 4"
       ]
     },
     {
-      "id": "three-hypotheses-parallel",
-      "prompt": "You are Claude running /debugging. A test suite intermittently fails — sometimes test_payment_webhook passes, sometimes it times out. You've completed Phase 1 (read logs, reproduced twice, checked recent changes). In Phase 3, you've identified 3 plausible hypotheses:\n1. Race condition in the async webhook handler\n2. External payment API mock is flaky\n3. Database connection pool exhaustion under parallel test runs\n\nDemonstrate Phase 3 with these 3 hypotheses.",
+      "id": 2,
+      "prompt": "test_payment_webhook is flaky — passes sometimes, times out other times. i've already looked at the logs and reproduced it twice. checked recent git history too, nothing obvious. i think it could be a race condition in the async handler, or the payment API mock being flaky, or maybe db connection pool exhaustion under parallel runs. what do you think?",
+      "expected_output": "Recognizes 3 plausible hypotheses are already provided, spawns parallel subagents to investigate each one simultaneously rather than testing them one at a time. Each subagent traces one hypothesis and reports evidence for/against.",
       "expectations": [
-        {
-          "criterion": "spawns-parallel-agents",
-          "description": "With 3+ plausible hypotheses, spawns parallel subagents (one per hypothesis) rather than testing sequentially — the skill explicitly says 'sequential testing wastes time' at 3+",
-          "required": true
-        },
-        {
-          "criterion": "each-agent-traces-one",
-          "description": "Each subagent traces one hypothesis and reports evidence for/against — not all three in one agent",
-          "required": true
-        },
-        {
-          "criterion": "does-not-fix-yet",
-          "description": "Does NOT jump to Phase 4 (Implementation) before the parallel investigation returns results. Investigation must complete before any fix is proposed.",
-          "required": true
-        }
+        "Spawns parallel subagents (one per hypothesis) rather than testing sequentially — the skill requires parallelization at 3+ hypotheses",
+        "Each subagent investigates one hypothesis independently and reports evidence for/against",
+        "Does NOT skip to Phase 4 (fix) before parallel investigation returns results"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "our docker builds started failing last night with 'COPY failed: file not found' on the assets step. nothing changed in the Dockerfile afaik. builds were fine yesterday. Dockerfile is at ./Dockerfile, build script is scripts/build.sh",
+      "expected_output": "Reads the Dockerfile and build script, checks recent git changes to those files and the assets directory, examines the COPY instruction and its source paths, checks if the assets are generated by a prior build step. Investigates before blaming any single cause.",
+      "expectations": [
+        "Reads the Dockerfile and build script to understand the COPY instruction and asset pipeline",
+        "Checks git history for recent changes to Dockerfile, build script, and asset-related files",
+        "Traces the data flow — where assets come from, whether they're generated or static, what changed"
       ]
     }
   ]

@@ -1,42 +1,34 @@
 {
-  "version": "1.0",
-  "skill": "skills/pr:descr",
-  "cases": [
+  "skill_name": "pr-descr",
+  "evals": [
     {
-      "id": "uses-template-never-pushes",
-      "prompt": "You are Claude running /pr:descr. PR #15 exists on branch alice/add-auth. The repo has .github/PULL_REQUEST_TEMPLATE.md with sections: Summary, Test Plan, Breaking Changes. The diff shows 4 files adding JWT auth.\n\nDemonstrate Steps 3-4.",
+      "id": 1,
+      "prompt": "update my pr description, the repo has a template in .github/PULL_REQUEST_TEMPLATE.md with Summary, Test Plan, and Breaking Changes sections. diff is 4 files adding jwt auth to src/auth/",
+      "expected_output": "Reads the PR template and generates a title (conventional commit format, under 72 chars) plus body that follows the template's section structure (Summary, Test Plan, Breaking Changes). Shows preview, asks to confirm, then runs gh pr edit. Never pushes.",
       "expectations": [
-        {
-          "criterion": "follows-template",
-          "description": "Uses the repo's PR template structure (Summary, Test Plan, Breaking Changes sections) rather than a generic format",
-          "required": true
-        },
-        {
-          "criterion": "never-pushes",
-          "description": "Does NOT run git push, gt submit, or any push command — this skill only updates the PR description",
-          "required": true
-        },
-        {
-          "criterion": "previews-before-update",
-          "description": "Shows the generated title + body to the user via AskUserQuestion before running gh pr edit",
-          "required": false
-        }
+        "Uses the repo's PR template structure (Summary, Test Plan, Breaking Changes sections) rather than a generic format",
+        "Generates a conventional commit-style title under 72 characters",
+        "Does NOT run git push, gt submit, or any push command — only updates the PR description via gh pr edit"
       ]
     },
     {
-      "id": "on-main-edge-case",
-      "prompt": "You are Claude running /pr:descr. The injected context shows you're on the 'main' branch. gh pr view returns nothing (no PR exists for main).\n\nDemonstrate Step 1 (Check State).",
+      "id": 2,
+      "prompt": "/pr-descr — i'm on main, no feature branch",
+      "expected_output": "Recognizes the user is on main with no associated PR. Flags this as an edge case ('Did you mean to be on a feature branch?') and stops. Does not attempt to create a PR or generate a description for a nonexistent PR.",
       "expectations": [
-        {
-          "criterion": "detects-main-branch",
-          "description": "Recognizes that the user is on main and flags this as an edge case — 'Did you mean to be on a feature branch?'",
-          "required": true
-        },
-        {
-          "criterion": "does-not-create-pr",
-          "description": "Does NOT attempt to create a PR for main or proceed to generate a description for a nonexistent PR",
-          "required": true
-        }
+        "Recognizes the user is on main and flags it as an edge case",
+        "Does NOT attempt to create a PR for main or generate a description for a nonexistent PR",
+        "Stops after flagging the issue rather than proceeding with the workflow"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/pr-descr --auto, no template in the repo, 2 commits adding a caching layer to the api",
+      "expected_output": "No template found, so generates title + body using fallback format (1-3 sentences explaining why with high-level how). In --auto mode, updates the PR directly via gh pr edit without asking for confirmation. Shows the PR URL when done.",
+      "expectations": [
+        "Falls back to concise format (not a template) when no PR template exists",
+        "Updates directly without asking for confirmation in --auto mode",
+        "Shows the PR URL after updating"
       ]
     }
   ]

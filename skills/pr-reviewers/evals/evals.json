@@ -1,0 +1,35 @@
+{
+  "skill_name": "pr-reviewers",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "who should review this pr? i changed a bunch of files in src/auth/ and src/api/middleware/",
+      "expected_output": "Detects the PR, gets changed files, filters out generated files, gathers candidates via git log history and CODEOWNERS. Scores candidates using line-weighted ownership, commit count, CODEOWNERS match, and directory familiarity. Applies penalties for recent reviewer overlap and high review load. Presents up to 3 candidates with score breakdowns and concrete expertise reasons. Asks before adding reviewers.",
+      "expectations": [
+        "Excludes generated files (*.generated.*, lock files, vendor/, etc.) from the analysis",
+        "Presents score breakdown with concrete numbers and expertise reasons (e.g., 'Owns 60% of changed lines in src/auth/')",
+        "Applies penalties for recent reviewer overlap — does NOT treat 'reviewed your recent PRs' as a positive signal"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/pr-reviewers --auto, the PR only adds 2 new files in a brand new directory src/notifications/",
+      "expected_output": "Recognizes all files are new (no git blame history). Falls back to directory familiarity — finds experts on parent directory (src/) via git log. Scores using directory familiarity weight. In --auto mode, adds recommended reviewers directly without asking. Shows score breakdowns.",
+      "expectations": [
+        "Handles new files correctly — uses parent directory git log for candidate gathering since new files have no blame history",
+        "Adds reviewers directly without asking in --auto mode",
+        "Still presents score breakdowns even in --auto mode so the user understands the choices"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "find reviewers for my pr. heads up — alice has reviewed my last 4 prs and bob is already assigned to like 8 open reviews",
+      "expected_output": "Gathers candidates normally, then applies penalties: alice gets a 0.7x multiplier for reviewing 3+ of last 5 PRs, bob gets a 0.6x multiplier for 8+ open review requests. These penalties may push them down the ranking even if they have high base scores. Results show the penalty clearly (e.g., 'currently reviewing 8 PRs').",
+      "expectations": [
+        "Applies the 0.7x penalty to alice for reviewing 3+ of the last 5 author PRs",
+        "Applies the 0.6x penalty to bob for 8+ open review requests",
+        "Shows penalty attribution in results (e.g., 'currently reviewing 8 PRs') so user understands the ranking"
+      ]
+    }
+  ]
+}

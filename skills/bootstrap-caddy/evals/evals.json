@@ -1,0 +1,34 @@
+{
+  "skill_name": "bootstrap-caddy",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/bootstrap-caddy myapp",
+      "expected_output": "Checks dev-routing prerequisites (Caddyfile + ports.json exist). Reads ports.json, assigns next available port, adds 'myapp' to registry, creates sites/myapp.caddy with reverse_proxy config, checks if ~/src/myapp exists for vite/env configuration, reloads Caddy, reports dev URL (https://myapp.localhost) and assigned port.",
+      "expectations": [
+        "Checks prerequisites at $HOME/.config/dev-routing/ before proceeding",
+        "Reads ports.json, assigns port, updates registry with new project",
+        "Creates Caddy site config at sites/myapp.caddy with correct reverse_proxy block"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/bootstrap-caddy",
+      "expected_output": "No project name given. Asks via AskUserQuestion. Does not infer from working directory or context.",
+      "expectations": [
+        "Uses AskUserQuestion to request project name — does not infer from context",
+        "Does not proceed with any file operations before getting the name"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/bootstrap-caddy payments 5555",
+      "expected_output": "Uses user-provided port 5555 instead of auto-assigning. Verifies no collision with existing projects in ports.json. Registers 'payments' at port 5555, creates site config, configures project if it exists at ~/src/payments, reloads Caddy.",
+      "expectations": [
+        "Uses the explicit port 5555 instead of nextPort from registry",
+        "Checks for port collision with existing projects before registering",
+        "Reports https://payments.localhost with port 5555 in the summary"
+      ]
+    }
+  ]
+}

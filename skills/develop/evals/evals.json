@@ -1,138 +1,77 @@
 {
-  "version": "1.0",
-  "skill": "skills/develop",
-  "cases": [
+  "skill_name": "develop",
+  "evals": [
     {
-      "id": "scope-task-creates-epic-and-tasks",
-      "prompt": "You are Claude running /develop t100. TaskGet(100) returns: metadata.type='scope', status_detail='approved', metadata.design contains a full phased design with 2 phases, file paths, and approaches for 'webhook-retry'. metadata.plan_file='/tmp/scope-webhook.md'.\n\nNo epic or child tasks exist yet. CLAUDE_CODE_TASK_LIST_ID is set.\n\nDemonstrate the full flow from Step 1 through to worker dispatch.",
+      "id": 1,
+      "prompt": "/develop t100\n\nthis is the approved scope task for webhook-retry. has a 2-phase design in metadata.design with file paths, approaches, the whole thing. no epic or child tasks exist yet",
+      "expected_output": "Recognizes scope task (type='scope', status_detail='approved'), enters Prepare mode. Creates epic with metadata copied from scope (type, slug, design, spec). Dispatches ONE sonnet subagent using references/task-creation-prompt.md verbatim for task creation. Spot-checks 1-2 file paths. Updates epic with children array, completes scope task. Falls through immediately to Classify and dispatches workers — no pause between prepare and dispatch.",
       "expectations": [
-        {
-          "criterion": "detects-scope-enters-prepare",
-          "description": "Recognizes metadata.type='scope' + status_detail='approved' and enters Step 1b (Prepare). Does NOT try to classify or dispatch the scope task as a work item.",
-          "required": true
-        },
-        {
-          "criterion": "creates-epic-with-design",
-          "description": "Creates an epic via TaskCreate with metadata.type='epic', metadata.slug, metadata.design copied from the scope task's design, and metadata.spec copied from the scope task's spec (if available). The epic is the canonical container for all child tasks.",
-          "required": true
-        },
-        {
-          "criterion": "dispatches-sonnet-with-prompt-reference",
-          "description": "Dispatches ONE subagent (model='sonnet') using the prompt from references/task-creation-prompt.md verbatim. Does NOT write an ad-hoc task creation prompt.",
-          "required": true
-        },
-        {
-          "criterion": "validates-then-finalizes",
-          "description": "After task creation: spot-checks 1-2 file paths via Read, then updates epic with children array and completes the scope task. Both TaskUpdates happen.",
-          "required": true
-        },
-        {
-          "criterion": "falls-through-to-classify-and-dispatch",
-          "description": "After preparation, falls through to Step 2 (Classify) and dispatches workers. Does NOT stop to ask the user — prepare → dispatch is seamless, matching old prepare → implement behavior.",
-          "required": true
-        }
+        "Enters Step 1b (Prepare) for scope task with status_detail='approved'. Does NOT try to dispatch the scope task as a work item.",
+        "Creates epic via TaskCreate with type='epic', slug, design, spec from scope. Dispatches task creation using references/task-creation-prompt.md verbatim (not ad-hoc prompt).",
+        "Spot-checks 1-2 file paths, updates epic with children, completes scope task. Then falls through to Step 2 (Classify) without pausing."
       ]
     },
     {
-      "id": "design-quality-precheck-blocks-vague",
-      "prompt": "You are Claude running /develop t200. TaskGet(200) returns: metadata.type='scope', status_detail='approved', metadata.design contains:\n\n'## Next Steps\\nPhase 1: Refactor the codebase to be better. Files: various. Approach: clean up.'\n\nThis design has no specific file paths and the approach is under 20 words.",
+      "id": 2,
+      "prompt": "/develop t200\n\nthis scope task has status_detail='approved' but the design is basically empty: '## Next Steps\\nPhase 1: Refactor the codebase to be better. Files: various. Approach: clean up.' — no real file paths, approach is like 10 words",
+      "expected_output": "Pre-check catches the vague design (missing file paths, approach under 20 words). Stops and asks the user via AskUserQuestion before creating any epic or tasks. Does not optimistically proceed with garbage input — vague designs produce vague tasks.",
       "expectations": [
-        {
-          "criterion": "blocks-before-epic-creation",
-          "description": "Pre-check catches the vague design (missing paths, approach under 20 words) and uses AskUserQuestion BEFORE creating any epic or tasks. Does not proceed optimistically with a bad design.",
-          "required": true
-        }
+        "Pre-check detects missing paths and short approach. Uses AskUserQuestion BEFORE creating epic or tasks.",
+        "Does NOT proceed optimistically with a bad design."
       ]
     },
     {
-      "id": "epic-without-children-resumes-prepare",
-      "prompt": "You are Claude running /develop with no argument. TaskList finds an epic: metadata.type='epic', metadata.design populated, status='in_progress', but it has NO children (metadata.children is empty/missing). No impl_team set.\n\nDemonstrate what happens.",
+      "id": 3,
+      "prompt": "/develop\n\npicked up an epic that has metadata.design populated and status='in_progress' but no children at all — looks like task creation got interrupted last time",
+      "expected_output": "Recognizes epic-without-children pattern (design exists, no children). Enters Step 1b but skips epic creation (already exists). Dispatches task creation subagent, validates, finalizes with children array, falls through to dispatch.",
       "expectations": [
-        {
-          "criterion": "detects-incomplete-prepare",
-          "description": "Recognizes the epic has design but no children — preparation was interrupted before task creation.",
-          "required": true
-        },
-        {
-          "criterion": "skips-epic-creation-creates-tasks",
-          "description": "Enters Step 1b but skips step 2 (epic already exists). Dispatches task creation subagent, validates, finalizes with children array, then falls through to dispatch.",
-          "required": true
-        }
+        "Recognizes epic has design but no children — interrupted preparation.",
+        "Enters Step 1b, skips epic creation (already exists), runs task creation, validates, adds children array, falls through to dispatch."
       ]
     },
     {
-      "id": "plan-file-fallback-on-empty-metadata",
-      "prompt": "You are Claude running /develop t300. TaskGet(300) returns: metadata.type='scope', status_detail='approved', metadata.design is empty string '', metadata.plan_file='/tmp/scope-webhook.md'.\n\nThe plan file at /tmp/scope-webhook.md contains a full phased design.",
+      "id": 4,
+      "prompt": "/develop t300\n\nscope task is approved but metadata.design is empty string. metadata.plan_file is set to /tmp/scope-webhook.md though, and that file has the full phased design",
+      "expected_output": "Detects empty metadata.design, finds metadata.plan_file, reads the plan file via ct plan latest as fallback. Uses that content as the design source for preparation. Creates epic and tasks from the plan file content.",
       "expectations": [
-        {
-          "criterion": "reads-plan-file-as-fallback",
-          "description": "Detects metadata.design is empty, sees metadata.plan_file is set, and reads the plan file via ct plan latest as fallback. Does NOT AskUserQuestion about missing design when a plan file exists.",
-          "required": true
-        },
-        {
-          "criterion": "proceeds-with-plan-file-content",
-          "description": "Uses the plan file content as the design source for Step 1b. Creates epic and tasks from it.",
-          "required": true
-        }
+        "Detects empty design, reads plan_file as fallback. Does NOT ask about missing design when plan_file exists.",
+        "Uses plan file content as design source for Step 1b."
       ]
     },
     {
-      "id": "recovery-stale-metadata",
-      "prompt": "You are Claude running /develop with no argument. TaskList finds an orphaned epic (metadata.impl_team set, status in_progress). The epic has 5 children: 3 completed, 2 pending.\n\nDemonstrate the recovery flow.",
+      "id": 5,
+      "prompt": "/develop\n\nthere's an orphaned epic — impl_team is set, status is in_progress. it has 5 children: 3 are completed (they modified src/webhooks/sender.ts, retry.ts, and types.ts), 2 are still pending",
+      "expected_output": "Enters recovery flow. Scans all children first. Finds 3 completed + 2 pending. Only dispatches the 2 pending children — the 3 completed children's work is preserved unconditionally (never reset, re-run, or modify them). After pending tasks complete, proceeds to Teardown.",
       "expectations": [
-        {
-          "criterion": "scans-children-first",
-          "description": "Checks all children's statuses before deciding how to recover — does not blindly re-dispatch all tasks.",
-          "required": true
-        },
-        {
-          "criterion": "only-dispatches-pending",
-          "description": "Only dispatches the 2 pending children. Does NOT re-dispatch the 3 completed tasks — their work is preserved unconditionally.",
-          "required": true
-        }
+        "Checks all children statuses before deciding recovery action.",
+        "Only dispatches the 2 pending children. Does NOT re-dispatch the 3 completed tasks."
       ]
     },
     {
-      "id": "all-children-completed-recovery",
-      "prompt": "You are Claude running /develop with no argument. TaskList finds an orphaned epic (metadata.impl_team set, status in_progress). All 4 children are completed.\n\nDemonstrate what you do.",
+      "id": 6,
+      "prompt": "/develop\n\norphaned epic again — impl_team set, in_progress. but all 4 children are completed. looks like the session crashed right before teardown",
+      "expected_output": "Recognizes all children are completed. Clears impl_team, skips directly to Teardown (acceptance + stage changes). Does NOT spawn any workers — all the work is already done.",
       "expectations": [
-        {
-          "criterion": "skips-to-teardown",
-          "description": "Recognizes all children completed. Clears impl_team, skips directly to Teardown (acceptance + stage changes). Does NOT spawn any workers.",
-          "required": true
-        }
+        "All children completed → clears impl_team, skips to Teardown. No workers spawned."
       ]
     },
     {
-      "id": "worker-rescope-escalation",
-      "prompt": "You are Claude running /develop for epic 500 ('webhook-retry'). Team mode, 3 leaf tasks. Worker for task 501 returns:\n\n\"RESCOPE: The webhook retry approach assumes idempotent endpoints, but the payment service uses non-idempotent POST for charge creation.\"\n\nTasks 502 and 503 have not started.",
+      "id": 7,
+      "prompt": "/develop epic 500 webhook-retry\n\nteam mode, 3 leaf tasks. worker for task 501 just came back with:\n\n\"RESCOPE: The webhook retry approach assumes idempotent endpoints, but the payment service uses non-idempotent POST for charge creation. Retrying would double-charge customers.\"\n\ntasks 502 and 503 haven't started yet",
+      "expected_output": "Detects RESCOPE signal from worker 501. Immediately halts all dispatch — does NOT start 502 or 503, does NOT retry 501. Invokes Skill('scope', '--continue <epicId>') to re-scope the design with the new constraint about non-idempotent endpoints.",
       "expectations": [
-        {
-          "criterion": "does-not-retry-invokes-scope",
-          "description": "Detects 'RESCOPE:' signal. Does NOT retry the worker or dispatch 502/503. Invokes Skill('scope', '--continue <epicId>') to re-scope the design.",
-          "required": true
-        }
+        "Detects 'RESCOPE:' in worker output. Does NOT retry 501 or dispatch 502/503.",
+        "Invokes Skill('scope', '--continue <epicId>') to re-scope."
       ]
     },
     {
-      "id": "spec-reconciliation-after-acceptance",
-      "prompt": "You are Claude running /develop for epic 600 ('webhook-retry'). All workers completed successfully. Acceptance passed. The epic has metadata.spec:\n\n\"## Problem\\nWebhook delivery has no retry mechanism.\\n\\n## Recommendation\\nWebhook delivery uses exponential backoff with max 5 attempts, base delay 1s, factor 2x, jitter +/-20%. Failed deliveries move to a dead letter queue.\\n\\n## Architecture Context\\nThe webhook delivery module dispatches HTTP POSTs. The job queue infrastructure wraps BullMQ.\\n\\n## Risks\\n- Queue backpressure under high failure rates.\"\n\nmetadata.spec_file is '/tmp/scope-webhook-spec.md'. A repo copy exists at docs/specs/webhook-retry.md.\n\ngit diff --name-only shows: src/webhooks/sender.ts, src/webhooks/retry.ts, src/webhooks/types.ts, src/lib/queue.ts\n\nThe implementation actually uses max 3 attempts (not 5) and adds circuit breaker logic not mentioned in the spec.\n\nDemonstrate the reconcile spec step in Stage Changes.",
+      "id": 8,
+      "prompt": "/develop finished for epic 600 webhook-retry. acceptance passed. the spec says max 5 retry attempts but we actually implemented 3. also added circuit breaker logic that's not in the spec. metadata.spec_file is /tmp/scope-webhook-spec.md, and there's a copy at docs/specs/webhook-retry.md in the repo",
+      "expected_output": "After acceptance, dispatches a sonnet subagent with the spec + full git diff to reconcile. Subagent updates spec to match reality: max 3 attempts (not 5), adds circuit breaker behavior. Updated spec is written to metadata.spec, metadata.spec_file (/tmp/scope-webhook-spec.md), AND the repo copy (docs/specs/webhook-retry.md). Reconciled spec uses present-tense, no transition language like 'changed from 5 to 3'.",
       "expectations": [
-        {
-          "criterion": "dispatches-reconciliation-subagent",
-          "description": "After acceptance passes, dispatches a subagent with the spec content and changed file list to reconcile the spec against implementation. Does NOT skip this step.",
-          "required": true
-        },
-        {
-          "criterion": "updates-all-spec-locations",
-          "description": "When the subagent returns an updated spec: updates metadata.spec, overwrites the spec_file path, and overwrites the repo copy (docs/specs/webhook-retry.md). All three locations are kept in sync.",
-          "required": true
-        },
-        {
-          "criterion": "spec-remains-timeless",
-          "description": "The reconciled spec maintains timeless present-tense format. It now says 'max 3 attempts' (matching implementation) and includes circuit breaker behavior. It does NOT use transition language like 'changed from 5 to 3 attempts'.",
-          "required": true
-        }
+        "Dispatches reconciliation subagent with spec content + full git diff (not just file names).",
+        "Updates all three locations: metadata.spec, spec_file path, repo copy at docs/specs/webhook-retry.md.",
+        "Reconciled spec is present-tense ('max 3 attempts', 'circuit breaker monitors failure rate') — no transition language."
       ]
     }
   ]

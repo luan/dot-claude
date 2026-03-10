@@ -15,7 +15,7 @@ allowed-tools:
 
 # Implement Worker
 
-Single-task mini-orchestrator. Receives a task ID, spawns a code-only sub-worker.
+Single-task mini-orchestrator. Receives a task ID, spawns a code-only sub-worker. Never codes directly — always delegates.
 
 ## Step 1: Load Task
 
@@ -32,9 +32,9 @@ Single-task mini-orchestrator. Receives a task ID, spawns a code-only sub-worker
 
 **Decompose if ALL hold:**
 - 4+ files touching unrelated components, OR 3+ concerns needing different test context
-- `task.metadata.depth` is set AND < 3 (depth cap prevents unbounded nesting)
+- `task.metadata.depth` is set AND < 3
 
-`depth` absent → assume leaf, do NOT decompose (prevents unbounded recursion).
+`depth` absent → assume leaf, do NOT decompose. The depth cap and absent-depth rule together prevent unbounded recursion.
 
 Threshold met → Step 1.6. Otherwise → Step 2.
 

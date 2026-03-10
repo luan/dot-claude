@@ -46,7 +46,8 @@
     "pyright-lsp@claude-plugins-official": true,
     "rust-analyzer-lsp@claude-plugins-official": true,
     "swift-lsp@claude-plugins-official": true,
-    "gt@local": true
+    "gt@local": true,
+    "skill-creator@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
   "promptSuggestionEnabled": true,

@@ -21,11 +21,11 @@ allowed-tools:
 
 # Adversarial Review
 
-Three modes: solo (default), file-split (auto ≥15 files), perspective (--team). All consolidate into phase-structured output.
+Three modes: solo (default), file-split (auto when ≥15 files), perspective (--team). All consolidate into phase-structured output.
 
 ## Interviewing
 
-See rules/skill-interviewing.md. Ask on: borderline severity, unclear pattern violation.
+See rules/skill-interviewing.md.
 
 ## Step 1: Scope + Mode
 
@@ -75,13 +75,13 @@ Store via `ct plan create --topic "<topic>" --project "$(git rev-parse --show-to
 
 !`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Return findings to caller. Don't fix." || echo "AskUserQuestion: Fix all / Fix critical+high / Fix critical only / Skip fixes"`
 
-`--auto` → Fix critical+high automatically (skip AskUserQuestion).
+`--auto` → fix critical+high automatically (skip AskUserQuestion).
 
 ## Step 5: Fix + Re-review Loop
 
 Spawn agent with FIX items → fix, verify, self-check (remove debug artifacts, low-value comments, unused imports), report.
 
-Re-run Step 3, max 4 iterations. Track fixed_issues by (file, description) — not line numbers. Skip matches when consolidating. Exit: all resolved, user stops, or iteration 4.
+Re-run Step 3, max 4 iterations. Track fixed_issues by (file, description) — not line numbers (lines shift after edits). Skip matches when consolidating. Exit: all resolved, user stops, or iteration 4.
 
 ## Step 6: Summary + Next
 

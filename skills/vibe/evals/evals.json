@@ -1,184 +1,92 @@
 {
-  "version": "1.0",
-  "skill": "skills/vibe",
-  "cases": [
+  "skill_name": "vibe",
+  "evals": [
     {
-      "id": "partial-task-failure",
-      "prompt": "You are Claude running /vibe. The develop stage just finished. TaskList shows the epic has 4 children: 3 completed, 1 still in_progress (worker crashed mid-implementation). git diff --stat shows changes from all 4 tasks including partial work from the crashed worker.\n\nDemonstrate what you do next.",
+      "id": 1,
+      "prompt": "running /vibe. develop just finished. TaskList shows the epic has 4 children: 3 completed, 1 still in_progress (worker crashed mid-impl). git diff --stat shows changes from all 4 including partial work from the crashed one.\n\nwhat happens next?",
+      "expected_output": "Recognizes the develop stage is incomplete because not all children completed. Reports per-child status (which succeeded, which failed). Does NOT proceed to simplify/review/commit. Suggests /vibe --continue or /develop to retry.",
       "expectations": [
-        {
-          "criterion": "detects-incomplete-children",
-          "description": "Checks child task statuses and recognizes that not all children completed — does not assume develop succeeded because it returned",
-          "required": true
-        },
-        {
-          "criterion": "does-not-commit-broken",
-          "description": "Does NOT proceed to the commit stage when a child task is still in_progress with partial work in the tree",
-          "required": true
-        },
-        {
-          "criterion": "reports-and-suggests-recovery",
-          "description": "Reports which tasks succeeded and which failed, and suggests recovery options (e.g., /vibe --continue or /develop to retry)",
-          "required": true
-        }
+        "Checks child task statuses — does not assume develop succeeded just because it returned",
+        "Does NOT proceed to simplify or commit when a child task is still in_progress with partial work",
+        "Reports which tasks succeeded vs failed and suggests recovery (/vibe --continue or /develop)"
       ]
     },
     {
-      "id": "stage-failure-preserves-progress",
-      "prompt": "You are Claude running /vibe 'add user avatars'. Branch created, scope completed successfully (vibe_stage='scope', scope task approved with metadata.design populated). You invoke Skill('develop') but it errors out completely — the skill call fails with no progress made.\n\nDemonstrate error handling.",
+      "id": 2,
+      "prompt": "running /vibe 'add user avatars'. branch created, scope completed (vibe_stage='scope', scope task approved with metadata.design populated). invoked Skill('develop') but it errors out completely — skill call fails, zero progress.\n\nshow error handling.",
+      "expected_output": "Keeps vibe_stage at 'scope' (not 'develop') since the stage failed with no progress. Leaves tracker in_progress for --continue recovery. Reports completed vs failed stages and suggests /vibe --continue or /develop.",
       "expectations": [
-        {
-          "criterion": "does-not-update-stage",
-          "description": "Does NOT update vibe_stage to 'develop' — it stays at 'scope' because the develop stage completely failed with no progress",
-          "required": true
-        },
-        {
-          "criterion": "leaves-tracker-in-progress",
-          "description": "Leaves the vibe tracker task in_progress (not completed or failed) so --continue can find and resume it",
-          "required": true
-        },
-        {
-          "criterion": "suggests-recovery",
-          "description": "Reports which stages completed vs failed and suggests recovery: /vibe --continue or /develop to retry the failed stage directly",
-          "required": true
-        }
+        "Does NOT update vibe_stage to 'develop' — stays at 'scope' because develop made no progress",
+        "Leaves tracker in_progress (not completed/failed) so --continue can find it",
+        "Reports which stages completed vs failed and suggests /vibe --continue or /develop"
       ]
     },
     {
-      "id": "autonomous-scope-bypasses-review",
-      "prompt": "You are Claude running /vibe 'add webhook retry with exponential backoff'. You have created the branch and are now about to invoke the Scope stage.\n\nShow the exact Skill() call you make for the scope stage. Then explain what scope does differently when invoked this way vs when the user invokes /scope directly.",
+      "id": 3,
+      "prompt": "running /vibe 'add webhook retry with exponential backoff'. branch created, about to invoke scope.\n\nshow the exact Skill() call for scope and explain how it differs from a user invoking /scope directly.",
+      "expected_output": "Calls Skill('scope', args='add webhook retry with exponential backoff --no-develop --auto'). Explains --auto skips both spec review and plan review gates — auto-approving instead of halting for user feedback. Scope produces metadata.spec and metadata.design with status_detail='approved'.",
       "expectations": [
-        {
-          "criterion": "passes-auto",
-          "description": "The Skill call includes '--auto' flag: Skill('scope', args='<prompt> --no-develop --auto') — this skips user review and goes straight to approval",
-          "required": true
-        },
-        {
-          "criterion": "explains-both-phases-skipped",
-          "description": "Explains that --auto causes scope to skip BOTH spec review and plan review — the spec (what to build) and plan (how to build it) are both auto'd instead of stopping for user feedback at each gate",
-          "required": true
-        },
-        {
-          "criterion": "scope-produces-spec-and-design",
-          "description": "Scope produces a spec (metadata.spec) and implementation plan (metadata.design) with status_detail='approved' — it does NOT create epics or tasks (develop handles that)",
-          "required": true
-        }
+        "Skill call includes --auto flag: Skill('scope', args='<prompt> --no-develop --auto')",
+        "Explains --auto skips BOTH spec and plan review gates",
+        "Scope produces metadata.spec and metadata.design with status_detail='approved'"
       ]
     },
     {
-      "id": "start-receives-tracker-id",
-      "prompt": "You are Claude running /vibe 'add search feature'. You just created the vibe tracker task (task #55). You're about to invoke the Branch stage.\n\nShow the exact Skill('start') call you would make, including all arguments.",
+      "id": 4,
+      "prompt": "running /vibe 'add search feature'. just created the vibe tracker (task #55). about to do the Branch stage.\n\nshow the exact Skill('start') call with all arguments.",
+      "expected_output": "Calls Skill('start') with the tracker task ID (55) as second argument — e.g. Skill('start', args='luan/add-search-feature 55'). First arg is a username-prefixed branch slug derived from the prompt.",
       "expectations": [
-        {
-          "criterion": "passes-tracker-id",
-          "description": "The Skill call passes the tracker task ID (55) as the second argument to /start — e.g., Skill('start', args='luan/add-search-feature 55') — so /start links to the existing tracker instead of asking to create a new task",
-          "required": true
-        },
-        {
-          "criterion": "includes-branch-name",
-          "description": "The first argument is a properly prefixed branch name derived from the prompt slug",
-          "required": true
-        }
+        "Passes tracker task ID (55) as second argument to /start so it links to existing tracker",
+        "First argument is a properly prefixed branch name derived from the prompt slug"
       ]
     },
     {
-      "id": "branch-to-scope-no-pause",
-      "prompt": "You are Claude running /vibe 'add auth passthrough for tests'. You just invoked Skill('start', args='luan/auth-passthrough 42') and it returned successfully: branch created and linked to task #42, and /start suggested 'suggest /scope or /develop'. git branch --show-current confirms you're on the new branch.\n\nWhat do you do immediately after updating vibe_stage to 'branch'?",
+      "id": 5,
+      "prompt": "running /vibe 'add auth passthrough for tests'. just ran Skill('start', args='luan/auth-passthrough 42') successfully — branch created, linked to task #42. /start suggested 'suggest /scope or /develop'. confirmed on new branch.\n\njust updated vibe_stage to 'branch'. what do you do immediately?",
+      "expected_output": "Outputs the stage announcement (e.g. '[2/6] Scope') then immediately invokes Skill('scope', args='<prompt> --no-develop --auto'). Does not pause, summarize, or echo /start's suggestions.",
       "expectations": [
-        {
-          "criterion": "immediately-invokes-scope",
-          "description": "Immediately invokes Skill('scope', args='<prompt> --no-develop --auto') — does NOT pause, suggest next steps, output branch results, or wait for user input",
-          "required": true
-        },
-        {
-          "criterion": "outputs-stage-announcement-first",
-          "description": "Outputs the stage announcement (e.g., '[2/4] Scope') as text BEFORE invoking Skill('scope')",
-          "required": true
-        },
-        {
-          "criterion": "ignores-start-suggestions",
-          "description": "Does NOT echo or act on /start's 'suggest /scope or /develop' output — treats it as noise and proceeds with the pipeline",
-          "required": true
-        }
+        "Immediately invokes Skill('scope', args='<prompt> --no-develop --auto') without pausing or waiting",
+        "Outputs stage announcement (e.g. '[2/6] Scope') as text BEFORE the Skill() call",
+        "Ignores /start's 'suggest /scope or /develop' output — treats it as noise"
       ]
     },
     {
-      "id": "scope-to-develop-no-pause",
-      "prompt": "You are Claude running /vibe 'add dark mode toggle'. Branch created (vibe_stage='branch'). You just invoked Skill('scope', args='add dark mode toggle --no-develop --auto') and it returned successfully. TaskList shows a scope task with status_detail='approved' and metadata.design populated. --dry-run was NOT passed.\n\nWhat do you do immediately after updating vibe_stage to 'scope'?",
+      "id": 6,
+      "prompt": "running /vibe 'add dark mode toggle'. branch done, scope done (vibe_stage='scope'). scope task has status_detail='approved' and metadata.design populated. --dry-run was NOT passed.\n\njust updated vibe_stage to 'scope'. what's next?",
+      "expected_output": "Outputs '[3/6] Develop' then immediately invokes Skill('develop'). No scope summary, no user prompt, no pause.",
       "expectations": [
-        {
-          "criterion": "immediately-invokes-develop",
-          "description": "Immediately invokes Skill('develop') — does NOT pause, output a scope summary, ask the user what to do next, or wait for user input",
-          "required": true
-        },
-        {
-          "criterion": "outputs-stage-announcement-first",
-          "description": "Outputs the stage announcement (e.g., '[3/6] Develop') as text BEFORE invoking Skill('develop')",
-          "required": true
-        },
-        {
-          "criterion": "no-scope-results-summary",
-          "description": "Does NOT output scope results, phase breakdowns, key files, or any summary of what scope produced — proceeds directly to develop",
-          "required": true
-        }
+        "Immediately invokes Skill('develop') — no pause, scope summary, or user prompt",
+        "Outputs stage announcement (e.g. '[3/6] Develop') BEFORE invoking Skill('develop')",
+        "Does NOT output scope results, phase breakdowns, or any summary of what scope produced"
       ]
     },
     {
-      "id": "develop-to-simplify-to-review",
-      "prompt": "You are Claude running /vibe 'add rate limiting middleware'. All prior stages completed (branch, scope, develop). vibe_stage='develop'. All epic children show status='completed'. git diff --stat shows changes across 5 files.\n\nWhat do you do immediately after updating vibe_stage to 'develop'?",
+      "id": 7,
+      "prompt": "running /vibe 'add rate limiting middleware'. all prior stages done (branch, scope, develop). all epic children completed. git diff shows changes across 5 files.\n\njust updated vibe_stage to 'develop'. what happens next?",
+      "expected_output": "Invokes Skill('simplify'), then Skill('review'), then Skill('commit') — all three in sequence without pausing between them.",
       "expectations": [
-        {
-          "criterion": "invokes-simplify-first",
-          "description": "Immediately invokes Skill('simplify') — does NOT skip to review or commit",
-          "required": true
-        },
-        {
-          "criterion": "invokes-review-after-simplify",
-          "description": "After simplify completes, invokes Skill('review') before proceeding to commit",
-          "required": true
-        },
-        {
-          "criterion": "no-pause-between-stages",
-          "description": "Does NOT pause, summarize develop results, or wait for user input between develop → simplify → review → commit",
-          "required": true
-        }
+        "Immediately invokes Skill('simplify') — does not skip to review or commit",
+        "After simplify, invokes Skill('review') before commit",
+        "Does not pause, summarize, or wait for user input between develop -> simplify -> review -> commit"
       ]
     },
     {
-      "id": "full-pipeline-stage-count",
-      "prompt": "You are Claude about to run /vibe 'add search feature'. No flags passed. You're on the main branch.\n\nList all stages in order with their stage numbers [N/M].",
+      "id": 8,
+      "prompt": "about to run /vibe 'add search feature'. no flags. on the main branch.\n\nlist all stages in order with their [N/M] numbers.",
+      "expected_output": "M = 6 for full pipeline. Stages: [1/6] Branch, [2/6] Scope, [3/6] Develop, [4/6] Simplify, [5/6] Review, [6/6] Commit.",
       "expectations": [
-        {
-          "criterion": "six-stages-total",
-          "description": "M = 6 for the full pipeline: branch, scope, develop, simplify, review, commit",
-          "required": true
-        },
-        {
-          "criterion": "correct-order",
-          "description": "Stages are ordered: [1/6] Branch, [2/6] Scope, [3/6] Develop, [4/6] Simplify, [5/6] Review, [6/6] Commit",
-          "required": true
-        }
+        "M = 6 for the full pipeline: branch, scope, develop, simplify, review, commit",
+        "Stages ordered: [1/6] Branch, [2/6] Scope, [3/6] Develop, [4/6] Simplify, [5/6] Review, [6/6] Commit"
       ]
     },
     {
-      "id": "compaction-recovery-correct-session",
-      "prompt": "You are Claude in a session that just experienced context compaction. The SessionStart hook injected this additionalContext:\n\n\"COMPACTION RECOVERY — session_id: sess-AAA. Check TaskList for in_progress pipeline trackers where metadata.session_id === 'sess-AAA'. If found, resume with the appropriate --continue flag (/vibe --continue, /super-vibe --continue, or /develop). Ignore trackers from other sessions.\"\n\nTaskList returns 3 in_progress tasks:\n- Task 1: subject='Vibe: add dark mode', metadata={vibe_stage:'develop', session_id:'sess-BBB'}\n- Task 2: subject='Vibe: add auth bypass', metadata={vibe_stage:'scope', session_id:'sess-AAA'}\n- Task 3: subject='Super Vibe: refactor API', metadata={super_vibe:true, vibe_stage:'phase-2', session_id:'sess-CCC'}\n\nWhat do you do?",
+      "id": 9,
+      "prompt": "context compaction just happened. SessionStart injected:\n\n\"COMPACTION RECOVERY — session_id: sess-AAA. Check TaskList for in_progress pipeline trackers where metadata.session_id === 'sess-AAA'. If found, resume with the appropriate --continue flag.\"\n\nTaskList returns 3 in_progress tasks:\n- Task 1: subject='Vibe: add dark mode', metadata={vibe_stage:'develop', session_id:'sess-BBB'}\n- Task 2: subject='Vibe: add auth bypass', metadata={vibe_stage:'scope', session_id:'sess-AAA'}\n- Task 3: subject='Super Vibe: refactor API', metadata={super_vibe:true, vibe_stage:'phase-2', session_id:'sess-CCC'}\n\nwhat do you do?",
+      "expected_output": "Resumes Task 2 only (session_id matches sess-AAA). Invokes /vibe --continue (not /super-vibe) since Task 2 is a vibe tracker. Does not touch Task 1 or Task 3 — they belong to other sessions.",
       "expectations": [
-        {
-          "criterion": "resumes-matching-session-only",
-          "description": "Resumes Task 2 (session_id matches sess-AAA) — does NOT touch Task 1 or Task 3 which belong to other sessions",
-          "required": true
-        },
-        {
-          "criterion": "uses-continue-flag",
-          "description": "Invokes /vibe --continue (not /super-vibe --continue) because Task 2 is a vibe tracker (no super_vibe metadata)",
-          "required": true
-        },
-        {
-          "criterion": "ignores-other-sessions",
-          "description": "Explicitly does not attempt to resume, modify, or report on Task 1 or Task 3 — they belong to different sessions",
-          "required": true
-        }
+        "Resumes Task 2 (session_id matches sess-AAA) — ignores Task 1 and Task 3",
+        "Invokes /vibe --continue (not /supervibe) because Task 2 has no super_vibe metadata",
+        "Does not attempt to resume, modify, or report on Task 1 or Task 3"
       ]
     }
   ]
