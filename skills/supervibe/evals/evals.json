@@ -3,10 +3,10 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "/supervibe 'build full auth system with JWT, RBAC, session management, and OAuth2 provider integration'\n\ndemonstrate the superscope step — what do you call and what do you store on the tracker?",
-      "expected_output": "Reads references/superscope.md. Calls scope with a multi-phase-aware prompt that instructs vertical slices, ≤5 phases, per-phase file lists + dependencies + verification. After scope completes, extracts end_state, structured phases array, and distilled research findings. Stores all on tracker.",
+      "prompt": "/supervibe 'rewrite the entire rendering pipeline from C++ to Rust — we need memory safety guarantees, async support via tokio, and the existing OpenGL bindings need to be replaced with wgpu. The codebase is ~80k lines across src/render/, src/gpu/, and src/compositor/ with heavy use of raw pointers and manual memory management.'\n\nexecute the superscope step — read the reference files, then show exactly what you'd call and what you'd store on the tracker.",
+      "expected_output": "Reads references/superscope.md via Read tool. Calls scope with a multi-phase-aware prompt that instructs vertical slices, ≤5 phases, per-phase file lists + dependencies + verification. After scope completes, extracts end_state, structured phases array, and distilled research findings. Stores all on tracker.",
       "expectations": [
-        "Reads ${CLAUDE_SKILL_DIR}/references/superscope.md before calling scope",
+        "Reads references/superscope.md (evidence: Read tool call in transcript or explicit file content in response)",
         "Scope prompt instructs: vertical slices, ≤5 phases, per-phase file plans with Read/Modify/Create, explicit dependencies, verification criteria",
         "Stores metadata.end_state, metadata.phases (structured array), and metadata.superscope_findings on the tracker",
         "Validates: phases cover end-state, each is vertical, count ≤5, roughly balanced"
@@ -14,17 +14,17 @@
     },
     {
       "id": 2,
-      "prompt": "/supervibe 'add webhook system with retry and monitoring'. superscope produced 2 phases: Phase 1 (webhook model + DB schema) and Phase 2 (webhook delivery with retries). metadata.end_state mentions delivery, retries, AND a monitoring dashboard.\n\nthe monitoring dashboard has no corresponding phase. what do you do?",
-      "expected_output": "Identifies the coverage gap — monitoring dashboard is in end_state but no phase delivers it. Re-invokes scope with specific feedback about the missing capability. Does not proceed to execution.",
+      "prompt": "/supervibe 'build cross-device syncing for the note-taking app — real-time CRDT-based sync via WebSocket, offline queue with IndexedDB, conflict resolution UI, and sync status indicators across mobile and desktop clients. Backend needs a sync service, presence tracking, and operational transform history.'\n\nsuperscope produced 2 phases: Phase 1 (CRDT data model + sync service) and Phase 2 (WebSocket real-time delivery). metadata.end_state mentions real-time sync, offline queue, conflict resolution UI, AND sync status indicators across clients.\n\noffline queue, conflict resolution UI, and sync status indicators have no corresponding phases. what do you do?",
+      "expected_output": "Identifies the coverage gap — offline queue, conflict resolution UI, and sync status indicators are in end_state but no phase delivers them. Re-invokes scope with specific feedback about the missing capabilities. Does not proceed to execution.",
       "expectations": [
-        "Identifies monitoring dashboard capability is unrealized across all phases",
-        "Re-invokes scope with specific feedback about the gap",
+        "Identifies all three missing capabilities (offline queue, conflict resolution UI, sync status indicators) as unrealized across phases",
+        "Re-invokes scope with specific feedback about the gaps",
         "Does NOT start phase execution with an incomplete plan"
       ]
     },
     {
       "id": 3,
-      "prompt": "/supervibe 'build auth system'. superscope done, starting phase 1. demonstrate how you dispatch the phase agent and what you pass to /vibe.",
+      "prompt": "/supervibe 'migrate the entire data access layer from raw SQL queries to Prisma ORM across 200+ database calls in src/db/, src/api/, and src/services/ — includes schema migration, type generation, transaction handling, and connection pooling changes.'\n\nsuperscope done, starting phase 1. demonstrate how you dispatch the phase agent and what you pass to /vibe.",
       "expected_output": "Spawns an Agent with isolation='worktree'. The agent runs /vibe with the phase plan, prior results (none for phase 1), end-state vision, and superscope findings. Uses --no-branch --no-review flags.",
       "expectations": [
         "Dispatches Agent with isolation: 'worktree' for filesystem isolation",
@@ -35,7 +35,7 @@
     },
     {
       "id": 4,
-      "prompt": "/supervibe 'build auth system'. phase 1 agent just returned successfully with worktree path /tmp/wt-abc and branch sv-auth-p1. what do you do before starting phase 2?",
+      "prompt": "/supervibe 'rewrite the entire rendering pipeline from C++ to Rust'. phase 1 agent just returned successfully with worktree path /tmp/wt-abc and branch sv-render-p1. what do you do before starting phase 2?",
       "expected_output": "Merges the worktree branch into main with a descriptive commit message. Records phase_results[1] with commit SHA, files changed, summary, deviations. Cleans up worktree and branch. Updates vibe_stage to 'phase-1'.",
       "expectations": [
         "Merges worktree branch to main: git merge with --no-ff and descriptive message",
@@ -46,18 +46,18 @@
     },
     {
       "id": 5,
-      "prompt": "/supervibe 'build auth system'. phase 2 agent failed during develop step with error 'Type error in UserRole.ts:42'. what do you do?",
+      "prompt": "/supervibe 'migrate the entire data access layer from raw SQL to Prisma ORM across 200+ database calls'. phase 2 agent failed during develop step with error 'PrismaClientKnownRequestError: Foreign key constraint failed on field `userId` in src/services/user-relations.ts:187'. what do you do?",
       "expected_output": "Does NOT merge the worktree — discards it so main stays clean. Records phase_results[2] with failed status, step='develop', and the error. Does NOT update vibe_stage (stays at 'phase-1'). Reports failure and suggests --continue.",
       "expectations": [
-        "Does NOT merge the failed worktree — main branch stays clean",
-        "Records metadata.phase_results[2] with status: 'failed', step: 'develop', error details",
-        "Does NOT update vibe_stage — stays at 'phase-1' for correct resume",
-        "Suggests /supervibe --continue"
+        "Discards the failed worktree explicitly — does not attempt to merge or fix in place",
+        "Records metadata.phase_results[2] with status: 'failed', step: 'develop', and the full error details",
+        "Does NOT update vibe_stage — explicitly states it stays at 'phase-1' for correct resume",
+        "Suggests /supervibe --continue as the recovery path"
       ]
     },
     {
       "id": 6,
-      "prompt": "/supervibe --continue. tracker: super_vibe=true, status='in_progress', vibe_stage='phase-2', phase_results has phases 1-2 completed, phases array has 4 total, end_state populated, superscope_findings populated.\n\nwhat do you do?",
+      "prompt": "/supervibe --continue. tracker: super_vibe=true, status='in_progress', vibe_stage='phase-2', phase_results has phases 1-2 completed (phase 1: Prisma schema + client setup, phase 2: user service migration), phases array has 4 total, end_state: 'All 200+ database calls use Prisma ORM with type-safe queries, connection pooling via PgBouncer, and transaction wrappers for multi-table operations', superscope_findings populated with file locations and patterns.\n\nwhat do you do?",
       "expected_output": "Resumes at phase 3. Reads phase plan from metadata.phases[2], prior results from metadata.phase_results (phases 1-2), end_state, and superscope_findings. Assembles rich context prompt and dispatches phase 3 agent with worktree isolation.",
       "expectations": [
         "Resumes at phase 3 (next after vibe_stage='phase-2')",
@@ -68,27 +68,27 @@
     },
     {
       "id": 7,
-      "prompt": "/supervibe --continue. tracker: super_vibe=true, status='in_progress', vibe_stage='phase-1', phase_results[2] has status='failed', step='develop', error='Type error in UserRole.ts:42'. phases array has 4 total.\n\nwhat do you do?",
+      "prompt": "/supervibe --continue. tracker: super_vibe=true, status='in_progress', vibe_stage='phase-1', phase_results[2] has status='failed', step='develop', error='PrismaClientKnownRequestError: Foreign key constraint failed on field `userId` in src/services/user-relations.ts:187'. phases array has 4 total.\n\nwhat do you do?",
       "expected_output": "Retries phase 2 (the failed phase). The phase agent gets the error context from phase_results[2].error so scope/develop can account for the prior failure. Does not skip to phase 3.",
       "expectations": [
         "Retries phase 2 (failed phase), does not skip to phase 3",
-        "Phase agent prompt includes the error from the prior failure: 'Type error in UserRole.ts:42'",
+        "Phase agent prompt includes the error from the prior failure about the foreign key constraint",
         "Prior phase results from phase 1 (completed) are included for context"
       ]
     },
     {
       "id": 8,
-      "prompt": "/supervibe 'build auth system'. all 4 phases completed. metadata.end_state: 'JWT auth, RBAC, session management, OAuth2'. phase_results show JWT, RBAC, and sessions implemented but OAuth2 was never built.\n\nwhat happens at teardown?",
-      "expected_output": "End-state coverage check catches that OAuth2 is unrealized. Does NOT complete the tracker. Reports the gap and suggests adding phases for OAuth2.",
+      "prompt": "/supervibe 'rewrite the entire rendering pipeline from C++ to Rust with wgpu, tokio async, and memory safety'. all 4 phases completed. metadata.end_state: 'The rendering pipeline uses Rust with wgpu for GPU access, tokio for async operations, safe abstractions replacing raw pointers, and a compatibility shim for existing C++ plugins via FFI'. phase_results show wgpu integration, tokio async, and safe abstractions implemented but the C++ plugin FFI compatibility shim was never built.\n\nwhat happens at teardown?",
+      "expected_output": "End-state coverage check catches that the C++ plugin FFI compatibility shim is unrealized. Does NOT complete the tracker. Reports the gap and suggests adding phases.",
       "expectations": [
-        "Identifies OAuth2 from end-state was never realized across completed phases",
+        "Identifies the C++ plugin FFI compatibility shim from end-state was never realized across completed phases",
         "Does NOT mark tracker as completed",
         "Reports the specific gap and suggests additional phases"
       ]
     },
     {
       "id": 9,
-      "prompt": "/supervibe --dry-run 'refactor entire data layer to use repository pattern'. demonstrate what happens.",
+      "prompt": "/supervibe --dry-run 'decompose the monolithic Express API into microservices — extract user-service, billing-service, and notification-service into separate deployable units with gRPC inter-service communication, shared protobuf definitions, distributed tracing via OpenTelemetry, and a service mesh for routing. The monolith is ~120k lines across src/routes/, src/services/, src/models/ with heavy cross-service dependencies.'",
       "expected_output": "Runs superscope (full research + phase decomposition) but stops before phase execution. Reports the end-state vision, phase plan with per-phase file lists and dependencies, and sizing estimate. Suggests /supervibe --continue to start execution.",
       "expectations": [
         "Runs superscope (reads references/superscope.md, calls scope with multi-phase prompt)",
