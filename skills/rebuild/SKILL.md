@@ -1,7 +1,7 @@
 ---
 name: rebuild
 description: "Collapse branch into working tree and rebuild as clean, refined commits with code improvements per commit. Triggers: 'rebuild branch', 'rebuild commits', 'clean up and improve branch'. Unlike /split-commit which preserves the exact diff, rebuild applies refinements and simplifications to each commit."
-argument-hint: "[base-branch] [--test='command'] [--instructions='...']"
+argument-hint: "[base-branch] [--test='command'] [--instructions='...'] [--auto]"
 user-invocable: true
 disable-model-invocation: true
 allowed-tools:
@@ -38,16 +38,17 @@ COMMIT_PLAN:
 1. `type(scope): message` (conventional commit per /commit skill) — Files: <list>, Changes: <what>, Refinements: <concrete before/after, e.g. "rename x→multiplier in service.py:12">
 ```
 
-Present via AskUserQuestion: commit count, tests, each message + files + planned refinements. "Proceed?"
+`--auto` → proceed with the analysis plan directly. Without `--auto` → present via AskUserQuestion: commit count, tests, each message + files + planned refinements. "Proceed?"
 
 ## Phase 2: Execute
 
 After approval, collapse into unstaged changes (soft reset preserves content, second reset unstages so hunks can be re-staged selectively):
+
 ```bash
 git reset --soft <base> && git reset HEAD
 ```
 
-Plan declined → ask what to change, re-run analysis. Don't exit silently.
+Plan declined (not applicable with `--auto`) → ask what to change, re-run analysis. Don't exit silently.
 
 Dispatch one subagent per commit (general-purpose), **sequentially**:
 

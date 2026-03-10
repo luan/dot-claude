@@ -1,7 +1,7 @@
 ---
 name: review
 description: "Thorough adversarial code review covering correctness, security, architecture, and performance. Triggers: 'review', 'review my changes', 'check this code', 'code review'. Use --team for 3-perspective mode. Do NOT use when: investigating unknown bug — use /debugging."
-argument-hint: "[base..head | file-list | PR#] [--against <issue-id>] [--team] [--continue]"
+argument-hint: "[base..head | file-list | PR#] [--against <issue-id>] [--team] [--continue] [--auto]"
 user-invocable: true
 allowed-tools:
   - Task
@@ -33,12 +33,12 @@ BASE=!`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/re
 
 Parse $ARGUMENTS: `--against <task-id>` (plan adherence), `--team` (perspective mode), remaining args override BASE.
 
-| Input | Diff source |
-|---|---|
-| (none) | `git diff $BASE...HEAD` |
-| `main..HEAD` | BASE=main |
-| file list | `git diff HEAD -- <files>` + read |
-| `#123` | `gh pr diff 123` |
+| Input        | Diff source                       |
+| ------------ | --------------------------------- |
+| (none)       | `git diff $BASE...HEAD`           |
+| `main..HEAD` | BASE=main                         |
+| file list    | `git diff HEAD -- <files>` + read |
+| `#123`       | `gh pr diff 123`                  |
 
 Mode: `--team` → Perspective (3 specialists), ≥15 files → File-Split (~8/agent), else → Solo (2 lenses).
 
@@ -50,7 +50,7 @@ TaskCreate `metadata: {type: "review", project: REPO_ROOT}`, in_progress. `--con
 
 ## Step 3: Dispatch Reviewers
 
-All Task agents, spawn in ONE message. Prompts in `references/reviewer-prompts.md`. `--against`: append plan adherence to every prompt.
+All Task agents, spawn in ONE message. Prompts in `${CLAUDE_SKILL_DIR}/references/reviewer-prompts.md`. `--against`: append plan adherence to every prompt.
 
 - **Solo**: Correctness & Security + Architecture & Performance
 - **File-Split**: Combined lens per ~8-file group
@@ -65,6 +65,7 @@ All Task agents, spawn in ONE message. Prompts in `references/reviewer-prompts.m
 4. Sort by severity (Critical > High > Medium > Low). **Never truncate.** Judge each finding independently — one false claim doesn't taint others.
 
 Output `# Adversarial Review Summary`:
+
 - **FIX table** columns: Severity | File | Finding | Recommendation. Severity ∈ {Critical, High, Medium, Low}.
 - **IGNORE** section (collapsed): findings below consensus threshold, labeled "1-of-N".
 - **--team disagreements**: when specialists differ on severity, show attribution (e.g., "Architect: High, Code Quality: Medium → resolved: High") before the resolved row.
@@ -74,6 +75,8 @@ Store via `ct plan create --topic "<topic>" --project "$(git rev-parse --show-to
 
 !`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Return findings to caller. Don't fix." || echo "AskUserQuestion: Fix all / Fix critical+high / Fix critical only / Skip fixes"`
 
+`--auto` → Fix critical+high automatically (skip AskUserQuestion).
+
 ## Step 5: Fix + Re-review Loop
 
 Spawn agent with FIX items → fix, verify, self-check (remove debug artifacts, low-value comments, unused imports), report.
@@ -82,6 +85,6 @@ Re-run Step 3, max 4 iterations. Track fixed_issues by (file, description) — n
 
 ## Step 6: Summary + Next
 
-Output: Fixes Applied, Ignored, Remaining. Remaining + interactive: multiSelect to defer. Close: TaskUpdate → completed. Next via AskUserQuestion.
+Output: Fixes Applied, Ignored, Remaining. `--auto` → skip defer selection, complete task, stop. Without `--auto` → Remaining + interactive: multiSelect to defer. Close: TaskUpdate → completed. Next via AskUserQuestion.
 
 **Receiving feedback:** Verify claims by reading the file. Push back with evidence when feedback breaks functionality.

@@ -38,9 +38,9 @@ Use injected Stat/Files above for the no-args case. Override with $ARGUMENTS:
 
 **Early exit.** ALL files trivial (after excluding never-trivial files) → `## Test Plan: No Manual Testing Required` + stat output.
 
-Trivial: *.md (except SKILL.md, CLAUDE.md, *.mdx), *.txt, LICENSE, CHANGELOG, comment-only, whitespace-only, CI metadata.
+Trivial: _.md (except SKILL.md, CLAUDE.md, _.mdx), \*.txt, LICENSE, CHANGELOG, comment-only, whitespace-only, CI metadata.
 
-SKILL.md, CLAUDE.md, and *.mdx are **never trivial** — executable specs that change agent behavior. Analyze with code rigor: what behavior changed, what could break, what to verify.
+SKILL.md, CLAUDE.md, and \*.mdx are **never trivial** — executable specs that change agent behavior. Analyze with code rigor: what behavior changed, what could break, what to verify.
 
 ## Step 2: Analyze
 
@@ -48,12 +48,12 @@ Read the full diff. Classify each changed file by risk and type. Include a 1-sen
 
 ### Risk Levels
 
-| Level | Scope | Verification |
-|-------|-------|-------------|
-| **Critical** | Data loss or security breach risk (auth, persistence, payments, security, infra) | Test first, most thoroughly |
-| **High** | User-visible behavior (UI, API contracts, business logic, error handling, perf paths) | Full verification steps |
-| **Medium** | Indirect impact (refactors changing control flow, dep updates, logging, build config) | Targeted verification |
-| **Low** | Unlikely user-facing (style fixes, adding tests, code comments, dev tooling) | Spot-check only |
+| Level        | Scope                                                                                 | Verification                |
+| ------------ | ------------------------------------------------------------------------------------- | --------------------------- |
+| **Critical** | Data loss or security breach risk (auth, persistence, payments, security, infra)      | Test first, most thoroughly |
+| **High**     | User-visible behavior (UI, API contracts, business logic, error handling, perf paths) | Full verification steps     |
+| **Medium**   | Indirect impact (refactors changing control flow, dep updates, logging, build config) | Targeted verification       |
+| **Low**      | Unlikely user-facing (style fixes, adding tests, code comments, dev tooling)          | Spot-check only             |
 
 Multiple levels apply → use highest. A refactor touching auth logic is Critical, not Medium.
 
@@ -64,12 +64,14 @@ Tag each file: **new-feature**, **behavior-change**, **refactor**, **bugfix**, *
 ## Step 3: Generate
 
 Group verification steps by risk (highest first). Every component must reference domain-specific terms from the diff (function names, endpoints, error messages) — no generic language. Each step:
+
 1. **What** — specific behavior to verify
 2. **How** — concrete reproducible actions (e.g., "call `paginate(page=1, size=10)`", "POST `/api/auth/login` with expired token"). Spec changes: invoke skill with specific trigger/argument, verify behavioral change.
 3. **Expected** — observable correct outcome
 4. **Regression** — adjacent functionality to confirm
 
 Output structure:
+
 ```
 ## Test Plan: <scope summary>
 Risk: N critical, N high, N medium, N low

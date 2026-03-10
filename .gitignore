@@ -69,3 +69,5 @@ telemetry
 
 # Skills workspaces
 /skills/*-workspace/
+.credentials.json
+policy-limits.json

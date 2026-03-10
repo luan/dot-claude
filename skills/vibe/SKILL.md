@@ -8,7 +8,7 @@ user-invocable: true
 
 # Vibe
 
-Run the full pipeline (scope → develop → commit) from a single prompt.
+Run the full pipeline (scope → develop → simplify → review → commit) from a single prompt.
 
 ## Arguments
 
@@ -22,9 +22,10 @@ If no prompt and no `--continue` → tell user: `/vibe <what to build>`, stop.
 ## Resume (`--continue`)
 
 1. `TaskList()` → find task with `metadata.vibe_stage` present and `status == "in_progress"`
-2. Read `metadata.vibe_stage` for resume point, `metadata.vibe_prompt` as prompt
-3. Skip to the stage after `vibe_stage`
-4. Not found → tell user no pipeline to resume, stop
+2. If multiple matches: filter by `metadata.session_id` matching the current session (from compaction recovery context or session state). Ignore trackers from other sessions.
+3. Read `metadata.vibe_stage` for resume point, `metadata.vibe_prompt` as prompt
+4. Skip to the stage after `vibe_stage`
+5. Not found → tell user no pipeline to resume, stop
 
 ## Fresh Start
 
@@ -33,7 +34,7 @@ TaskCreate(
   subject: "Vibe: <prompt (truncated 60 chars)>",
   description: "<full prompt>",
   activeForm: "Vibing",
-  metadata: { type: "epic", priority: "P2", vibe_prompt: "<full prompt>", vibe_stage: "started" }
+  metadata: { type: "epic", priority: "P2", vibe_prompt: "<full prompt>", vibe_stage: "started", session_id: "424c8b3a-c116-4af4-acc9-3bcf312910c5" }
 )
 TaskUpdate(taskId, status: "in_progress", owner: "vibe")
 ```
@@ -42,25 +43,29 @@ TaskUpdate(taskId, status: "in_progress", owner: "vibe")
 
 Run stages sequentially in one continuous turn — **never pause, summarize, or wait for user input between stages.** Before each stage, output the stage announcement (`[N/M] Stage`) as text BEFORE the `Skill()` invocation. After each succeeds, update `metadata.vibe_stage` and immediately invoke the next stage.
 
-**Stage numbering `[N/M]`:** M = total stages that will actually run. Base: 4 (branch, scope, develop, commit). Subtract skipped stages: `--no-branch` → 3, `--dry-run` → 2 (or 1 with both flags). N counts only executed stages, not skipped ones.
+**Stage numbering `[N/M]`:** M = total stages that will actually run. Base: 6 (branch, scope, develop, simplify, review, commit). Subtract skipped stages: `--no-branch` → 5, `--dry-run` → 2 (or 1 with both flags). N counts only executed stages, not skipped ones.
 
 ### Branch (skip if `--no-branch` or already on non-main branch)
 
-Generate slug: `ct tool slug "<prompt>"`. `Skill("start", args="` !`echo "${GIT_USERNAME:-$(whoami)}"` `/<slug>")`
+Generate slug: `ct tool slug "<prompt>"`. `Skill("start", args="` !`echo "${GIT_USERNAME:-$(whoami)}"` `/<slug> <trackerId>")`
+
+Pass the tracker task ID as the second arg so `/start` links to it instead of asking to create a new task.
 
 **Verify**: `git branch --show-current` returns new branch. **Update**: `vibe_stage: "branch"`
 
+→ **Immediately invoke Scope.** Ignore any suggestions from `/start` — the pipeline continues without pause.
+
 ### Scope
 
-`Skill("scope", args="<prompt> --no-develop --auto-approve")`
+`Skill("scope", args="<prompt> --no-develop --auto")`
 
-`--auto-approve` skips BOTH scope's spec and plan review gates — scope produces and stores both artifacts, auto-approving each instead of stopping for feedback. Without this flag, `/scope` would halt twice: once for spec approval, once for plan approval.
+`--auto` skips BOTH scope's spec and plan review gates — scope produces and stores both artifacts, auto-approving each instead of stopping for feedback. Without this flag, `/scope` would halt twice: once for spec approval, once for plan approval.
 
-**Verify**: `TaskList()` → scope task with `status_detail === "approved"` and `metadata.design` populated. **Update**: `vibe_stage: "scope"`
+**Verify**: `TaskList()` → scope task with `status_detail === "approved"`, `metadata.spec` and `metadata.design` populated. **Update**: `vibe_stage: "scope"`
 
 If `--dry-run` → stop here. Output "Dry run complete." then report scope task, suggest `/develop` or `/vibe --continue`.
 
-→ **Immediately invoke Develop.** Do NOT output scope results, pause, or wait for user input — scope already gated its output via auto-approve.
+→ **Immediately invoke Develop.** Do NOT output scope results, pause, or wait for user input — scope already gated its output via --auto.
 
 ### Develop
 
@@ -70,7 +75,29 @@ Note: Acceptance check runs automatically as part of develop teardown.
 
 **Verify**: `TaskList()` → filter children of the epic. Assert every child has `status === "completed"`. If any child is `in_progress` or `failed`, the stage is incomplete — do not proceed to commit. **Update**: `vibe_stage: "develop"`, `vibe_epic: "<epicId>"`, `vibe_slug: "<slug>"`
 
-Partial task failures: if any child is still `in_progress` (worker crashed mid-implementation), the stage is incomplete. Report per-child status: task ID, title, status (completed/in_progress/failed). Suggest `/vibe --continue` or `/develop` to retry. Only proceed to commit if all children completed OR all incomplete children produced no diff.
+Partial task failures: if any child is still `in_progress` (worker crashed mid-implementation), the stage is incomplete. Report per-child status: task ID, title, status (completed/in_progress/failed). Suggest `/vibe --continue` or `/develop` to retry. Only proceed to simplify if all children completed OR all incomplete children produced no diff.
+
+→ **Immediately invoke Simplify.**
+
+### Simplify
+
+`Skill("simplify")`
+
+Simplify reviews changed code for reuse, quality, and efficiency, then fixes issues it finds.
+
+**Update**: `vibe_stage: "simplify"`
+
+→ **Immediately invoke Review.**
+
+### Review
+
+`Skill("review")`
+
+Review performs adversarial code review. If review surfaces issues that simplify missed, fix them inline before proceeding.
+
+**Update**: `vibe_stage: "review"`
+
+→ **Immediately invoke Commit.**
 
 ### Commit
 

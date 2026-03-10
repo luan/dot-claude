@@ -9,8 +9,12 @@ use std::path::Path;
 
 use crate::editor;
 use crate::plan;
-use crate::store::{Status, Store, Task, TaskList};
-use crate::ui::{confirm, create, detail, help, list, plan_detail, plans, status, theme};
+use crate::spec;
+use crate::store::{self, Status, Store, Task, TaskList};
+use crate::ui::{
+    confirm, create, detail, help, list, plan_detail, plans, spec_detail, specs, status, theme,
+    vibe, vibe_detail,
+};
 
 fn truncate_at_char_boundary(s: &str, max_bytes: usize) -> &str {
     if s.len() <= max_bytes {
@@ -27,6 +31,8 @@ fn truncate_at_char_boundary(s: &str, max_bytes: usize) -> &str {
 enum Tab {
     Tasks,
     Plans,
+    Specs,
+    Vibe,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -38,6 +44,10 @@ enum Screen {
     Create,
     Plans,
     PlanDetail,
+    Specs,
+    SpecDetail,
+    Vibe,
+    VibeDetail,
     Help,
 }
 
@@ -56,6 +66,10 @@ pub struct App {
     create_form: Option<create::CreateState>,
     plans_state: Option<plans::PlansState>,
     plan_detail: Option<plan_detail::PlanDetailState>,
+    specs_state: Option<specs::SpecsState>,
+    spec_detail: Option<spec_detail::SpecDetailState>,
+    vibe_state: Option<vibe::VibeState>,
+    vibe_detail: Option<vibe_detail::VibeDetailState>,
     help_scroll: u16,
     status_msg: String,
     pub should_quit: bool,
@@ -83,6 +97,10 @@ impl App {
             .into_iter()
             .filter(|p| !p.project.is_empty())
             .collect();
+        let vibe_trackers: Vec<Task> = store::find_vibe_trackers(&tasks)
+            .into_iter()
+            .cloned()
+            .collect();
         Self {
             store,
             active_list,
@@ -98,6 +116,10 @@ impl App {
             create_form: None,
             plans_state: Some(plans::PlansState::new(all_plans)),
             plan_detail: None,
+            specs_state: Some(specs::SpecsState::new(spec::list_specs())),
+            spec_detail: None,
+            vibe_state: Some(vibe::VibeState::new(vibe_trackers)),
+            vibe_detail: None,
             help_scroll: 0,
             status_msg: String::new(),
             should_quit: false,
@@ -120,6 +142,8 @@ impl App {
             && self.screen != Screen::Help
             && !self.list.searching
             && !self.plans_state.as_ref().is_some_and(|p| p.searching)
+            && !self.specs_state.as_ref().is_some_and(|s| s.searching)
+            && !self.vibe_state.as_ref().is_some_and(|v| v.searching)
         {
             self.prev_screen = self.screen;
             self.help_scroll = 0;
@@ -151,6 +175,10 @@ impl App {
             Screen::Create => self.handle_create_key(key),
             Screen::Plans => self.handle_plans_key(key),
             Screen::PlanDetail => self.handle_plan_detail_key(key),
+            Screen::Specs => self.handle_specs_key(key),
+            Screen::SpecDetail => self.handle_spec_detail_key(key),
+            Screen::Vibe => self.handle_vibe_key(key),
+            Screen::VibeDetail => self.handle_vibe_detail_key(key),
             Screen::Help => {} // handled above
         }
     }
@@ -260,8 +288,11 @@ impl App {
                 self.status_msg = "Reloaded".to_string();
             }
             KeyCode::Char('L') => self.cycle_task_list(),
-            KeyCode::Tab | KeyCode::Char('2') => self.switch_tab(Tab::Plans),
+            KeyCode::Tab => self.switch_tab(Tab::Plans),
             KeyCode::Char('1') => self.switch_tab(Tab::Tasks),
+            KeyCode::Char('2') => self.switch_tab(Tab::Plans),
+            KeyCode::Char('3') => self.switch_tab(Tab::Specs),
+            KeyCode::Char('4') => self.switch_tab(Tab::Vibe),
             KeyCode::Char('z') if self.list.tree_view => {
                 self.list.pending_z = true;
             }
@@ -421,6 +452,13 @@ impl App {
                     branch: String::new(),
                     status_detail: String::new(),
                     project: String::new(),
+                    plan_file: String::new(),
+                    spec_file: String::new(),
+                    slug: String::new(),
+                    vibe_stage: String::new(),
+                    vibe_epic: String::new(),
+                    vibe_prompt: String::new(),
+                    session_id: String::new(),
                     raw: serde_json::Value::Null,
                 };
 
@@ -474,8 +512,11 @@ impl App {
 
         match key.code {
             KeyCode::Char('q') => self.should_quit = true,
-            KeyCode::Tab | KeyCode::Char('1') => self.switch_tab(Tab::Tasks),
+            KeyCode::Tab => self.switch_tab(Tab::Specs),
+            KeyCode::Char('1') => self.switch_tab(Tab::Tasks),
             KeyCode::Char('2') => self.switch_tab(Tab::Plans),
+            KeyCode::Char('3') => self.switch_tab(Tab::Specs),
+            KeyCode::Char('4') => self.switch_tab(Tab::Vibe),
             KeyCode::Char('j') | KeyCode::Down => ps.next(),
             KeyCode::Char('k') | KeyCode::Up => ps.prev(),
             KeyCode::Char('g') => ps.home(),
@@ -535,11 +576,206 @@ impl App {
         }
     }
 
+    fn handle_specs_key(&mut self, key: KeyEvent) {
+        let Some(ss) = &mut self.specs_state else {
+            return;
+        };
+
+        if ss.searching {
+            match key.code {
+                KeyCode::Esc => {
+                    ss.searching = false;
+                    ss.query.clear();
+                    ss.search_input.clear();
+                    ss.filter();
+                }
+                KeyCode::Enter => {
+                    ss.searching = false;
+                }
+                KeyCode::Backspace => {
+                    ss.search_input.pop();
+                    ss.query = ss.search_input.clone();
+                    ss.filter();
+                }
+                KeyCode::Char(c) => {
+                    ss.search_input.push(c);
+                    ss.query = ss.search_input.clone();
+                    ss.filter();
+                }
+                _ => {}
+            }
+            return;
+        }
+
+        match key.code {
+            KeyCode::Char('q') => self.should_quit = true,
+            KeyCode::Tab => self.switch_tab(Tab::Vibe),
+            KeyCode::Char('1') => self.switch_tab(Tab::Tasks),
+            KeyCode::Char('2') => self.switch_tab(Tab::Plans),
+            KeyCode::Char('3') => self.switch_tab(Tab::Specs),
+            KeyCode::Char('4') => self.switch_tab(Tab::Vibe),
+            KeyCode::Char('j') | KeyCode::Down => ss.next(),
+            KeyCode::Char('k') | KeyCode::Up => ss.prev(),
+            KeyCode::Char('g') => ss.home(),
+            KeyCode::Char('G') => ss.end(),
+            KeyCode::Char('A') => ss.cycle_source(),
+            KeyCode::Char('e') if ss.source == specs::SpecSource::Active => {
+                if let Some(s) = ss.selected_spec().cloned() {
+                    let path = s.path.to_string_lossy().to_string();
+                    self.prev_screen = self.screen;
+                    self.editor_request = Some(EditorRequest {
+                        path,
+                        task_id: String::new(),
+                        list_id: String::new(),
+                    });
+                }
+            }
+            KeyCode::Char('/') => {
+                ss.searching = true;
+                ss.search_input.clear();
+                ss.query.clear();
+            }
+            KeyCode::Enter => {
+                if let Some(s) = ss.selected_spec().cloned() {
+                    self.spec_detail = Some(spec_detail::SpecDetailState::new(s));
+                    self.screen = Screen::SpecDetail;
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_spec_detail_key(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Char('q') => self.should_quit = true,
+            KeyCode::Esc => self.screen = Screen::Specs,
+            KeyCode::Char('j') | KeyCode::Down => {
+                if let Some(sd) = &mut self.spec_detail {
+                    sd.scroll_down();
+                }
+            }
+            KeyCode::Char('k') | KeyCode::Up => {
+                if let Some(sd) = &mut self.spec_detail {
+                    sd.scroll_up();
+                }
+            }
+            KeyCode::Char(' ') | KeyCode::PageDown => {
+                if let Some(sd) = &mut self.spec_detail {
+                    sd.page_down(10);
+                }
+            }
+            KeyCode::Char('b') | KeyCode::PageUp => {
+                if let Some(sd) = &mut self.spec_detail {
+                    sd.page_up(10);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_vibe_key(&mut self, key: KeyEvent) {
+        let Some(vs) = &mut self.vibe_state else {
+            return;
+        };
+
+        if vs.searching {
+            match key.code {
+                KeyCode::Esc => {
+                    vs.searching = false;
+                    vs.query.clear();
+                    vs.search_input.clear();
+                    vs.filter();
+                }
+                KeyCode::Enter => {
+                    vs.searching = false;
+                }
+                KeyCode::Backspace => {
+                    vs.search_input.pop();
+                    vs.query = vs.search_input.clone();
+                    vs.filter();
+                }
+                KeyCode::Char(c) => {
+                    vs.search_input.push(c);
+                    vs.query = vs.search_input.clone();
+                    vs.filter();
+                }
+                _ => {}
+            }
+            return;
+        }
+
+        match key.code {
+            KeyCode::Char('q') => self.should_quit = true,
+            KeyCode::Tab => self.switch_tab(Tab::Tasks),
+            KeyCode::Char('1') => self.switch_tab(Tab::Tasks),
+            KeyCode::Char('2') => self.switch_tab(Tab::Plans),
+            KeyCode::Char('3') => self.switch_tab(Tab::Specs),
+            KeyCode::Char('4') => self.switch_tab(Tab::Vibe),
+            KeyCode::Char('j') | KeyCode::Down => vs.next(),
+            KeyCode::Char('k') | KeyCode::Up => vs.prev(),
+            KeyCode::Char('g') => vs.home(),
+            KeyCode::Char('G') => vs.end(),
+            KeyCode::Char('A') => {
+                vs.show_completed = !vs.show_completed;
+                vs.filter();
+            }
+            KeyCode::Char('/') => {
+                vs.searching = true;
+                vs.search_input.clear();
+                vs.query.clear();
+            }
+            KeyCode::Enter => {
+                if let Some(tracker) = vs.selected_vibe().cloned() {
+                    let children: Vec<Task> = store::find_vibe_children(
+                        &self.store.list_tasks(&self.active_list),
+                        &tracker.id,
+                    )
+                    .into_iter()
+                    .cloned()
+                    .collect();
+                    self.vibe_detail = Some(vibe_detail::VibeDetailState::new(tracker, children));
+                    self.screen = Screen::VibeDetail;
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_vibe_detail_key(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Char('q') => self.should_quit = true,
+            KeyCode::Esc => self.screen = Screen::Vibe,
+            KeyCode::Char('j') | KeyCode::Down => {
+                if let Some(vd) = &mut self.vibe_detail {
+                    vd.scroll_down();
+                }
+            }
+            KeyCode::Char('k') | KeyCode::Up => {
+                if let Some(vd) = &mut self.vibe_detail {
+                    vd.scroll_up();
+                }
+            }
+            KeyCode::Char(' ') | KeyCode::PageDown => {
+                if let Some(vd) = &mut self.vibe_detail {
+                    vd.page_down(10);
+                }
+            }
+            KeyCode::Char('b') | KeyCode::PageUp => {
+                if let Some(vd) = &mut self.vibe_detail {
+                    vd.page_up(10);
+                }
+            }
+            _ => {}
+        }
+    }
+
     fn switch_tab(&mut self, tab: Tab) {
         self.active_tab = tab;
         self.screen = match tab {
             Tab::Tasks => Screen::List,
             Tab::Plans => Screen::Plans,
+            Tab::Specs => Screen::Specs,
+            Tab::Vibe => Screen::Vibe,
         };
     }
 
@@ -718,6 +954,28 @@ impl App {
             let task_id = d.task.id.clone();
             self.refresh_detail(&task_id);
         }
+
+        // Refresh vibe state
+        let all_tasks = self.store.list_tasks(&self.active_list);
+        let vibe_trackers: Vec<Task> = store::find_vibe_trackers(&all_tasks)
+            .into_iter()
+            .cloned()
+            .collect();
+        if let Some(vs) = &mut self.vibe_state {
+            let prev_show = vs.show_completed;
+            let prev_query = vs.query.clone();
+            let prev_selected = vs.table_state.selected();
+            *vs = vibe::VibeState::new(vibe_trackers);
+            vs.show_completed = prev_show;
+            vs.query = prev_query.clone();
+            vs.search_input = prev_query;
+            vs.filter();
+            if let Some(idx) = prev_selected
+                && idx < vs.filtered.len()
+            {
+                vs.table_state.select(Some(idx));
+            }
+        }
     }
 
     pub fn reload_plans(&mut self) {
@@ -858,12 +1116,95 @@ impl App {
                 }
                 self.render_footer(f, footer_area, "j/k:scroll  space/b:page  esc:back  q:quit");
             }
+            Screen::Specs => {
+                self.render_tab_header(f, header_area);
+                if let Some(ss) = &self.specs_state {
+                    specs::render_specs_filter_bar(f, filter_bar_area, ss);
+                }
+                if let Some(ss) = &mut self.specs_state {
+                    specs::render_specs(f, body_area, ss);
+                }
+                self.render_footer(
+                    f,
+                    footer_area,
+                    "j/k:move  enter:open  e:edit  /:search  A:source  tab/1:tasks  q:quit",
+                );
+            }
+            Screen::SpecDetail => {
+                let title = self
+                    .spec_detail
+                    .as_ref()
+                    .map(|sd| {
+                        let t = if sd.spec.title.is_empty() {
+                            &sd.spec.name
+                        } else {
+                            &sd.spec.title
+                        };
+                        if t.chars().count() > 40 {
+                            format!("{}...", truncate_at_char_boundary(t, 37))
+                        } else {
+                            t.clone()
+                        }
+                    })
+                    .unwrap_or_default();
+                self.render_header(f, header_area, &title);
+                let _ = filter_bar_area;
+                if let Some(sd) = &self.spec_detail {
+                    spec_detail::render_spec_detail(f, body_area, sd);
+                }
+                self.render_footer(f, footer_area, "j/k:scroll  space/b:page  esc:back  q:quit");
+            }
+            Screen::Vibe => {
+                self.render_tab_header(f, header_area);
+                if let Some(vs) = &self.vibe_state {
+                    vibe::render_vibes_filter_bar(f, filter_bar_area, vs);
+                }
+                if let Some(vs) = &mut self.vibe_state {
+                    vibe::render_vibes(f, body_area, vs);
+                }
+                self.render_footer(
+                    f,
+                    footer_area,
+                    "j/k:move  enter:open  /:search  A:completed  tab/1:tasks  ?:help  q:quit",
+                );
+            }
+            Screen::VibeDetail => {
+                let title = self
+                    .vibe_detail
+                    .as_ref()
+                    .map(|vd| {
+                        let t = &vd.tracker.vibe_prompt;
+                        if t.chars().count() > 40 {
+                            format!("{}...", truncate_at_char_boundary(t, 37))
+                        } else {
+                            t.clone()
+                        }
+                    })
+                    .unwrap_or_default();
+                self.render_header(f, header_area, &title);
+                let _ = filter_bar_area;
+                if let Some(vd) = &self.vibe_detail {
+                    vibe_detail::render_vibe_detail(f, body_area, vd);
+                }
+                self.render_footer(f, footer_area, "j/k:scroll  space/b:page  esc:back  q:quit");
+            }
             Screen::Help => {
                 self.render_header(f, header_area, "help");
                 let _ = filter_bar_area;
+                let specs_ctx =
+                    self.prev_screen == Screen::Specs || self.prev_screen == Screen::SpecDetail;
                 let plans_ctx =
                     self.prev_screen == Screen::Plans || self.prev_screen == Screen::PlanDetail;
-                self.help_scroll = help::render_help(f, body_area, self.help_scroll, plans_ctx);
+                let vibe_ctx =
+                    self.prev_screen == Screen::Vibe || self.prev_screen == Screen::VibeDetail;
+                self.help_scroll = help::render_help(
+                    f,
+                    body_area,
+                    self.help_scroll,
+                    plans_ctx,
+                    specs_ctx,
+                    vibe_ctx,
+                );
                 self.render_footer(f, footer_area, "j/k:scroll  g/G:top/bottom  ?/esc:close");
             }
         }
@@ -873,23 +1214,40 @@ impl App {
         let brand = " ck ";
         let tasks_label = "[ 1 Tasks ]";
         let plans_label = "[ 2 Plans ]";
+        let specs_label = "[ 3 Specs ]";
+        let vibe_label = "[ 4 Vibe ]";
         let sep = "  ";
 
         let brand_width = brand.len() as u16;
-        let tabs_width = (tasks_label.len() + sep.len() + plans_label.len()) as u16;
+        let tabs_width = (tasks_label.len()
+            + sep.len()
+            + plans_label.len()
+            + sep.len()
+            + specs_label.len()
+            + sep.len()
+            + vibe_label.len()) as u16;
         let gap = area.width.saturating_sub(brand_width + tabs_width);
 
-        let (tasks_style, plans_style) = match self.active_tab {
-            Tab::Tasks => (theme::header_style(), theme::header_dim_style()),
-            Tab::Plans => (theme::header_dim_style(), theme::header_style()),
+        let dim = theme::header_dim_style();
+        let bright = theme::header_style();
+        let (tasks_style, plans_style, specs_style, vibe_style) = match self.active_tab {
+            Tab::Tasks => (bright, dim, dim, dim),
+            Tab::Plans => (dim, bright, dim, dim),
+            Tab::Specs => (dim, dim, bright, dim),
+            Tab::Vibe => (dim, dim, dim, bright),
         };
 
+        let sep_style = Style::default().bg(theme::ACCENT);
         let line = Line::from(vec![
-            Span::styled(brand, theme::header_style()),
-            Span::styled(" ".repeat(gap as usize), Style::default().bg(theme::ACCENT)),
+            Span::styled(brand, bright),
+            Span::styled(" ".repeat(gap as usize), sep_style),
             Span::styled(tasks_label, tasks_style),
-            Span::styled(sep, Style::default().bg(theme::ACCENT)),
+            Span::styled(sep, sep_style),
             Span::styled(plans_label, plans_style),
+            Span::styled(sep, sep_style),
+            Span::styled(specs_label, specs_style),
+            Span::styled(sep, sep_style),
+            Span::styled(vibe_label, vibe_style),
         ]);
         f.render_widget(line, area);
     }

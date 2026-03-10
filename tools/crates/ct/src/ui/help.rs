@@ -26,6 +26,7 @@ const TASK_SECTIONS: &[Section] = &[
         keys: &[
             ("tab / 2", "switch to Plans tab"),
             ("1", "switch to Tasks tab"),
+            ("3", "switch to Specs tab"),
         ],
     },
     Section {
@@ -91,7 +92,8 @@ const PLAN_SECTIONS: &[Section] = &[
     Section {
         title: "Tabs",
         keys: &[
-            ("tab / 1", "switch to Tasks tab"),
+            ("tab / 3", "switch to Specs tab"),
+            ("1", "switch to Tasks tab"),
             ("2", "switch to Plans tab"),
         ],
     },
@@ -117,6 +119,83 @@ const PLAN_SECTIONS: &[Section] = &[
     Section {
         title: "Other",
         keys: &[("R", "reload from disk"), ("?", "toggle this help")],
+    },
+];
+
+const VIBE_SECTIONS: &[Section] = &[
+    Section {
+        title: "Navigation",
+        keys: &[
+            ("j/k", "move up / down"),
+            ("enter", "open vibe detail"),
+            ("esc", "back"),
+            ("q", "quit"),
+        ],
+    },
+    Section {
+        title: "Tabs",
+        keys: &[
+            ("tab / 1", "switch to Tasks tab"),
+            ("2", "switch to Plans tab"),
+            ("3", "switch to Specs tab"),
+            ("4", "switch to Vibe tab"),
+        ],
+    },
+    Section {
+        title: "Filters",
+        keys: &[("A", "toggle completed"), ("/", "search by prompt / stage")],
+    },
+    Section {
+        title: "Vibe detail",
+        keys: &[
+            ("j/k", "scroll"),
+            ("space / b", "page down / up"),
+            ("esc", "back to list"),
+        ],
+    },
+    Section {
+        title: "Other",
+        keys: &[("?", "toggle this help")],
+    },
+];
+
+const SPEC_SECTIONS: &[Section] = &[
+    Section {
+        title: "Navigation",
+        keys: &[
+            ("j/k", "move up / down"),
+            ("enter", "open spec"),
+            ("esc", "back"),
+            ("q", "quit"),
+        ],
+    },
+    Section {
+        title: "Tabs",
+        keys: &[
+            ("tab / 1", "switch to Tasks tab"),
+            ("2", "switch to Plans tab"),
+            ("3", "switch to Specs tab"),
+        ],
+    },
+    Section {
+        title: "Actions",
+        keys: &[("e", "edit in $EDITOR (active only)")],
+    },
+    Section {
+        title: "Filters",
+        keys: &[("A", "cycle: active / archived"), ("/", "search by title")],
+    },
+    Section {
+        title: "Spec detail",
+        keys: &[
+            ("j/k", "scroll"),
+            ("space / b", "page down / up"),
+            ("esc", "back to list"),
+        ],
+    },
+    Section {
+        title: "Other",
+        keys: &[("?", "toggle this help")],
     },
 ];
 
@@ -200,11 +279,19 @@ fn render_sections(f: &mut Frame, area: Rect, sections: &[Section], scroll: u16)
     clamped
 }
 
-/// Render context-sensitive help in two columns with scroll.
-/// `plans_context`: true when help was opened from the Plans tab.
-/// Returns clamped scroll position.
-pub fn render_help(f: &mut Frame, area: Rect, scroll: u16, plans_context: bool) -> u16 {
-    if plans_context {
+pub fn render_help(
+    f: &mut Frame,
+    area: Rect,
+    scroll: u16,
+    plans_context: bool,
+    specs_context: bool,
+    vibe_context: bool,
+) -> u16 {
+    if vibe_context {
+        render_sections(f, area, VIBE_SECTIONS, scroll)
+    } else if specs_context {
+        render_sections(f, area, SPEC_SECTIONS, scroll)
+    } else if plans_context {
         render_sections(f, area, PLAN_SECTIONS, scroll)
     } else {
         render_sections(f, area, TASK_SECTIONS, scroll)

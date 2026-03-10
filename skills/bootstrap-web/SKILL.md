@@ -1,7 +1,7 @@
 ---
 name: bootstrap-web
 description: "Bootstrap a new web project with the preferred stack. Triggers: 'bootstrap web', 'new webapp', 'scaffold project', 'new web project'."
-argument-hint: "<project-name> [description]"
+argument-hint: "<project-name> [description] [--auto]"
 user-invocable: true
 disable-model-invocation: true
 ---
@@ -40,17 +40,19 @@ Before writing files, research current state via WebSearch/context7. For each to
 7. **Animation** — lightweight Tailwind animation approach
 8. **Testing** — Vitest + `@testing-library/svelte` + jsdom still needed?
 
-Summarize findings as a decision list. Clear winners → proceed. Close calls → AskUserQuestion.
+Summarize findings as a decision list. Clear winners → proceed. `--auto` → pick the leading option for close calls. Without `--auto` → close calls → AskUserQuestion.
 
 ## Design Interview
 
-After research, interview user via AskUserQuestion:
+`--auto` → skip interview, use defaults: minimal tone, cool+muted colors, sans+formal typography.
+
+Without `--auto`, interview user via AskUserQuestion:
 
 1. **Tone** — minimal, bold, playful, editorial, brutalist, etc. (or own words)
 2. **Color direction** — warm/cool, muted/vibrant, monochrome/colorful, or "surprise me"
 3. **Typography** — serif, sans, mono, mixed; formal vs casual
 
-Use answers to select fonts (Google Fonts), build OKLCH palette, shape layout per `/frontend-design` principles.
+Use answers (or defaults) to select fonts (Google Fonts), build OKLCH palette, shape layout per `/frontend-design` principles.
 
 ## Scaffold
 

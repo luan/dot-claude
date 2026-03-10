@@ -1,7 +1,7 @@
 ---
 name: scope
 description: "Research an existing codebase and create phased implementation tasks with design context. Triggers: 'scope', 'research', 'investigate', 'design', 'architect', 'plan a feature', 'how does X work', 'figure out', 'best way to', 'state of the art', 'which lib/tool', 'create tasks from plan'. Also use when an implementation request contains an unresolved technology choice. Do NOT use when: the user wants to brainstorm design options for a greenfield feature — use /brainstorm instead."
-argument-hint: "<prompt> [--continue] [--no-develop] [--auto-approve]"
+argument-hint: "<prompt> [--continue] [--no-develop] [--auto]"
 user-invocable: true
 allowed-tools:
   - Task
@@ -59,7 +59,6 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
 ### Spec Phase (what we're building)
 
 4. **Synthesize spec** from validated research. The spec is a **timeless target-state document** — after implementation it should read as a valid specification of the system, not as a dated change request. Write it as if the system already works this way.
-
    - **Problem**: what's broken or missing — the only section that may describe current broken state. This is motivational context explaining WHY the spec exists.
    - **Recommendation**: the target behavior in present tense. Strategy-level — WHY this approach, not WHAT code to change. "Webhook delivery uses exponential backoff via BullMQ" not "Add exponential backoff to webhook delivery." Avoid transition verbs (add, replace, migrate, move, change X to Y) — those describe what to DO, not what the system IS.
    - **Architecture Context**: describe the relevant code landscape in present tense, as it will look post-implementation. Module roles, patterns, architectural layers — not hardcoded file paths. Describe components by what they do ("the webhook delivery module", "the job queue infrastructure"), not by path. If paths help orient the reader, include them parenthetically, but the description must stand without them. No Modify/Create annotations, no files-to-create, no change descriptions.
@@ -67,52 +66,56 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
 
    The spec does NOT include: implementation phases, step-by-step approaches, task breakdowns, files to create/modify, or specific code changes (e.g., "add Codable conformance to X", "create Y.swift", "SyncChangeQueue.swift — add persistence backing"). Those belong to the plan.
 
-5. **Store spec:**
+5. **Codex review (spec):** Run codex adversarial review on the spec before storing. See [Codex Review](#codex-review) for invocation. Prompt: review for gaps, ambiguities, missing edge cases, feasibility risks. "This is a WHAT document — do NOT suggest implementation details." If high-severity issues are actionable, revise the spec. Best-effort — if codex fails, proceed.
+
+6. **Store spec:**
    - `SPEC_FILE=$(echo "<spec content>" | ct spec create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "scope" 2>/dev/null)`
    - `TaskUpdate(taskId, metadata: {spec: "<spec content>", spec_file: "$SPEC_FILE" (omit if empty), status_detail: "spec_review"})`
 
-6. **Present spec** — output as conversation text:
+7. **Present spec** — output as conversation text:
    - `Spec: t<id> — <topic>`
    - Problem statement
    - Recommendation + rationale
    - Architecture context (code landscape)
    - Risks and constraints
 
-   If `--auto-approve` → skip to step 8.
+   If `--auto` → skip to step 9.
    Otherwise → stop for user review.
 
-7. **Spec refinement** — if user gives feedback:
+8. **Spec refinement** — if user gives feedback:
    - **Minor (no new research needed):** Revise spec from stored research + feedback. TaskUpdate revised metadata.spec. If metadata.spec_file → overwrite it by writing to the existing path. Do NOT run `ct spec create` again — that generates a new file and orphans the reference in metadata.spec_file. status_detail stays `"spec_review"`.
    - **Major (user references unexplored code or new approach):** Dispatch follow-up research subagent with current spec as context. Merge findings. TaskUpdate merged spec. Overwrite spec_file if set.
    - Re-present. Repeat until user approves.
    - Always persist changes to metadata.spec before re-presenting.
 
-8. **Approve spec:** `TaskUpdate(taskId, metadata: {status_detail: "spec_approved"})`.
+9. **Approve spec:** `TaskUpdate(taskId, metadata: {status_detail: "spec_approved"})`.
 
 ### Plan Phase (how we're building it)
 
-9. **Generate plan** from approved spec + research findings. The plan is the HOW — phased implementation approach:
-   - Per phase: title, files (Read/Modify/Create), approach, steps
-   - Dependencies between phases
-   - Research Next Steps must include file paths — develop depends on them.
+10. **Generate plan** from approved spec + research findings. The plan is the HOW — phased implementation approach:
+    - Per phase: title, files (Read/Modify/Create), approach, steps
+    - Dependencies between phases
+    - Research Next Steps must include file paths — develop depends on them.
 
-10. **Store plan:**
+11. **Codex review (plan):** Run codex adversarial review on the plan. See [Codex Review](#codex-review) for invocation. Prompt: review for spec coverage gaps, missing phases, dependency issues, feasibility risks. "The approved spec is: \<metadata.spec\>. Does this plan fully implement it?" If high-severity issues are actionable, revise the plan. Best-effort.
+
+12. **Store plan:**
     1. If a previous metadata.plan_file exists from a prior scope run for this project, archive it first: `ct plan archive <old_plan_file> 2>/dev/null`
     2. `PLAN_FILE=$(echo "<plan content>" | ct plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "scope" 2>/dev/null)`
     3. `TaskUpdate(taskId, metadata: {design: "<plan content>", plan_file: "$PLAN_FILE" (omit if empty), status_detail: "review"})`
 
     The design field must be substantive — full phased breakdown with file paths, approaches. If a reader can't understand the plan from metadata.design alone, it's too sparse.
 
-11. **Present plan** — output as conversation text:
+13. **Present plan** — output as conversation text:
     - `Plan: t<id> — <topic>`
     - Phased approach — per phase: title, files (Read/Modify/Create), approach
     - Dependencies
     - `Next: /develop t<id>`
 
-    If `--auto-approve` → skip to step 13.
+    If `--auto` → skip to step 15.
     Otherwise → stop for user review.
 
-12. **Plan refinement** — if user gives feedback:
+14. **Plan refinement** — if user gives feedback:
     - **Minor (no new files needed):** Revise from stored plan + feedback. TaskUpdate revised metadata.design.
       If metadata.plan_file → overwrite it by writing to the existing path. Do NOT run `ct plan create` again — that generates a new file and orphans the reference in metadata.plan_file.
     - **Major (new codebase data required):** If the user references unexplored code, asks to research something, or introduces a new architectural approach — dispatch a follow-up subagent with `metadata.design` as prior findings verbatim in the prompt. Merge new + prior. TaskUpdate merged design. Overwrite plan_file if set. When in doubt, dispatch.
@@ -120,28 +123,48 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
     - Re-present. Repeat until user approves.
     - Always persist changes to metadata before re-presenting — develop reads stored artifacts, not conversation context. Stale artifacts = wrong plan.
 
-13. **Approve plan and finalize:**
+15. **Approve plan and finalize:**
     - `TaskUpdate(taskId, metadata: {status_detail: "approved"})`.
-    - **Spec-to-repo option:** AskUserQuestion — "Save spec as a file in the repo?" If yes: write spec content to `docs/specs/<slug>.md` (or project-appropriate path). The spec already exists in `$HOME/.claude/specs/` — this copies it into the project tree so it can be committed alongside implementation files.
+    - **Spec-to-repo option:** `--auto` → skip (don't save to repo). Without `--auto` → AskUserQuestion — "Save spec as a file in the repo?" If yes: write spec content to `docs/specs/<slug>.md` (or project-appropriate path). The spec already exists in `$HOME/.claude/specs/` — this copies it into the project tree so it can be committed alongside implementation files.
     - If `--no-develop` → report scope task ID, stop.
     - Otherwise → `Skill("develop", "t<scopeTaskId>")`.
+
+## Codex Review
+
+Adversarial review gate using OpenAI Codex. Runs before storing each artifact (spec and plan). Codex has codebase access via read-only sandbox, so it can validate claims against actual code.
+
+**Invocation pattern:**
+```bash
+echo "<content to review>" | codex exec \
+  --sandbox read-only --ephemeral \
+  -C "$(git rev-parse --show-toplevel)" \
+  -o /tmp/codex-review-output.txt \
+  "Review prompt here. Content to review follows on stdin." -
+```
+
+Key flags: `--sandbox read-only` (safe codebase access), `--ephemeral` (no session persistence), `-C` (project root for context), `-o` (capture output to file), `-` (read prompt/content from stdin). Do NOT pass `-m` — let it use the user's configured default model.
+
+**Timeout:** 120s. If codex hangs or errors, log the failure and proceed — codex review is best-effort, never a blocker.
+
+**Incorporating feedback:** Read the output file. High-severity actionable issues → revise the artifact before storing. Low/med issues or issues that are intentional design choices → note them but don't block. If codex finds no issues, proceed as normal.
 
 ## Continuation (--continue)
 
 Resolve task: argument → task ID; bare → TaskList `type === "scope"`, `status_detail` in `["spec_review", "review", "approved"]`, most recent. Extract relevant metadata.
 
 - `status_detail === "approved"` → already approved. `Skill("develop", "t<taskId>")`.
-- `status_detail === "spec_review"` → if metadata.spec_file is set, read content via `ct spec read <spec_file>`; otherwise use metadata.spec. Re-present spec. Resume from step 6.
-- `status_detail === "review"` → dispatch subagent with `metadata.design` as prior findings verbatim: "Prior findings: \<metadata.design\>. New prompt: \<user prompt\>. Merge both into updated findings." TaskUpdate merged. If metadata.plan_file → overwrite existing path (do NOT run `ct plan create` again). Re-enter from step 10.
+- `status_detail === "spec_review"` → if metadata.spec_file is set, read content via `ct spec read <spec_file>`; otherwise use metadata.spec. Re-present spec. Resume from step 7.
+- `status_detail === "review"` → dispatch subagent with `metadata.design` as prior findings verbatim: "Prior findings: \<metadata.design\>. New prompt: \<user prompt\>. Merge both into updated findings." TaskUpdate merged. If metadata.plan_file → overwrite existing path (do NOT run `ct plan create` again). Re-enter from step 12.
 
 ## Key Rules
 
 - Main thread does NOT research — subagent does.
 - Two-phase output: spec (what) THEN plan (how). Each has its own approval gate.
+- Codex reviews both artifacts before storing — best-effort, never blocks.
 - Spec archival: `ct spec create`. Plan archival: `ct plan create`.
 - Present findings as conversation text, not plan mode. Stop for user review at each gate.
 - Scope does NOT create epic or tasks — develop handles that.
 - metadata.spec = the spec (what). metadata.design = the plan (how). Separate fields.
 - Research Suggested Phases must include file paths — plan depends on them, develop depends on plan.
 - Refinement: minor → revise from findings; major → dispatch follow-up subagent.
-- `--auto-approve` bypasses BOTH spec and plan review gates.
+- `--auto` bypasses BOTH spec and plan review gates (codex review still runs).

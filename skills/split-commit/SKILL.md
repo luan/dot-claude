@@ -1,7 +1,7 @@
 ---
 name: split-commit
 description: "Collapse a branch into working tree and repackage as clean, tested, vertical commits. Triggers: 'split commits', 'repackage commits', 'reorganize commits', 'clean up branch history', 'consolidate commits into clean ones'. Do NOT use when: branch already has a single clean commit or only needs amending — use /commit instead."
-argument-hint: "[base-branch] [--test='command']"
+argument-hint: "[base-branch] [--test='command'] [--auto]"
 user-invocable: true
 allowed-tools:
   - Task
@@ -44,11 +44,12 @@ COMMIT_PLAN:
 DEPENDENCY_NOTES: <hunk splitting, ordering constraints>
 ```
 
-Present plan via AskUserQuestion: commit count, test commands, each commit + key files. "Proceed?"
+`--auto` → proceed with the analysis plan directly. Without `--auto` → present plan via AskUserQuestion: commit count, test commands, each commit + key files. "Proceed?"
 
 ## Phase 2: Execute
 
 After approval, collapse into unstaged changes:
+
 ```bash
 git reset --soft <base> && git reset HEAD
 ```
@@ -72,6 +73,7 @@ After last commit: `git diff --stat` — report remaining unstaged.
 **On failure**: spawn fix subagent, then re-invoke execution subagent for remaining commits.
 
 After all commits, verify:
+
 ```bash
 git status          # should be clean
 git log --oneline <base>..HEAD   # N clean commits

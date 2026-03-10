@@ -76,6 +76,6 @@ Two scenarios require different recovery:
 
 ## Edge Cases
 
-- Nothing staged → ask "Stage all changes?" (all vs tracked vs select)
+- Nothing staged → `--auto`: stage all tracked changes (`git add -u`). Otherwise ask "Stage all changes?" (all vs tracked vs select)
 - Multiple unrelated changes → use `/split-commit` to separate
 - Clean tree → "No changes to commit"

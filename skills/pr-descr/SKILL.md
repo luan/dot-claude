@@ -1,6 +1,7 @@
 ---
 name: pr-descr
 description: "Update PR title and description from branch context. Triggers: 'pr description', 'update PR', 'PR title', 'describe PR'."
+argument-hint: "[--auto]"
 user-invocable: true
 model: sonnet
 disable-model-invocation: false
@@ -35,7 +36,10 @@ BASE: !`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/r
 
 Use injected context above. If PR is empty, tell user and stop.
 
+`--auto` → skip edge case questions, assume committed changes only. Without `--auto`:
+
 **Edge cases — ask before proceeding:**
+
 - **On main:** "You're on main. Did you mean to be on a feature branch?"
 - **Uncommitted changes:** "Describe from just committed, or include uncommitted too?"
 - **No commits ahead:** "Branch has no commits ahead. Describe uncommitted changes?"
@@ -61,11 +65,12 @@ If diff is large, use `--stat` first and read key files.
 ## Step 4: Preview and Update
 
 Show title + body. Add observations only if genuinely useful:
+
 - WHY is unclear → ask user for context
 - Unrelated changes mixed in → suggest splitting
 - Too large for one review → suggest multiple PRs
 
-AskUserQuestion: "Update PR with this title and description?"
+`--auto` → update directly. Without `--auto` → AskUserQuestion: "Update PR with this title and description?"
 
 ```bash
 gh pr edit <NUMBER> --title "<title>" --body "<body>"

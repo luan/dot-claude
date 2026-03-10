@@ -95,6 +95,13 @@ pub struct Task {
     pub branch: String,
     pub status_detail: String,
     pub project: String,
+    pub plan_file: String,
+    pub spec_file: String,
+    pub slug: String,
+    pub vibe_stage: String,
+    pub vibe_epic: String,
+    pub vibe_prompt: String,
+    pub session_id: String,
     pub raw: Value,
 }
 
@@ -114,7 +121,7 @@ struct RawTask {
 }
 
 impl Task {
-    fn from_raw(raw_val: Value) -> Self {
+    pub fn from_raw(raw_val: Value) -> Self {
         let raw: RawTask = serde_json::from_value(raw_val.clone()).unwrap_or(RawTask {
             id: None,
             subject: None,
@@ -159,6 +166,13 @@ impl Task {
             branch: meta_str("branch"),
             status_detail: meta_str("status_detail"),
             project: meta_str("project"),
+            plan_file: meta_str("plan_file"),
+            spec_file: meta_str("spec_file"),
+            slug: meta_str("slug"),
+            vibe_stage: meta_str("vibe_stage"),
+            vibe_epic: meta_str("vibe_epic"),
+            vibe_prompt: meta_str("vibe_prompt"),
+            session_id: meta_str("session_id"),
             raw: raw_val,
         }
     }
@@ -191,6 +205,13 @@ impl Task {
                 set_or_delete(m, "parent_id", &self.parent_id);
                 set_or_delete(m, "branch", &self.branch);
                 set_or_delete(m, "status_detail", &self.status_detail);
+                set_or_delete(m, "plan_file", &self.plan_file);
+                set_or_delete(m, "spec_file", &self.spec_file);
+                set_or_delete(m, "slug", &self.slug);
+                set_or_delete(m, "vibe_stage", &self.vibe_stage);
+                set_or_delete(m, "vibe_epic", &self.vibe_epic);
+                set_or_delete(m, "vibe_prompt", &self.vibe_prompt);
+                set_or_delete(m, "session_id", &self.session_id);
             }
         }
         val
@@ -726,6 +747,26 @@ pub fn task_completed_time(task: &Task, list_dir: &Path) -> Option<SystemTime> {
     fs::metadata(&path).ok()?.modified().ok()
 }
 
+pub fn find_vibe_trackers(tasks: &[Task]) -> Vec<&Task> {
+    tasks.iter().filter(|t| !t.vibe_stage.is_empty()).collect()
+}
+
+pub fn find_vibe_children<'a>(tasks: &'a [Task], epic_id: &str) -> Vec<&'a Task> {
+    tasks.iter().filter(|t| t.parent_id == epic_id).collect()
+}
+
+pub fn vibe_stage_index(stage: &str) -> usize {
+    match stage {
+        "branch" => 0,
+        "scope" => 1,
+        "develop" => 2,
+        "simplify" => 3,
+        "review" => 4,
+        "commit" => 5,
+        _ => 6,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -859,6 +900,108 @@ mod tests {
         let t = task_completed_time(&task, list_dir).unwrap();
         let secs = t.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
         assert_eq!(secs, 1704067200);
+    }
+
+    #[test]
+    fn from_raw_populates_vibe_fields() {
+        let task = Task::from_raw(serde_json::json!({
+            "id": "1",
+            "subject": "epic",
+            "metadata": {
+                "vibe_stage": "develop",
+                "vibe_epic": "42",
+                "vibe_prompt": "build a thing",
+                "session_id": "abc-123"
+            }
+        }));
+        assert_eq!(task.vibe_stage, "develop");
+        assert_eq!(task.vibe_epic, "42");
+        assert_eq!(task.vibe_prompt, "build a thing");
+        assert_eq!(task.session_id, "abc-123");
+    }
+
+    #[test]
+    fn from_raw_vibe_fields_default_empty() {
+        let task = Task::from_raw(serde_json::json!({"id": "1"}));
+        assert!(task.vibe_stage.is_empty());
+        assert!(task.vibe_epic.is_empty());
+        assert!(task.vibe_prompt.is_empty());
+        assert!(task.session_id.is_empty());
+    }
+
+    #[test]
+    fn to_json_round_trips_vibe_fields() {
+        let task = Task::from_raw(serde_json::json!({
+            "id": "1",
+            "metadata": {
+                "vibe_stage": "scope",
+                "vibe_epic": "10",
+                "vibe_prompt": "do stuff",
+                "session_id": "sess-1"
+            }
+        }));
+        let json = task.to_json();
+        let meta = json.get("metadata").unwrap();
+        assert_eq!(meta.get("vibe_stage").unwrap().as_str().unwrap(), "scope");
+        assert_eq!(meta.get("vibe_epic").unwrap().as_str().unwrap(), "10");
+        assert_eq!(
+            meta.get("vibe_prompt").unwrap().as_str().unwrap(),
+            "do stuff"
+        );
+        assert_eq!(meta.get("session_id").unwrap().as_str().unwrap(), "sess-1");
+    }
+
+    #[test]
+    fn to_json_omits_empty_vibe_fields() {
+        let task = Task::from_raw(serde_json::json!({"id": "1"}));
+        let json = task.to_json();
+        let meta = json.get("metadata");
+        let has_vibe = meta
+            .and_then(|m| m.as_object())
+            .map(|m| m.contains_key("vibe_stage"))
+            .unwrap_or(false);
+        assert!(!has_vibe);
+    }
+
+    #[test]
+    fn find_vibe_trackers_returns_tasks_with_stage() {
+        let tasks = vec![
+            Task::from_raw(serde_json::json!({"id": "1", "metadata": {"vibe_stage": "develop"}})),
+            Task::from_raw(serde_json::json!({"id": "2"})),
+            Task::from_raw(serde_json::json!({"id": "3", "metadata": {"vibe_stage": "review"}})),
+        ];
+        let trackers = find_vibe_trackers(&tasks);
+        let ids: Vec<&str> = trackers.iter().map(|t| t.id.as_str()).collect();
+        assert_eq!(ids, vec!["1", "3"]);
+    }
+
+    #[test]
+    fn find_vibe_children_filters_by_parent() {
+        let tasks = vec![
+            Task::from_raw(serde_json::json!({"id": "1"})),
+            Task::from_raw(serde_json::json!({"id": "2", "metadata": {"parent_id": "1"}})),
+            Task::from_raw(serde_json::json!({"id": "3", "metadata": {"parent_id": "1"}})),
+            Task::from_raw(serde_json::json!({"id": "4", "metadata": {"parent_id": "99"}})),
+        ];
+        let children = find_vibe_children(&tasks, "1");
+        let ids: Vec<&str> = children.iter().map(|t| t.id.as_str()).collect();
+        assert_eq!(ids, vec!["2", "3"]);
+    }
+
+    #[test]
+    fn vibe_stage_index_maps_known_stages() {
+        assert_eq!(vibe_stage_index("branch"), 0);
+        assert_eq!(vibe_stage_index("scope"), 1);
+        assert_eq!(vibe_stage_index("develop"), 2);
+        assert_eq!(vibe_stage_index("simplify"), 3);
+        assert_eq!(vibe_stage_index("review"), 4);
+        assert_eq!(vibe_stage_index("commit"), 5);
+    }
+
+    #[test]
+    fn vibe_stage_index_unknown_returns_6() {
+        assert_eq!(vibe_stage_index("bogus"), 6);
+        assert_eq!(vibe_stage_index(""), 6);
     }
 
     #[test]
