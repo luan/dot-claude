@@ -1,19 +1,20 @@
 ---
 name: supervibe
-description: "Execute a large plan across multiple stacked PRs — one PR per phase. Triggers: /supervibe, 'super vibe', 'stacked vibe', 'multi-branch plan', 'stacked PRs', 'one PR per phase'. Do NOT use when: the plan fits in a single PR — use /vibe instead."
-allowed-tools: Bash, Read, Glob, Skill, TaskCreate, TaskUpdate, TaskGet, TaskList, CronCreate, CronDelete, CronList
-argument-hint: "<prompt> [--dry-run]"
+description: "Execute a large plan across multiple commits — one commit per phase, each built in an isolated worktree. Uses /vibe as the operator for each phase. Triggers: /supervibe, 'super vibe', 'stacked vibe', 'multi-phase plan', 'one commit per phase', 'multi-PR plan'. Do NOT use when: the plan fits in a single PR — use /vibe instead."
+allowed-tools: Bash, Read, Glob, Grep, Agent, Skill, TaskCreate, TaskUpdate, TaskGet, TaskList, CronCreate, CronDelete, CronList
+argument-hint: "<prompt> [--dry-run] [--continue]"
 user-invocable: true
 ---
 
 # Super Vibe
 
-Large plans across stacked PRs. Each phase produces a working, right-sized PR — verified before the next begins.
+Large plans across multiple commits. Each phase runs `/vibe` in an isolated worktree — verified and merged before the next begins. The orchestrator stays lean: it reads task metadata, dispatches phases, and records results. All implementation happens inside phase agents.
 
 ## Arguments
 
-- `<prompt>` — what to build (required)
-- `--dry-run` — scope + validate, stop before execution
+- `<prompt>` — what to build (required unless `--continue`)
+- `--dry-run` — superscope only, stop before execution
+- `--continue` — resume from last completed phase
 
 ## Tracker
 
@@ -28,26 +29,26 @@ TaskUpdate(taskId, status: "in_progress", owner: "supervibe")
 
 ## Pipeline
 
-### [1] Initial Scope
+### [1] Superscope
 
-`Skill("scope", args="<prompt>. IMPORTANT — this is a supervibe stacked-PR plan. Each phase becomes its own PR. Design phases as vertical slices that each produce a working, independently reviewable PR. Avoid micro-phases (just a model, just a route) and mega-phases (entire features). Maximum 5 PRs per supervibe run. --auto")`
+Read `${CLAUDE_SKILL_DIR}/references/superscope.md` and follow it. This is not a regular `/scope` call — it's a dedicated multi-phase research and planning session that produces richer output.
 
-**Verify**: scope task with `status_detail === "approved"`, `metadata.spec` and `metadata.design` populated.
+Produces on the tracker:
+- `metadata.end_state` — north star from spec Recommendation (present-tense target state)
+- `metadata.phases[]` — ordered list, each with: `{ title, goal, files: {read, modify, create}, dependencies, verification }`
+- `metadata.superscope_findings` — key research findings (file locations, patterns, architecture context) that warm-start per-phase scope calls so they don't re-research from scratch
 
-**Post-scope extraction** (all stored on the tracker):
-- **End-state vision** (`metadata.end_state`): from `metadata.spec` Recommendation section — the north star for every phase
-- **Phases** (`metadata.phases`): ordered list of phase titles and goals from `metadata.design`
-- **Scope estimate** (`metadata.scope_estimate`): project size estimate (files, modules, complexity) — determines whether 2-5 PRs is right
-
-**Validate phase plan** — re-invoke scope with specific feedback if any fail:
+Validate:
 1. Phases collectively cover the full end-state (every capability maps to a phase)
-2. Each phase is a vertical slice (not a single-layer change)
+2. Each phase is a vertical slice (not a single-layer change like "just the DB schema")
 3. Phase count ≤5 — consolidate if more
-4. Phases roughly balanced in size (no phase >3x another)
+4. Phases roughly balanced in size (no phase >3× another)
 
-Mark original scope task `status: "completed"`. **Update**: `vibe_stage: "scope"`
+Re-invoke scope with specific feedback if any check fails.
 
-If `--dry-run` → stop. Report end-state, phases with sizing, suggest `/supervibe --continue`.
+Mark scope task `status: "completed"`. **Update**: `vibe_stage: "scoped"`
+
+If `--dry-run` → stop. Report end-state, phase plan with sizing. Suggest `/supervibe --continue`.
 
 ### [2] Watchdog Setup
 
@@ -59,57 +60,116 @@ Store cron job ID in `metadata.cron_id`. **Update**: `vibe_stage: "watchdog"` �
 
 ### [3..N+2] Per-Phase Loop
 
-For each phase in order:
+For each phase in `metadata.phases`:
 
-1. **Lock**: `TaskUpdate(trackerId, metadata: { active_phase: <N>, locked_at: "<ISO 8601>" })` — prevents watchdog re-entry. Lock valid for 30 min.
-2. **Branch**: `Skill("gt:gt", args="create <slug>-p<N>")` — stacks on previous branch
-3. **Re-scope**: `Skill("scope", args="Phase <N> of <original prompt>: <phase title and goal>. Context: phase <N> of <total> in a stacked plan. Prior phases landed: <list completed phase titles>. End-state vision: <metadata.end_state>. Spec: <original spec summary>. Vertical slice producing one reviewable PR — balance with the other <total> phases. --auto")`
-4. **Develop**: `Skill("develop")`
-5. **Acceptance**: `Skill("acceptance", args="--auto")` — auto-fixes up to 2 iterations on PARTIAL/FAIL
-6. **Build check**: Detect build system (`Makefile` → `make build`, `package.json` → `npm run build`, `Cargo.toml` → `cargo build`, `go.mod` → `go build ./...`, else skip). **Broken build = stop.** Don't stack broken code.
-7. **PR size check**: Log diff size to `metadata.phase_sizes`. After phase 2+, flag >3x difference vs siblings (warning, not hard stop).
-8. **Simplify**: `Skill("simplify")`
-9. **Review**: `Skill("review")` — fix issues inline
-10. **Commit**: `Skill("commit")`
-11. **Progress check**: Compare completed phases against `metadata.end_state`. Store `metadata.progress` (capabilities realized so far). Last phase + unrealized capability → don't submit, report gap, suggest additional phases.
-12. **Unlock + update**: `TaskUpdate(trackerId, metadata: { active_phase: null, locked_at: null, vibe_stage: "phase-<N>" })`
+#### 1. Assemble phase context
 
-→ Proceed to next phase.
+Build a rich prompt for the phase agent from task metadata:
 
-Phase failure: stop, leave `active_phase` set (watchdog retries after lock expires), report which step failed, leave tracker `in_progress`. Suggest `/supervibe --continue`.
+```
+Phase <N>/<total>: <phase title>
 
-### [N+3] Teardown & Submit
+Goal: <phase goal>
+
+File plan:
+- Read: <files to read for context>
+- Modify: <files to modify>
+- Create: <files to create>
+
+Prior phase results:
+<for each completed phase in metadata.phase_results:>
+  Phase <M>: <summary>. Files: <files_changed>. Deviations: <deviations>.
+
+End-state vision: <metadata.end_state>
+
+Research context (from superscope — use for scope warm-start, don't re-research these):
+<metadata.superscope_findings>
+```
+
+#### 2. Dispatch phase agent
+
+```
+Agent(
+  prompt: "Run /vibe with this context: <assembled prompt>. Use flags: --no-branch --no-review",
+  isolation: "worktree",
+  mode: "auto"
+)
+```
+
+The agent gets an isolated copy of the repo. Vibe runs inside: scope (warm-started by the rich context) → develop → simplify → commit. The main branch is untouched until we explicitly merge.
+
+#### 3. On success (agent returns worktree path + branch)
+
+```bash
+git merge <worktree-branch> --no-ff -m "phase(<N>): <phase title>"
+```
+
+Record phase results on tracker:
+```
+metadata.phase_results[N] = {
+  phase: N,
+  status: "completed",
+  commit: "<merge commit SHA>",
+  files_changed: [<from git diff --stat of merge commit>],
+  summary: "<from vibe task's completion data or git log>",
+  deviations: "<any divergence from original phase plan>"
+}
+```
+
+Clean up: `git worktree remove <path> 2>/dev/null; git branch -d <branch> 2>/dev/null`
+
+**Update**: `vibe_stage: "phase-<N>"` → proceed to next phase.
+
+#### 4. On failure (agent errors or returns no changes)
+
+Do NOT merge. Clean up worktree if it exists.
+
+Record:
+```
+metadata.phase_results[N] = {
+  phase: N,
+  status: "failed",
+  step: "<which step failed>",
+  error: "<error details>"
+}
+```
+
+Do NOT update `vibe_stage` — stays at last successful phase so `--continue` retries the failed phase.
+
+Report which step in which phase failed. Suggest `/supervibe --continue`.
+
+### [N+3] Teardown
 
 `CronDelete(metadata.cron_id)`
 
-**Final progress gate**: Read `metadata.progress`. If any end-state capability is unrealized across all completed phases → report gaps, do NOT submit. Suggest adding phases for missing work.
+**End-state coverage check**: Compare `metadata.phase_results` against `metadata.end_state`. Walk each capability in the end-state and verify it maps to a completed phase. Unrealized capabilities → report gaps, suggest additional phases, do NOT auto-complete.
 
-`Skill("gt:submit")`
-
-**Update**: `vibe_stage: "submitted"`
-
-## Resume (`--continue`)
-
-Find tracker with `metadata.super_vibe === true` and `status === "in_progress"`. Multiple → filter by `metadata.session_id`. No match → tell user no pipeline to resume, stop.
-
-**Lock check**: `active_phase` set + `locked_at` <30 min ago → exit: "Pipeline active (phase N, locked X ago). Wait or use `--force`."
-
-Resume by `vibe_stage`:
-- `"scope"` / `"watchdog"` → set up watchdog if missing, begin phase 1. Read from `metadata.phases` and `metadata.end_state`.
-- `"phase-<N>"` → resume at phase N+1
-
-## Finalize
+If all capabilities realized:
 
 ```
 TaskUpdate(trackerId, status: "completed", metadata: {completedAt: "<ISO 8601>"})
 ```
 
-Report: one line per phase (**completed** / **skipped** / **failed**), end-state coverage assessment, stack URL.
+Report: one line per phase (**completed** / **failed**), end-state coverage assessment.
+
+## Resume (`--continue`)
+
+Find tracker: `super_vibe === true`, `status === "in_progress"`. Multiple → filter by `session_id`. No match → tell user no pipeline to resume, stop.
+
+Read `metadata.phase_results[]`, `metadata.phases`, `metadata.end_state`, `metadata.superscope_findings`.
+
+Resume logic:
+- No phases started → begin phase 1
+- Last phase completed → start next phase
+- Last phase failed → retry failed phase. The phase agent gets the error context from `phase_results[N].error` — include it in the prompt so scope/develop can account for the prior failure.
+- All phases completed → go to teardown
+
+The watchdog cron fires `--continue` every 20 minutes. This handles session crashes: the next cron invocation picks up where the failed session left off, with full context from task metadata.
 
 ## Error Handling
 
 - Don't update `vibe_stage` on failure — preserves resume point
-- Leave tracker `in_progress` with `active_phase` set
-- Report completed stages + which step failed
+- Failed worktrees are discarded — main branch is always clean
+- Report which step in which phase failed
 - Suggest `/supervibe --continue`
-- Watchdog retries after lock expires (30 min)
+- Watchdog cron retries automatically after session crashes
