@@ -1,0 +1,35 @@
+{
+  "skill_name": "rebuild",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/rebuild --instructions='simplify error handling, use early returns'",
+      "expected_output": "Dispatches analysis subagent to examine all commits since base branch. Produces a commit plan with logical grouping (foundational changes first, features, then cleanup). Each planned commit lists files, changes, and concrete refinement opportunities focused on error handling simplification. Presents plan via AskUserQuestion before executing.",
+      "expectations": [
+        "Dispatches analysis subagent that examines full diff and designs logical commit sequence",
+        "Each commit in the plan includes specific refinement opportunities matching --instructions",
+        "Presents plan to user via AskUserQuestion before executing (no --auto flag)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/rebuild --auto --test='bun test'",
+      "expected_output": "With --auto, proceeds directly from analysis to execution without asking. Collapses branch via soft reset, then dispatches sequential per-commit subagents. Each subagent uses git-surgeon for hunk staging, Edit for refinements, runs 'bun test' after each commit. Tests gate every commit — broken refinements get reverted.",
+      "expectations": [
+        "With --auto, skips AskUserQuestion and proceeds directly to execution",
+        "Collapses branch with git reset --soft <base> && git reset HEAD",
+        "Runs 'bun test' after each commit — test failures cause refinement revert, not debugging"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/rebuild main --instructions='remove dead code' --test='cargo test'",
+      "expected_output": "Uses 'main' as explicit base branch. Analysis focuses refinements on dead code removal. Each per-commit subagent stages hunks via git-surgeon, applies dead code removal via Edit without changing functionality, runs cargo test. Sequential execution — each commit depends on previous working tree state.",
+      "expectations": [
+        "Uses 'main' as base branch instead of auto-detecting",
+        "Refinements focus specifically on dead code removal per --instructions",
+        "Executes commits sequentially — each subagent runs after the previous completes"
+      ]
+    }
+  ]
+}

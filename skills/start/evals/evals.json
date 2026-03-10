@@ -1,42 +1,33 @@
 {
-  "version": "1.0",
-  "skill": "skills/start",
-  "cases": [
+  "skill_name": "start",
+  "evals": [
     {
-      "id": "normalizes-and-links",
-      "prompt": "You are Claude running /start fix-auth-timeout 42. The gt plugin is loaded.\n\nDemonstrate the full flow.",
+      "id": 1,
+      "prompt": "/start fix-auth-timeout 42 — gt is loaded",
+      "expected_output": "Normalizes the branch name by prefixing with the user's username (e.g. luan.santos/fix-auth-timeout), creates the branch via Skill(gt:gt, 'create luan.santos/fix-auth-timeout'), and updates task 42 to in_progress with the branch name in metadata.",
       "expectations": [
-        {
-          "criterion": "prefixes-branch",
-          "description": "Normalizes the branch name by prefixing with ${GIT_USERNAME:-$(whoami)} per the start skill convention",
-          "required": true
-        },
-        {
-          "criterion": "uses-gt-create",
-          "description": "Uses Skill(gt:gt, 'create ${GIT_USERNAME}/fix-auth-timeout') instead of git checkout -b because gt plugin is loaded",
-          "required": true
-        },
-        {
-          "criterion": "links-task",
-          "description": "Updates task #42 with status in_progress and metadata.branch set to the branch name",
-          "required": true
-        }
+        "Prefixes branch name with username from GIT_USERNAME or whoami",
+        "Uses Skill(gt:gt, 'create ...') because gt plugin is loaded, not git checkout -b",
+        "Updates task 42 with status in_progress and metadata.branch set to the full branch name"
       ]
     },
     {
-      "id": "branch-already-exists",
-      "prompt": "You are Claude running /start fix-auth-timeout. The gt plugin is NOT loaded. git checkout -b ${GIT_USERNAME}/fix-auth-timeout fails with 'fatal: a branch named ${GIT_USERNAME}/fix-auth-timeout already exists'.\n\nDemonstrate error handling.",
+      "id": 2,
+      "prompt": "/start fix-auth-timeout — no gt, and git checkout -b fails because the branch already exists",
+      "expected_output": "Attempts git checkout -b with the normalized name, detects the 'branch already exists' error, checks git branch -a for similar names, and suggests an alternate name to the user.",
       "expectations": [
-        {
-          "criterion": "detects-conflict",
-          "description": "Recognizes the branch already exists from the git error rather than silently failing or retrying the same name",
-          "required": true
-        },
-        {
-          "criterion": "suggests-alternate",
-          "description": "Checks existing branches (git branch -a | grep) and suggests an alternate name to the user",
-          "required": true
-        }
+        "Recognizes the 'branch already exists' error rather than silently failing",
+        "Checks existing branches and suggests an alternate name"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/start add-notifications --auto — no gt, no task id",
+      "expected_output": "Creates branch via git checkout -b with normalized name, then auto-creates a task (type: feat inferred from 'add-' prefix, P2 priority) without asking, links it to the branch, and suggests /scope or /develop.",
+      "expectations": [
+        "Creates a task automatically because --auto was specified, without asking the user",
+        "Infers task type as feat from the branch name",
+        "Sets task status to in_progress with the branch in metadata"
       ]
     }
   ]

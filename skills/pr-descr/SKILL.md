@@ -60,7 +60,7 @@ If diff is large, use `--stat` first and read key files.
 
 **Title**: conventional commit per /commit skill — `type(scope): description`. Max 72 chars — GitHub truncates longer titles in list views.
 
-**Body**: Follow the repo's PR template if one exists — use its headings and fill each section with content from the diff. Otherwise, if recent merged PRs share a consistent format (e.g., test plan section, changelog), match that structure. If neither exists or history is inconsistent, default to 1-3 sentences explaining WHY with high-level HOW. Don't list changes obvious from diff.
+**Body**: Follow the repo's PR template if one exists — fill each section from the diff. Otherwise, if recent merged PRs share a consistent format, match it. Fallback: 1-3 sentences explaining WHY with high-level HOW. Don't restate what's obvious from the diff.
 
 ## Step 4: Preview and Update
 

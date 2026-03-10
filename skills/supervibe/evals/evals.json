@@ -1,214 +1,96 @@
 {
-  "version": "1.0",
-  "skill": "skills/supervibe",
-  "cases": [
+  "skill_name": "supervibe",
+  "evals": [
     {
-      "id": "scope-prompt-includes-sizing",
-      "prompt": "You are Claude running /supervibe 'build full auth system'. You're about to invoke the initial scope.\n\nWhat arguments do you pass to Skill('scope')?",
+      "id": 1,
+      "prompt": "running /supervibe 'build full auth system'. about to invoke the initial scope.\n\nwhat arguments do you pass to Skill('scope')?",
+      "expected_output": "Scope prompt tells scope this is a stacked-PR plan, each phase becomes its own PR, design vertical slices, avoid micro/mega-phases, max 5 PRs. Includes --auto flag.",
       "expectations": [
-        {
-          "criterion": "includes-sizing-guidance",
-          "description": "The scope prompt tells scope to design vertical slices, avoid micro-phases and mega-phases, and caps at maximum 5 PRs. Does NOT hardcode line counts — sizing is relative to the project scope.",
-          "required": true
-        },
-        {
-          "criterion": "mentions-stacked-pr-context",
-          "description": "The scope prompt tells scope this is a stacked-PR plan where each phase becomes its own PR, so scope understands the constraint",
-          "required": true
-        },
-        {
-          "criterion": "uses-auto",
-          "description": "Includes --auto flag",
-          "required": true
-        }
+        "Scope prompt instructs vertical slices, avoids micro-phases and mega-phases, caps at 5 PRs",
+        "Scope prompt tells scope this is a stacked-PR plan where each phase becomes its own PR",
+        "Includes --auto flag"
       ]
     },
     {
-      "id": "end-state-extraction-and-validation",
-      "prompt": "You are Claude running /supervibe 'build full auth system'. Initial scope completed. metadata.spec Recommendation describes JWT auth with RBAC, session management, and OAuth2. metadata.design has 3 phases.\n\nWhat do you do before starting phase execution?",
+      "id": 2,
+      "prompt": "running /supervibe 'build full auth system'. scope completed. metadata.spec Recommendation describes JWT auth with RBAC, session management, and OAuth2. metadata.design has 3 phases.\n\nwhat do you do before starting phase execution?",
+      "expected_output": "Extracts end-state from spec Recommendation (JWT, RBAC, sessions, OAuth2) into metadata.end_state. Extracts phases into metadata.phases. Validates phases cover the full end-state — all 4 capabilities must map to at least one phase. Stores scope estimate.",
       "expectations": [
-        {
-          "criterion": "extracts-end-state",
-          "description": "Extracts end-state vision from metadata.spec Recommendation section and stores as metadata.end_state",
-          "required": true
-        },
-        {
-          "criterion": "validates-coverage",
-          "description": "Validates phases collectively cover the full end-state (JWT, RBAC, sessions, OAuth2). Re-invokes scope if gaps found.",
-          "required": true
-        },
-        {
-          "criterion": "validates-phase-count",
-          "description": "Checks phase count is ≤5. If scope produced more, consolidate related phases.",
-          "required": true
-        },
-        {
-          "criterion": "stores-phases",
-          "description": "Stores phase list in metadata.phases",
-          "required": true
-        }
+        "Extracts end-state vision from metadata.spec Recommendation and stores as metadata.end_state",
+        "Validates phases collectively cover the full end-state (JWT, RBAC, sessions, OAuth2) — re-invokes scope if gaps",
+        "Stores phase list in metadata.phases"
       ]
     },
     {
-      "id": "phase-plan-gap-detection",
-      "prompt": "You are Claude running /supervibe 'add webhook system with retry and monitoring'. Initial scope produced 2 phases: Phase 1 (webhook model + DB schema) and Phase 2 (webhook delivery with retries). The end-state mentions delivery, retries, AND a monitoring dashboard.\n\nThe monitoring dashboard has no corresponding phase. What do you do?",
+      "id": 3,
+      "prompt": "running /supervibe 'add webhook system with retry and monitoring'. scope produced 2 phases: Phase 1 (webhook model + DB schema) and Phase 2 (webhook delivery with retries). end-state mentions delivery, retries, AND a monitoring dashboard.\n\nthe monitoring dashboard has no corresponding phase. what do you do?",
+      "expected_output": "Identifies that monitoring dashboard has no phase. Re-invokes scope with feedback about the gap. Does not start execution with an incomplete plan.",
       "expectations": [
-        {
-          "criterion": "detects-gap",
-          "description": "Identifies that the monitoring dashboard capability has no corresponding phase",
-          "required": true
-        },
-        {
-          "criterion": "re-invokes-scope",
-          "description": "Re-invokes scope with specific feedback about the missing monitoring phase",
-          "required": true
-        },
-        {
-          "criterion": "does-not-start-execution",
-          "description": "Does NOT start execution with the incomplete plan",
-          "required": true
-        }
+        "Identifies monitoring dashboard capability has no corresponding phase",
+        "Re-invokes scope with specific feedback about the missing monitoring phase",
+        "Does NOT start execution with the incomplete plan"
       ]
     },
     {
-      "id": "watchdog-lock-prevents-race",
-      "prompt": "You are Claude running /supervibe --continue. The tracker shows metadata.active_phase=3, metadata.locked_at='2026-03-09T14:20:00Z', and the current time is 2026-03-09T14:35:00Z (15 minutes ago).\n\nWhat do you do?",
+      "id": 4,
+      "prompt": "running /supervibe --continue. tracker: metadata.active_phase=3, metadata.locked_at='2026-03-09T14:20:00Z'. current time: 2026-03-09T14:35:00Z (15 min ago).\n\nwhat do you do?",
+      "expected_output": "Recognizes the lock is active (15 min < 30 min threshold). Exits without resuming — another session is working on phase 3. Reports that the pipeline is active and when it was locked.",
       "expectations": [
-        {
-          "criterion": "detects-active-lock",
-          "description": "Recognizes that active_phase is set and locked_at is <30 min ago, meaning another session is actively working",
-          "required": true
-        },
-        {
-          "criterion": "exits-without-action",
-          "description": "Exits without attempting to resume — does NOT start phase 4 or re-run phase 3",
-          "required": true
-        },
-        {
-          "criterion": "reports-lock-status",
-          "description": "Tells the user the pipeline is active and how long ago it was locked",
-          "required": true
-        }
+        "Recognizes active_phase set + locked_at <30 min ago means another session is working",
+        "Exits without attempting to resume — does not start phase 4 or re-run phase 3",
+        "Tells user the pipeline is active and how long ago it was locked"
       ]
     },
     {
-      "id": "per-phase-acceptance-and-build",
-      "prompt": "You are Claude running /supervibe 'add webhook system'. Phase 1 develop completed. What verification do you perform before moving to phase 2?",
+      "id": 5,
+      "prompt": "running /supervibe 'add webhook system'. phase 1 develop just completed. what verification steps happen before moving to phase 2?",
+      "expected_output": "Runs acceptance (--auto), then build check (detects build system from repo), then logs diff size to metadata.phase_sizes. Then simplify, review, commit. Broken build is a hard stop.",
       "expectations": [
-        {
-          "criterion": "runs-acceptance",
-          "description": "Runs Skill('acceptance', args='--auto') to verify phase 1's implementation",
-          "required": true
-        },
-        {
-          "criterion": "runs-build-check",
-          "description": "Runs the project's build command (detecting build system from repo). Broken build = hard stop.",
-          "required": true
-        },
-        {
-          "criterion": "checks-pr-size",
-          "description": "Logs diff size to metadata.phase_sizes and flags if drastically larger or smaller than sibling phases (>3x difference)",
-          "required": true
-        }
+        "Runs Skill('acceptance', args='--auto') to verify phase 1",
+        "Runs project build command (detecting build system). Broken build = hard stop",
+        "Logs diff size to metadata.phase_sizes"
       ]
     },
     {
-      "id": "rescope-includes-end-state-and-sizing",
-      "prompt": "You are Claude running /supervibe 'add webhook system'. Phase 1 complete. Starting phase 2 (webhook delivery). After creating the stacked branch, what do you pass to scope?",
+      "id": 6,
+      "prompt": "running /supervibe 'add webhook system'. phase 1 complete, starting phase 2 (webhook delivery). branch created. what do you pass to scope for the re-scope?",
+      "expected_output": "Re-scope includes: phase number and title, original prompt context, list of completed prior phases, end-state vision from metadata.end_state, instruction to produce a balanced vertical slice, --auto flag.",
       "expectations": [
-        {
-          "criterion": "includes-end-state",
-          "description": "The re-scope call includes the end-state vision from metadata.end_state",
-          "required": true
-        },
-        {
-          "criterion": "includes-prior-phases",
-          "description": "Includes list of completed prior phases so scope has context",
-          "required": true
-        },
-        {
-          "criterion": "includes-balance-context",
-          "description": "Tells scope this phase should be balanced with the other phases (one reviewable PR, vertical slice), without hardcoding line counts",
-          "required": true
-        },
-        {
-          "criterion": "uses-auto",
-          "description": "Uses --auto flag",
-          "required": true
-        }
+        "Re-scope call includes end-state vision from metadata.end_state",
+        "Includes list of completed prior phases for context",
+        "Instructs scope to produce a balanced vertical slice with --auto flag"
       ]
     },
     {
-      "id": "last-phase-progress-gate",
-      "prompt": "You are Claude running /supervibe 'build auth system'. 4 phases planned. Phases 1-3 complete. Phase 4 just finished develop + acceptance + commit. metadata.end_state lists: JWT auth, RBAC, session management, OAuth2. But OAuth2 was never implemented in any phase.\n\nWhat happens at the progress check?",
+      "id": 7,
+      "prompt": "running /supervibe 'build auth system'. 4 phases planned. phases 1-4 all complete. metadata.end_state: JWT auth, RBAC, session management, OAuth2. but OAuth2 was never implemented in any phase.\n\nwhat happens at teardown?",
+      "expected_output": "Final progress gate catches that OAuth2 is unrealized. Does NOT submit the stack. Reports the gap and suggests adding phases for OAuth2.",
       "expectations": [
-        {
-          "criterion": "detects-unrealized-capability",
-          "description": "Identifies that OAuth2 from the end-state was never realized across any completed phase",
-          "required": true
-        },
-        {
-          "criterion": "blocks-submit",
-          "description": "Does NOT submit the stack — the end-state is not fully realized",
-          "required": true
-        },
-        {
-          "criterion": "suggests-additional-work",
-          "description": "Suggests adding phases for the missing OAuth2 work rather than silently completing",
-          "required": true
-        }
+        "Identifies OAuth2 from end-state was never realized",
+        "Does NOT submit the stack",
+        "Suggests adding phases for the missing OAuth2 work"
       ]
     },
     {
-      "id": "phase-failure-stops-stack",
-      "prompt": "You are Claude running /supervibe 'refactor data layer'. 5 phases planned. Phases 1-3 completed. Phase 4's build check fails.\n\nWhat do you do?",
+      "id": 8,
+      "prompt": "running /supervibe 'refactor data layer'. 5 phases planned, phases 1-3 done. phase 4 build check fails.\n\nwhat do you do?",
+      "expected_output": "Stops immediately — broken build is a hard stop. Does not attempt phase 5 or submit. Keeps vibe_stage at 'phase-3'. Leaves active_phase set for watchdog retry. Reports that build check in phase 4 failed.",
       "expectations": [
-        {
-          "criterion": "stops-at-failure",
-          "description": "Does NOT attempt phase 5 or submit",
-          "required": true
-        },
-        {
-          "criterion": "preserves-stage",
-          "description": "Does NOT update vibe_stage to 'phase-4' — keeps at 'phase-3'",
-          "required": true
-        },
-        {
-          "criterion": "reports-failure-step",
-          "description": "Reports which STEP in phase 4 failed (build check), not just 'phase 4 failed'",
-          "required": true
-        },
-        {
-          "criterion": "leaves-lock-for-watchdog",
-          "description": "Leaves active_phase set so watchdog can retry after the 30-min lock expires",
-          "required": true
-        }
+        "Does NOT attempt phase 5 or submit",
+        "Does NOT update vibe_stage to 'phase-4' — stays at 'phase-3'",
+        "Reports which STEP in phase 4 failed (build check), not just 'phase 4 failed'",
+        "Leaves active_phase set so watchdog can retry"
       ]
     },
     {
-      "id": "resume-reads-full-context",
-      "prompt": "You are Claude running /supervibe --continue. Tracker: metadata.super_vibe=true, status='in_progress', vibe_stage='phase-2', metadata.phases has 4 phases, metadata.end_state has the vision, active_phase=null, locked_at=null.\n\nWhat do you do?",
+      "id": 9,
+      "prompt": "running /supervibe --continue. tracker: super_vibe=true, status='in_progress', vibe_stage='phase-2', metadata.phases has 4 phases, metadata.end_state populated, active_phase=null, locked_at=null.\n\nwhat do you do?",
+      "expected_output": "Resumes at phase 3 (next after vibe_stage='phase-2'). Reads phases from metadata.phases and end-state from metadata.end_state — does not re-run scope. Confirms no active lock before proceeding.",
       "expectations": [
-        {
-          "criterion": "resumes-at-phase-3",
-          "description": "Skips to phase 3 (phase after vibe_stage='phase-2')",
-          "required": true
-        },
-        {
-          "criterion": "reads-phases-from-metadata",
-          "description": "Reads phase list from metadata.phases, not by re-running scope",
-          "required": true
-        },
-        {
-          "criterion": "reads-end-state",
-          "description": "Reads metadata.end_state so resumed phases reference the north star in re-scope calls",
-          "required": true
-        },
-        {
-          "criterion": "checks-lock-clear",
-          "description": "Verifies active_phase is null / locked_at expired before proceeding",
-          "required": true
-        }
+        "Skips to phase 3 (next after vibe_stage='phase-2')",
+        "Reads phase list from metadata.phases, not by re-running scope",
+        "Reads metadata.end_state for use in re-scope calls",
+        "Verifies active_phase is null / lock expired before proceeding"
       ]
     }
   ]

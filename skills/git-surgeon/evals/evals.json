@@ -1,0 +1,35 @@
+{
+  "skill_name": "git-surgeon",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "i changed both the auth logic and some unrelated formatting in src/auth.rs. i want to commit just the auth logic changes, not the formatting. help me stage the right hunks.",
+      "expected_output": "Runs git-surgeon hunks (optionally filtered by --file=src/auth.rs) to list available hunks with IDs and previews. Shows the user each hunk so they can identify which are auth logic vs formatting. Then stages only the auth-related hunks with git-surgeon stage <ids> and suggests committing with git-surgeon commit or /commit.",
+      "expectations": [
+        "Runs git-surgeon hunks to list available hunks with their IDs",
+        "Uses git-surgeon show <id> to inspect individual hunks before staging",
+        "Stages only the relevant hunks, not all changes in the file"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "HEAD commit has two unrelated things mixed in — a bug fix and a refactor. split it into two commits. the bug fix touches the validate() function hunks.",
+      "expected_output": "Runs git-surgeon hunks --commit HEAD to list hunks in the commit. Uses git-surgeon show to identify which hunks are the validate() bug fix vs the refactor. Then runs git-surgeon split HEAD --pick <bugfix-ids> -m 'fix(...): ...' --rest-message 'refactor(...): ...' to split into two clean commits.",
+      "expectations": [
+        "Lists hunks from HEAD with git-surgeon hunks --commit HEAD",
+        "Uses git-surgeon split with --pick for the bug fix hunks and --rest-message for the refactor",
+        "Both resulting commit messages follow conventional commit format"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "i realized the last commit (abc1234) introduced a regression in the error handling path. i want to undo just those specific hunks without reverting the whole commit.",
+      "expected_output": "Runs git-surgeon hunks --commit abc1234 to see what the commit contains. Uses git-surgeon show to identify the error handling hunks. Then runs git-surgeon undo <hunk-ids> --from abc1234 to reverse-apply just those hunks into the working tree as unstaged modifications, leaving the rest of the commit intact.",
+      "expectations": [
+        "Runs git-surgeon hunks --commit abc1234 to list the commit's hunks",
+        "Uses git-surgeon undo with --from abc1234 for targeted reversal, not git revert",
+        "Only undoes the error handling hunks, not the entire commit"
+      ]
+    }
+  ]
+}

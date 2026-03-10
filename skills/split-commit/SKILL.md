@@ -1,6 +1,6 @@
 ---
 name: split-commit
-description: "Collapse a branch into working tree and repackage as clean, tested, vertical commits. Triggers: 'split commits', 'repackage commits', 'reorganize commits', 'clean up branch history', 'consolidate commits into clean ones'. Do NOT use when: branch already has a single clean commit or only needs amending — use /commit instead."
+description: "Repackage branch into clean, tested, vertical commits. Triggers: 'split commits', 'repackage commits', 'reorganize commits', 'clean up branch history'. Not for single-commit branches — use /commit instead."
 argument-hint: "[base-branch] [--test='command'] [--auto]"
 user-invocable: true
 allowed-tools:
@@ -16,7 +16,7 @@ Repackage branch changes into clean vertical commits. Each commit compiles + pas
 
 Parse: `<base-branch>` (default: !`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`), optional `--test='command'`.
 
-**Noop check** — `git log --oneline <base>..HEAD | wc -l`. If ≤1 → stop: "Nothing to repackage — single commit can be amended or committed as-is via /commit."
+**Noop check** — `git log --oneline <base>..HEAD | wc -l`. If ≤1 → stop: "Nothing to repackage — use /commit."
 
 Dispatch analysis subagent (general-purpose):
 
@@ -40,15 +40,15 @@ Cross-file dep rules:
 Output:
 TEST_COMMANDS: <detected or provided>
 COMMIT_PLAN:
-1. `type(scope): message` (conventional commit per /commit skill) — Files: <list>, Partial: <hunks>, Deps: <import-chain justification for grouping>, Rationale: <why>
+1. `type(scope): message` — Files: <list>, Partial: <hunks>, Deps: <justification>, Rationale: <why>
 DEPENDENCY_NOTES: <hunk splitting, ordering constraints>
 ```
 
-`--auto` → proceed with the analysis plan directly. Without `--auto` → present plan via AskUserQuestion: commit count, test commands, each commit + key files. "Proceed?"
+`--auto` → proceed directly. Otherwise → present plan via AskUserQuestion: commit count, test commands, each commit + key files. "Proceed?"
 
 ## Phase 2: Execute
 
-After approval, collapse into unstaged changes:
+Collapse into unstaged changes:
 
 ```bash
 git reset --soft <base> && git reset HEAD
@@ -64,15 +64,15 @@ Test commands: <test-commands>
 Per commit:
 1. `git-surgeon hunks` — list available hunks
 2. Stage target hunks: whole files → all hunks; partial → `git-surgeon show <id>`, stage matching
-3. Run tests. FAIL → find missing dep, stage, retry once. Still failing → STOP, return with commit number + error.
+3. Run tests. FAIL → find missing dep, stage, retry once. Still failing → STOP with commit number + error.
 4. `git commit -m "<message>"`
 
 After last commit: `git diff --stat` — report remaining unstaged.
 ```
 
-**On failure**: spawn fix subagent, then re-invoke execution subagent for remaining commits.
+**On failure**: spawn fix subagent, then re-invoke execution subagent for remaining commits only.
 
-After all commits, verify:
+Verify after all commits:
 
 ```bash
 git status          # should be clean
@@ -84,8 +84,7 @@ Dirty tree → cleanup subagent: stage remaining, test, commit as `chore: clean 
 ## Key Rules
 
 - **No tasks** — pure git operation, one-shot
-- **Two subagents** — analysis + single execution (fix subagent only on failure)
+- **Two subagents** — analysis + execution (fix subagent only on failure)
 - **git-surgeon always** — hunk-level precision for partial file staging
 - **Every commit compiles** — broken history is worse than plan deviation
-- **Sequential** — each commit depends on what the previous staged
 - **Plan > rigidity** — test failures from missing deps override grouping

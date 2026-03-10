@@ -16,7 +16,7 @@ allowed-tools:
 
 # Acceptance
 
-Advisory gate — findings are reported, user decides how to proceed.
+Advisory gate — reports findings, user decides how to proceed. Never blocks autonomously.
 
 ## Step 1: Resolve Target
 
@@ -60,9 +60,9 @@ Two parallel `Task(subagent_type="general-purpose")` agents:
 
 **Verifier** evaluates each criterion against the diff: PASS/FAIL/PARTIAL/N/A with line-level evidence. All criteria N/A → PASS with note "no applicable criteria found." Adds "Plan Deviations" section noting justified vs problematic divergences. Ends with one-line verdict.
 
-**Breaker** assumes the implementation is subtly wrong. Hunts five angles: implied requirements, edge cases, integration points, technically-met-but-incomplete criteria, missing negatives. Each finding rated HIGH/MEDIUM/LOW with related criterion. Must list which angles were checked with at least one concrete observation per angle. "No findings" is only valid after showing analysis of all 5 angles — not as a bare assertion.
+**Breaker** assumes the implementation is subtly wrong. Hunts five angles: implied requirements, edge cases, integration points, technically-met-but-incomplete criteria, missing negatives. Each finding rated HIGH/MEDIUM/LOW with related criterion. Must show per-angle analysis with at least one concrete observation — "no findings" without this evidence is structurally invalid.
 
-**Breaker validation (Step 6 pre-check):** Before applying reconciliation rules, verify the breaker report contains per-angle analysis. Bare "no findings" without angle-by-angle evidence → re-run breaker with explicit instruction to analyze all 5 angles. Do not auto-pass on a structurally invalid breaker report.
+**Breaker validation (Step 6 pre-check):** Bare "no findings" without per-angle analysis → re-run breaker with explicit instruction to analyze all 5 angles. A lazy breaker that rubber-stamps PASS defeats the purpose of dual-agent verification.
 
 ## Step 6: Reconcile and Present
 

@@ -4,8 +4,6 @@ paths:
   - "rules/skill-*.md"
 ---
 
-Skill(writing-skills)
-
 # Skill Editing
 
 Skills degrade when new features are appended rather than woven into existing structure. Every edit must preserve cohesion.

@@ -25,27 +25,27 @@ Turn vague ideas into actionable designs through collaborative dialogue. For gre
 
 ## Hard Gate
 
-Do NOT invoke implementation skills, write code, or take implementation action until design is presented and user-approved. "Simple" projects are where unexamined assumptions waste the most work.
+No implementation (skills, code, actions) until design is presented and user-approved. "Simple" projects are where unexamined assumptions waste the most work.
 
 ## Instructions
 
 ### 1. Create Work Task
 
-TaskCreate: subject "Brainstorm: <topic>", acceptance criteria (design stored as Problem/Approaches/Design/Next Steps, user approved each section), metadata `{project: <repo root>, type: "brainstorm", priority: "P2"}`. Then `TaskUpdate(taskId, status: "in_progress", owner: "brainstorm")`.
+TaskCreate: subject "Brainstorm: <topic>", metadata `{project: <repo root>, type: "brainstorm", priority: "P2"}`. Then `TaskUpdate(taskId, status: "in_progress", owner: "brainstorm")`.
 
 ### 2. Scan Project Context + Start Interview
 
-Dispatch Task (subagent_type="Explore", run_in_background=true): scan for tech stack, relevant patterns, adjacent code, constraints. Under 30 lines — feeds dialogue, not implementation. Empty/new project → skip scan, ask user for stack preferences in interview instead.
+Dispatch Task (subagent_type="Explore", run_in_background=true): scan for tech stack, relevant patterns, adjacent code, constraints. Under 30 lines. Empty/new project → skip scan, ask stack preferences in interview.
 
-**Don't wait** — begin interview immediately. Scan results are only needed at Step 4.
+**Don't wait** — begin interview immediately. Scan results feed Step 4.
 
 ### 3. Interview
 
-`--auto` → skip interview entirely. Infer purpose, scope, constraints, and success criteria from the initial prompt and project context scan.
+`--auto` → skip interview. Infer purpose, scope, constraints, and success criteria from prompt + project context.
 
-Without `--auto`: AskUserQuestion, ONE per turn — wait for answer before next. Prefer multiple-choice.
+Without `--auto`: AskUserQuestion, ONE per turn. Prefer multiple-choice.
 
-**Upfront spec:** Only skip interview if the prompt has ALL three: explicit scope boundaries (non-goals stated), measurable constraints, and testable success criteria. Acknowledge by citing 2+ concrete details from the user's spec. When in doubt, interview.
+**Skip interview only if** the prompt has ALL three: explicit scope boundaries (non-goals stated), measurable constraints, and testable success criteria. Acknowledge by citing 2+ concrete details. When in doubt, interview.
 
 **Sequence** (adapt, skip irrelevant):
 
@@ -55,7 +55,7 @@ Without `--auto`: AskUserQuestion, ONE per turn — wait for answer before next.
 4. **Prior art** — Similar code in codebase or elsewhere?
 5. **Success criteria** — How will you know it works?
 
-Stop when you can propose approaches. Usually 3-5 questions, never >7. Stay technology-agnostic during interview — specific technologies belong in step 4.
+Stop when you can propose approaches. Usually 3-5 questions, never >7. Stay technology-agnostic — specific tech belongs in step 4.
 
 **Mid-dialogue pivot:** If direction shifts fundamentally, acknowledge, discard stale context, restart from the relevant question.
 

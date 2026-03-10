@@ -26,7 +26,7 @@ allowed-tools:
 
 Fix failed GitHub Actions checks.
 
-**Safety: NEVER rebases. Push optional + requires confirmation (unless `--auto`).**
+**Safety: never rebases. Push requires confirmation (unless `--auto`).**
 
 ## Steps
 
@@ -52,7 +52,7 @@ Fix failed GitHub Actions checks.
 
 6. **Execute**: Apply fixes, summarize changes.
 
-7. **Commit**: `--auto` → commit with suggested message. Without `--auto` → ask first, suggest message like `fix: resolve CI failures`.
+7. **Commit**: Use `Skill(commit)` to generate message and commit. `--auto` → commit directly. Without `--auto` → ask first.
 
 8. **Push** (optional): `--auto` → push automatically. Without `--auto` → ask first. Use `Skill(gt:submit)` if gt plugin is loaded, otherwise `git push`.
 

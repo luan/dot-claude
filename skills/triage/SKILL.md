@@ -15,7 +15,7 @@ allowed-tools:
 
 # Triage
 
-Convert user feedback into ONE task with phased design — directly consumable by `/scope`. Does NOT implement; creates actionable work items for later scheduling.
+Convert feedback into ONE task with phased design, consumable by `/scope`. Does not implement anything.
 
 ## Context
 
@@ -27,26 +27,23 @@ Branch: !`git branch --show-current 2>/dev/null`
 
 ### 1. Gather Context
 
-Use injected context above to ground feedback against recent changes. If user references specific files, read them.
+Ground feedback against injected context above. If user references specific files, read them.
 
 ### 2. Analyze Feedback
 
-Break feedback ($ARGUMENTS) into individual findings:
+Break feedback ($ARGUMENTS) into findings:
 
-- Classify each: `bug`, `chore`, or `feature`
-- Set priority:
-  - **P1**: Blocking bugs, data loss, security — needs immediate attention
-  - **P2**: Default. Most feedback lands here
-  - **P3**: Polish, nice-to-have, cosmetic — won't block shipping
-- Group by type for phase structure
+- Classify: `bug`, `chore`, or `feature`
+- Priority: **P1** (blocking, data loss, security), **P2** (default), **P3** (polish, cosmetic)
+- Group by type for phasing
 
-### 3. Create Single Issue with Phased Design
+### 3. Create Single Task with Phased Design
 
-TaskCreate: subject "Triage: <brief-summary>", acceptance criteria (all feedback addressed, phased structure, consumable by /scope), metadata `{project: <repo root>, type: "triage", priority: "P2"}`.
+TaskCreate: subject "Triage: <brief-summary>", acceptance criteria (all feedback addressed, phased, consumable by /scope), metadata `{project: <repo root>, type: "triage", priority: "P2"}`.
 
-Description includes phased findings — bugs first because they block testing improvements:
+Phases — bugs first because they block testing improvements:
 
-- **Phase 1**: Bugs (highest priority first within phase)
+- **Phase 1**: Bugs (highest priority first)
 - **Phase 2**: Tasks / improvements
 - **Phase 3**: Features / new functionality
 - Skip empty phases. Each item: actionable title with file:line when available.
@@ -70,5 +67,5 @@ Mark active: `TaskUpdate(taskId, status: "in_progress", owner: "triage")`
 
 ## Error Handling
 
-- TaskCreate fails → show error, retry once, then report
-- Ambiguous feedback → `--auto`: classify with best guess, proceed. Without `--auto` → AskUserQuestion before creating — wrong classification wastes downstream scope/develop effort
+- TaskCreate fails → retry once, then report error
+- Ambiguous feedback → `--auto`: best-guess classification. Without `--auto` → AskUserQuestion first — wrong classification wastes downstream scope/develop effort

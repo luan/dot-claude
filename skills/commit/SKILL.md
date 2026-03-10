@@ -1,6 +1,6 @@
 ---
 name: commit
-description: "Use when the user wants to commit, save changes, create a conventional commit, amend a commit, make a fixup commit, or squash commits."
+description: "Commit, save changes, conventional commit, amend, fixup, or squash."
 user-invocable: true
 context: fork
 agent: general-purpose
@@ -25,7 +25,7 @@ allowed-tools:
 
 # Commit
 
-Create conventional commits explaining WHY changes were made.
+Create conventional commits explaining WHY changes were made. Never ask for confirmation — analyze, compose, execute.
 
 ## Context
 
@@ -33,15 +33,15 @@ Status: !`git status -sb 2>/dev/null`
 Staged diff: !`git diff --cached --stat 2>/dev/null`
 Recent commits: !`git log --oneline -5 2>/dev/null`
 
-**Main thread / foreground only.** Workers never commit — they lack full-branch context to write meaningful messages.
+Workers never commit — they lack branch context for meaningful messages.
 
-## Steps
+## Flow
 
-1. **Analyze**: review context above. If nothing staged, read full `git diff`. If staged, read `git diff --cached` for details.
+1. **Analyze**: review context above. Nothing staged → read `git diff`. Staged → read `git diff --cached`.
 
-2. **Message**: conventional commit format — `type(scope): description`, max 72 chars, lowercase, no period, imperative mood. Types: feat|fix|perf|docs|test|style|build|ci|chore|revert. Scope: primary area or omit if global. Multi-line: blank line then body wrapping at 72 chars explaining motivation not mechanics. If task active (TaskList, filter by project + status=in_progress), append ID: `fix(auth): handle token expiry (task-<id>)`
+2. **Message**: `type(scope): description` — max 72 chars, lowercase, imperative, no period. Types: feat|fix|perf|docs|test|style|build|ci|chore|revert. Scope = primary area, omit if global. Body (after blank line, 72-char wrap) explains motivation, not mechanics. Active task → append `(task-<id>)`.
 
-3. **Execute** using HEREDOC for clean formatting:
+3. **Execute** via HEREDOC:
    ```bash
    git commit -m "$(cat <<'EOF'
    type(scope): description
@@ -49,33 +49,21 @@ Recent commits: !`git log --oneline -5 2>/dev/null`
    )"
    ```
 
-## Post-commit
-
-4. **Plan archive:** after successful commit, archive active plans.
-   `ct plan list --json` returns array of `{name, path}` — iterate and archive each:
-   ```
-   ct plan list --json
-   # For each entry: ct plan archive <path>
-   ```
-   Skip silently if no active plans or ct not available.
-
-If gt plugin is loaded → suggest `/gt:submit`. Otherwise → suggest `git push`.
+4. **Post-commit**: archive active plans (`ct plan list --json`, then `ct plan archive <path>` each). Skip silently if ct unavailable. Suggest `/gt:submit` if gt loaded, else `git push`.
 
 ## Hook Failures
 
-Two scenarios require different recovery:
-
-- **Hooks modify files** (formatters, auto-fixers): stage changes and amend — `git add -u && git commit --amend --no-edit`. Safe because the commit already landed; amend just includes the formatter's tweaks.
-- **Hooks reject the commit** (lint errors, test failures): show the error, explain the issue, suggest a fix. Do NOT retry automatically — let user decide. After fix, create a NEW commit (don't amend — the original commit never landed, so amend would modify the wrong commit).
+- **Hooks modify files** (formatters): stage + amend (`git add -u && git commit --amend --no-edit`). Safe because the commit landed; amend just folds in formatter changes.
+- **Hooks reject commit** (lint/test failures): show error, explain, suggest fix. Create a NEW commit after fix — the original never landed, so `--amend` would corrupt the previous commit.
 
 ## Special Ops
 
-- **Amend** (`--amend`): analyze previous commit + new changes, update message if scope changed. Use `--no-edit` only when new changes don't alter the commit's purpose.
-- **Fixup** (`--fixup=<SHA>`): correction targeting a specific earlier commit. User must rebase to squash later.
-- **Squash**: combine multiple commits — unify message around primary purpose, not a laundry list.
+- **Amend**: analyze previous commit + new changes, update message if scope changed. `--no-edit` only when purpose unchanged.
+- **Fixup** (`--fixup=<SHA>`): targets a specific earlier commit. User rebases later.
+- **Squash**: unify message around primary purpose, not a changelog.
 
 ## Edge Cases
 
-- Nothing staged → `--auto`: stage all tracked changes (`git add -u`). Otherwise ask "Stage all changes?" (all vs tracked vs select)
-- Multiple unrelated changes → use `/split-commit` to separate
+- Nothing staged + `--auto` → `git add -u`. Otherwise ask what to stage.
+- Multiple unrelated changes → suggest `/split-commit`.
 - Clean tree → "No changes to commit"

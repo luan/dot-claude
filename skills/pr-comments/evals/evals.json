@@ -1,42 +1,34 @@
 {
-  "version": "1.0",
-  "skill": "skills/pr:comments",
-  "cases": [
+  "skill_name": "pr-comments",
+  "evals": [
     {
-      "id": "never-resolves-or-pushes",
-      "prompt": "You are Claude running /pr:comments for PR #42. You've fetched 3 unresolved review comments. The user chose 'Fix all'. You've applied all fixes and committed.\n\nDemonstrate Step 8 (Push).",
+      "id": 1,
+      "prompt": "fix the pr comments on my current branch, there's like 3-4 things from alice's review i need to address",
+      "expected_output": "Detects the current PR, verifies the branch matches, fetches unresolved threads via the fetch_threads.py script, displays them as a numbered list, asks which to fix, then applies fixes locally. Asks before pushing. Never replies to or resolves any PR threads.",
       "expectations": [
-        {
-          "criterion": "asks-before-push",
-          "description": "Asks the user before pushing — does NOT auto-push after fixes",
-          "required": true
-        },
-        {
-          "criterion": "never-resolves-threads",
-          "description": "Does NOT reply to, resolve, or comment on any PR review threads — only fetches and fixes locally",
-          "required": true
-        }
+        "Verifies current git branch matches the PR's headRefName before fetching comments",
+        "Does NOT reply to, resolve, or comment on any PR review threads — only fetches and fixes locally",
+        "Asks the user before pushing — does NOT auto-push after fixes"
       ]
     },
     {
-      "id": "branch-mismatch-detected",
-      "prompt": "You are Claude running /pr:comments. The injected context shows PR #42 with headRefName 'alice/add-auth', but git branch --show-current returns 'alice/fix-typo'. The branches don't match.\n\nDemonstrate Step 2 (Verify branch).",
+      "id": 2,
+      "prompt": "i'm on branch alice/fix-typo but the PR i care about is on alice/add-auth. can you /pr-comments for that PR?",
+      "expected_output": "Detects branch mismatch between current branch (alice/fix-typo) and the PR's headRefName (alice/add-auth). Stops and asks the user about the mismatch before doing anything else. Does not fetch comments or attempt fixes on the wrong branch.",
       "expectations": [
-        {
-          "criterion": "detects-mismatch",
-          "description": "Compares the current branch against PR headRefName and recognizes they don't match",
-          "required": true
-        },
-        {
-          "criterion": "asks-user",
-          "description": "Asks the user about the mismatch before proceeding — does not silently fix on the wrong branch",
-          "required": true
-        },
-        {
-          "criterion": "does-not-proceed",
-          "description": "Does NOT continue to Step 3 (fetch comments) or Step 5 (execute fixes) while on the wrong branch",
-          "required": true
-        }
+        "Compares the current branch against the PR headRefName and flags the mismatch",
+        "Stops and asks the user about the mismatch before proceeding to fetch comments or apply fixes",
+        "Does NOT continue to fetch comments or execute fixes while on the wrong branch"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/pr-comments --auto",
+      "expected_output": "Detects PR, verifies branch, fetches all unresolved threads, fixes all comments without asking which ones. Auto-resolves bot/app comments only (not human review comments). Commits via the commit skill and pushes automatically without confirmation.",
+      "expectations": [
+        "Fixes all comments without prompting for selection (--auto mode)",
+        "Auto-resolves only bot/app-authored comments, not human reviewer comments",
+        "Pushes automatically without asking for confirmation in --auto mode"
       ]
     }
   ]

@@ -1,0 +1,35 @@
+{
+  "skill_name": "pr-ci",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "ci is red on my pr, can you take a look? i think it's the lint check failing",
+      "expected_output": "Detects the current PR, fetches failed checks via gh pr checks, identifies the failing lint check, fetches logs with gh run view --log-failed, reads the error output to identify the specific lint violations, fixes them (e.g., removes unused imports, runs formatter), commits via the commit skill, and asks before pushing.",
+      "expectations": [
+        "Fetches failed checks and logs to identify the specific failure before attempting fixes",
+        "Fixes the actual lint violations found in the logs rather than guessing",
+        "Asks the user before pushing the fix (no --auto flag)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/pr-ci --auto — tests and build are both failing on PR #87",
+      "expected_output": "Fetches failed checks for PR #87, retrieves logs for both failing jobs, identifies root causes (e.g., type error causing build failure, outdated assertion causing test failure), applies targeted fixes, commits, and pushes automatically without asking. Never rebases.",
+      "expectations": [
+        "Handles multiple failing checks (tests + build) in a single run",
+        "Commits and pushes automatically without confirmation in --auto mode",
+        "Never rebases — only commits new fixes on top"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "the CI failure is a secrets/permissions issue in the github action, not a code problem. can you /pr-ci it?",
+      "expected_output": "Fetches the failed check logs, recognizes this is an infrastructure issue (secrets, permissions, runner config) that cannot be fixed with code changes. Informs the user that this requires repo/org settings changes and cannot be resolved locally. Does not attempt code fixes.",
+      "expectations": [
+        "Recognizes infrastructure failures (secrets, permissions) as unfixable locally",
+        "Informs the user to check repo/org settings rather than attempting code changes",
+        "Does NOT make pointless code changes or commit empty fixes"
+      ]
+    }
+  ]
+}

@@ -13,13 +13,13 @@ allowed-tools:
 
 # Rebuild
 
-Repackage branch as clean commits, refining code in each. End state may differ from original — same functionality, better code.
+Repackage branch as clean commits with code refinements. End state: same functionality, better code.
 
 ## Phase 1: Analyze
 
-Parse: `<base-branch>` (default: !`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`), `--test='command'`, `--instructions='...'` (user-specified refinement focus, e.g. "simplify error handling", "remove dead code").
+Parse: `<base-branch>` (default: !`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`), `--test='command'`, `--instructions='...'` (refinement focus, e.g. "simplify error handling", "remove dead code").
 
-Dispatch analysis subagent (general-purpose):
+Dispatch analysis subagent:
 
 ```
 Analyze changes for rebuilding as clean, improved commits.
@@ -27,56 +27,54 @@ Base: <base-branch>
 Instructions: <--instructions or "general: simplify, remove dead code, improve naming">
 
 1. `git log --oneline <base>..HEAD | wc -l` + `git diff --stat <base>..HEAD | tail -40`
-2. Full diff + Read/Grep for context. Design logical commit sequence: foundational → features → cleanup
-3. Per commit: files, changes, AND refinement opportunities matching instructions
+2. Full diff + Read/Grep for context. Design logical sequence: foundational → features → cleanup
+3. Per commit: files, changes, refinement opportunities matching instructions
 
-Dep rules: imports → same commit or dep earlier. Config/locks with introducing feature. Types with first consumer.
+Dep rules: imports with same commit or earlier. Config/locks with introducing feature. Types with first consumer.
 
 Output:
 TEST_COMMANDS: <detected or --test>
 COMMIT_PLAN:
-1. `type(scope): message` (conventional commit per /commit skill) — Files: <list>, Changes: <what>, Refinements: <concrete before/after, e.g. "rename x→multiplier in service.py:12">
+1. `type(scope): message` — Files: <list>, Changes: <what>, Refinements: <concrete before/after>
 ```
 
-`--auto` → proceed with the analysis plan directly. Without `--auto` → present via AskUserQuestion: commit count, tests, each message + files + planned refinements. "Proceed?"
+`--auto` → proceed directly. Without `--auto` → AskUserQuestion: commit count, tests, each message + files + refinements. "Proceed?"
 
 ## Phase 2: Execute
 
-After approval, collapse into unstaged changes (soft reset preserves content, second reset unstages so hunks can be re-staged selectively):
+Collapse into unstaged changes (soft reset preserves content, second reset unstages for selective re-staging):
 
 ```bash
 git reset --soft <base> && git reset HEAD
 ```
 
-Plan declined (not applicable with `--auto`) → ask what to change, re-run analysis. Don't exit silently.
+Plan declined → ask what to change, re-analyze. Don't exit silently.
 
-Dispatch one subagent per commit (general-purpose), **sequentially**:
+Dispatch one subagent per commit, **sequentially** (each depends on previous working tree):
 
 ```
 Rebuild commit <N>/<total>: `<commit-message>`
 Target files: <file list from plan>
-Refinements to apply: <from plan>
-User instructions: <--instructions or "general refinement">
+Refinements: <from plan>
+Instructions: <--instructions or "general refinement">
 
-1. `git-surgeon hunks` — list available hunks with IDs
+1. `git-surgeon hunks` — list available hunks
 2. Stage target hunks: whole files → all hunks; partial → `git-surgeon show <id>`, stage matching
-3. Read staged files. Apply refinements (simplify, improve naming, remove dead code, apply user instructions). Do NOT change functionality.
-4. Stage refinement edits: `git add -u`
+3. Read staged files. Apply refinements (simplify, rename, remove dead code). Do NOT change functionality.
+4. `git add -u` for refinement edits
 5. Run tests: <test-commands>
-6. Tests FAIL → identify which specific refinement broke tests. Revert ONLY that edit, keep other refinements intact. Retry.
-   Still failing → find missing dep, stage it, retry once more.
-   Still failing → report to main thread, stop.
+6. Tests FAIL → identify which refinement broke it, revert ONLY that edit. Still failing → find missing dep, stage, retry once. Still failing → report, stop.
 7. `git commit -m "<message>"`
 8. `git diff --stat` — report remaining unstaged + refinements applied
 ```
 
-After all commits: `git status` (should be clean), `git log --oneline <base>..HEAD`. Dirty tree → cleanup subagent: stage, test, commit as `chore: remaining changes`. Fails → report to user.
+After all commits: `git status` (should be clean), `git log --oneline <base>..HEAD`. Dirty tree → cleanup subagent: stage, test, commit as `chore: remaining changes`. Fails → report.
 
 ## Key Rules
 
-- **Per-commit subagents** — each needs Edit for refinements, fresh context prevents iteration from exhausting the window
-- **git-surgeon for staging, Edit for refinements** — git-surgeon provides hunk-level selection without interactive prompts; Edit applies refinements after staging so the original hunks anchor each commit
-- **Refinements preserve functionality** — same tests pass, same behavior. Cleaner code, not different code.
-- **User instructions override defaults** — if `--instructions` is set, focus refinements there instead of general cleanup
-- **Tests gate every commit** — refinement that breaks tests gets reverted, not debugged
-- **Sequential** — each commit's working tree depends on the previous
+- **Per-commit subagents** — fresh context prevents window exhaustion
+- **git-surgeon for staging, Edit for refinements** — hunk-level selection without interactive prompts; Edit applies after staging so original hunks anchor each commit
+- **Refinements preserve functionality** — same tests, same behavior, cleaner code
+- **`--instructions` overrides defaults** — focus refinements on user's specified areas
+- **Tests gate every commit** — broken refinement gets reverted, not debugged
+- **Sequential execution** — each commit depends on the previous

@@ -1,0 +1,34 @@
+{
+  "skill_name": "bootstrap-web",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/bootstrap-web recipebook a recipe sharing app where friends can save and share recipes with each other",
+      "expected_output": "Researches current ecosystem state (SvelteKit scaffold method, DB layer, UI components, etc.) via WebSearch before writing any files. Invokes bootstrap-caddy for dev routing. Creates project at ~/src/recipebook with the fixed stack (SvelteKit+Svelte5, bun, Tailwind, Cloudflare Pages, D1, WebAuthn). Interviews user about design preferences (tone, color, typography). Runs quality gate (bun run prepare && bun run check) before reporting.",
+      "expectations": [
+        "Researches current ecosystem state before scaffolding — does not use stale hardcoded templates",
+        "Invokes Skill(bootstrap-caddy, 'recipebook') for dev routing setup",
+        "Uses the fixed stack: SvelteKit, Svelte 5, bun, Tailwind via vite plugin, Cloudflare Pages adapter, D1"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/bootstrap-web --auto dashwise analytics dashboard for personal finance tracking",
+      "expected_output": "With --auto, skips design interview and uses defaults (minimal tone, cool+muted colors, sans+formal typography). Picks leading option for close research calls without asking. Creates project at ~/src/dashwise, runs quality gate, reports location and dev URL.",
+      "expectations": [
+        "Skips design interview with --auto — uses default tone, colors, typography",
+        "Picks leading option for close research calls without AskUserQuestion",
+        "Runs quality gate (bun run prepare && bun run check) and fixes any type errors"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/bootstrap-web",
+      "expected_output": "No project name provided. Asks for one via AskUserQuestion before proceeding. Does not infer a name or start scaffolding without it.",
+      "expectations": [
+        "Uses AskUserQuestion to request a project name — does not guess or infer",
+        "Does not create any files or directories before getting the project name"
+      ]
+    }
+  ]
+}

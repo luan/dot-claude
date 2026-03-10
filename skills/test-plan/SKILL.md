@@ -24,7 +24,7 @@ Files: !`git diff --name-only HEAD 2>/dev/null`
 
 ## Interviewing
 
-See rules/skill-interviewing.md. Ask on: unclear risk classification, ambiguous test environment.
+See rules/skill-interviewing.md.
 
 ## Step 1: Scope
 
