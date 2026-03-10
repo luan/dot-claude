@@ -83,6 +83,7 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
    Otherwise → stop for user review.
 
 8. **Spec refinement** — if user gives feedback:
+   - **Challenge check:** Does this feedback contradict the rationale in the current spec without citing new evidence? If yes, name the contradiction and ask whether the rationale should be revised. Do not silently absorb it.
    - **Minor (no new research needed):** Revise spec from stored research + feedback. TaskUpdate revised metadata.spec. If metadata.spec_file → overwrite it by writing to the existing path. Do NOT run `ct spec create` again — that generates a new file and orphans the reference in metadata.spec_file. status_detail stays `"spec_review"`.
    - **Major (user references unexplored code or new approach):** Dispatch follow-up research subagent with current spec as context. Merge findings. TaskUpdate merged spec. Overwrite spec_file if set.
    - Re-present. Repeat until user approves.
@@ -116,6 +117,7 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
     Otherwise → stop for user review.
 
 14. **Plan refinement** — if user gives feedback:
+    - **Challenge check:** Does this feedback contradict the rationale in the current plan without citing new evidence? If yes, name the contradiction and ask whether the rationale should be revised. Do not silently absorb it.
     - **Minor (no new files needed):** Revise from stored plan + feedback. TaskUpdate revised metadata.design.
       If metadata.plan_file → overwrite it by writing to the existing path. Do NOT run `ct plan create` again — that generates a new file and orphans the reference in metadata.plan_file.
     - **Major (new codebase data required):** If the user references unexplored code, asks to research something, or introduces a new architectural approach — dispatch a follow-up subagent with `metadata.design` as prior findings verbatim in the prompt. Merge new + prior. TaskUpdate merged design. Overwrite plan_file if set. When in doubt, dispatch.

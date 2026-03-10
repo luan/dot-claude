@@ -57,13 +57,15 @@ Without `--auto`: AskUserQuestion, ONE per turn — wait for answer before next.
 
 Stop when you can propose approaches. Usually 3-5 questions, never >7. Stay technology-agnostic during interview — specific technologies belong in step 4.
 
+**Challenge gate:** If the user's answer contains an unvalidated assumption or contradicts a previously stated constraint, name the conflict explicitly before proceeding to the next question. Do not silently incorporate contradictions.
+
 **Mid-dialogue pivot:** If direction shifts fundamentally, acknowledge, discard stale context, restart from the relevant question.
 
 ### 4. Propose 2-3 Approaches
 
 Check background scan completed. Incorporate findings into approaches.
 
-Lead with recommendation + justification referencing user's constraints. Non-recommended: 2-3 sentences + downside vs recommended. Be opinionated. `--auto` → auto-select the recommended approach. Without `--auto` → ask user to pick or refine. All rejected → ask what's missing, propose new approaches.
+Lead with recommendation + justification referencing user's constraints. Non-recommended: 2-3 sentences + downside vs recommended. Be opinionated. `--auto` → auto-select the recommended approach. Without `--auto` → ask user to pick or refine. If the user rejects the recommendation, state what the non-recommended approach gives up compared to the recommended one — do not just acknowledge and pivot. All rejected → ask what's missing, propose new approaches.
 
 ### 5. Present Design Sections
 
