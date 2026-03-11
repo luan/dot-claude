@@ -1,0 +1,66 @@
+{
+  "skill_name": "handoff",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/handoff",
+      "expected_output": "Skill triggers in create mode. Calls TaskList to gather current session state (in-progress tasks, recent completions, key decisions). Creates a handoff task with type='handoff' containing structured metadata (active tasks, modified files, decisions, next steps). Prints a formatted handoff block and ends with 'Run `/compact` when ready.'",
+      "expectations": [
+        "Skill triggers correctly on explicit /handoff invocation",
+        "Calls TaskList to gather current session context",
+        "Creates a handoff task with type='handoff' in metadata",
+        "Prints resume command — ends with 'Run `/compact` when ready.'"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "my context is getting full, prep a handoff",
+      "expected_output": "Skill triggers in create mode via natural language. Gathers session state, creates handoff task, prints formatted block. Does not ask clarifying questions — proceeds directly.",
+      "expectations": [
+        "Routes to handoff skill on natural language trigger ('context is full')",
+        "Runs create mode — does not ask clarifying questions before proceeding",
+        "Creates a handoff task with structured metadata"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "transfer my session",
+      "expected_output": "Skill triggers in create mode. Recognizes 'transfer session' as a trigger phrase. Gathers state, creates handoff task, prints formatted block.",
+      "expectations": [
+        "'transfer session' trigger phrase is recognized and routes to handoff skill",
+        "Runs create mode — gathers state and creates handoff task",
+        "Does not confuse 'transfer session' with person-directed delegation"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "/handoff --resume t201",
+      "expected_output": "Skill triggers in resume mode. Calls TaskGet(201) to read the handoff task metadata. Reconstructs session context from the handoff data — active tasks, modified files, decisions, next steps. Does not create a new handoff task.",
+      "expectations": [
+        "Resume mode activated — does not run create mode",
+        "Calls TaskGet with the provided task ID t201",
+        "Does not create a new handoff task — reads and restores from existing one"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "/handoff --resume",
+      "expected_output": "Skill triggers in resume mode without a specific task ID. Calls TaskList and filters for tasks with type='handoff' and status='in_progress'. Picks the most recent handoff task by created_at. Reads its metadata and reconstructs session context.",
+      "expectations": [
+        "Calls TaskList (not TaskGet) since no task ID was provided",
+        "Filters for type='handoff' and status='in_progress'",
+        "Picks the most recent matching task by created_at"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "hand this off to ferran",
+      "expected_output": "Skill does NOT trigger. This is person-directed delegation, not a session handoff. Normal conversational response — no TaskList, TaskCreate, or handoff task creation.",
+      "expectations": [
+        "Handoff skill is NOT triggered — person-directed phrasing is excluded",
+        "No handoff task is created",
+        "Responds conversationally about delegating to a person, not about session state preservation"
+      ]
+    }
+  ]
+}
