@@ -1,0 +1,221 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "rule_id": "1",
+      "name": "No unsolicited external actions",
+      "description": "Never take external actions (PR comments, GitHub issues, Slack, email, Notion) without explicit request",
+      "source": "CLAUDE.md",
+      "toggle_type": "inline",
+      "toggle_text": "1. Never external actions without explicit request (PR comments, GitHub issues, Slack, email, Notion).",
+      "eval_ids": []
+    },
+    {
+      "rule_id": "2",
+      "name": "Questions are not commands",
+      "description": "Treat questions as reflections to analyze, not disguised commands",
+      "source": "CLAUDE.md",
+      "toggle_type": "inline",
+      "toggle_text": "2. Questions are reflections to analyze, not disguised commands. Think critically and answer the question. Don't treat \"do you think X needs Y?\" as \"do Y.\"",
+      "eval_ids": []
+    },
+    {
+      "rule_id": "3",
+      "name": "No dead code",
+      "description": "No dead code, commented-out code, or just-in-case code; delete old code completely",
+      "source": "CLAUDE.md",
+      "toggle_type": "inline",
+      "toggle_text": "3. No dead code, commented-out code, \"just in case\" code. Delete old code completely \u2014 no deprecation, versioned names, migration code.",
+      "eval_ids": []
+    },
+    {
+      "rule_id": "4",
+      "name": "Comments for WHY only",
+      "description": "Comments for WHY, edge cases, and surprising behavior only; no docstrings unless project convention",
+      "source": "CLAUDE.md",
+      "toggle_type": "inline",
+      "toggle_text": "4. Comments for WHY / edge cases / surprising only. No docstrings unless project convention. No comments on code you didn't write.",
+      "eval_ids": []
+    },
+    {
+      "rule_id": "5",
+      "name": "Delegate to subagents",
+      "description": "Always delegate work to subagents or teams",
+      "source": "CLAUDE.md",
+      "toggle_type": "inline",
+      "toggle_text": "5. Always delegate work to subagents or teams.",
+      "eval_ids": []
+    },
+    {
+      "rule_id": "6",
+      "name": "Adversarial subagent trust",
+      "description": "Spot-check subagent claims; detect echo patterns; build-gate-verified results skip spot-checks",
+      "source": "CLAUDE.md",
+      "toggle_type": "inline",
+      "toggle_text": "6. Subagent trust is adversarial by default. Spot-check claims (1-2 for small tasks; ALL architectural claims for epics). Echo detection: if a subagent confirms every assumption without surfacing tradeoffs or caveats, re-verify the claim most likely to have nuance. Build gate exemption: build/test-verified results skip spot-checks.",
+      "eval_ids": []
+    },
+    {
+      "rule_id": "7",
+      "name": "LSP preference",
+      "description": "Prefer LSP for semantic navigation over Grep/Glob; never raw grep/find in Bash",
+      "source": "CLAUDE.md",
+      "toggle_type": "inline",
+      "toggle_text": "7. LSP tool for semantic navigation (go-to-definition, find-references, callers, type info) > Grep tool > Glob tool > `rg`/`fd` in Bash > `ck` (semantic). Never raw `grep`/`find` in Bash (hook-enforced). Prefer LSP over Grep when tracing call chains, refactoring across abstractions, or when string matching would produce false positives.",
+      "eval_ids": [1, 2, 3, 4]
+    },
+    {
+      "rule_id": "8",
+      "name": "No git checkout to restore",
+      "description": "Never use git checkout to restore files; make targeted edits instead",
+      "source": "CLAUDE.md",
+      "toggle_type": "inline",
+      "toggle_text": "8. Never `git checkout` to \"restore\" \u2014 make targeted edits. Ask before discarding uncommitted work.",
+      "eval_ids": []
+    },
+    {
+      "rule_id": "9",
+      "name": "Don't modify unrecognized things",
+      "description": "Never drop, revert, or modify unrecognized commits, files, branches, or config",
+      "source": "CLAUDE.md",
+      "toggle_type": "inline",
+      "toggle_text": "9. Never drop, revert, or modify things you don't recognize (commits, files, branches, config). If something unexpected appears, **stop and ask** \u2014 it's the user's work.",
+      "eval_ids": []
+    },
+    {
+      "rule_id": "10",
+      "name": "Memory saving preference",
+      "description": "When saving memories, consider if a universal rule file would be more useful",
+      "source": "CLAUDE.md",
+      "toggle_type": "inline",
+      "toggle_text": "10. When saving memories, consider if a universal rule would be more useful \u2192 `~/.claude/rules/<topic>.md`",
+      "eval_ids": []
+    },
+    {
+      "rule_id": "11",
+      "name": "Skills flow",
+      "description": "Skills follow brainstorm, scope, develop, review, commit pipeline",
+      "source": "CLAUDE.md",
+      "toggle_type": "inline",
+      "toggle_text": "11. Skills flow: brainstorm \u2192 scope \u2192 develop [acceptance] \u2192 review \u2192 commit",
+      "eval_ids": []
+    },
+    {
+      "rule_id": "12",
+      "name": "Resume after compaction",
+      "description": "On resume after compaction, re-invoke /develop for in-progress tasks with impl_team set",
+      "source": "CLAUDE.md",
+      "toggle_type": "inline",
+      "toggle_text": "12. On resume after compaction: if tasks exist with `metadata.impl_team` set and status `in_progress`, re-invoke `/develop` to trigger recovery.",
+      "eval_ids": []
+    },
+    {
+      "rule_id": "13",
+      "name": "Skill scripts CLAUDE_SKILL_DIR",
+      "description": "Use ${CLAUDE_SKILL_DIR} in SKILL.md to reference skill-local files",
+      "source": "CLAUDE.md",
+      "toggle_type": "inline",
+      "toggle_text": "13. Skill scripts: use `${CLAUDE_SKILL_DIR}` in SKILL.md to reference skill-local files (scripts, references, agents). Expands to the skill's absolute directory at load time.",
+      "eval_ids": []
+    },
+    {
+      "rule_id": "arc-core-workflow",
+      "name": "Arc-Core Workflow",
+      "description": "Chromium/arc-core build workflow, agent team requirements, and Swift bridge conventions",
+      "source": "rules/arc-core-workflow.md",
+      "toggle_type": "file",
+      "toggle_text": null,
+      "eval_ids": []
+    },
+    {
+      "rule_id": "bash-output",
+      "name": "Bash Output",
+      "description": "Don't truncate build/test output through tail, head, or other truncation",
+      "source": "rules/bash-output.md",
+      "toggle_type": "file",
+      "toggle_text": null,
+      "eval_ids": []
+    },
+    {
+      "rule_id": "cargo",
+      "name": "Cargo Dependencies",
+      "description": "Cargo.toml conventions: latest stable versions, highest unambiguous version, share workspace deps",
+      "source": "rules/cargo.md",
+      "toggle_type": "file",
+      "toggle_text": null,
+      "eval_ids": []
+    },
+    {
+      "rule_id": "python",
+      "name": "Python",
+      "description": "Use uv for execution and dependency management; never invoke python directly or use pip",
+      "source": "rules/python.md",
+      "toggle_type": "file",
+      "toggle_text": null,
+      "eval_ids": []
+    },
+    {
+      "rule_id": "rules-authoring",
+      "name": "Rules Authoring",
+      "description": "Every rule file must have YAML frontmatter with paths glob for contextual loading",
+      "source": "rules/rules-authoring.md",
+      "toggle_type": "file",
+      "toggle_text": null,
+      "eval_ids": []
+    },
+    {
+      "rule_id": "rust",
+      "name": "Rust",
+      "description": "Latest nightly, zero warnings via clippy, cargo fmt/test/build validation cycle",
+      "source": "rules/rust.md",
+      "toggle_type": "file",
+      "toggle_text": null,
+      "eval_ids": []
+    },
+    {
+      "rule_id": "skill-interviewing",
+      "name": "Skill Interviewing",
+      "description": "When and how to ask user questions mid-skill and handle cross-skill handoffs",
+      "source": "rules/skill-interviewing.md",
+      "toggle_type": "file",
+      "toggle_text": null,
+      "eval_ids": []
+    },
+    {
+      "rule_id": "skills-editing",
+      "name": "Skills Editing",
+      "description": "Integrate new features into existing skill structure; don't append standalone sections",
+      "source": "rules/skills-editing.md",
+      "toggle_type": "file",
+      "toggle_text": null,
+      "eval_ids": []
+    },
+    {
+      "rule_id": "svelte5",
+      "name": "Svelte 5",
+      "description": "Svelte 5 runes, deprecated patterns, and verification via svelte-check",
+      "source": "rules/svelte5.md",
+      "toggle_type": "file",
+      "toggle_text": null,
+      "eval_ids": []
+    },
+    {
+      "rule_id": "swift",
+      "name": "Swift",
+      "description": "Use fputs to stderr for debug logging; remove before merging to main",
+      "source": "rules/swift.md",
+      "toggle_type": "file",
+      "toggle_text": null,
+      "eval_ids": []
+    },
+    {
+      "rule_id": "testing",
+      "name": "Testing",
+      "description": "TDD workflow, banned test patterns, mock discipline, and speed requirements",
+      "source": "rules/testing.md",
+      "toggle_type": "file",
+      "toggle_text": null,
+      "eval_ids": []
+    }
+  ]
+}
