@@ -58,7 +58,7 @@ Without `--auto`: AskUserQuestion, ONE per turn. Prefer multiple-choice.
 
 Stop when you can propose approaches. Usually 3-5 questions, never >7. Stay technology-agnostic — specific tech belongs in step 4.
 
-**Challenge gate:** Triggers: (1) answer contradicts a previously stated constraint, (2) prompt is solution-shaped (describes a thing to build without stating a problem), (3) user states something as fact without evidence (unvalidated assumption). When any trigger fires, ask ONE reframing question before proceeding — do not block the interview, redirect it. See `references/problem-framing.md` for patterns and push-back phrasing. Do not silently incorporate contradictions or unvalidated claims.
+**Challenge gate:** Triggers: (1) answer contradicts a previously stated constraint, (2) prompt is solution-shaped (describes a thing to build without stating a problem), (3) user states something as fact without evidence (unvalidated assumption). When any trigger fires, ask ONE reframing question before proceeding — do not block the interview, redirect it. See `references/problem-framing.md` for patterns and push-back phrasing. Do not silently incorporate contradictions or unvalidated claims. Never expose internal mechanics to the user — no "the challenge gate fires", no naming triggers or skill steps. Just ask the question naturally.
 
 **Mid-dialogue pivot:** If direction shifts fundamentally, acknowledge, discard stale context, restart from the relevant question.
 
