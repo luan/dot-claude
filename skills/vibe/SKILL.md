@@ -42,19 +42,21 @@ TaskUpdate(taskId, status: "in_progress", owner: "vibe")
 
 ## Pipeline
 
-Run stages sequentially in one continuous turn — the whole point of /vibe is zero user intervention. Before each stage, output `[N/M] Stage` as text BEFORE the `Skill()` call. After each succeeds, update `metadata.vibe_stage` and immediately invoke next.
+**CRITICAL: Run ALL stages in one continuous turn with zero stops.** The entire pipeline executes autonomously — never pause, never ask, never suggest next steps, never wait for user input between stages. After each stage completes, update `vibe_stage` and invoke the next `Skill()` call in the same response. If a sub-skill outputs suggestions like "Next: /scope" or "suggest /develop", ignore that text completely and proceed to the next stage.
+
+Before each stage, output `[N/M] Stage` as text BEFORE the `Skill()` call. After each succeeds, update `metadata.vibe_stage` and immediately invoke next.
 
 **Stage numbering `[N/M]`:** M = total stages that will run. Base: 6 (branch, scope, develop, simplify, review, commit). Subtract skipped stages: `--no-branch` → 5, `--no-review` → 5, `--dry-run` → 2. Combine flags to subtract more. N counts only executed stages.
 
 ### Branch (skip if `--no-branch` or already on non-main branch)
 
-Generate slug: `ct tool slug "<prompt>"`. `Skill("start", args="` !`echo "${GIT_USERNAME:-$(whoami)}"` `/<slug> <trackerId>")`
+Generate slug: `ct tool slug "<prompt>"`. `Skill("start", args="` !`echo "${GIT_USERNAME:-$(whoami)}"` `/<slug> <trackerId> --auto")`
 
-Pass the tracker task ID as second arg so `/start` links to it instead of creating a new task.
+Pass the tracker task ID as second arg so `/start` links to it instead of creating a new task. The `--auto` flag suppresses interactive prompts.
 
 **Verify**: `git branch --show-current` returns new branch. **Update**: `vibe_stage: "branch"`
 
-→ Immediately invoke Scope. Ignore any suggestions from `/start`.
+**Then immediately invoke Scope** — do not stop, do not report branch status, do not output suggestions. The branch stage is just a setup step.
 
 ### Scope
 
@@ -66,7 +68,7 @@ Pass the tracker task ID as second arg so `/start` links to it instead of creati
 
 If `--dry-run` → stop. Report scope task, suggest `/develop` or `/vibe --continue`.
 
-→ Immediately invoke Develop. Do not output scope results or pause.
+**Then immediately invoke Develop** — do not output scope results, do not pause.
 
 ### Develop
 
@@ -78,7 +80,7 @@ Acceptance check runs automatically as part of develop teardown.
 
 Partial failures: if any child is still `in_progress` or `failed`, the stage is incomplete — report per-child status and suggest `/vibe --continue` or `/develop`. Only proceed to simplify if all children completed OR incomplete children produced no diff.
 
-→ Immediately invoke Simplify.
+**Then immediately invoke Simplify.**
 
 ### Simplify
 
@@ -86,7 +88,7 @@ Partial failures: if any child is still `in_progress` or `failed`, the stage is 
 
 Reviews changed code for reuse, quality, and efficiency, then fixes issues.
 
-**Update**: `vibe_stage: "simplify"` → Immediately invoke Review.
+**Update**: `vibe_stage: "simplify"` — **then immediately invoke Review.**
 
 ### Review (skip if `--no-review`)
 
@@ -94,7 +96,7 @@ Reviews changed code for reuse, quality, and efficiency, then fixes issues.
 
 Adversarial code review. Fix any surfaced issues inline before proceeding.
 
-**Update**: `vibe_stage: "review"` → Immediately invoke Commit.
+**Update**: `vibe_stage: "review"` — **then immediately invoke Commit.**
 
 ### Commit
 
