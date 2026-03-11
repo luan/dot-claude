@@ -1,42 +1,34 @@
 {
-  "version": "1.0",
-  "skill": "skills/test-plan",
-  "cases": [
+  "skill_name": "test-plan",
+  "evals": [
     {
-      "id": "skill-md-not-trivial",
-      "prompt": "You are Claude running /test-plan. The diff shows changes to 2 files: skills/scope/SKILL.md (modified step ordering) and README.md (updated badge).\n\nDemonstrate Step 1 (Scope).",
+      "id": 1,
+      "prompt": "what should i test? diff has changes to skills/scope/SKILL.md (rewrote the step ordering) and README.md (updated a badge url)",
+      "expected_output": "Does NOT early-exit. Identifies SKILL.md as never-trivial (executable spec that changes agent behavior) and analyzes it with code rigor. Identifies README.md as trivial. Produces a test plan with verification steps for the SKILL.md changes — focusing on what behavior changed and what to verify by invoking the skill.",
       "expectations": [
-        {
-          "criterion": "skill-md-analyzed",
-          "description": "Does NOT early-exit or treat SKILL.md as trivial — SKILL.md is explicitly listed as 'never trivial' because it's an executable spec that changes agent behavior",
-          "required": true
-        },
-        {
-          "criterion": "readme-is-trivial",
-          "description": "Correctly identifies README.md as trivial (*.md excluding SKILL.md/CLAUDE.md/*.mdx)",
-          "required": false
-        }
+        "Does NOT early-exit or treat SKILL.md as trivial — SKILL.md is explicitly never-trivial because it changes agent behavior",
+        "Correctly identifies README.md as trivial",
+        "Generates verification steps for SKILL.md that reference the specific behavioral change (step ordering) rather than generic 'check the file' instructions"
       ]
     },
     {
-      "id": "all-trivial-early-exit",
-      "prompt": "You are Claude running /test-plan. The diff shows changes to 3 files: README.md (updated badge), CHANGELOG.md (added release entry), LICENSE (updated year).\n\nDemonstrate Step 1 (Scope).",
+      "id": 2,
+      "prompt": "/test-plan — diff is README.md (badge), CHANGELOG.md (release entry), LICENSE (year update). that's it",
+      "expected_output": "All three files are trivial. Outputs 'Test Plan: No Manual Testing Required' with stat output and exits early. Does not generate risk classifications, verification steps, or a regression checklist.",
       "expectations": [
-        {
-          "criterion": "classifies-all-trivial",
-          "description": "Correctly identifies all 3 files as trivial — README.md, CHANGELOG.md, and LICENSE are all in the trivial list",
-          "required": true
-        },
-        {
-          "criterion": "exits-early",
-          "description": "Outputs '## Test Plan: No Manual Testing Required' with stat output instead of proceeding to Step 2 analysis",
-          "required": true
-        },
-        {
-          "criterion": "does-not-generate-plan",
-          "description": "Does NOT generate risk classifications, verification steps, or a regression checklist for trivial-only changes",
-          "required": false
-        }
+        "Correctly identifies all 3 files as trivial (README.md, CHANGELOG.md, LICENSE)",
+        "Outputs 'No Manual Testing Required' and exits early instead of proceeding to analysis",
+        "Does NOT generate risk classifications or verification steps for trivial-only changes"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "hey i changed src/auth/token.ts (modified the jwt validation logic) and src/auth/token.test.ts (updated test expectations). can you give me a test plan?",
+      "expected_output": "Classifies token.ts as Critical risk (auth/security — JWT validation logic) and test file as Low risk. Produces verification steps grouped by risk level: Critical section with concrete steps to verify JWT validation (expired tokens, malformed tokens, edge cases), regression checklist for adjacent auth functionality. Includes effort estimate.",
+      "expectations": [
+        "Classifies the JWT validation file as Critical risk (auth/security domain)",
+        "Verification steps reference domain-specific terms from the diff (JWT, token validation, not generic language)",
+        "Includes both 'How' (concrete actions like testing with expired/malformed tokens) and 'Expected' (observable correct outcome) in verification steps"
       ]
     }
   ]

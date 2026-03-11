@@ -1,47 +1,35 @@
 {
-  "version": "1.0",
-  "skill": "skills/split-commit",
-  "cases": [
+  "skill_name": "split-commit",
+  "evals": [
     {
-      "id": "noop-single-commit",
-      "prompt": "You are Claude running /split-commit. git log --oneline main..HEAD shows exactly 1 commit.\n\nDemonstrate Phase 1.",
+      "id": 1,
+      "prompt": "repackage my commits on this branch. git log --oneline main..HEAD shows 1 commit.",
+      "expected_output": "Runs the noop check, finds only 1 commit, and stops immediately with a message like 'Nothing to repackage — use /commit.' Does not proceed to analysis or execution.",
       "expectations": [
-        {
-          "criterion": "detects-noop",
-          "description": "Checks commit count (git log --oneline <base>..HEAD | wc -l) and finds ≤1 commit",
-          "required": true
-        },
-        {
-          "criterion": "stops-early",
-          "description": "Stops with a message like 'Nothing to repackage — single commit' rather than proceeding to analysis or execution",
-          "required": true
-        },
-        {
-          "criterion": "suggests-alternative",
-          "description": "Suggests /commit for amending as an alternative",
-          "required": false
-        }
+        "Checks commit count with git log --oneline <base>..HEAD",
+        "Stops early because there's only 1 commit, does not dispatch analysis subagent",
+        "Suggests /commit as an alternative"
       ]
     },
     {
-      "id": "execution-failure-mid-commit",
-      "prompt": "You are Claude running /split-commit. Analysis phase completed with a 4-commit plan, user approved. Execution subagent committed commits 1 and 2 successfully, but FAILED on commit 3 — tests broke because a missing dependency wasn't staged.\n\nThe subagent returned with: 'Stopped at commit 3. Error: test_auth fails — missing AuthConfig type (defined in config.rs, not yet staged).'\n\nDemonstrate recovery.",
+      "id": 2,
+      "prompt": "execution subagent just came back — commits 1 and 2 landed fine but commit 3 failed because test_auth can't find AuthConfig (it's in config.rs which wasn't staged yet). commits 1-2 are intact.",
+      "expected_output": "Spawns a fix subagent to stage the missing config.rs hunk and resolve the test failure. Then re-invokes the execution subagent for commits 3 and 4 only, preserving commits 1-2.",
       "expectations": [
-        {
-          "criterion": "spawns-fix-agent",
-          "description": "Spawns a fix subagent to address the dependency issue (stage the missing file/hunk) rather than abandoning the operation",
-          "required": true
-        },
-        {
-          "criterion": "continues-remaining",
-          "description": "After the fix, re-invokes execution subagent for the remaining commits (3 and 4) — does not restart from commit 1",
-          "required": true
-        },
-        {
-          "criterion": "preserves-earlier-commits",
-          "description": "Commits 1 and 2 remain intact — does not reset or redo them",
-          "required": true
-        }
+        "Spawns a fix subagent to address the missing dependency",
+        "Re-invokes execution subagent for remaining commits (3+) only — does not redo commits 1-2",
+        "Commits 1 and 2 remain intact"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "hey split my branch into clean commits. i've got like 7 messy commits with auth changes, a new api endpoint, and some test updates all mixed together. base is main. --test='cargo test'",
+      "expected_output": "Dispatches analysis subagent to read the full diff, trace cross-file deps, and produce a commit plan grouping changes vertically (e.g. foundational types first, then auth feature, then api endpoint, then tests). Presents the plan via AskUserQuestion showing commit count, test command, and each proposed commit with its files. On approval, collapses branch with git reset --soft main && git reset HEAD, then dispatches execution subagent with the plan.",
+      "expectations": [
+        "Dispatches analysis subagent that reads git diff main..HEAD and groups changes vertically",
+        "Presents the commit plan to the user for approval (no --auto specified)",
+        "Uses 'cargo test' as the test command from the --test flag",
+        "Uses git reset --soft <base> && git reset HEAD to collapse before execution"
       ]
     }
   ]

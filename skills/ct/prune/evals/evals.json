@@ -1,0 +1,32 @@
+{
+  "skill_name": "ct:prune",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/ct:prune",
+      "expected_output": "Runs 'ct task prune' with default 30-day threshold. Reports how many tasks were archived and any empty lists removed. If nothing qualifies, says 'Nothing to prune.'",
+      "expectations": [
+        "Runs ct task prune with no extra flags (30-day default)",
+        "Reports results or says 'Nothing to prune' if output is empty"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/ct:prune --dry-run --days 7",
+      "expected_output": "Runs 'ct task prune --dry-run --days 7' to preview what would be pruned with a 7-day threshold. Shows the preview without actually archiving anything.",
+      "expectations": [
+        "Passes --dry-run and --days 7 through to ct task prune",
+        "Does not actually archive tasks — only previews"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "clean up old tasks from the arc project, anything done more than 2 weeks ago",
+      "expected_output": "Runs 'ct task prune --days 14' to archive tasks completed more than 14 days ago. Reports results.",
+      "expectations": [
+        "Translates '2 weeks' to --days 14",
+        "Runs ct task prune with the --days flag"
+      ]
+    }
+  ]
+}

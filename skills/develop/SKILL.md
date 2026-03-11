@@ -22,7 +22,7 @@ allowed-tools:
 
 # Develop
 
-**IMMEDIATELY dispatch.** Never implement on main thread.
+**IMMEDIATELY dispatch.** Never implement on main thread — subagents do all coding so the main thread stays responsive for orchestration.
 
 ## Step 1: Find Work
 
@@ -39,9 +39,9 @@ Resolve argument:
 
 **Recovery:** Before classifying, check for orphaned epics (`metadata.impl_team` set AND `status == "in_progress"`). Only auto-recover when no explicit argument given.
 
-- **Children check first:** scan all children. All completed → clear `impl_team`, skip to Teardown (no re-dispatch needed). Some pending + some completed → only dispatch pending children. Never reset, re-run, or modify completed children — their work and status are preserved unconditionally.
-- Team config exists → re-enter Rolling Scheduler from current metadata counters. Re-dispatch unresponsive workers.
-- Config missing → clear `impl_team`, dispatch remaining pending children sequentially (up to 4) via Standalone prompts.
+- **Children check first:** scan all children. All completed → clear `impl_team`, skip to Teardown. Some pending + some completed → only dispatch pending children (completed children's work is preserved unconditionally — never reset or re-run them).
+- Team config exists → re-enter Rolling Scheduler from current metadata counters.
+- Config missing → clear `impl_team`, dispatch remaining pending children via Standalone (up to 4 concurrent).
 - After recovery → skip to Teardown.
 
 ## Step 1b: Prepare (from scope findings)
@@ -91,7 +91,7 @@ All modes use `Task(subagent_type="general-purpose")`. Trivial tasks use `model=
 - **Standalone** (Solo/fallback): no messaging, returns directly
 - **Team-based** (Team): adds SendMessage + shutdown handshake
 
-**Re-scope escape hatch:** Worker output containing `RESCOPE:` signals a fundamental design conflict. Immediately halt — do NOT dispatch any remaining workers and do NOT retry the RESCOPE worker. Invoke `Skill("scope", "--continue <epicId>")` to re-scope, then restart dispatch from Step 2 with updated tasks.
+**Re-scope escape hatch:** Worker output containing `RESCOPE:` signals a fundamental design conflict (wrong approach, missing prerequisite). Immediately halt — do NOT dispatch remaining workers or retry. Invoke `Skill("scope", "--continue <epicId>")` to re-scope, then restart from Step 2.
 
 ## Solo Mode
 
@@ -108,11 +108,20 @@ Every task dispatches via subagent. TeamCreate always runs.
 3. **Verify:** Full test suite. Red → spawn fix agent (max 2 cycles). Still red → escalate to user.
 4. **Teardown:** Clear all impl\_\* metadata, complete epic, TeamDelete → Stage Changes.
 
+## Completion Summary
+
+After teardown (all workers finished, epic verified), before staging:
+
+1. Collect child task IDs from `metadata.children`. Count N = number of completed children.
+2. Run `git diff --stat HEAD~<N>` to get changed files list. Run `git rev-parse HEAD~<N>` and `git rev-parse HEAD` for commit range.
+3. Derive a one-line summary from child task subjects (combine into a single sentence describing what was built).
+4. `TaskUpdate(epicId, metadata: {completion_summary: {files_changed: [<paths from diff --stat>], commit_range: "<base_sha>..<head_sha>", summary: "<one-line description>"}})`.
+
 ## Stage Changes
 
 After all workers:
 
 1. `Skill("acceptance", args="<epicId>")`.
 2. **Reconcile spec** — if `metadata.spec` exists on epic (or parent scope task):
-   Dispatch a subagent (model="sonnet"): input is the spec content + `git diff` (full diff, not just names — the subagent needs to see what changed). Prompt: "Compare this spec against the implementation diff. Update the spec so its Recommendation and Architecture Context accurately describe the system as implemented. Timeless present-tense format: no transition language ('changed from X to Y', 'previously', 'was updated'). Return the updated spec only, or 'NO_CHANGES' if it already matches." If updated: overwrite `metadata.spec`; overwrite `metadata.spec_file` if set; grep repo for the spec filename (e.g., `docs/specs/`) and overwrite if committed.
+   Dispatch a subagent (model="sonnet") with spec content + full `git diff`. Prompt: "Compare spec against implementation diff. Update Recommendation and Architecture Context to match what was actually built. Timeless present-tense — no transition language. Return updated spec or 'NO_CHANGES'." If updated: overwrite `metadata.spec`, `metadata.spec_file` if set, and repo copy (e.g. `docs/specs/`) if committed.
 3. `git add -u`, ask about untracked files, show `git diff --cached --stat`. Stop — user verifies before review.

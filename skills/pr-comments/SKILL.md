@@ -21,7 +21,7 @@ allowed-tools:
 
 Fix unresolved review comments from a PR.
 
-**Safety: NEVER replies to or resolves threads — only fetches and fixes locally. Push requires confirmation (unless `--auto`). `--auto` auto-resolves bot comments only (not human comments).**
+**Safety: never replies to or resolves threads — only fetches and fixes locally. Push requires confirmation (unless `--auto`). `--auto` auto-resolves bot comments only (not human comments).**
 
 ## Context
 

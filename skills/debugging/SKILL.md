@@ -5,57 +5,48 @@ description: "Systematic root cause investigation before proposing fixes. Trigge
 
 # Systematic Debugging
 
-Random fixes waste time + create new bugs.
+Fixing without understanding creates new bugs. Investigate first, fix second.
 
-**Iron Law:** NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST.
+## Phase 1: Investigate
 
-## 4 Phases
+1. Read errors — stack traces, line numbers, exact messages
+2. Reproduce — exact steps. Intermittent? Log at component boundaries.
+3. Check recent changes — `git diff`, new deps
+4. Trace data flow from symptom to source
 
-### Phase 1: Root Cause Investigation
-
-1. Read errors carefully — stack traces, line numbers
-2. Reproduce consistently — exact steps. Intermittent? Add logging at component boundaries to capture state on next occurrence.
-3. Check recent changes — git diff, new deps
-4. Gather evidence at component boundaries
-5. Trace data flow to source
-
-### Phase 2: Pattern Analysis
+## Phase 2: Compare
 
 1. Find working examples in codebase
-2. Read reference implementation COMPLETELY
-3. List ALL differences
-4. Understand dependencies, config, assumptions
+2. Read reference implementation fully
+3. Diff all differences — deps, config, assumptions
 
-### Phase 3: Hypothesis + Testing
+## Phase 3: Hypothesize + Test
 
-1. Form single hypothesis: "X is root cause because Y"
-1b. **Oracle test (when applicable):** Compare current behavior against a known-good baseline to confirm the bug and isolate its scope. Options: available worktree from pool (`git worktree list` — detached HEAD = available), reference implementation, or reduced test case with known-correct output. Creating a new worktree is expensive — justify only when the bug is non-obvious and affects multiple components. Return worktree to detached HEAD when done.
-2. **3+ plausible hypotheses:** STOP — spawn parallel subagents (one per hypothesis, each traces one, reports evidence for/against). At 3+ hypotheses, sequential testing wastes time because each test cycle is slow; parallel investigation covers more ground faster.
-3. SMALLEST possible change to test
-4. One variable at a time
-5. Worked → Phase 4. Didn't → NEW hypothesis (if 3rd, parallelize per step 2)
+1. Form hypothesis: "X causes this because Y"
+2. **Oracle test (when useful):** Compare against known-good baseline — available worktree (`git worktree list`, detached HEAD = available), reference impl, or reduced test case. Only create new worktrees for non-obvious multi-component bugs. Return to detached HEAD when done.
+3. **3+ plausible hypotheses → parallelize.** Spawn one subagent per hypothesis (each traces one, reports evidence for/against). Sequential testing wastes cycles when each test is slow.
+4. Smallest possible change to test. One variable at a time.
+5. Confirmed → Phase 4. Refuted → new hypothesis (3rd+ → parallelize per step 3)
 
-**Exit condition:** If 3 hypotheses all fail, re-enter Phase 1 with broader scope — re-examine assumptions and widen the investigation boundary. If Phase 1 re-entry also stalls, escalate as architectural (see "3+ Fixes" below).
+**Dead end:** 3 hypotheses all fail → re-enter Phase 1 with broader scope. Still stuck → escalate as architectural.
 
-### Phase 4: Implementation
+## Phase 4: Fix
 
-1. Create failing test that reproduces the bug
-2. Single fix — ONE change
+1. Write failing test that reproduces the bug
+2. Single fix — one change
 3. Verify — test passes, no regressions
-4. Fix doesn't work? < 3 attempts → Phase 1. >= 3 → architectural issue
+4. Fix fails? < 3 attempts → Phase 1. >= 3 → architectural issue
 
-## 3+ Fixes = Question Architecture
+## 3+ Fixes = Architectural Problem
 
-Repeated fixes without root cause understanding signal a design problem, not a surface bug. Continuing tactical patches compounds tech debt and masks the real issue.
+Repeated patches without root cause understanding signal a design problem. Tactical fixes compound debt and mask the real issue.
 
 !`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Document concern in task description, attempt one structural fix, surface to caller." || echo "STOP. Discuss with human before more fixes."`
 
-## Red Flags → Return to Phase 1
+## Red Flags → Back to Phase 1
 
-Listed from most dangerous (zero investigation) to least:
-
-- **Proposing solutions before tracing data flow** — guessing, not debugging
-- **"It's probably X"** — hypothesis without evidence
-- **"Add multiple changes, run tests"** — shotgun debugging masks root cause
-- **"Quick fix for now" / "Just try changing X"** — deferral that compounds
-- **"Skip test"** — removing the only verification signal
+- Proposing fixes before tracing data flow
+- "It's probably X" without evidence
+- Multiple changes at once (shotgun debugging)
+- "Quick fix for now" / "Just try changing X"
+- Skipping or deleting tests

@@ -1,47 +1,53 @@
 {
-  "version": "1.0",
-  "skill": "skills/implement-worker",
-  "cases": [
+  "skill_name": "implement-worker",
+  "evals": [
     {
-      "id": "sub-worker-failure",
-      "prompt": "You are Claude running implement-worker for task #42. You dispatched the sub-worker in Step 3. It returned, but TaskGet(42) shows status is still 'in_progress' — the worker crashed without completing.\n\nDemonstrate what you do.",
+      "id": 1,
+      "prompt": "implement-worker for task #42. sub-worker was dispatched in step 3 and returned, but TaskGet(42) still shows status='in_progress'. looks like the worker crashed mid-implementation without marking the task done",
+      "expected_output": "Step 3.5 catches the failure: TaskGet confirms the task is still in_progress after the sub-worker returned. Does NOT proceed to Step 4 (mark completed). Returns failure information to the caller (develop) so it can handle the failed task — retry, escalate, or report.",
       "expectations": [
-        {
-          "criterion": "checks-task-status-after-worker",
-          "description": "After the sub-worker returns, checks task status via TaskGet rather than assuming success",
-          "required": true
-        },
-        {
-          "criterion": "does-not-mark-complete",
-          "description": "Does NOT proceed to Step 4 (mark task completed) when the sub-worker failed",
-          "required": true
-        },
-        {
-          "criterion": "returns-failure-to-caller",
-          "description": "Returns failure information to the caller (develop) so it can handle the failed task appropriately",
-          "required": true
-        }
+        "Checks task status via TaskGet after sub-worker returns — does not assume success from agent return alone.",
+        "Does NOT mark the task completed (Step 4) when the sub-worker failed.",
+        "Returns failure info to caller (develop) for appropriate handling."
       ]
     },
     {
-      "id": "decompose-child-failure",
-      "prompt": "You are Claude running implement-worker for task #50 which was decomposed into 3 children (Step 1.6). Two children completed successfully. The third child's sub-worker returned but TaskGet shows it's still in_progress.\n\nDemonstrate what you do.",
+      "id": 2,
+      "prompt": "implement-worker for task #50. decomposed it into 3 children (step 1.6). children #51 and #52 completed — their sub-workers finished and TaskGet confirms status='completed'. but child #53's sub-worker returned and TaskGet still shows in_progress",
+      "expected_output": "After all agents return, checks each child via TaskGet. Finds #51 and #52 completed but #53 still in_progress. Does NOT mark parent #50 as completed. Reports which children succeeded (#51, #52) and which failed (#53), preserving the completed children's progress.",
       "expectations": [
-        {
-          "criterion": "detects-child-failure",
-          "description": "Detects that the third child did not complete — does not assume all children succeeded because all agents returned",
-          "required": true
-        },
-        {
-          "criterion": "does-not-complete-parent",
-          "description": "Does NOT mark the parent task (#50) as completed when a child failed",
-          "required": true
-        },
-        {
-          "criterion": "reports-partial-progress",
-          "description": "Reports which children completed and which failed, preserving the progress of successful children",
-          "required": true
-        }
+        "Checks each child via TaskGet — does not assume success because the agent returned.",
+        "Does NOT mark parent #50 as completed when child #53 failed.",
+        "Reports which children completed and which failed. Completed children's work is preserved."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "implement-worker for task #60. it's a simple config rename — one file, maybe 5 lines changed, no new logic. metadata.breadcrumb and metadata.epic_design are pre-computed by develop",
+      "expected_output": "Uses pre-computed breadcrumb and epic_design from metadata (no ancestor walk needed). Recognizes this as a trivial task and dispatches the sub-worker with model='sonnet' to save cost. Claims task (in_progress), spawns sub-worker, verifies completion via TaskGet, marks complete.",
+      "expectations": [
+        "Uses metadata.breadcrumb and metadata.epic_design directly — skips ancestor walk.",
+        "Dispatches sub-worker with model='sonnet' for the trivial single-file rename.",
+        "Still follows the full protocol: claim (Step 2) → dispatch (Step 3) → verify (Step 3.5) → complete (Step 4)."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "implement-worker for task #70. it touches 5 files across 3 unrelated subsystems (auth, billing, notifications). metadata.depth is 1, so depth < 3. this seems too big for a single sub-worker",
+      "expected_output": "Complexity assessment triggers: 5 files across 3 unrelated subsystems AND depth=1 < 3. Enters decompose path (Step 1.6). Creates child tasks — one per concern. Dispatches children (up to 4 concurrent), verifies all complete via TaskGet, runs acceptance on the parent, marks complete only if acceptance passes.",
+      "expectations": [
+        "Triggers decomposition: 4+ files across unrelated components AND depth < 3.",
+        "Creates child tasks with incremented depth (depth=2), dispatches up to 4 concurrent.",
+        "Verifies all children via TaskGet. Runs acceptance. Marks parent complete only if all children complete and acceptance passes."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "implement-worker for task #80. it looks complex (touches 6 files) but metadata.depth is missing — wasn't set by the parent. should it decompose?",
+      "expected_output": "Does NOT decompose. When depth is absent, assumes leaf to prevent unbounded recursion. Proceeds with the normal sub-worker path (Steps 2-5) despite the apparent complexity.",
+      "expectations": [
+        "depth absent → assumes leaf, does NOT decompose. This prevents unbounded recursion when invoked outside the normal develop hierarchy.",
+        "Proceeds with normal sub-worker dispatch (Steps 2-5)."
       ]
     }
   ]

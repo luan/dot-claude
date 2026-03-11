@@ -1,395 +1,203 @@
 {
-  "version": "1.0",
-  "skill": "skills/scope",
-  "cases": [
+  "skill_name": "scope",
+  "evals": [
     {
-      "id": "happy-path-spec-then-plan",
-      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope add webhook retry with exponential backoff'. The project root is /fake/project. CLAUDE_CODE_TASK_LIST_ID is set.\n\nDemonstrate the full flow: create tracking task, dispatch research subagent, validate findings, synthesize spec, present spec, get user approval of spec, then generate plan, present plan, and stop for plan review.\n\nResearch subagent returns findings in fixtures/research-findings.md.",
+      "id": 1,
+      "prompt": "/scope add webhook retry with exponential backoff to our notification service. project is at /Users/me/projects/notifier, bullmq is already in the codebase for job scheduling",
+      "expected_output": "Creates a tracking task, dispatches a research subagent (never researches on main thread), validates findings by spot-checking claims, synthesizes a timeless spec (Problem/Recommendation/Architecture Context/Risks), runs codex review on the spec, stores it via ct spec create, presents the spec as conversation text, and stops for user approval. Does NOT generate a plan yet \u2014 that comes after spec approval.",
+      "expectations": [
+        "Research happens via subagent dispatch, not on the main thread. After research returns, architectural claims are spot-checked (Grep/short Read) before synthesizing.",
+        "Spec is synthesized with four sections: Problem, Recommendation, Architecture Context, Risks. Recommendation uses present tense ('Webhook delivery uses exponential backoff via BullMQ'), no transition verbs. Architecture Context describes modules by role, not file paths.",
+        "Codex review runs on the spec before storing (codex exec with --sandbox read-only, --ephemeral, -C, -o, no -m). High-severity feedback incorporated before storing.",
+        "Spec is stored (ct spec create + TaskUpdate metadata.spec/spec_file/status_detail='spec_review') and presented as conversation text. Execution stops for user review \u2014 plan is NOT generated until spec is approved.",
+        "Scope does NOT create an epic or tasks \u2014 only spec and plan artifacts. Epic/task creation is develop's job."
+      ],
       "files": [
         "fixtures/research-findings.md"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "i think we should use a dead letter queue instead of just retry. also add idempotency keys to prevent double-delivery",
+      "expected_output": "Revises the spec to incorporate DLQ and idempotency keys. Updates metadata.spec and overwrites spec_file before re-presenting. Stays in spec_review \u2014 does NOT advance to plan generation or change status.",
+      "expectations": [
+        "Revises the spec (what we're building) to incorporate DLQ and idempotency. Does NOT generate or touch a plan \u2014 plan doesn't exist yet.",
+        "TaskUpdate with revised metadata.spec happens BEFORE re-presenting. If metadata.spec_file exists, overwrites the same path (no new ct spec create).",
+        "status_detail remains 'spec_review'. Does not advance to 'review' or 'approved'."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/scope add webhook retry --auto\n\nwe have bullmq already, the service is in src/webhooks/. need retry + dlq + monitoring",
+      "expected_output": "Runs the full scope pipeline autonomously: research, spec, plan, both stored, then invokes develop. Both user review gates AND codex reviews are skipped for speed.",
+      "expectations": [
+        "With --auto, spec is produced and stored but user review is skipped \u2014 does NOT stop for feedback on spec or plan.",
+        "Both metadata.spec and metadata.design are populated. Both ct spec create and ct plan create run. Both file paths stored in metadata.",
+        "Codex reviews are skipped with --auto \u2014 auto bypasses both user gates and codex reviews for speed (inner-call optimization).",
+        "After both phases: status_detail='approved', then Skill('develop', 't<scopeTaskId>')."
       ],
-      "expectations": [
-        {
-          "criterion": "spec-presented-first",
-          "description": "After research and validation, a spec is synthesized and presented FIRST. The spec covers WHAT we're building: problem statement, recommendation (target-state, present tense), architecture context (conceptual code landscape — NOT files to create/modify), risks. It does NOT include implementation phases, file change lists, or code-level changes like 'add X to Y' — those belong to the plan.",
-          "required": true
-        },
-        {
-          "criterion": "spec-is-timeless-target-state",
-          "description": "The spec's Recommendation describes the target system in present tense, as if already implemented ('Webhook delivery uses exponential backoff via BullMQ'). Avoids transition verbs (add, replace, migrate, move, change). After implementation, the spec reads as a valid specification of the system, not a dated change request.",
-          "required": true
-        },
-        {
-          "criterion": "spec-stops-for-approval",
-          "description": "After presenting the spec, execution stops and waits for user approval. The plan (phased implementation approach) is NOT generated or presented until the spec is explicitly approved.",
-          "required": true
-        },
-        {
-          "criterion": "plan-generated-after-spec-approval",
-          "description": "Only after user approves the spec does scope generate the implementation plan (phased approach with file paths, steps, approaches). The plan is a separate artifact stored in metadata.design, distinct from the spec in metadata.spec.",
-          "required": true
-        },
-        {
-          "criterion": "codex-reviews-both-artifacts",
-          "description": "Codex review runs on both the spec (step 5, before storing) and the plan (step 11, before storing). Each review uses codex exec with --sandbox read-only, --ephemeral, -C, -o flags. No -m flag passed.",
-          "required": true
-        },
-        {
-          "criterion": "plan-stops-for-review",
-          "description": "After presenting the plan, execution stops and waits for user review before proceeding to develop. Includes 'Next: /develop t<id>'.",
-          "required": true
-        },
-        {
-          "criterion": "does-not-create-epic-or-tasks",
-          "description": "Scope ONLY produces spec + plan. It does NOT create an epic or tasks. Epic and task creation are develop's job.",
-          "required": true
-        }
-      ]
-    },
-    {
-      "id": "spec-refinement-persists",
-      "prompt": "You are Claude following the scope skill instructions. You completed research for '/scope add webhook retry'. Tracking task #100 with metadata.spec populated and status_detail='spec_review'. Spec has been presented to the user.\n\nUser says: 'I think we should use a dead letter queue instead of just retry. Also add idempotency keys.'\n\nDemonstrate spec refinement.",
-      "files": [],
-      "expectations": [
-        {
-          "criterion": "revises-spec-not-plan",
-          "description": "Revises the spec (what we're building) based on feedback. Does NOT generate or modify a plan — the plan doesn't exist yet because the spec hasn't been approved.",
-          "required": true
-        },
-        {
-          "criterion": "persists-before-re-presenting",
-          "description": "TaskUpdate with revised metadata.spec happens BEFORE re-presenting the spec to the user. Downstream skills read stored artifacts, not conversation context.",
-          "required": true
-        },
-        {
-          "criterion": "stays-in-spec-review",
-          "description": "status_detail remains 'spec_review' after refinement. Does NOT advance to plan generation or 'review' status.",
-          "required": true
-        }
-      ]
-    },
-    {
-      "id": "auto-both-phases",
-      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope add webhook retry --auto'. CLAUDE_CODE_TASK_LIST_ID is set.\n\nYou complete research and validation. Now demonstrate the full flow through spec and plan with --auto.\n\nResearch subagent returns findings in fixtures/research-findings.md.",
       "files": [
         "fixtures/research-findings.md"
-      ],
-      "expectations": [
-        {
-          "criterion": "spec-auto",
-          "description": "With --auto, the spec is produced and stored but user review is skipped — does NOT stop for user feedback on the spec.",
-          "required": true
-        },
-        {
-          "criterion": "plan-auto",
-          "description": "The plan is also auto'd — does NOT stop for user feedback on the plan either. Both phases skip review.",
-          "required": true
-        },
-        {
-          "criterion": "both-artifacts-stored",
-          "description": "Both metadata.spec and metadata.design are populated. Both archival procedures run (ct spec create for spec, ct plan create for plan). Both file paths stored in metadata (spec_file, plan_file).",
-          "required": true
-        },
-        {
-          "criterion": "invokes-develop-with-task-id",
-          "description": "After both phases complete, sets status_detail='approved' and invokes Skill('develop', 't<scopeTaskId>') with the explicit task ID.",
-          "required": true
-        }
       ]
     },
     {
-      "id": "plan-refinement-after-spec",
-      "prompt": "You are Claude following the scope skill instructions. Spec for '/scope add webhook retry' was approved. Tracking task #100 with metadata.spec populated, metadata.design populated, metadata.plan_file set. status_detail is 'review'.\n\nUser says: 'Use an outbox pattern instead of direct retry for the first phase.'\n\nDemonstrate plan refinement.",
-      "files": [],
+      "id": 4,
+      "prompt": "hmm actually use an outbox pattern instead of direct retry for phase 1. the rest looks good",
+      "expected_output": "Revises the plan to use outbox pattern in phase 1. Updates metadata.design and overwrites plan_file. Does NOT touch the spec since this only changes HOW (approach), not WHAT (goals/scope). After user approves, sets status_detail='approved' and invokes develop.",
       "expectations": [
-        {
-          "criterion": "approach-feedback-stays-in-plan",
-          "description": "This feedback ('use an outbox pattern instead of direct retry') changes the HOW (approach for phase 1), not the WHAT. So metadata.spec is unchanged and only metadata.design is revised. If feedback had changed what we're building, both spec and plan would be updated.",
-          "required": true
-        },
-        {
-          "criterion": "updates-design-before-re-presenting",
-          "description": "TaskUpdate with revised metadata.design happens BEFORE re-presenting the plan. Overwrites plan_file if it exists (does NOT create a new file).",
-          "required": true
-        },
-        {
-          "criterion": "approval-sets-status-and-invokes-develop",
-          "description": "After user approves plan: TaskUpdate status_detail='approved', then Skill('develop', 't100'). Task ID is passed explicitly.",
-          "required": true
-        }
+        "This changes HOW (approach for phase 1), not WHAT. metadata.spec is unchanged, only metadata.design is revised.",
+        "TaskUpdate with revised metadata.design happens BEFORE re-presenting. Overwrites plan_file (no new ct plan create).",
+        "After user approves: TaskUpdate status_detail='approved', then Skill('develop', 't<id>')."
       ]
     },
     {
-      "id": "spec-plan-archival",
-      "prompt": "You are Claude following the scope skill instructions. You have completed research for '/scope add webhook retry'. Demonstrate the archival procedure for BOTH the spec (after spec approval) and the plan (after plan generation).\n\nShow the exact commands/calls used to archive each artifact.",
-      "files": [],
+      "id": 5,
+      "prompt": "/scope add webhook retry. btw CLAUDE_CODE_TASK_LIST_ID isn't set, forgot to configure it",
+      "expected_output": "Shell guard detects CLAUDE_CODE_TASK_LIST_ID is unset and stops immediately with instructions to set it in .claude/settings.json. No research is dispatched.",
       "expectations": [
-        {
-          "criterion": "spec-uses-ct-spec-create",
-          "description": "Spec is archived using 'ct spec create' with --prefix 'scope' — mirroring the plan archival mechanism. git notes is NOT used for the spec. Spec file path stored in metadata.spec_file.",
-          "required": true
-        },
-        {
-          "criterion": "plan-uses-ct-plan-create",
-          "description": "Plan is archived using 'ct plan create' with --prefix 'scope' — the existing archival mechanism. git notes is NOT used for the plan. Plan file path stored in metadata.plan_file.",
-          "required": true
-        },
-        {
-          "criterion": "both-stored-in-metadata",
-          "description": "Spec stored in metadata.spec AND plan stored in metadata.design. Both fields are populated as separate metadata entries.",
-          "required": true
-        }
+        "Detects CLAUDE_CODE_TASK_LIST_ID is unset BEFORE dispatching any research or creating tasks. Tells user to set it in .claude/settings.json."
       ]
     },
     {
-      "id": "spec-to-repo-option",
-      "prompt": "You are Claude following the scope skill instructions. Both spec and plan are approved for '/scope add webhook retry'. Tracking task #100. User is about to proceed to develop.\n\nDemonstrate the spec-to-repo option that should be offered at the end.",
-      "files": [],
+      "id": 6,
+      "prompt": "/scope --continue",
+      "expected_output": "Finds the most recent scope task via TaskList. Behavior depends on status_detail: 'spec_review' re-presents spec for review, 'review' re-enters plan refinement, 'approved' immediately invokes develop.",
       "expectations": [
-        {
-          "criterion": "offers-spec-file-option",
-          "description": "After plan approval, AskUserQuestion offers the option to save the spec as a file in the repository. This is optional — user can decline.",
-          "required": true
-        },
-        {
-          "criterion": "writes-file-if-accepted",
-          "description": "If user accepts, writes the spec content as a markdown file in the repo. The file will be included in the eventual commit alongside implementation files.",
-          "required": true
-        },
-        {
-          "criterion": "proceeds-regardless",
-          "description": "Whether user accepts or declines the spec file option, scope proceeds to invoke develop (or stop if --no-develop).",
-          "required": true
-        }
+        "Resolves task via TaskList filtered by type='scope' and status_detail in ['spec_review', 'review', 'approved'].",
+        "Routes correctly based on status_detail: spec_review \u2192 re-present spec; review \u2192 plan refinement with subagent merge; approved \u2192 Skill('develop', 't<id>')."
       ]
     },
     {
-      "id": "continue-spec-review",
-      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope --continue'. CLAUDE_CODE_TASK_LIST_ID is set.\n\nTaskList() finds task 500: metadata.type='scope', status='in_progress', status_detail='spec_review', metadata.spec populated.\n\nDemonstrate the --continue workflow for a task in spec review.",
-      "files": [],
+      "id": 7,
+      "prompt": "/scope --continue\n\nadd more detail about error handling and circuit breaker behavior in the retry flow",
+      "expected_output": "Finds scope task in 'review' status. Dispatches a research subagent with both the prior metadata.design AND the new prompt about error handling. Merges results, updates metadata.design, overwrites existing plan_file, re-presents the plan.",
       "expectations": [
-        {
-          "criterion": "resumes-spec-not-plan",
-          "description": "Detects status_detail='spec_review' and re-presents the spec for user review. Does NOT skip to plan generation or invoke develop.",
-          "required": true
-        },
-        {
-          "criterion": "handles-feedback-or-approval",
-          "description": "If user provides feedback, enters spec refinement loop. If user approves, proceeds to plan generation.",
-          "required": true
-        }
+        "Dispatches a subagent with prior metadata.design AND the new prompt. Merges new findings with existing plan, doesn't replace.",
+        "Updates metadata.design AND overwrites existing plan_file path. Does NOT create a new plan file.",
+        "Re-enters plan presentation. Does NOT re-present spec or skip to approval."
       ]
     },
     {
-      "id": "continue-plan-review",
-      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope --continue add more detail about error handling'. CLAUDE_CODE_TASK_LIST_ID is set.\n\nTaskList() finds task 500: metadata.type='scope', status='in_progress', status_detail='review', metadata.spec populated, metadata.design populated, metadata.plan_file='/tmp/scope-webhook.md'.\n\nDemonstrate the --continue workflow for a task in plan review.",
-      "files": [],
+      "id": 8,
+      "prompt": "/scope --continue",
+      "expected_output": "Finds scope task with status_detail='approved'. Immediately invokes Skill('develop', 't<id>') without re-researching or re-presenting anything.",
       "expectations": [
-        {
-          "criterion": "dispatches-with-prior-findings",
-          "description": "Dispatches a research subagent with both the prior metadata.design AND the new prompt. The subagent merges, not replaces.",
-          "required": true
-        },
-        {
-          "criterion": "overwrites-plan-file-not-creates-new",
-          "description": "Updates metadata.design AND overwrites the existing plan file (metadata.plan_file). Does NOT create a new plan file.",
-          "required": true
-        },
-        {
-          "criterion": "re-enters-plan-presentation",
-          "description": "After merging, re-enters the plan presentation flow. Does NOT re-present the spec (already approved). Does not skip to approval.",
-          "required": true
-        }
+        "Recognizes status_detail='approved' and immediately invokes Skill('develop', 't<taskId>'). No re-research, no re-presentation, no review loops."
       ]
     },
     {
-      "id": "continue-approved-invokes-develop",
-      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope --continue'. CLAUDE_CODE_TASK_LIST_ID is set.\n\nTaskList() finds task 500: metadata.type='scope', status='in_progress', status_detail='approved', metadata.spec populated, metadata.design populated.\n\nDemonstrate the --continue workflow.",
-      "files": [],
+      "id": 9,
+      "prompt": "actually, I think we need to use an event-driven architecture with message queues instead. can you research how our codebase handles async messaging? i saw something in src/events/ but never looked closely",
+      "expected_output": "Recognizes this as major feedback requiring new codebase exploration. Dispatches a follow-up research subagent (not minor revision from stored findings). Merges new research with existing plan, persists to metadata.design, overwrites plan_file. Does NOT modify the spec.",
       "expectations": [
-        {
-          "criterion": "detects-approved-skips-to-develop",
-          "description": "Recognizes status_detail='approved' and immediately invokes Skill('develop', 't500'). Does NOT re-research, re-present spec or plan, or re-enter any review loop.",
-          "required": true
-        }
+        "Dispatches a follow-up research subagent \u2014 does NOT revise from stored findings alone. User explicitly asked to research unexplored code.",
+        "Merges new research with existing plan. Persists to metadata.design AND overwrites plan_file. metadata.spec is NOT modified (spec was already approved)."
       ]
     },
     {
-      "id": "major-feedback-dispatches-subagent",
-      "prompt": "You are Claude following the scope skill instructions. Spec approved, plan presented for '/scope add webhook retry'. Tracking task #100, status_detail='review'.\n\nUser says: 'Actually, I think we need to use an event-driven architecture with message queues instead. Can you research how our codebase handles async messaging?'\n\nDemonstrate plan refinement with major feedback.",
-      "files": [],
+      "id": 10,
+      "prompt": "/scope add persistence to sync queue\n\nright now SyncChangeQueue.swift is in-memory only, fire-and-forget. SyncPersistenceClient only handles marker/birthday. there's existing GRDB patterns in the Memory module we could follow. SyncEntity isn't Codable yet tho",
+      "expected_output": "Research returns implementation-level details (files to create/modify, code changes). The spec abstracts UP from these: Architecture Context describes modules by role ('the sync queue module', 'the persistence client'), Recommendation states strategy ('dedicated GRDB database for sync state persistence'), no Create/Modify annotations or code-level changes.",
       "expectations": [
-        {
-          "criterion": "dispatches-subagent-for-new-research",
-          "description": "Recognizes this needs new codebase data and dispatches a follow-up research subagent. Does NOT attempt to revise from stored findings alone — the user explicitly asked to research something new.",
-          "required": true
-        },
-        {
-          "criterion": "merges-and-persists",
-          "description": "Merges new research with existing plan, then persists to metadata.design AND overwrites plan file if exists. metadata.spec is NOT modified — the spec (what) was already approved.",
-          "required": true
-        }
+        "Architecture Context describes the code landscape conceptually \u2014 by module role and pattern, not hardcoded file paths or Create/Modify annotations. Paths may appear parenthetically.",
+        "Recommendation is strategy-level in present tense ('sync state persists in a dedicated GRDB database'), not transition language ('add persistence to the sync queue').",
+        "Spec does NOT contain file change tables, 'add X to Y.swift', 'create Z.swift', or 'extend W with'. Those belong exclusively in the plan."
       ]
     },
     {
-      "id": "spec-abstraction-boundary",
-      "prompt": "You are Claude following the scope skill instructions. Research subagent returns findings for '/scope add persistence to sync queue':\n\n## Current State\n- SyncChangeQueue.swift: in-memory queue, fire-and-forget\n- SyncChangeTracker.swift: adapter-level state, coordinates queue ops\n- SyncPersistenceClient.swift: only persists marker/birthday (4 closures)\n- SyncEntity.swift: Equatable+Sendable but NOT Codable\n- MemoryDatabase.swift: existing GRDB patterns in Memory module\n\n## Key Files\n- SyncChangeQueue.swift: modify — add persistence backing\n- SyncChangeTracker.swift: modify — wire persistence for metadata\n- SyncEntity.swift: modify — add Codable conformance\n- Sync/Persistence/SyncDatabase.swift: create — GRDB setup + migrations\n- Sync/Persistence/SyncQueueRecord.swift: create — GRDB record type\n- Sync/Persistence/SyncQueueStore.swift: create — load/save API\n\n## Recommended Approach\nDedicated GRDB database for sync state. GRDB transactions for atomic persist-and-clear.\n\n## Suggested Phases\nPhase 1: Database + record types. Phase 2: Wire into queue + tracker. Phase 3: Integration tests.\n\nSynthesize the spec from these findings. Show the spec content.\n\nCRITICAL: The research findings contain implementation-level details (files to create/modify, specific code changes). The spec must abstract UP from these.",
-      "files": [],
+      "id": 11,
+      "prompt": "/scope add webhook retry with exponential backoff\n\nresearch found: src/webhooks/sender.ts is fire-and-forget POST, src/webhooks/types.ts has WebhookPayload + DeliveryStatus, src/lib/queue.ts wraps BullMQ with delayed jobs support. the plan is to use bullmq delayed jobs for retry.",
+      "expected_output": "Spec Recommendation describes the target system as if already built: 'Webhook delivery uses exponential backoff...' not 'Add retry to webhook delivery.' Problem section may reference current state but Recommendation is entirely target-state, present-tense. Would still make sense as a reference doc after implementation.",
       "expectations": [
-        {
-          "criterion": "architecture-context-is-conceptual",
-          "description": "The spec's Architecture Context section describes the existing code landscape conceptually — by module role and pattern, not by hardcoded file path. E.g., 'the sync queue module (in-memory, fire-and-forget)', 'the persistence client (currently limited to marker/birthday)', 'existing GRDB patterns in the Memory module'. File paths may appear parenthetically but the description stands without them. Does NOT list files to create or describe modifications.",
-          "required": true
-        },
-        {
-          "criterion": "recommendation-is-strategy-not-code",
-          "description": "The recommendation describes the chosen approach at a strategy level ('dedicated GRDB database for sync state persistence') without specifying code changes, file modifications, or implementation steps. Rationale explains WHY this approach, not WHAT code to write.",
-          "required": true
-        },
-        {
-          "criterion": "spec-is-timeless-target-state",
-          "description": "The Recommendation describes the target system in present tense ('sync state persists in a dedicated GRDB database with atomic transactions'), not as a transition ('add persistence to the sync queue'). The Problem section may describe current state, but the Recommendation reads as a specification of the target system — valid as a reference document after implementation.",
-          "required": true
-        },
-        {
-          "criterion": "no-files-to-create-or-modify",
-          "description": "The spec does NOT contain Create/Modify annotations, file change tables, or phrases like 'add X to Y.swift', 'create Z.swift', 'extend W with'. These belong exclusively in the plan.",
-          "required": true
-        }
+        "Recommendation uses present tense describing the target system: 'Webhook delivery uses...' or 'Failed deliveries move to...' \u2014 NOT 'Add retry', 'Replace fire-and-forget', 'Change sender to use BullMQ'.",
+        "No transition verbs in Recommendation: add, replace, migrate, move, change, convert, switch, introduce, implement, create. Problem section MAY reference current state.",
+        "Spec reads as a timeless specification \u2014 valid as a reference document after implementation, not a dated change request."
       ]
     },
     {
-      "id": "no-task-tools-guard",
-      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope add webhook retry'. CLAUDE_CODE_TASK_LIST_ID is NOT set.\n\nDemonstrate what happens.",
-      "files": [],
+      "id": 12,
+      "prompt": "the research subagent came back with findings referencing 8 files. claims like 'SyncEngine.swift exports the main sync loop', 'HTTPSyncProtocolClient.swift handles retry logic', 'MemoryDatabase.swift uses GRDB write transactions'. need to validate these before building the spec",
+      "expected_output": "Spot-checks claims using lightweight Grep/short Read (a few lines, not whole files). Checks ALL architectural claims. For file/behavioral claims, checks odd-numbered ones (1st, 3rd, 5th...) with minimum 3 checks. Failed checks trigger follow-up subagent.",
       "expectations": [
-        {
-          "criterion": "detects-early-and-stops",
-          "description": "The shell guard at the top detects CLAUDE_CODE_TASK_LIST_ID is unset and outputs a warning BEFORE any research is dispatched. Tells the user to set it in .claude/settings.json.",
-          "required": true
-        }
+        "Uses Grep or short Read (a few lines) to confirm claims. Does NOT read entire files \u2014 validation is spot-checking, not re-research.",
+        "ALL architectural claims are checked. File/behavioral claims: checks odd-numbered (1st, 3rd, 5th...) with minimum 3."
       ]
     },
     {
-      "id": "validation-stays-lightweight",
-      "prompt": "You are Claude following the scope skill instructions. The research subagent returns findings referencing 8 files with claims like 'SyncEngine.swift exports the main sync loop' and 'HTTPSyncProtocolClient.swift handles retry logic'.\n\nDemonstrate step 3 (Validate research).",
-      "files": [],
+      "id": 13,
+      "prompt": "spec looks good, let's move to the plan. also when it's all done, can you save the spec as a file in the repo? we keep those in docs/specs/",
+      "expected_output": "Approves spec (status_detail='spec_approved'), generates plan from approved spec + research, runs codex review on plan, stores it, presents plan with 'Next: /develop t<id>'. After plan approval, offers to save spec to repo (docs/specs/) and invokes develop.",
       "expectations": [
-        {
-          "criterion": "spot-checks-not-full-reads",
-          "description": "Uses Grep or short Read (a few lines) to confirm claims. Does NOT read entire files — validation is spot-checking, not research.",
-          "required": true
-        },
-        {
-          "criterion": "checks-odd-numbered-minimum-3",
-          "description": "Checks every odd-numbered claim (1st, 3rd, 5th...) with minimum 3 checks. ALL architectural claims are checked.",
-          "required": true
-        }
+        "After plan approval, offers spec-to-repo option. If accepted, writes spec content to docs/specs/<slug>.md.",
+        "Whether user accepts or declines spec file, proceeds to invoke develop (or stops if --no-develop)."
       ]
     },
     {
-      "id": "spec-timelessness",
-      "prompt": "You are Claude following the scope skill instructions. Research subagent returns findings for '/scope add webhook retry with exponential backoff':\n\n## Current State\n- src/webhooks/sender.ts: fire-and-forget HTTP POST, no retry logic\n- src/webhooks/types.ts: WebhookPayload interface, DeliveryStatus enum\n- src/lib/queue.ts: BullMQ queue wrapper, supports delayed jobs and retries\n\n## Analysis\nThe codebase already has BullMQ infrastructure. Adding retry to webhooks should leverage the existing queue wrapper.\n\nKey decisions:\n- Exponential backoff: base 1s, factor 2x, max 5 attempts, jitter +/-20%\n- Dead letter queue for permanently failed deliveries\n- Idempotency keys to prevent duplicate delivery\n\n## Recommended Approach\nUse BullMQ delayed jobs for retry with exponential backoff.\n\nSynthesize the spec from these findings. Show ONLY the spec content.\n\nCRITICAL: The research findings use change language ('adding retry', 'should leverage'). The spec must describe the TARGET SYSTEM, not the transition.",
-      "files": [],
+      "id": 14,
+      "prompt": "i wrote a spec for the webhook retry feature. before storing it, run the codex review. here's the spec:\n\n## Problem\nWebhook delivery is fire-and-forget with no retry mechanism.\n\n## Recommendation\nWebhook delivery uses exponential backoff via BullMQ delayed jobs.\n\n## Architecture Context\nThe webhook delivery module handles HTTP POST dispatch. The job queue infrastructure (BullMQ) supports delayed jobs and retries.\n\n## Risks\n- Queue backpressure under high volume",
+      "expected_output": "Runs codex exec with --sandbox read-only, --ephemeral, -C, -o, stdin (-), no -m flag. Prompt asks for gaps/ambiguities/edge cases and explicitly says 'do NOT suggest implementation details'. Reads output file, incorporates high-severity issues before storing.",
       "expectations": [
-        {
-          "criterion": "recommendation-uses-present-tense",
-          "description": "The Recommendation section describes the target system in present tense, as if already implemented. Uses phrases like 'Webhook delivery uses exponential backoff' or 'Failed deliveries move to a dead letter queue' — NOT 'Add retry', 'Replace fire-and-forget with queue-based delivery', 'Change sender to use BullMQ'.",
-          "required": true
-        },
-        {
-          "criterion": "no-transition-verbs-in-recommendation",
-          "description": "The Recommendation avoids transition verbs: add, replace, migrate, move, change, convert, switch, introduce, implement, create. These describe what to DO, not what the system IS. The Problem section MAY reference current state, but Recommendation must be target-state only.",
-          "required": true
-        },
-        {
-          "criterion": "readable-post-implementation",
-          "description": "The spec as a whole would still make sense and be accurate as a reference document AFTER implementation. Someone reading it after the work is done would understand what the system does, not what was changed. It's a timeless specification, not a time-bound change request.",
-          "required": true
-        }
+        "Codex invocation uses correct flags: --sandbox read-only, --ephemeral, -C (project root), -o (output file), - (stdin). No -m flag.",
+        "Prompt tells codex NOT to suggest implementation details (it's a WHAT doc).",
+        "Codex review happens BEFORE storing (step 5 before step 6). High-severity issues incorporated into stored artifact."
       ]
     },
     {
-      "id": "codex-review-spec",
-      "prompt": "You are Claude following the scope skill instructions. You have synthesized a spec for '/scope add webhook retry with exponential backoff'. The spec is:\n\n## Problem\nWebhook delivery is fire-and-forget with no retry mechanism.\n\n## Recommendation\nWebhook delivery uses exponential backoff via BullMQ delayed jobs.\n\n## Architecture Context\nThe webhook delivery module handles HTTP POST dispatch. The job queue infrastructure (BullMQ) supports delayed jobs and retries.\n\n## Risks\n- Queue backpressure under high volume\n\nDemonstrate step 5 (codex review of spec). Show the codex invocation and how you handle the output.",
-      "files": [],
+      "id": 15,
+      "prompt": "spec is approved. generated a plan for webhook retry with phases for queue setup, retry logic, and monitoring. run the codex review on the plan before storing it",
+      "expected_output": "Runs codex exec with same flags as spec review. Prompt includes the approved spec content and asks whether the plan fully covers all spec requirements \u2014 checking for coverage gaps, missing phases, dependency issues.",
       "expectations": [
-        {
-          "criterion": "invokes-codex-exec",
-          "description": "Runs codex via 'codex exec' with --sandbox read-only, --ephemeral, -C (project root), -o (output file), and reads from stdin (-). Does NOT pass -m (uses default model).",
-          "required": true
-        },
-        {
-          "criterion": "review-prompt-is-spec-focused",
-          "description": "The codex prompt asks for gaps, ambiguities, edge cases, feasibility — and explicitly tells codex NOT to suggest implementation details (it's a WHAT doc).",
-          "required": true
-        },
-        {
-          "criterion": "reads-output-and-incorporates",
-          "description": "After codex runs, reads the output file and evaluates the feedback. High-severity actionable issues are incorporated into the spec before storing. Low/med or intentional choices are noted but don't block.",
-          "required": true
-        },
-        {
-          "criterion": "codex-runs-before-store",
-          "description": "The codex review happens AFTER spec synthesis (step 4) but BEFORE storing (step 6). Revisions from codex feedback are included in the stored artifact.",
-          "required": true
-        }
+        "Codex prompt includes the approved spec and asks whether the plan fully implements it.",
+        "Codex review happens AFTER plan generation but BEFORE storing. Revisions incorporated into stored plan."
       ]
     },
     {
-      "id": "codex-review-plan",
-      "prompt": "You are Claude following the scope skill instructions. Spec is approved. You have generated a plan for '/scope add webhook retry'. The plan includes phases for queue setup, retry logic, and monitoring. The approved spec describes target-state webhook delivery with exponential backoff.\n\nDemonstrate step 11 (codex review of plan). Show the codex invocation and how you handle the output.",
-      "files": [],
+      "id": 16,
+      "prompt": "codex timed out on the spec review, it's been stuck for 2 minutes. what now?",
+      "expected_output": "Codex failure does NOT block. Logs the timeout, proceeds to store and present the spec as normal. Does NOT retry repeatedly \u2014 single attempt, then move on.",
       "expectations": [
-        {
-          "criterion": "invokes-codex-for-plan",
-          "description": "Runs codex exec with same flags as spec review. The prompt includes the approved spec content and asks codex to verify the plan covers all spec requirements.",
-          "required": true
-        },
-        {
-          "criterion": "plan-review-checks-spec-coverage",
-          "description": "The codex prompt specifically asks whether the plan fully implements the approved spec — checking for coverage gaps, missing phases, dependency issues.",
-          "required": true
-        },
-        {
-          "criterion": "codex-runs-before-plan-store",
-          "description": "The codex review happens AFTER plan generation (step 10) but BEFORE storing (step 12). Revisions from codex feedback are included in the stored plan.",
-          "required": true
-        }
+        "Codex failure is non-blocking. Spec is stored and presented normally.",
+        "No repeated retries. Single attempt, then proceed. Codex is best-effort."
       ]
     },
     {
-      "id": "codex-failure-proceeds",
-      "prompt": "You are Claude following the scope skill instructions. You synthesized a spec. When you run codex exec for the spec review (step 5), it fails with a timeout error.\n\nDemonstrate how you handle the failure.",
-      "files": [],
+      "id": 17,
+      "prompt": "/scope add webhook retry --auto\n\njust finished synthesizing the spec. want to make sure codex review still runs even though we're in auto mode",
+      "expected_output": "With --auto, codex reviews are skipped along with user review gates. This is an intentional speed optimization for inner calls (vibe/supervibe). For interactive usage without --auto, codex reviews run normally.",
       "expectations": [
-        {
-          "criterion": "proceeds-without-blocking",
-          "description": "Codex failure does NOT block the workflow. The spec is stored and presented as normal. The failure is logged/noted but does not prevent progress.",
-          "required": true
-        },
-        {
-          "criterion": "no-retry-loop",
-          "description": "Does NOT retry codex repeatedly. Single attempt, then proceed. Codex review is best-effort.",
-          "required": true
-        }
+        "--auto skips BOTH user review gates AND codex reviews for speed.",
+        "Without --auto, codex reviews run normally on both artifacts. --auto is the fast path for inner calls."
       ]
     },
     {
-      "id": "auto-still-runs-codex",
-      "prompt": "You are Claude following the scope skill instructions. The user invokes '/scope add webhook retry --auto'. You have completed research, synthesized a spec, and are about to store it.\n\nDemonstrate that codex review still runs even with --auto.",
-      "files": [],
+      "id": 18,
+      "prompt": "/scope add real-time collab editing to our notes app. it's a react frontend with a node backend, using postgres. i want operational transform or CRDT but not sure which. the editor is tiptap-based in src/components/Editor.tsx",
+      "expected_output": "Dispatches research subagent to explore the codebase (editor component, backend architecture, data model). Research likely triggers ESCALATE due to 3+ viable approaches (OT vs CRDT vs hybrid). On escalate: TeamCreate with Researcher/Architect/Skeptic, synthesizes from their findings. Produces a spec that picks an approach with rationale, not a comparison table.",
       "expectations": [
-        {
-          "criterion": "codex-runs-with-auto",
-          "description": "Even with --auto, the codex review step runs for both spec and plan. Auto-approve bypasses USER review gates, but codex review is a separate quality gate that always runs.",
-          "required": true
-        },
-        {
-          "criterion": "codex-feedback-incorporated",
-          "description": "High-severity codex feedback is still incorporated into the artifact before storing, same as without --auto.",
-          "required": true
-        }
+        "Research subagent is dispatched to explore codebase \u2014 main thread does not research directly.",
+        "If research returns ESCALATE (3+ approaches), creates a team with Researcher/Architect/Skeptic agents and synthesizes their findings.",
+        "Spec Recommendation picks a concrete approach with rationale, described in present tense as the target system."
+      ]
+    },
+    {
+      "id": 19,
+      "prompt": "ok so /scope just finished presenting the plan for adding webhook retry. looks good to me. i said \"check the slack bug reports then move on\" and now im in a new session trying to run /develop t328 but it says status_detail isnt approved. what gives??\n\nthis is the handoff scenario \u2014 demonstrate the plan presentation step. the plan is ready, codex reviewed it, metadata.design is populated.",
+      "expected_output": "scope sets status_detail to approved BEFORE presenting the plan with Next: /develop, so that even if the user runs /develop in a fresh session immediately, the gate flag is already set. The TaskUpdate with approved happens atomically with the presentation, not in a separate later step.",
+      "expectations": [
+        "TaskUpdate with status_detail=\"approved\" happens BEFORE or IN THE SAME TURN as presenting \"Next: /develop\" \u2014 not in a separate later step",
+        "The plan presentation includes Next: /develop t<id> so the user knows what to do next",
+        "If the user runs /develop in a fresh session after seeing this presentation, status_detail is already \"approved\" and develop proceeds without error"
+      ]
+    },
+    {
+      "id": 20,
+      "prompt": "/scope add retry logic to webhook sender --auto\n\n## Prior Research (from superscope)\n\n### Key Files\n- src/webhooks/sender.ts — fire-and-forget HTTP POST, no retry. Exports `sendWebhook(payload: WebhookPayload): Promise<void>`\n- src/webhooks/types.ts — `WebhookPayload`, `DeliveryStatus` (enum: pending/delivered/failed), `WebhookConfig`\n- src/lib/queue.ts — BullMQ wrapper with `enqueueDelayed(job, delayMs)`, used by email service already\n- src/lib/config.ts — environment config loader, has `WEBHOOK_TIMEOUT_MS` but no retry config\n- src/webhooks/__tests__/sender.test.ts — existing tests for fire-and-forget path\n\n### Architecture\n- Express backend, BullMQ for async jobs, PostgreSQL for state\n- Queue pattern established in email service (src/email/retry.ts uses enqueueDelayed)\n- No DLQ pattern exists yet — failed jobs are logged and dropped\n\n### Phase Plan\n1. Add retry config + types (WebhookRetryConfig, extend DeliveryStatus with 'retrying')\n2. Implement retry logic using BullMQ delayed jobs, following email service pattern\n3. Add DLQ table + failed webhook persistence\n4. Add monitoring/alerting hooks",
+      "expected_output": "Research subagent does targeted validation (confirms files exist, checks exports match, looks for recent changes) instead of broad codebase exploration. Skips codex reviews (--auto). Produces spec and plan faster by leveraging the provided context rather than re-discovering it.",
+      "expectations": [
+        "Research subagent receives the prior context and does targeted validation — confirms referenced files exist and match described exports/patterns, checks for recent changes. Does NOT do broad codebase exploration.",
+        "Subagent prompt includes the provided context with instructions like 'validate and fill gaps, do NOT re-explore what is already covered'.",
+        "Codex reviews are skipped (--auto). User review gates are skipped (--auto). Pipeline runs research → spec → plan → develop without stopping.",
+        "The spec and plan incorporate the provided file paths and architecture without re-discovering them from scratch."
       ]
     }
   ]

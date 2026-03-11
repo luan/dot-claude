@@ -12,9 +12,7 @@ Register a project in the local subdomain routing system (`https://<project>.loc
 
 ## Step 1: Parse arguments
 
-First word after `/bootstrap-caddy` = project name. Optional second word = port override.
-
-**If empty, ask via AskUserQuestion.** Do NOT infer from context or working directory.
+First word = project name. Optional second = port override. Empty → AskUserQuestion (don't infer from context).
 
 ## Step 2: Check prerequisites
 
@@ -22,7 +20,7 @@ First word after `/bootstrap-caddy` = project name. Optional second word = port 
 test -f $HOME/.config/dev-routing/Caddyfile && test -f $HOME/.config/dev-routing/ports.json && echo "OK" || echo "MISSING"
 ```
 
-If "MISSING", stop: "Dev routing infrastructure not found at `$HOME/.config/dev-routing/`. Set it up via dotfiles first."
+MISSING → stop: "Dev routing infrastructure not found at `$HOME/.config/dev-routing/`. Set it up via dotfiles first."
 
 ## Step 3: Read port registry
 
@@ -32,16 +30,15 @@ Read `$HOME/.config/dev-routing/ports.json`:
 {"nextPort": 5200, "projects": {"name": 5200, ...}}
 ```
 
-If project exists → report `https://<project>.localhost → localhost:<port>` and stop.
+Project already exists → report `https://<project>.localhost → localhost:<port>` and stop.
 
 ## Step 4: Assign port
 
-- User-provided port → use it (verify no collision with existing projects)
-- No port → use `nextPort` from ports.json
+User-provided → verify no collision. No port → use `nextPort`.
 
 ## Step 5: Update port registry
 
-Add project to `projects` with assigned port. If auto-assigned, increment `nextPort`. Write back to `$HOME/.config/dev-routing/ports.json`.
+Add project + port. If auto-assigned, increment `nextPort`. Write back.
 
 ## Step 6: Create Caddy site config
 
@@ -55,15 +52,15 @@ Write `$HOME/.config/dev-routing/sites/<project>.caddy`:
 
 ## Step 7: Configure project dev server
 
-Check if `$HOME/src/<project>` exists. If not, skip — report the port for later setup.
+Skip if `$HOME/src/<project>` doesn't exist — just report port for later.
 
 If exists:
 
-1. **vite.config.ts** — ensure `server: { port: Number(process.env.DEV_PORT) || undefined }`. Read first; skip if pattern exists, replace if hardcoded.
-2. **.env** (gitignored) — append `DEV_PORT=<port>` if missing. Don't overwrite existing content.
-3. **.env.example** (committed) — append `# DEV_PORT=5173` if missing, so team knows the variable exists.
+1. **vite.config.ts** — ensure `server: { port: Number(process.env.DEV_PORT) || undefined }`. Skip if present, replace if hardcoded.
+2. **.env** (gitignored) — append `DEV_PORT=<port>` if missing.
+3. **.env.example** (committed) — append `# DEV_PORT=5173` if missing.
 
-Bun auto-loads `.env`, so `process.env.DEV_PORT` works in vite.config.ts without extra setup.
+Bun auto-loads `.env` — no extra setup needed.
 
 ## Step 8: Reload Caddy
 

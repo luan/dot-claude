@@ -1,47 +1,54 @@
 {
-  "version": "1.0",
-  "skill": "skills/acceptance",
-  "cases": [
+  "skill_name": "acceptance",
+  "evals": [
     {
-      "id": "breaker-no-findings-exit",
-      "prompt": "You are Claude running /acceptance for an epic. The verifier passed all criteria. The breaker agent returned: 'No findings — the implementation looks correct.'\n\nThe breaker did NOT analyze the 5 required angles (implied requirements, edge cases, integration points, technically-met-but-incomplete, missing negatives). It just asserted no findings.\n\nDemonstrate how you handle this in Step 6 (reconcile).",
+      "id": 1,
+      "prompt": "/acceptance for the webhook-retry epic. verifier passed everything. breaker came back with just 'No findings — the implementation looks correct.' but didn't actually analyze any of the 5 angles",
+      "expected_output": "Recognizes the breaker report is structurally invalid — 'no findings' without per-angle analysis (implied requirements, edge cases, integration points, technically-met-but-incomplete, missing negatives). Re-runs the breaker with explicit instruction to analyze all 5 angles. Does NOT auto-pass based on a rubber-stamp breaker report.",
       "expectations": [
-        {
-          "criterion": "rejects-bare-no-findings",
-          "description": "Recognizes that a bare 'no findings' assertion without per-angle analysis is invalid per the breaker requirements",
-          "required": true
-        },
-        {
-          "criterion": "requires-angle-analysis",
-          "description": "The skill instructs the breaker to analyze all 5 angles with at least one concrete observation per angle — 'no findings' is only valid after showing this analysis",
-          "required": true
-        },
-        {
-          "criterion": "does-not-auto-pass",
-          "description": "Does NOT automatically treat bare 'no findings' as PASS — either re-runs breaker or flags the gap",
-          "required": false
-        }
+        "Detects bare 'no findings' without per-angle analysis is invalid per breaker requirements.",
+        "Re-runs breaker with explicit instruction to analyze all 5 angles with concrete observations.",
+        "Does NOT auto-pass — a lazy breaker defeats the purpose of dual-agent verification."
       ]
     },
     {
-      "id": "breaker-high-overrides-verifier-pass",
-      "prompt": "You are Claude running /acceptance for a task. The verifier reports all 3 criteria as PASS with line-level evidence. The breaker analyzed all 5 angles and found one HIGH finding: 'Criterion 2 (handle rate limiting) is technically met — the code catches 429 errors — but silently drops the request instead of retrying. The criterion says handle, not just catch.'\n\nDemonstrate Step 6 (Reconcile).",
+      "id": 2,
+      "prompt": "/acceptance for task #42 (rate limiting handler). verifier says all 3 criteria PASS with evidence. breaker analyzed all 5 angles and found one HIGH: 'criterion 2 (handle rate limiting) is technically met — code catches 429 errors — but silently drops the request instead of retrying. the criterion says handle, not just catch.'",
+      "expected_output": "Applies reconciliation rule 3: Verifier PASS + breaker HIGH on a PASS criterion = PARTIAL. The breaker caught a real gap the verifier missed — catching 429 without retrying doesn't fully satisfy 'handle rate limiting'. Shows both reports with clear labels. Presents 4 options via AskUserQuestion: fix gaps, commit anyway, file as follow-up, re-run after manual fixes.",
       "expectations": [
-        {
-          "criterion": "overrides-to-partial",
-          "description": "Applies reconciliation rule 3: Verifier PASS + breaker HIGH finding on a PASS criterion → PARTIAL. Does NOT leave the verdict as PASS despite the verifier's assessment.",
-          "required": true
-        },
-        {
-          "criterion": "presents-both-reports",
-          "description": "Shows both the verifier and breaker reports with clear labels — the user needs to see the disagreement",
-          "required": true
-        },
-        {
-          "criterion": "offers-four-options",
-          "description": "Presents exactly 4 options via AskUserQuestion: fix gaps, commit anyway (override), file as follow-up tasks, re-run after manual fixes",
-          "required": true
-        }
+        "Verdict is PARTIAL (rule 3: verifier PASS + breaker HIGH on PASS criterion). Not PASS despite verifier's assessment.",
+        "Shows both verifier and breaker reports — user needs to see the disagreement.",
+        "Presents exactly 4 options: fix gaps, commit anyway (override), file as follow-up tasks, re-run after manual fixes."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/acceptance --auto for the auth-middleware epic. verifier found criterion 3 FAIL (JWT expiry not checked). breaker found a HIGH on criterion 1 (session validation accepts expired tokens). first fix attempt didn't improve anything",
+      "expected_output": "With --auto and FAIL verdict, automatically tries to fix gaps (option 1). After first fix attempt with no improvement, tries once more (2 fix iterations allowed). If second attempt also fails, automatically overrides and commits anyway (option 2). Notes the override in findings.",
+      "expectations": [
+        "With --auto, FAIL triggers automatic fix attempt — no AskUserQuestion.",
+        "After 2 fix iterations with no improvement, falls back to commit anyway (override). Notes override in findings.",
+        "Does NOT loop indefinitely — 2 fix attempts max before override."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "/acceptance\n\nno task id, just check whatever epic is most recent. i think it was the webhook retry one",
+      "expected_output": "No argument provided. TaskList filtered by type='epic' and status in ['completed', 'in_progress']. Picks highest ID (most recent). Enters epic mode — recursively collects all descendants, groups criteria by subtree (phases as section headers, leaves with acceptance criteria). Spawns verifier and breaker in parallel against the diff.",
+      "expectations": [
+        "Resolves target via TaskList without argument — picks highest-ID epic with status completed/in_progress.",
+        "Epic mode: recursively collects descendants, groups criteria by subtree.",
+        "Spawns verifier and breaker as parallel agents."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "/acceptance for epic 200. one of the phase tasks (status=completed) has a child task still pending — looks like it got orphaned when the parent was marked complete",
+      "expected_output": "Detects the orphaned task during criteria gathering (pending child with completed parent). Issues an advisory warning but does NOT block acceptance. Continues with normal verification flow for all descendants.",
+      "expectations": [
+        "Flags the orphaned task (pending child, completed parent) with a warning.",
+        "Warning is advisory only — does NOT block acceptance.",
+        "Continues normal verification flow for all other descendants."
       ]
     }
   ]

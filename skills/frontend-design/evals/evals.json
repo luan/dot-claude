@@ -1,0 +1,35 @@
+{
+  "skill_name": "frontend-design",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "build me a landing page for a coffee roastery called 'Ember & Ash'. they're premium, small-batch, wood-fire roasted. the vibe is warm, smoky, artisanal. it's a new project, just an empty directory with an index.html.",
+      "expected_output": "Commits to a specific aesthetic direction (e.g. warm/smoky/artisanal) before coding. Chooses distinctive fonts — NOT Inter, Roboto, Arial, or Space Grotesk. Builds a color palette from the brand identity (warm tones, earth, smoke) rather than purple gradients. Produces working HTML/CSS with intentional layout choices (not cookie-cutter card grids).",
+      "expectations": [
+        "Articulates a design direction before writing code — purpose, tone, differentiation",
+        "Uses distinctive fonts, NOT banned defaults (Inter, Roboto, Arial, Space Grotesk, system fonts)",
+        "Color palette reflects the brand (warm/smoky) — no purple gradients on white"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "i have a next.js app with tailwind. need a dashboard page at app/dashboard/page.tsx. it shows user's API usage: requests today, quota remaining, response time p50/p99, and a list of recent API calls. the existing app uses src/components/ for shared stuff and has a dark theme.",
+      "expected_output": "Detects the Next.js + Tailwind stack and existing patterns (src/components/, dark theme). Creates app/dashboard/page.tsx matching project conventions. Chooses a design direction appropriate for a developer dashboard (data-dense, functional). Uses CSS variables or Tailwind tokens. Layout breaks from generic card grids — uses the spatial strategy that fits the data.",
+      "expectations": [
+        "Detects existing stack (Next.js, Tailwind, dark theme) and matches project conventions",
+        "Commits to a design direction before coding — articulates purpose/tone for a dev dashboard",
+        "Produces working code in the correct file location using project's styling approach"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "make a 404 page for my portfolio site. it's vanilla html/css/js. the rest of the site has a brutalist aesthetic — monospace fonts, harsh contrast, raw html feel. make the 404 page match but be memorable.",
+      "expected_output": "Matches the existing brutalist aesthetic (monospace, harsh contrast, raw). Does NOT default to soft rounded cards or gradient backgrounds. The 404 page has a distinctive element that makes it memorable. Uses vanilla HTML/CSS/JS as specified. Verifies the result matches brutalist direction, not generic defaults.",
+      "expectations": [
+        "Matches existing brutalist aesthetic — monospace, harsh contrast, raw feel",
+        "Includes a distinctive/memorable element specific to the 404 experience",
+        "Does NOT fall back to generic soft UI patterns (rounded cards, gradients, friendly illustrations)"
+      ]
+    }
+  ]
+}

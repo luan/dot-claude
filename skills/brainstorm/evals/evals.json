@@ -1,47 +1,44 @@
 {
-  "version": "1.0",
-  "skill": "skills/brainstorm",
-  "cases": [
+  "skill_name": "brainstorm",
+  "evals": [
     {
-      "id": "vague-prompt-skips-interview",
-      "prompt": "You are Claude running /brainstorm. The user says: 'I want to add dark mode to my app. It should look good and work on mobile.'\n\nThis prompt has some detail but is missing explicit scope boundaries (no non-goals stated), has no measurable constraints, and no testable success criteria.\n\nDemonstrate what you do.",
+      "id": 1,
+      "prompt": "/brainstorm i want to add dark mode to my app. it should look good and work on mobile.",
+      "expected_output": "Starts the interview because the prompt lacks scope boundaries (no non-goals), measurable constraints, and testable success criteria. Asks ONE question via AskUserQuestion. Does not propose approaches or write code yet.",
       "expectations": [
-        {
-          "criterion": "does-not-skip-interview",
-          "description": "Does NOT skip the interview phase — the prompt lacks all three required skip criteria (explicit scope boundaries with non-goals, measurable constraints, testable success criteria)",
-          "required": true
-        },
-        {
-          "criterion": "asks-one-question-at-a-time",
-          "description": "Asks exactly ONE question per turn via AskUserQuestion, does not batch multiple questions",
-          "required": true
-        },
-        {
-          "criterion": "no-premature-implementation",
-          "description": "Does NOT invoke implementation skills, write code, or take implementation action before design is presented and approved",
-          "required": true
-        }
+        "Does NOT skip interview — prompt lacks all three skip criteria (scope boundaries, constraints, success criteria)",
+        "Asks exactly ONE question per turn via AskUserQuestion",
+        "Does NOT invoke implementation skills or write code before design is approved"
       ]
     },
     {
-      "id": "detailed-spec-skip-validation",
-      "prompt": "You are Claude running /brainstorm. The user says: 'Build a rate limiter for our API. Non-goals: no distributed rate limiting, no Redis — in-memory only. Constraints: p99 latency under 1ms, max 100 RPS per client IP. Success: rate-limited responses return 429 with Retry-After header, passes load test at 200 RPS showing 50% rejection.'\n\nThis prompt has explicit scope boundaries, measurable constraints, and testable success criteria.\n\nDemonstrate what you do.",
+      "id": 2,
+      "prompt": "/brainstorm build a rate limiter for our API. non-goals: no distributed rate limiting, no Redis — in-memory only. constraints: p99 latency under 1ms, max 100 RPS per client IP. success: rate-limited responses return 429 with Retry-After header, passes load test at 200 RPS showing 50% rejection.",
+      "expected_output": "Recognizes the prompt has scope boundaries (non-goals stated), measurable constraints (latency, RPS), and testable success criteria (429 + header, load test). May skip interview. If skipping, cites 2+ concrete details from the spec. Still goes through propose-approaches and present-design steps.",
       "expectations": [
-        {
-          "criterion": "recognizes-complete-spec",
-          "description": "Recognizes that all three skip criteria are met and may skip interview",
-          "required": true
-        },
-        {
-          "criterion": "cites-concrete-details",
-          "description": "If skipping interview, acknowledges by citing 2+ concrete details from the user's spec (not generic paraphrasing)",
-          "required": true
-        },
-        {
-          "criterion": "still-designs-before-implementing",
-          "description": "Even with a complete spec, still goes through design steps (propose approaches, present design) before any implementation",
-          "required": true
-        }
+        "Recognizes all three skip criteria are met — may skip interview",
+        "If skipping, acknowledges by citing 2+ concrete details from the spec (not generic paraphrasing)",
+        "Still goes through design steps (propose approaches, present design) before any implementation"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/brainstorm --auto i need a plugin system for our CLI tool. users should be able to write plugins in JS or TS that hook into command lifecycle events.",
+      "expected_output": "With --auto, skips interview entirely and infers purpose/scope/constraints from prompt + project scan. Proposes 2-3 approaches with a clear recommendation. Auto-selects the recommended approach. Presents design sections without per-section confirmations. Stores final design in metadata.design.",
+      "expectations": [
+        "Skips interview due to --auto flag — infers from prompt and project context",
+        "Proposes 2-3 approaches with a clear recommendation and justification",
+        "Auto-selects recommended approach and presents design without per-section user confirmations"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "/brainstorm i'm thinking about adding real-time collaboration to our markdown editor. like google docs but for markdown. users type and see each other's cursors.\n\nafter 2 interview questions, the user says: 'actually forget collab editing, i just want a share-via-link feature where others can view (read-only) the doc'",
+      "expected_output": "Recognizes the fundamental pivot from real-time collaboration to read-only sharing. Discards stale context about CRDTs/OT/cursors. Restarts from the relevant interview question for the new, much simpler scope.",
+      "expectations": [
+        "Acknowledges the pivot and discards stale context about real-time editing",
+        "Restarts from a relevant question for the new scope (read-only sharing)",
+        "Does not carry forward complexity assumptions from the original collaboration feature"
       ]
     }
   ]
