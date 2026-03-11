@@ -30,7 +30,7 @@ Create branch + optionally link task.
    - No task ID + `--auto` → create task automatically
    - No task ID, no `--auto` → ask "Create a task for this branch?"
    - Task type inferred from branch name: feat/fix/chore. Priority: P2.
-5. Report branch + task, suggest `/scope` or `/develop`
+5. Report branch + task. If `--auto` was NOT passed, suggest `/scope` or `/develop`. If `--auto` was passed, just report — no suggestions (caller handles next steps).
 
 ## Error Handling
 

@@ -1,16 +1,22 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
-    "BASH_DEFAULT_TIMEOUT_MS": "300000",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-    "ENABLE_LSP_TOOL": "1",
     "GIT_USERNAME": "luan"
   },
   "includeCoAuthoredBy": false,
+  "alwaysThinkingEnabled": true,
+  "promptSuggestionEnabled": true,
+  "skipDangerousModePermissionPrompt": true,
   "permissions": {
     "deny": [],
     "defaultMode": "bypassPermissions"
   },
-  "enableAllProjectMcpServers": true,
+  "statusLine": {
+    "type": "command",
+    "command": "uv run ~/.claude/statusline.py",
+    "padding": 0
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -45,11 +51,6 @@
       }
     ]
   },
-  "statusLine": {
-    "type": "command",
-    "command": "uv run ~/.claude/statusline.py",
-    "padding": 0
-  },
   "enabledPlugins": {
     "clangd-lsp@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
@@ -59,9 +60,5 @@
     "swift-lsp@claude-plugins-official": true,
     "gt@local": true,
     "skill-creator@claude-plugins-official": true
-  },
-  "alwaysThinkingEnabled": true,
-  "promptSuggestionEnabled": true,
-  "skipDangerousModePermissionPrompt": true
+  }
 }
-
