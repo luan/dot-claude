@@ -1,4 +1,5 @@
 ---
+model: opus
 name: review
 description: "Thorough adversarial code review covering correctness, security, architecture, and performance. Triggers: 'review', 'review my changes', 'check this code', 'code review'. Use --team for 3-perspective mode. Do NOT use when: investigating unknown bug — use /debugging."
 argument-hint: "[base..head | file-list | PR#] [--against <issue-id>] [--team] [--continue] [--auto]"

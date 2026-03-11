@@ -1,4 +1,5 @@
 ---
+model: opus
 name: brainstorm
 description: "Collaborative design for greenfield features and new ideas. Triggers: 'brainstorm', 'ideate', 'new feature design', 'help me think through', 'what should we build', 'help me design', 'think through X with me', 'I want to build something new'. Do NOT use when: the user wants to investigate an existing codebase or research a specific technical question — use /scope instead."
 argument-hint: "<idea or topic> [--auto]"
@@ -45,7 +46,7 @@ Dispatch Task (subagent_type="Explore", run_in_background=true): scan for tech s
 
 Without `--auto`: AskUserQuestion, ONE per turn. Prefer multiple-choice.
 
-**Skip interview only if** the prompt has ALL three: explicit scope boundaries (non-goals stated), measurable constraints, and testable success criteria. Acknowledge by citing 2+ concrete details. When in doubt, interview.
+**Skip interview only if** the prompt has ALL three: explicit scope boundaries (non-goals stated), measurable constraints, and testable success criteria. Acknowledge by citing 2+ concrete details. When in doubt, interview. **Exception:** even when all three are met, if the prompt describes a solution without a stated problem (see `references/problem-framing.md`), ask ONE problem-framing question before proceeding to approaches.
 
 **Sequence** (adapt, skip irrelevant):
 
@@ -57,9 +58,11 @@ Without `--auto`: AskUserQuestion, ONE per turn. Prefer multiple-choice.
 
 Stop when you can propose approaches. Usually 3-5 questions, never >7. Stay technology-agnostic — specific tech belongs in step 4.
 
-**Challenge gate:** If the user's answer contains an unvalidated assumption or contradicts a previously stated constraint, name the conflict explicitly before proceeding to the next question. Do not silently incorporate contradictions.
+**Challenge gate:** Triggers: (1) answer contradicts a previously stated constraint, (2) prompt is solution-shaped (describes a thing to build without stating a problem), (3) user states something as fact without evidence (unvalidated assumption). When any trigger fires, ask ONE reframing question before proceeding — do not block the interview, redirect it. See `references/problem-framing.md` for patterns and push-back phrasing. Do not silently incorporate contradictions or unvalidated claims.
 
 **Mid-dialogue pivot:** If direction shifts fundamentally, acknowledge, discard stale context, restart from the relevant question.
+
+> **Reference:** `references/problem-framing.md` — challenge patterns for solution-shaped or assumption-laden inputs.
 
 ### 4. Propose 2-3 Approaches
 

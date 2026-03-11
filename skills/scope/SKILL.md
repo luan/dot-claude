@@ -1,4 +1,5 @@
 ---
+model: opus
 name: scope
 description: "Research an existing codebase and create phased implementation tasks with design context. Triggers: 'scope', 'research', 'investigate', 'design', 'architect', 'plan a feature', 'how does X work', 'figure out', 'best way to', 'state of the art', 'which lib/tool', 'create tasks from plan'. Also use when an implementation request contains an unresolved technology choice. Do NOT use when: the user wants to brainstorm design options for a greenfield feature — use /brainstorm instead."
 argument-hint: "<prompt> [--continue] [--no-develop] [--auto]"
