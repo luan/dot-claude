@@ -71,6 +71,6 @@ target
 backups
 mcp-needs-auth-cache.json
 /icons
-/skills/*-workspace/
+/skills/**/*-workspace/
 .credentials.json
 policy-limits.json
