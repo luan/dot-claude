@@ -1,8 +1,0 @@
-{
-  "env": {
-    "CLAUDE_CODE_TASK_LIST_ID": "dot-claude"
-  },
-  "enabledPlugins": {
-    "plugin-dev@claude-plugins-official": true
-  }
-}

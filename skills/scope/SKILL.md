@@ -1,4 +1,5 @@
 ---
+model: opus
 name: scope
 description: "Research an existing codebase and create phased implementation tasks with design context. Triggers: 'scope', 'research', 'investigate', 'design', 'architect', 'plan a feature', 'how does X work', 'figure out', 'best way to', 'state of the art', 'which lib/tool', 'create tasks from plan'. Also use when an implementation request contains an unresolved technology choice. Do NOT use when: the user wants to brainstorm design options for a greenfield feature — use /brainstorm instead."
 argument-hint: "<prompt> [--continue] [--no-develop] [--auto]"
@@ -82,6 +83,7 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
 7. **Present spec** — `Spec: t<id> — <topic>`, then Problem, Recommendation, Architecture Context, Risks. If `--auto` → skip to step 9. Otherwise → stop for user review.
 
 8. **Spec refinement** — if user gives feedback:
+   - **Challenge check:** Does this feedback contradict the rationale in the current spec without citing new evidence? If yes, name the contradiction and ask whether the rationale should be revised. Do not silently absorb it.
    - **Minor (no new research needed):** Revise from stored research + feedback. TaskUpdate revised metadata.spec. If metadata.spec_file → overwrite existing path (do NOT `ct spec create` again — that orphans the reference). status_detail stays `"spec_review"`.
    - **Major (unexplored code or new approach):** Dispatch follow-up subagent with current spec as context. Merge findings. TaskUpdate. Overwrite spec_file if set.
    - Persist metadata.spec before re-presenting (develop reads stored artifacts, not conversation).
@@ -116,6 +118,7 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
     Otherwise → stop for user review.
 
 14. **Plan refinement** — if user gives feedback:
+    - **Challenge check:** Does this feedback contradict the rationale in the current plan without citing new evidence? If yes, name the contradiction and ask whether the rationale should be revised. Do not silently absorb it.
     - **Minor:** Revise from stored plan + feedback. TaskUpdate metadata.design. Overwrite plan_file if set (do NOT `ct plan create` again — orphans reference).
     - **Major (new codebase data):** Dispatch follow-up subagent with `metadata.design` as prior findings. Merge new + prior. TaskUpdate. Overwrite plan_file. When in doubt, dispatch.
     - **Spec affected?** If feedback changes WHAT (scope, goals, risks) — not just HOW — update metadata.spec too. Approach-only changes leave spec untouched.

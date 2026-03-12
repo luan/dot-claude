@@ -40,6 +40,34 @@
         "Restarts from a relevant question for the new scope (read-only sharing)",
         "Does not carry forward complexity assumptions from the original collaboration feature"
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "/brainstorm build a Slack bot for deployments.",
+      "expected_output": "Challenges the solution-shaped prompt by asking what problem the bot solves. Does NOT accept and start designing. Asks exactly ONE reframing question. Does not propose approaches or architecture before the problem is established.",
+      "expectations": [
+        "Asks what problem the bot solves — does NOT accept and start designing",
+        "Asks exactly ONE reframing question, not multiple",
+        "Does not propose approaches or architecture before problem is established"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "/brainstorm engineers hate our CI pipeline, so we need to replace it.",
+      "expected_output": "Flags 'engineers hate our CI' as an unvalidated assumption and asks for evidence or data. Does NOT treat the replacement decision as settled before the assumption is validated.",
+      "expectations": [
+        "Explicitly identifies 'engineers hate our CI' as unvalidated, asks for evidence or data",
+        "Does NOT treat the replacement decision as settled before the assumption is validated"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "/brainstorm deploys take 45 minutes, blocking 12 engineers 3x/day. we need to get under 10 minutes.",
+      "expected_output": "Recognizes this as a well-framed, quantified problem statement. Does NOT trigger the problem-framing gate. Proceeds with interview or design normally.",
+      "expectations": [
+        "Does NOT trigger the problem-framing gate — proceeds with interview or design",
+        "Does not ask 'what problem does this solve?' when the problem is already clear and quantified"
+      ]
     }
   ]
 }

@@ -5,8 +5,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::SystemTime;
 
-use crate::artifact;
-
 #[derive(Debug, Clone)]
 pub struct Plan {
     pub name: String,
@@ -117,7 +115,7 @@ fn list_git_notes_plans(project: &str) -> Vec<Plan> {
         // Split concatenated plans on frontmatter boundaries
         // Each plan starts with "---\n" followed by YAML, then "---\n"
         let short_sha = &commit_sha[..7.min(commit_sha.len())];
-        for (idx, chunk) in artifact::split_notes(&content).into_iter().enumerate() {
+        for (idx, chunk) in split_plans(&content).into_iter().enumerate() {
             let (title, proj) = extract_frontmatter_from_str(&chunk);
             let label = if title.is_empty() {
                 format!("note:{short_sha}#{idx}")
@@ -141,6 +139,49 @@ fn list_git_notes_plans(project: &str) -> Vec<Plan> {
     plans
 }
 
+/// Split a git note that may contain multiple appended plans.
+/// Each plan starts with "---\n" frontmatter. We split on the pattern where
+/// a new plan begins after the previous one ended.
+fn split_plans(content: &str) -> Vec<String> {
+    let mut plans = Vec::new();
+    let mut current = String::new();
+    let mut in_frontmatter = false;
+    let mut seen_frontmatter = false;
+
+    for line in content.lines() {
+        if line.trim() == "---" {
+            if !seen_frontmatter {
+                // First --- of first plan
+                in_frontmatter = true;
+                seen_frontmatter = true;
+                current.push_str(line);
+                current.push('\n');
+            } else if in_frontmatter {
+                // Closing --- of frontmatter
+                in_frontmatter = false;
+                current.push_str(line);
+                current.push('\n');
+            } else {
+                // New plan starting: save current, start fresh
+                if !current.trim().is_empty() {
+                    plans.push(std::mem::take(&mut current));
+                }
+                in_frontmatter = true;
+                current.push_str(line);
+                current.push('\n');
+            }
+        } else {
+            current.push_str(line);
+            current.push('\n');
+        }
+    }
+    if !current.trim().is_empty() {
+        plans.push(current);
+    }
+    plans
+}
+
+/// Extract title and project from frontmatter in a string (not file).
 fn extract_frontmatter_from_str(content: &str) -> (String, String) {
     let mut title = String::new();
     let mut project = String::new();

@@ -185,15 +185,7 @@ pub fn notify(
     ensure_app_registered();
 
     let title = session.unwrap_or("Claude Code");
-    let mut cmd = build_grrr_command(
-        session,
-        title,
-        subtitle,
-        message,
-        sound,
-        icon_path,
-        ghostty_focused,
-    );
+    let mut cmd = build_grrr_command(session, title, subtitle, message, sound, icon_path, ghostty_focused);
 
     cmd.output().map_err(|e| format!("grrr failed: {e}"))?;
     Ok(())

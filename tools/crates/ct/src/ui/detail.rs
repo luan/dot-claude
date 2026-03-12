@@ -5,7 +5,6 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Paragraph, Wrap};
 
 use crate::plan::{self, Plan};
-use crate::spec::{self, Spec};
 use crate::store::Task;
 use crate::ui::theme;
 
@@ -13,51 +12,20 @@ pub struct DetailState {
     pub task: Task,
     pub children: Vec<Task>,
     pub related_plans: Vec<Plan>,
-    pub related_specs: Vec<Spec>,
     pub scroll: u16,
 }
 
 impl DetailState {
     pub fn new(task: Task, children: Vec<Task>) -> Self {
-        // Phase 3: If task has a linked plan_file, show that plan specifically.
-        // Otherwise fall back to project-wide matching.
-        let related_plans: Vec<Plan> = if !task.plan_file.is_empty() {
-            plan::list_plans()
-                .into_iter()
-                .filter(|p| p.path.to_string_lossy() == task.plan_file)
-                .take(1)
-                .collect()
-        } else if !task.project.is_empty() {
-            plan::list_plans()
-                .into_iter()
-                .filter(|p| !p.project.is_empty() && p.project == task.project)
-                .take(3)
-                .collect()
-        } else {
-            Vec::new()
-        };
-
-        let related_specs: Vec<Spec> = if !task.spec_file.is_empty() {
-            spec::list_specs()
-                .into_iter()
-                .filter(|s| s.path.to_string_lossy() == task.spec_file)
-                .take(1)
-                .collect()
-        } else if !task.project.is_empty() {
-            spec::list_specs()
-                .into_iter()
-                .filter(|s| !s.project.is_empty() && s.project == task.project)
-                .take(3)
-                .collect()
-        } else {
-            Vec::new()
-        };
-
+        let related_plans: Vec<Plan> = plan::list_plans()
+            .into_iter()
+            .filter(|p| !p.project.is_empty() && p.project == task.project)
+            .take(3)
+            .collect();
         Self {
             task,
             children,
             related_plans,
-            related_specs,
             scroll: 0,
         }
     }
@@ -128,15 +96,6 @@ pub fn render_detail(f: &mut Frame, area: Rect, state: &DetailState) {
     if !t.active_form.is_empty() {
         lines.push(field("ActiveForm", &t.active_form, theme::value_style()));
     }
-    if !t.plan_file.is_empty() {
-        lines.push(field("Plan File", &t.plan_file, theme::value_style()));
-    }
-    if !t.spec_file.is_empty() {
-        lines.push(field("Spec File", &t.spec_file, theme::value_style()));
-    }
-    if !t.slug.is_empty() {
-        lines.push(field("Slug", &t.slug, theme::value_style()));
-    }
     if !t.blocks.is_empty() {
         lines.push(field("Blocks", &t.blocks.join(", "), theme::value_style()));
     }
@@ -190,47 +149,11 @@ pub fn render_detail(f: &mut Frame, area: Rect, state: &DetailState) {
         }
     }
 
-    if !state.related_specs.is_empty() {
-        let label = if !t.spec_file.is_empty() {
-            "Linked Spec"
-        } else {
-            "Related Specs"
-        };
-        lines.push(Line::raw(""));
-        lines.push(Line::from(vec![
-            Span::raw("  "),
-            Span::styled(label, theme::section_style()),
-        ]));
-        lines.push(Line::from(vec![
-            Span::raw("  "),
-            Span::styled("─".repeat(60), Style::default().fg(theme::OVERLAY)),
-        ]));
-        lines.push(Line::raw(""));
-        for s in &state.related_specs {
-            let title = if s.title.is_empty() {
-                &s.name
-            } else {
-                &s.title
-            };
-            lines.push(Line::from(vec![
-                Span::raw("  "),
-                Span::styled(plan::format_date(s.mod_time), theme::muted_style()),
-                Span::raw("  "),
-                Span::styled(title.clone(), theme::value_style()),
-            ]));
-        }
-    }
-
     if !state.related_plans.is_empty() {
-        let label = if !t.plan_file.is_empty() {
-            "Linked Plan"
-        } else {
-            "Related Plans"
-        };
         lines.push(Line::raw(""));
         lines.push(Line::from(vec![
             Span::raw("  "),
-            Span::styled(label, theme::section_style()),
+            Span::styled("Related Plans", theme::section_style()),
         ]));
         lines.push(Line::from(vec![
             Span::raw("  "),
