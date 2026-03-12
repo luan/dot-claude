@@ -68,6 +68,7 @@ usage-data
 telemetry
 
 # Skills workspaces
-/skills/*-workspace/
+/skills/**/*-workspace/
+/icons
 .credentials.json
 policy-limits.json

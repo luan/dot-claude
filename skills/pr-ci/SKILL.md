@@ -3,7 +3,6 @@ name: pr-ci
 description: "Fix failing CI/GitHub Actions checks. Triggers: 'fix CI', 'fix GHA', 'build failing', 'tests failing in CI', 'checks red'."
 argument-hint: "[--auto]"
 user-invocable: true
-disable-model-invocation: true
 allowed-tools:
   - "Bash(gh pr view:*)"
   - "Bash(gh pr checks:*)"
