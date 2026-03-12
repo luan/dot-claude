@@ -1,6 +1,6 @@
 ---
 name: supervibe
-description: "Execute a large plan across multiple commits — one commit per phase, each built in an isolated worktree. Uses /vibe as the operator for each phase. Triggers: /supervibe, 'super vibe', 'stacked vibe', 'multi-phase plan', 'one commit per phase', 'multi-PR plan'. Do NOT use when: the plan fits in a single PR — use /vibe instead."
+description: "Execute a large plan across multiple commits — one commit per phase, sequential on the current branch. Uses /vibe as the operator for each phase. Triggers: /supervibe, 'super vibe', 'stacked vibe', 'multi-phase plan', 'one commit per phase', 'multi-PR plan'. Do NOT use when: the plan fits in a single PR — use /vibe instead."
 allowed-tools: Bash, Read, Glob, Grep, Agent, Skill, TaskCreate, TaskUpdate, TaskGet, TaskList, CronCreate, CronDelete, CronList
 argument-hint: "<prompt> [--dry-run] [--continue]"
 user-invocable: true
@@ -8,7 +8,9 @@ user-invocable: true
 
 # Super Vibe
 
-Large plans across multiple commits. Each phase runs `/vibe` in an isolated worktree — verified and merged before the next begins. The orchestrator stays lean: it reads task metadata, dispatches phases, and records results. All implementation happens inside phase agents.
+Large plans across multiple commits. Each phase runs `/vibe` as a subagent on the current branch — one squashed commit per phase, verified before the next begins. The orchestrator stays lean: it reads task metadata, dispatches phases, and records results. All implementation happens inside phase agents.
+
+No worktrees, no merge commits. Phases run sequentially on the same branch, each producing a single clean commit.
 
 ## Arguments
 
@@ -90,18 +92,20 @@ Research context (from superscope — use for scope warm-start, don't re-researc
 
 ```
 Agent(
-  prompt: "Run /vibe with this context: <assembled prompt>. Use flags: --no-branch --no-review",
-  isolation: "worktree",
+  prompt: "Run /vibe with this context: <assembled prompt>. Use flags: --no-branch --no-review --no-commit. Do NOT create any commits — leave all changes staged or unstaged. The orchestrator handles committing.",
   mode: "auto"
 )
 ```
 
-The agent gets an isolated copy of the repo. Vibe runs inside: scope (warm-started by the rich context) → develop → simplify → commit. The main branch is untouched until we explicitly merge.
+The agent works directly on the current branch. Vibe runs: scope (warm-started by the rich context) → develop → simplify. No commit, no branch creation — the orchestrator squash-commits the result.
 
-#### 3. On success (agent returns worktree path + branch)
+#### 3. On success (agent completes without error)
+
+Squash all phase changes into a single commit:
 
 ```bash
-git merge <worktree-branch> --no-ff -m "phase(<N>): <phase title>"
+git add -A
+git commit -m "phase(<N>): <phase title>"
 ```
 
 Record phase results on tracker:
@@ -109,20 +113,22 @@ Record phase results on tracker:
 metadata.phase_results[N] = {
   phase: N,
   status: "completed",
-  commit: "<merge commit SHA>",
-  files_changed: [<from git diff --stat of merge commit>],
+  commit: "<commit SHA>",
+  files_changed: [<from git diff --stat HEAD~1>],
   summary: "<from vibe task's completion data or git log>",
   deviations: "<any divergence from original phase plan>"
 }
 ```
 
-Clean up: `git worktree remove <path> 2>/dev/null; git branch -d <branch> 2>/dev/null`
-
 **Update**: `vibe_stage: "phase-<N>"` → proceed to next phase.
 
 #### 4. On failure (agent errors or returns no changes)
 
-Do NOT merge. Clean up worktree if it exists.
+Discard uncommitted changes to restore a clean state:
+
+```bash
+git checkout -- . && git clean -fd
+```
 
 Record:
 ```
@@ -169,7 +175,7 @@ The watchdog cron fires `--continue` every 20 minutes. This handles session cras
 ## Error Handling
 
 - Don't update `vibe_stage` on failure — preserves resume point
-- Failed worktrees are discarded — main branch is always clean
+- Failed phases: uncommitted changes are discarded, branch stays at last good commit
 - Report which step in which phase failed
 - Suggest `/supervibe --continue`
 - Watchdog cron retries automatically after session crashes

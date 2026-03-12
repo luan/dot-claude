@@ -33,21 +33,22 @@
     },
     {
       "id": 4,
-      "prompt": "running /vibe 'add search feature'. just created the vibe tracker (task #55). about to do the Branch stage.\n\nshow the exact Skill('start') call with all arguments.",
-      "expected_output": "Calls Skill('start') with the tracker task ID (55) as second argument — e.g. Skill('start', args='luan/add-search-feature 55'). First arg is a username-prefixed branch slug derived from the prompt.",
+      "prompt": "running /vibe 'add search feature'. just created the vibe tracker (task #55). about to do the Branch stage. I'm on main.\n\nshow the exact steps and tool calls for creating the branch.",
+      "expected_output": "Does NOT call Skill('start'). Instead inlines branch creation: generates slug via ct tool, calls Skill(gt:gt, 'create luan/<slug>'), links tracker via TaskUpdate. Then immediately continues to Scope without stopping.",
       "expectations": [
-        "Passes tracker task ID (55) as second argument to /start so it links to existing tracker",
-        "First argument is a properly prefixed branch name derived from the prompt slug"
+        "Does NOT call Skill('start') — inlines branch creation instead",
+        "Uses Skill(gt:gt, 'create <username>/<slug>') for branch creation",
+        "After branch creation, immediately continues to Scope — does not end response or pause"
       ]
     },
     {
       "id": 5,
-      "prompt": "running /vibe 'add auth passthrough for tests'. just ran Skill('start', args='luan/auth-passthrough 42') successfully — branch created, linked to task #42. /start suggested 'suggest /scope or /develop'. confirmed on new branch.\n\njust updated vibe_stage to 'branch'. what do you do immediately?",
-      "expected_output": "Outputs the stage announcement (e.g. '[2/6] Scope') then immediately invokes Skill('scope', args='<prompt> --no-develop --auto'). Does not pause, summarize, or echo /start's suggestions.",
+      "prompt": "running /vibe 'add auth passthrough for tests'. branch just created via Skill(gt:gt). confirmed on new branch. updated vibe_stage to 'branch'.\n\nwhat do you do immediately?",
+      "expected_output": "Outputs the stage announcement (e.g. '[2/6] Scope') then immediately invokes Skill('scope', args='<prompt> --no-develop --auto'). Does not pause, summarize, or report branch status.",
       "expectations": [
         "Immediately invokes Skill('scope', args='<prompt> --no-develop --auto') without pausing or waiting",
         "Outputs stage announcement (e.g. '[2/6] Scope') as text BEFORE the Skill() call",
-        "Ignores /start's 'suggest /scope or /develop' output — treats it as noise"
+        "Does not output branch creation summary or status report before continuing"
       ]
     },
     {
@@ -87,6 +88,16 @@
         "Resumes Task 2 (session_id matches sess-AAA) — ignores Task 1 and Task 3",
         "Invokes /vibe --continue (not /supervibe) because Task 2 has no super_vibe metadata",
         "Does not attempt to resume, modify, or report on Task 1 or Task 3"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "running /vibe 'implement retry logic for failed API calls'. on main branch. no flags passed. the tracker task is already created (task #72, vibe_stage='started').\n\nwalk me through the complete Branch stage — every tool call, in order. then show what happens immediately after.",
+      "expected_output": "Branch stage: 1) ct tool slug to generate slug, 2) Skill(gt:gt, 'create luan/<slug>'), 3) TaskUpdate to link branch. Does NOT use Skill('start'). Immediately after: updates vibe_stage to 'branch', outputs '[2/6] Scope', invokes Skill('scope', args='implement retry logic for failed API calls --no-develop --auto'). No pause between branch and scope.",
+      "expectations": [
+        "Branch creation uses inline steps (ct tool slug + Skill(gt:gt)) — NOT Skill('start')",
+        "After branch, immediately outputs '[2/6] Scope' and invokes Skill('scope') in the same response",
+        "Does not end response, pause, or output a branch status summary between Branch and Scope"
       ]
     }
   ]

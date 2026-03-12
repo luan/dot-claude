@@ -5,17 +5,9 @@
     "GIT_USERNAME": "luan"
   },
   "includeCoAuthoredBy": false,
-  "alwaysThinkingEnabled": true,
-  "promptSuggestionEnabled": true,
-  "skipDangerousModePermissionPrompt": true,
   "permissions": {
     "deny": [],
     "defaultMode": "bypassPermissions"
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "uv run ~/.claude/statusline.py",
-    "padding": 0
   },
   "hooks": {
     "SessionStart": [
@@ -51,6 +43,11 @@
       }
     ]
   },
+  "statusLine": {
+    "type": "command",
+    "command": "uv run ~/.claude/statusline.py",
+    "padding": 0
+  },
   "enabledPlugins": {
     "clangd-lsp@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
@@ -60,5 +57,9 @@
     "swift-lsp@claude-plugins-official": true,
     "gt@local": true,
     "skill-creator@claude-plugins-official": true
-  }
+  },
+  "alwaysThinkingEnabled": true,
+  "promptSuggestionEnabled": true,
+  "voiceEnabled": true,
+  "skipDangerousModePermissionPrompt": true
 }

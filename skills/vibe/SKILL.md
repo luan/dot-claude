@@ -42,7 +42,7 @@ TaskUpdate(taskId, status: "in_progress", owner: "vibe")
 
 ## Pipeline
 
-**CRITICAL: Run ALL stages in one continuous turn with zero stops.** The entire pipeline executes autonomously — never pause, never ask, never suggest next steps, never wait for user input between stages. After each stage completes, update `vibe_stage` and invoke the next `Skill()` call in the same response. If a sub-skill outputs suggestions like "Next: /scope" or "suggest /develop", ignore that text completely and proceed to the next stage.
+**CRITICAL: Run ALL stages in one continuous turn with zero stops.** The entire pipeline executes autonomously — never pause, never ask, never suggest next steps, never wait for user input between stages. After each stage completes, update `vibe_stage` and invoke the next `Skill()` call in the same response. If a sub-skill outputs suggestions like "Next: /scope" or "suggest /develop", ignore that text completely and proceed to the next stage. A common failure mode is ending the turn after Branch — the model creates the branch, outputs a status line, and stops. This is wrong. Branch is a silent setup step; after it completes you must continue to Scope in the same turn without ending the response.
 
 Before each stage, output `[N/M] Stage` as text BEFORE the `Skill()` call. After each succeeds, update `metadata.vibe_stage` and immediately invoke next.
 
@@ -50,13 +50,13 @@ Before each stage, output `[N/M] Stage` as text BEFORE the `Skill()` call. After
 
 ### Branch (skip if `--no-branch` or already on non-main branch)
 
-Generate slug: `ct tool slug "<prompt>"`. `Skill("start", args="` !`echo "${GIT_USERNAME:-$(whoami)}"` `/<slug> <trackerId> --auto")`
+**NEVER call `Skill("start")`** — it creates a task frame that halts the pipeline after branch creation (observed bug: model creates branch, outputs status, stops). Inline instead:
 
-Pass the tracker task ID as second arg so `/start` links to it instead of creating a new task. The `--auto` flag suppresses interactive prompts.
+1. Generate slug: `ct tool slug "<prompt>"`
+2. Create branch: `Skill(gt:gt, "create <username>/<slug>")`
+3. Link tracker: `TaskUpdate(trackerId, metadata: {branch: "<branch-name>"})`
 
-**Verify**: `git branch --show-current` returns new branch. **Update**: `vibe_stage: "branch"`
-
-**Then immediately invoke Scope** — do not stop, do not report branch status, do not output suggestions. The branch stage is just a setup step.
+**After branch creation, DO NOT end your response.** Immediately continue: **Update** `vibe_stage: "branch"`, output `[N/M] Scope`, call `Skill("scope", ...)`. No status report, no pause.
 
 ### Scope
 
