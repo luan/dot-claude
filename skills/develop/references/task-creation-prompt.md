@@ -1,6 +1,6 @@
-# Task Creation Subagent Prompt
+# Task Creation Reference
 
-Dispatched as ONE general-purpose subagent (model="sonnet" — mechanical task creation needs no architectural reasoning). Needs TaskCreate, TaskUpdate, TaskGet in allowed-tools.
+Inline reference for the develop orchestrator. Follow these rules when creating tasks in Step 1b.
 
 ```
 Create implementation tasks for all phases

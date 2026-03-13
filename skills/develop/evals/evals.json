@@ -4,10 +4,10 @@
     {
       "id": 1,
       "prompt": "/develop t100\n\nthis is the approved scope task for webhook-retry. has a 2-phase design in metadata.design with file paths, approaches, the whole thing. no epic or child tasks exist yet",
-      "expected_output": "Recognizes scope task (type='scope', status_detail='approved'), enters Prepare mode. Creates epic with metadata copied from scope (type, slug, design, spec). Dispatches ONE sonnet subagent using references/task-creation-prompt.md verbatim for task creation. Spot-checks 1-2 file paths. Updates epic with children array, completes scope task. Falls through immediately to Classify and dispatches workers — no pause between prepare and dispatch.",
+      "expected_output": "Recognizes scope task (type='scope', status_detail='approved'), enters Prepare mode. Creates epic with metadata copied from scope (type, slug, design, spec). Creates tasks inline (no subagent) following references/task-creation-prompt.md rules. Spot-checks 1-2 file paths. Updates epic with children array, completes scope task. Falls through immediately to Classify and dispatches workers — no pause between prepare and dispatch.",
       "expectations": [
         "Enters Step 1b (Prepare) for scope task with status_detail='approved'. Does NOT try to dispatch the scope task as a work item.",
-        "Creates epic via TaskCreate with type='epic', slug, design, spec from scope. Dispatches task creation using references/task-creation-prompt.md verbatim (not ad-hoc prompt).",
+        "Creates epic via TaskCreate with type='epic', slug, design, spec from scope. Creates tasks inline (no subagent) following references/task-creation-prompt.md decomposition rules.",
         "Spot-checks 1-2 file paths, updates epic with children, completes scope task. Then falls through to Step 2 (Classify) without pausing."
       ]
     },
@@ -23,10 +23,10 @@
     {
       "id": 3,
       "prompt": "/develop\n\npicked up an epic that has metadata.design populated and status='in_progress' but no children at all — looks like task creation got interrupted last time",
-      "expected_output": "Recognizes epic-without-children pattern (design exists, no children). Enters Step 1b but skips epic creation (already exists). Dispatches task creation subagent, validates, finalizes with children array, falls through to dispatch.",
+      "expected_output": "Recognizes epic-without-children pattern (design exists, no children). Enters Step 1b but skips epic creation (already exists). Creates tasks inline (no subagent), validates, finalizes with children array, falls through to dispatch.",
       "expectations": [
         "Recognizes epic has design but no children — interrupted preparation.",
-        "Enters Step 1b, skips epic creation (already exists), runs task creation, validates, adds children array, falls through to dispatch."
+        "Enters Step 1b, skips epic creation (already exists), creates tasks inline (no subagent), validates, adds children array, falls through to dispatch."
       ]
     },
     {

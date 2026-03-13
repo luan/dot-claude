@@ -58,10 +58,10 @@ Source: scope task's `metadata.design` (or epic's `metadata.design` if epic exis
    TaskCreate with title, Problem/Solution/Acceptance,
    `metadata: {project: REPO_ROOT, slug: <topic-slug>, type: "epic", priority: "P1", design: <source design>, spec: <source spec if available>}`
 
-3. **Create tasks:** Dispatch ONE subagent (model="sonnet"). Read `${CLAUDE_SKILL_DIR}/references/task-creation-prompt.md` and pass its content verbatim as the subagent prompt — do NOT write an ad-hoc prompt. The reference contains decomposition rules, quality requirements, and format specs that must not be paraphrased.
+3. **Create tasks directly** — no subagent. Read `${CLAUDE_SKILL_DIR}/references/task-creation-prompt.md` for decomposition rules, quality requirements, and TaskCreate format. The orchestrator already has the design context; task creation is mechanical. Read referenced files as needed, then call TaskCreate/TaskUpdate inline.
 
 4. **Validate tasks:** spot-check 1-2 file paths (Read), acceptance criteria,
-   approach. Vague → send back to subagent.
+   approach. Vague → fix inline.
 
 5. **Finalize:** Collect child task IDs. Two updates:
    - `TaskUpdate(epicId, status: "in_progress", metadata: {children: [<child IDs>]})`
