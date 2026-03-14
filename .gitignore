@@ -74,3 +74,4 @@ mcp-needs-auth-cache.json
 /skills/**/*-workspace/
 .credentials.json
 policy-limits.json
+sessions/
