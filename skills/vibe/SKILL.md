@@ -53,7 +53,7 @@ Before each stage, output `[N/M] Stage` as text BEFORE the `Skill()` call. After
 **NEVER call `Skill("start")`** — it creates a task frame that halts the pipeline after branch creation (observed bug: model creates branch, outputs status, stops). Inline instead:
 
 1. Generate slug: `ct tool slug "<prompt>"`
-2. Create branch: `Skill(gt:gt, "create <username>/<slug>")`
+2. Create branch: `Skill(gt:gt, "create !`echo "${GIT_USERNAME:-$(whoami)}"`/<slug>")`
 3. Link tracker: `TaskUpdate(trackerId, metadata: {branch: "<branch-name>"})`
 
 **After branch creation, DO NOT end your response.** Immediately continue: **Update** `vibe_stage: "branch"`, output `[N/M] Spec`, call `Skill("spec", ...)`. No status report, no pause.
