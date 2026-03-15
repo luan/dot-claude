@@ -381,53 +381,75 @@ def git_info(cwd):
     return result or None
 
 
-CODEXBAR_SNAPSHOT = os.path.expanduser(
-    "~/Library/Group Containers/group.com.steipete.codexbar/widget-snapshot.json"
-)
+TOKEN_CACHE = "/tmp/claude-statusline-token"
+TOKEN_TTL = 300
+BACKOFF_STATE = "/tmp/claude-statusline-backoff.json"
 
 
-def _usage_from_codexbar():
-    """Read usage from CodexBar's widget snapshot (no API call needed)."""
-    try:
-        with open(CODEXBAR_SNAPSHOT) as f:
-            snap = json.load(f)
-        for entry in snap.get("entries", []):
-            if entry.get("provider") != "claude":
-                continue
-            primary = entry.get("primary") or {}
-            secondary = entry.get("secondary") or {}
-            result = {}
-            if "usedPercent" in primary:
-                result["five_hour"] = {
-                    "utilization": primary["usedPercent"],
-                    "resets_at": primary.get("resetsAt"),
-                }
-            if "usedPercent" in secondary:
-                result["seven_day"] = {
-                    "utilization": secondary["usedPercent"],
-                    "resets_at": secondary.get("resetsAt"),
-                }
-            if result:
-                return result
-    except Exception:
-        pass
-    return None
-
-
-def _usage_from_oauth(version=""):
-    """Fetch usage from Anthropic OAuth API."""
+def _read_token():
+    """Read OAuth token from macOS Keychain."""
     raw = _run(
         ["security", "find-generic-password", "-s", "Claude Code-credentials", "-w"]
     )
     try:
         creds = json.loads(raw)
-        token = creds.get("claudeAiOauth", {}).get("accessToken")
+        return creds.get("claudeAiOauth", {}).get("accessToken")
     except (json.JSONDecodeError, ValueError):
         decoded = bytes.fromhex(raw).decode("utf-8", errors="replace")
         m = re.search(r'"accessToken"\s*:\s*"(sk-ant-[^"]+)"', decoded)
-        token = m.group(1) if m else None
+        return m.group(1) if m else None
+
+
+def _get_token():
+    """Get OAuth token, cached to avoid keychain reads every cycle."""
+    cached = read_cache(TOKEN_CACHE, TOKEN_TTL)
+    if cached:
+        return cached
+    token = _read_token()
+    if token:
+        write_cache(TOKEN_CACHE, token)
+    return token
+
+
+def _invalidate_token():
+    """Force re-read from keychain on next call."""
+    try:
+        os.unlink(TOKEN_CACHE)
+    except OSError:
+        pass
+
+
+def _get_backoff():
+    """Read backoff state: {failures: int, next_try: float}."""
+    try:
+        with open(BACKOFF_STATE) as f:
+            return json.loads(f.read())
+    except Exception:
+        return {"failures": 0, "next_try": 0}
+
+
+def _set_backoff(failures):
+    """Write backoff state with exponential delay: 2min, 4min, 8min, cap 15min."""
+    delay = min(120 * (2 ** (failures - 1)), 900) if failures > 0 else 0
+    state = {"failures": failures, "next_try": time.time() + delay}
+    try:
+        with open(BACKOFF_STATE, "w") as f:
+            f.write(json.dumps(state))
+    except OSError:
+        pass
+
+
+def _clear_backoff():
+    try:
+        os.unlink(BACKOFF_STATE)
+    except OSError:
+        pass
+
+
+def _usage_from_oauth(version="", token=None):
+    """Fetch usage from Anthropic OAuth API. Returns (data, http_status)."""
     if not token:
-        return None
+        return None, 0
 
     result = subprocess.check_output(
         [
@@ -435,6 +457,8 @@ def _usage_from_oauth(version=""):
             "-s",
             "--max-time",
             "5",
+            "-w",
+            "\n%{http_code}",
             "-H",
             "Accept: application/json",
             "-H",
@@ -450,11 +474,15 @@ def _usage_from_oauth(version=""):
         timeout=8,
     ).strip()
 
-    if result:
-        parsed = json.loads(result)
+    lines = result.rsplit("\n", 1)
+    body = lines[0] if len(lines) == 2 else result
+    status = int(lines[1]) if len(lines) == 2 else 0
+
+    if status == 200 and body:
+        parsed = json.loads(body)
         if "five_hour" in parsed or "seven_day" in parsed:
-            return parsed
-    return None
+            return parsed, status
+    return None, status
 
 
 def fetch_usage(version=""):
@@ -465,20 +493,50 @@ def fetch_usage(version=""):
         except Exception:
             pass
 
-    # OAuth is authoritative (has reset times); CodexBar is fallback
-    try:
-        usage = _usage_from_oauth(version)
-    except Exception:
-        usage = None
+    # Check backoff — don't hammer API on repeated failures
+    backoff = _get_backoff()
+    if backoff["failures"] > 0 and time.time() < backoff["next_try"]:
+        cached = read_cache(USAGE_CACHE, USAGE_TTL * 10)
+        if cached:
+            try:
+                parsed = json.loads(cached)
+                if "five_hour" in parsed or "seven_day" in parsed:
+                    return parsed
+            except Exception:
+                pass
+        return None
 
-    if not usage:
-        usage = _usage_from_codexbar()
+    token = _get_token()
+    usage = None
+    status = 0
+
+    try:
+        usage, status = _usage_from_oauth(version, token)
+    except Exception:
+        pass
+
+    # 401: token expired — re-read keychain once and retry
+    if status == 401 and token:
+        _invalidate_token()
+        fresh = _read_token()
+        if fresh and fresh != token:
+            write_cache(TOKEN_CACHE, fresh)
+            try:
+                usage, status = _usage_from_oauth(version, fresh)
+            except Exception:
+                pass
 
     if usage:
+        _clear_backoff()
         write_cache(USAGE_CACHE, json.dumps(usage))
         return usage
 
-    # Preserve last good cache on failure
+    # Failed — increase backoff
+    _set_backoff(backoff["failures"] + 1)
+    if status == 401:
+        _invalidate_token()
+
+    # Fall back to stale cache (up to 20 min old)
     cached = read_cache(USAGE_CACHE, USAGE_TTL * 10)
     if cached:
         try:

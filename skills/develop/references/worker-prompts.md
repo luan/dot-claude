@@ -21,6 +21,7 @@ Implement task <task-id>.
    On failure: deduplicate errors (strip paths/line numbers). Same root error 2x → stop, report with context. 3 distinct errors → report all, stop.
 4. Self-check: re-read changed files. Remove debug artifacts (console.log, print, debugger), low-value comments (code-restating, contextless TODOs), unused imports. Flatten nesting via early returns. Apply language-idiomatic patterns.
 5. TaskUpdate(taskId, status: "completed", metadata: {completedAt: "<current ISO 8601 timestamp>"})
+6. Completion report: categorize each changed file as ✅ VERIFIED (test/build confirms correctness) or 👁️ UNVERIFIED_VISUAL (compiles but visual correctness not confirmed — no multimodal). Never claim visual correctness you didn't test.
 
 ## Rules
 - TDD: test first. Standards: rules/test-quality.md

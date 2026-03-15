@@ -72,6 +72,7 @@ Implement task <task-id>.
    TDD: failing test → red → implement → green. No test infra → note, implement directly.
 2. Build + test. Same root error 2x → stop + report. 3 distinct errors → report all, stop.
 3. Self-check: re-read changed files. Remove debug artifacts, low-value comments, unused imports. Flatten nesting via early returns. Apply language-idiomatic patterns.
+4. Completion report: categorize each changed file as ✅ VERIFIED (test/build confirms correctness) or 👁️ UNVERIFIED_VISUAL (compiles but visual correctness not confirmed — no multimodal). Never claim visual correctness you didn't test.
 
 ## Rules
 - TDD first. Standards: rules/test-quality.md
