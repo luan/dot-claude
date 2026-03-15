@@ -8,7 +8,7 @@ user-invocable: true
 
 # Vibe
 
-Full pipeline (scope → develop → simplify → review → commit) from a single prompt.
+Full pipeline (spec → scope → develop → simplify → review → commit) from a single prompt.
 
 ## Arguments
 
@@ -46,7 +46,7 @@ TaskUpdate(taskId, status: "in_progress", owner: "vibe")
 
 Before each stage, output `[N/M] Stage` as text BEFORE the `Skill()` call. After each succeeds, update `metadata.vibe_stage` and immediately invoke next.
 
-**Stage numbering `[N/M]`:** M = total stages that will run. Base: 6 (branch, scope, develop, simplify, review, commit). Subtract skipped stages: `--no-branch` → 5, `--no-review` → 5, `--dry-run` → 2. Combine flags to subtract more. N counts only executed stages.
+**Stage numbering `[N/M]`:** M = total stages that will run. Base: 7 (branch, spec, scope, develop, simplify, review, commit). Subtract skipped stages: `--no-branch` → 6, `--no-review` → 6, `--dry-run` → 3. Combine flags to subtract more. N counts only executed stages.
 
 ### Branch (skip if `--no-branch` or already on non-main branch)
 
@@ -56,15 +56,25 @@ Before each stage, output `[N/M] Stage` as text BEFORE the `Skill()` call. After
 2. Create branch: `Skill(gt:gt, "create <username>/<slug>")`
 3. Link tracker: `TaskUpdate(trackerId, metadata: {branch: "<branch-name>"})`
 
-**After branch creation, DO NOT end your response.** Immediately continue: **Update** `vibe_stage: "branch"`, output `[N/M] Scope`, call `Skill("scope", ...)`. No status report, no pause.
+**After branch creation, DO NOT end your response.** Immediately continue: **Update** `vibe_stage: "branch"`, output `[N/M] Spec`, call `Skill("spec", ...)`. No status report, no pause.
+
+### Spec
+
+`Skill("spec", args="<prompt> --auto")`
+
+Produces the target-state document (what we're building). `--auto` skips the approval gate.
+
+**Verify**: spec task with `status_detail === "approved"`, `metadata.spec` populated. **Update**: `vibe_stage: "spec"`
+
+**Then immediately invoke Scope.**
 
 ### Scope
 
-`Skill("scope", args="<prompt> --no-develop --auto")`
+`Skill("scope", args="t<spec-task-id> --no-develop --auto")`
 
-`--auto` skips both spec and plan review gates — scope auto-approves both artifacts instead of halting twice for feedback.
+Consumes the spec and produces a phased plan (how to build it). `--auto` skips the approval gate.
 
-**Verify**: scope task with `status_detail === "approved"`, `metadata.spec` and `metadata.design` populated. **Update**: `vibe_stage: "scope"`
+**Verify**: scope task with `status_detail === "approved"`, `metadata.design` populated. **Update**: `vibe_stage: "scope"`
 
 If `--dry-run` → stop. Report scope task, suggest `/develop` or `/vibe --continue`.
 

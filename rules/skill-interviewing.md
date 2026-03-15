@@ -14,7 +14,7 @@ Match question complexity to situation:
 
 ## End-of-Skill: Continue or Confirm
 
-When a skill finishes, there's usually an obvious next step in the pipeline (scope→develop, develop→review).
+When a skill finishes, there's usually an obvious next step in the pipeline (spec→scope, scope→develop, develop→review).
 
 **Do not passively suggest and stop** ("Next: /review" then silence). Either:
 1. **Proceed automatically** — invoke the next skill directly
@@ -23,10 +23,11 @@ When a skill finishes, there's usually an obvious next step in the pipeline (sco
 ### When to stop vs auto-proceed
 
 **Auto-proceed** when the preceding skill already gated its output.
+- spec → scope (spec approval already gates the target; planning is mechanical)
 - scope → develop (plan-mode approval already gates the design; task creation is mechanical)
 
 **Stop** when the skill produced output that needs human verification before the next step acts on it.
-- brainstorm → scope (design needs technical validation before becoming tasks)
+- brainstorm → user decides next step (spec, scope, or vibe — user picks the executor)
 - develop → user verification (user must verify functionality before review, or review risks blessing regressions)
 
 Never present formulaic menus with "Done for now" filler options. If the user wants to stop, they'll just... stop.
@@ -44,6 +45,7 @@ When user feedback after a skill's output substantively changes the design (new 
 
 When a skill finishes and the next step is in a different skill (scope→develop), the handoff metadata MUST be written before the session can end:
 
-- `/scope` presenting a plan with `Next: /develop` → set `status_detail: "approved"` at the same time as presenting. Don't wait for explicit "approved" text — presenting `Next: /develop` IS the approval gate.
+- `/spec` presenting a spec with `Next:` → set `status_detail: "approved"` at the same time as presenting.
+- `/scope` presenting a plan with `Next: /develop` → set `status_detail: "approved"` at the same time as presenting.
 - Any task metadata that the next skill reads (`status_detail`, `design`, `spec`) must be fully populated before outputting the `Next:` line.
 - The user may run the next skill in a fresh session with no conversation context — only task metadata survives.

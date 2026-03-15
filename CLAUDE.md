@@ -8,7 +8,7 @@
 8. Never `git checkout` to "restore" — make targeted edits. Ask before discarding uncommitted work.
 9. Never drop, revert, or modify things you don't recognize (commits, files, branches, config). If something unexpected appears, **stop and ask** — it's the user's work.
 10. When saving memories, consider if a universal rule would be more useful → `~/.claude/rules/<topic>.md`
-11. Skills flow: brainstorm → scope → develop [acceptance] → review → commit
+11. Skills flow: brainstorm → spec → scope → develop [acceptance] → review → commit. Shortcuts: vibe (spec→scope→develop→review→commit), supervibe (spec→loop(vibe)→PRs)
 12. On resume after compaction: if tasks exist with `metadata.impl_team` set and status `in_progress`, re-invoke `/develop` to trigger recovery.
 13. Skill scripts: use `${CLAUDE_SKILL_DIR}` in SKILL.md to reference skill-local files (scripts, references, agents). Expands to the skill's absolute directory at load time.
 

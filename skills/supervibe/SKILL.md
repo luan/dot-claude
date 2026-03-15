@@ -1,181 +1,154 @@
 ---
 name: supervibe
-description: "Execute a large plan across multiple commits — one commit per phase, sequential on the current branch. Uses /vibe as the operator for each phase. Triggers: /supervibe, 'super vibe', 'stacked vibe', 'multi-phase plan', 'one commit per phase', 'multi-PR plan'. Do NOT use when: the plan fits in a single PR — use /vibe instead."
-allowed-tools: Bash, Read, Glob, Grep, Agent, Skill, TaskCreate, TaskUpdate, TaskGet, TaskList, CronCreate, CronDelete, CronList
-argument-hint: "<prompt> [--dry-run] [--continue]"
+description: "Goal-directed autonomous development — iterates /vibe until a goal is met, shipping PRs as branches grow. Triggers: /supervibe, 'super vibe', 'stacked vibe', 'multi-phase plan', 'multi-PR plan'. Do NOT use when: the plan fits in a single PR — use /vibe instead."
+allowed-tools: Bash, Read, Glob, Grep, Agent, Skill, TaskCreate, TaskUpdate, TaskGet, TaskList
+argument-hint: "<goal> [--continue]"
 user-invocable: true
 ---
 
 # Super Vibe
 
-Large plans across multiple commits. Each phase runs `/vibe` as a subagent on the current branch — one squashed commit per phase, verified before the next begins. The orchestrator stays lean: it reads task metadata, dispatches phases, and records results. All implementation happens inside phase agents.
+Goal-directed loop around `/vibe`. Each iteration: assess where we are, decide the next increment, vibe it, check if we're done. No predetermined phase count — the loop discovers the right shape as it goes.
 
-No worktrees, no merge commits. Phases run sequentially on the same branch, each producing a single clean commit.
+Ship a PR when the branch is reviewable. Start a new branch and keep going if the goal isn't met.
+
+## YOU ARE IN A LOOP
+
+After every `/vibe` call returns, you **MUST** execute the assess step. Do NOT stop, summarize, or mark the epic complete until the assess step confirms the goal is met. Vibe completing its task does NOT mean your goal is met — vibe only knows about its increment, not your end-state.
 
 ## Arguments
 
-- `<prompt>` — what to build (required unless `--continue`)
-- `--dry-run` — superscope only, stop before execution
-- `--continue` — resume from last completed phase
+- `<goal>` — what to build (required unless `--continue`)
+- `--continue` — resume from epic metadata
 
-## Tracker
+## [1] Setup
 
 ```
 TaskCreate(
-  subject: "Super Vibe: <prompt (60 chars)>",
-  activeForm: "Super Vibing",
-  metadata: { type: "epic", vibe_prompt: "<prompt>", vibe_stage: "started", super_vibe: true, session_id: "${CLAUDE_SESSION_ID}" }
+  subject: "Supervibe: <goal (60 chars)>",
+  activeForm: "Supervibing",
+  metadata: {
+    type: "epic",
+    super_vibe: true,
+    goal: "<full goal text>",
+    goal_met: false,
+    iterations: [],
+    prs: []
+  }
 )
-TaskUpdate(taskId, status: "in_progress", owner: "supervibe")
+TaskUpdate(epicId, status: "in_progress", owner: "supervibe")
 ```
 
-## Pipeline
+## [2] Initial Research
 
-### [1] Superscope
-
-Read `${CLAUDE_SKILL_DIR}/references/superscope.md` and follow it. This is not a regular `/scope` call — it's a dedicated multi-phase research and planning session that produces richer output.
-
-Produces on the tracker:
-- `metadata.end_state` — north star from spec Recommendation (present-tense target state)
-- `metadata.phases[]` — ordered list, each with: `{ title, goal, files: {read, modify, create}, dependencies, verification }`
-- `metadata.superscope_findings` — key research findings (file locations, patterns, architecture context) that warm-start per-phase scope calls so they don't re-research from scratch
-
-Validate:
-1. Phases collectively cover the full end-state (every capability maps to a phase)
-2. Each phase is a vertical slice (not a single-layer change like "just the DB schema")
-3. Phase count ≤5 — consolidate if more
-4. Phases roughly balanced in size (no phase >3× another)
-
-Re-invoke scope with specific feedback if any check fails.
-
-Mark scope task `status: "completed"`. **Update**: `vibe_stage: "scoped"`
-
-If `--dry-run` → stop. Report end-state, phase plan with sizing. Suggest `/supervibe --continue`.
-
-### [2] Watchdog Setup
+Lightweight scope — understand the codebase enough to plan the first increment. NOT a full decomposition into N phases.
 
 ```
-CronCreate(schedule: "*/20 * * * *", prompt: "/supervibe --continue", recurring: true)
+Skill("scope", args="<goal>. Research the codebase and produce a spec + plan. The plan should describe the FULL scope of work but I will implement it incrementally — focus the plan on what to build first. --auto")
 ```
 
-Store cron job ID in `metadata.cron_id`. **Update**: `vibe_stage: "watchdog"` → Begin phase execution.
-
-### [3..N+2] Per-Phase Loop
-
-For each phase in `metadata.phases`:
-
-#### 1. Assemble phase context
-
-Build a rich prompt for the phase agent from task metadata:
-
+Store on epic:
 ```
-Phase <N>/<total>: <phase title>
-
-Goal: <phase goal>
-
-File plan:
-- Read: <files to read for context>
-- Modify: <files to modify>
-- Create: <files to create>
-
-Prior phase results:
-<for each completed phase in metadata.phase_results:>
-  Phase <M>: <summary>. Files: <files_changed>. Deviations: <deviations>.
-
-End-state vision: <metadata.end_state>
-
-Research context (from superscope — use for scope warm-start, don't re-research these):
-<metadata.superscope_findings>
+metadata.end_state = "<spec Recommendation — present-tense target state>"
+metadata.research = "<key findings: file locations, patterns, architecture>"
 ```
 
-#### 2. Dispatch phase agent
+Mark scope task completed.
+
+## [3] Loop
+
+**REPEAT THE FOLLOWING STEPS UNTIL `metadata.goal_met === true`.**
+
+### Step A: Read the goal
 
 ```
-Agent(
-  prompt: "Run /vibe with this context: <assembled prompt>. Use flags: --no-branch --no-review --no-commit. Do NOT create any commits — leave all changes staged or unstaged. The orchestrator handles committing.",
-  mode: "auto"
-)
+TaskGet(epicId)
 ```
 
-The agent works directly on the current branch. Vibe runs: scope (warm-started by the rich context) → develop → simplify. No commit, no branch creation — the orchestrator squash-commits the result.
+Read `metadata.end_state`, `metadata.iterations[]`, `metadata.prs[]`. Re-ground yourself on what the goal is and what's been done.
 
-#### 3. On success (agent completes without error)
+### Step B: Assess
 
-Squash all phase changes into a single commit:
+Look at the current state of the codebase relative to the goal:
 
 ```bash
-git add -A
-git commit -m "phase(<N>): <phase title>"
+git log --oneline -20
+git diff --stat HEAD~<commits_since_start>  # scope of all changes
 ```
 
-Record phase results on tracker:
+For each capability described in `metadata.end_state`, check: does it exist in the codebase now? Read key files if needed — don't guess.
+
+**If goal is met**: `TaskUpdate(epicId, metadata: {goal_met: true})` → go to Teardown.
+
+### Step C: Branch check
+
+Count commits on current branch since the last PR (or since start). If the branch has **5+ commits** or **touches 15+ files**, it's big enough to review:
+
+1. `Skill("commit")` if there are uncommitted changes
+2. `Skill("gt:submit")` to ship the PR
+3. Record: `metadata.prs.push({branch, url, summary})`
+4. Create new branch inline: `gt bc -m "supervibe-continues-<N>"`
+
+### Step D: Plan next increment
+
+Based on the assessment (Step B), decide the **single most valuable next step** toward the goal. Consider:
+- What's already built (from `metadata.iterations[]`)
+- What's missing (from the assessment)
+- What has the most dependencies downstream (do it first)
+
+Write a focused prompt for vibe — one increment, not the whole remaining plan.
+
+### Step E: Execute
+
 ```
-metadata.phase_results[N] = {
-  phase: N,
-  status: "completed",
-  commit: "<commit SHA>",
-  files_changed: [<from git diff --stat HEAD~1>],
-  summary: "<from vibe task's completion data or git log>",
-  deviations: "<any divergence from original phase plan>"
-}
+Skill("vibe", args="<increment prompt> --no-branch")
 ```
 
-**Update**: `vibe_stage: "phase-<N>"` → proceed to next phase.
+Vibe runs its full pipeline (scope → develop → review → commit) on the current branch.
 
-#### 4. On failure (agent errors or returns no changes)
+### Step F: Record
 
-Discard uncommitted changes to restore a clean state:
+After vibe returns, read what it did:
 
 ```bash
-git checkout -- . && git clean -fd
+git log --oneline -5
+git diff --stat HEAD~<vibe's commits>
 ```
 
-Record:
 ```
-metadata.phase_results[N] = {
-  phase: N,
-  status: "failed",
-  step: "<which step failed>",
-  error: "<error details>"
-}
-```
-
-Do NOT update `vibe_stage` — stays at last successful phase so `--continue` retries the failed phase.
-
-Report which step in which phase failed. Suggest `/supervibe --continue`.
-
-### [N+3] Teardown
-
-`CronDelete(metadata.cron_id)`
-
-**End-state coverage check**: Compare `metadata.phase_results` against `metadata.end_state`. Walk each capability in the end-state and verify it maps to a completed phase. Unrealized capabilities → report gaps, suggest additional phases, do NOT auto-complete.
-
-If all capabilities realized:
-
-```
-TaskUpdate(trackerId, status: "completed", metadata: {completedAt: "<ISO 8601>"})
+metadata.iterations.push({
+  n: <iteration number>,
+  prompt: "<what was asked>",
+  commits: [<SHAs>],
+  files_changed: [<paths>],
+  summary: "<what actually happened>",
+  deviations: "<anything unexpected>"
+})
+TaskUpdate(epicId, metadata: {iterations: <updated>})
 ```
 
-Report: one line per phase (**completed** / **failed**), end-state coverage assessment.
+**GO TO STEP A.**
+
+## Teardown
+
+All capabilities in `metadata.end_state` are realized.
+
+1. Ship final PR if current branch has uncommitted/unsubmitted work
+2. Report: goal, PRs shipped (with URLs), iteration count, files changed
+3. `TaskUpdate(epicId, status: "completed", metadata: {completedAt: "<ISO 8601>"})`
 
 ## Resume (`--continue`)
 
-Find tracker: `super_vibe === true`, `status === "in_progress"`. Multiple → filter by `session_id`. No match → tell user no pipeline to resume, stop.
+Find epic: `super_vibe === true`, `status === "in_progress"`. No match → tell user, stop.
 
-Read `metadata.phase_results[]`, `metadata.phases`, `metadata.end_state`, `metadata.superscope_findings`.
+Read `metadata.goal`, `metadata.end_state`, `metadata.research`, `metadata.iterations`, `metadata.prs`.
 
-Resume logic:
-- No phases started → begin phase 1
-- Last phase completed → start next phase
-- Last phase failed → retry failed phase. The phase agent gets the error context from `phase_results[N].error` — include it in the prompt so scope/develop can account for the prior failure.
-- All phases completed → go to teardown
+Enter the loop at **Step A**.
 
-The watchdog cron fires `--continue` every 20 minutes. This handles session crashes: the next cron invocation picks up where the failed session left off, with full context from task metadata.
+## Key Rules
 
-## Error Handling
-
-- Don't update `vibe_stage` on failure — preserves resume point
-- Failed phases: uncommitted changes are discarded, branch stays at last good commit
-- Report which step in which phase failed
-- Suggest `/supervibe --continue`
-- Watchdog cron retries automatically after session crashes
+- Vibe completing ≠ supervibe complete. ALWAYS assess after vibe returns.
+- No predetermined phase count. Iterate until done.
+- Ship PRs when branches get big. Don't accumulate 50 commits.
+- Each iteration re-reads the goal from epic metadata. Never rely on conversation memory.
+- Failed vibe? Record what happened, adjust the next increment, keep going. Don't stop on first failure.
