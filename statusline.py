@@ -32,12 +32,17 @@ CTX_THRESHOLDS = (4, 9)  # 0-3: green, 4-8: orange, 9-11: red
 DIM_GREEN = "\033[38;5;65m"
 DIM_ORANGE = "\033[38;5;130m"
 DIM_RED = "\033[38;5;131m"
+DIM_CYAN = "\033[38;5;67m"
 SEG_DIGITS = "🯰🯱🯲🯳🯴🯵🯶🯷🯸🯹"
 
 
 def seg_pct(n, col):
     """Format a number as segmented digit characters with color."""
     return f"{col}{''.join(SEG_DIGITS[int(d)] for d in str(int(n)))}٪{RESET}"
+
+
+PLUS = "\uf067"
+MINUS = "\uf068"
 
 USAGE_CHARS = ("○", "◎", "◉", "●")  # empty, starting, half, filled
 USAGE_PACE = "◌"  # empty but within pace window
@@ -143,15 +148,24 @@ def fmt_cost(usd):
     return f"${usd:.2f}" if usd >= 0.01 else f"${usd:.4f}"
 
 
+def _fmt_duration(secs, show_seconds=False):
+    """Format seconds as Xd Yh / Xh YYm / Xm (or Xs / XmYYs with show_seconds)."""
+    a = abs(int(secs))
+    if a >= 86400:
+        return f"{a // 86400}d{(a % 86400) // 3600}h"
+    if a >= 3600:
+        return f"{a // 3600}h{(a % 3600) // 60:02d}m"
+    if show_seconds:
+        if a < 60:
+            return f"{a}s"
+        return f"{a // 60}m{a % 60:02d}s"
+    return f"{a // 60}m"
+
+
 def fmt_duration(ms):
     if not ms:
         return "0s"
-    s = int(ms) // 1000
-    if s < 60:
-        return f"{s}s"
-    if s < 3600:
-        return f"{s // 60}m{s % 60:02d}s"
-    return f"{s // 3600}h{(s % 3600) // 60:02d}m"
+    return _fmt_duration(int(ms) // 1000, show_seconds=True)
 
 
 def fmt_reset(iso_str):
@@ -160,19 +174,33 @@ def fmt_reset(iso_str):
     try:
         dt = datetime.fromisoformat(iso_str).astimezone()
         now = datetime.now(timezone.utc).astimezone()
-        delta = dt - now
-        total_secs = max(0, delta.total_seconds())
-        hours = int(total_secs // 3600)
-        mins = int((total_secs % 3600) // 60)
-        days = hours // 24
-        if days > 0:
-            remaining_hours = hours % 24
-            return f"{days}d{remaining_hours}h", total_secs
-        if hours > 0:
-            return f"{hours}h{mins:02d}m", total_secs
-        return f"{mins}m", total_secs
+        total_secs = max(0, (dt - now).total_seconds())
+        return _fmt_duration(total_secs), total_secs
     except Exception:
         return "", 0
+
+
+def pace_balance_secs(used, remaining_secs, window_secs):
+    """Surplus/deficit in seconds vs even pace. Positive = ahead."""
+    elapsed = window_secs - remaining_secs
+    if elapsed < 60:
+        return None
+    balance_pct = (100 - used) - (remaining_secs / window_secs * 100)
+    return int(round(balance_pct * window_secs / 100))
+
+
+def fmt_pace(secs, window_secs):
+    """Format pace balance as signed time with dim graded color."""
+    if secs == 0:
+        return ""
+    sign = MINUS if secs < 0 else PLUS
+    if secs > 0:
+        col = DIM_CYAN
+    else:
+        deficit_pct = abs(secs) / window_secs * 100
+        col = DIM_RED if deficit_pct >= 15 else DIM_ORANGE
+    ul = "\033[4m" if secs < 0 else ""
+    return f"\033[3m{ul}{col}{sign}{_fmt_duration(secs)}{RESET}"
 
 
 def quota_color(utilization, remaining_secs, window_secs):
@@ -498,7 +526,15 @@ def main():
         sd_col = quota_color(sd_used, sd_remaining, SEVEN_DAYS)
         sd_pace = (sd_remaining / SEVEN_DAYS * 100) if sd.get("resets_at") else None
         sd_bar, _ = usage_bar(sd_rem, width=12, col=sd_col, pace_pct=sd_pace)
-        sd_label = f"7d: {sd_bar} {seg_pct(sd_rem, sd_col)}"
+        sd_bal = (
+            pace_balance_secs(sd_used, sd_remaining, SEVEN_DAYS)
+            if sd.get("resets_at")
+            else None
+        )
+        if sd_bal:
+            sd_label = f"7d: {sd_bar} {seg_pct(sd_rem, sd_col)} {fmt_pace(sd_bal, SEVEN_DAYS)}"
+        else:
+            sd_label = f"7d: {sd_bar} {seg_pct(sd_rem, sd_col)}"
         if sd_reset_str:
             sd_label += f" {DIM}{sd_reset_str}{RESET}"
         parts2.append(sd_label)
