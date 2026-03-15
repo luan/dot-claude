@@ -17,14 +17,6 @@ YELLOW = "\033[38;5;228m"
 RESET = "\033[0m"
 
 SEP = f" {DIM}|{RESET} "
-SUPERSCRIPT = str.maketrans(
-    "0123456789.abcdefghijklmnoprstuvwxyz",
-    "⁰¹²³⁴⁵⁶⁷⁸⁹·ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖʳˢᵗᵘᵛʷˣʸᶻ",
-)
-SUBSCRIPT = str.maketrans(
-    "0123456789.aehijklmnoprstuvx",
-    "₀₁₂₃₄₅₆₇₈₉.ₐₑₕᵢⱼₖₗₘₙₒₚᵣₛₜᵤᵥₓ",
-)
 
 GIT_CACHE = "/tmp/claude-statusline-git"
 GIT_TTL = 5
@@ -35,17 +27,104 @@ VERSION_TTL = 3600
 UPDATE_ICON = "\U000f0047"
 
 
-def dot_bar(pct, width=10):
+CTX_CHARS = ("□", "◧", "■")  # empty, half, filled
+CTX_THRESHOLDS = (4, 9)  # 0-3: green, 4-8: orange, 9-11: red
+DIM_GREEN = "\033[38;5;65m"
+DIM_ORANGE = "\033[38;5;130m"
+DIM_RED = "\033[38;5;131m"
+SEG_DIGITS = "🯰🯱🯲🯳🯴🯵🯶🯷🯸🯹"
+
+
+def seg_pct(n, col):
+    """Format a number as segmented digit characters with color."""
+    return f"{col}{''.join(SEG_DIGITS[int(d)] for d in str(int(n)))}٪{RESET}"
+
+USAGE_CHARS = ("○", "◎", "◉", "●")  # empty, starting, half, filled
+USAGE_PACE = "◌"  # empty but within pace window
+
+
+def context_bar(pct, width=12):
+    """Context bar with position-based gradient coloring."""
     pct = max(0, min(100, int(pct or 0)))
-    filled = round(pct * width / 100)
-    empty = width - filled
-    if pct >= 80:
-        col = RED
-    elif pct >= 50:
-        col = ORANGE
-    else:
-        col = GREEN
-    return f"{col}{'●' * filled}{DIM}{'○' * empty}{RESET}", col
+    fill = pct * width / 100
+    full = int(fill)
+    frac = fill - full
+
+    bar = ""
+    for i in range(width):
+        if i < full:
+            level = 1.0
+        elif i == full and frac > 0:
+            level = frac
+        else:
+            level = 0
+
+        if level > 0:
+            if i < CTX_THRESHOLDS[0]:
+                col = DIM_GREEN if i < CTX_THRESHOLDS[0] // 2 else GREEN
+            elif i < CTX_THRESHOLDS[1]:
+                mid = CTX_THRESHOLDS[0] + (CTX_THRESHOLDS[1] - CTX_THRESHOLDS[0]) // 2
+                col = DIM_ORANGE if i < mid else ORANGE
+            else:
+                mid = CTX_THRESHOLDS[1] + (12 - CTX_THRESHOLDS[1]) // 2
+                col = DIM_RED if i < mid else RED
+        else:
+            col = DIM
+
+        if level <= 0:
+            char = CTX_CHARS[0]
+        elif level < 0.5:
+            char = CTX_CHARS[1]
+        else:
+            char = CTX_CHARS[2]
+        bar += f"{col}{char}"
+
+    label_col = RED if full >= 7 else (ORANGE if full >= 3 else GREEN)
+    return f"{bar}{RESET}", label_col
+
+
+def usage_bar(pct, width=12, col=GREEN, pace_pct=None):
+    """Usage bar with single color and optional pace marker."""
+    pct = max(0, min(100, int(pct or 0)))
+    fill = pct * width / 100
+    full = int(fill)
+    frac = fill - full
+
+    pace_seg = None
+    if pace_pct is not None:
+        pace_pos = max(0.0, min(100.0, pace_pct)) * width / 100
+        pace_seg = min(int(round(pace_pos)), width - 1)
+
+    ahead = pace_seg is not None and full > pace_seg
+
+    bar = ""
+    for i in range(width):
+        if i < full:
+            level = 1.0
+        elif i == full and frac > 0:
+            level = frac
+        else:
+            level = 0
+
+        if level > 0:
+            if level < 0.33:
+                char = USAGE_CHARS[1]  # ◎
+            elif level < 0.66:
+                char = USAGE_CHARS[2]  # ◉
+            else:
+                char = USAGE_CHARS[3]  # ●
+            # Ahead of pace: dim the expected portion (left of pace), bright the bonus
+            dim = "\033[2m" if ahead and i < pace_seg else ""
+            bar += f"{dim}{col}{char}{RESET}"
+        elif pace_seg is not None and i <= pace_seg:
+            # Empty within expected remaining — should still be filled
+            ratio = pct / pace_pct if pace_pct > 0 else 0
+            p_col = RED if ratio < 0.8 else (ORANGE if ratio < 1.0 else DIM)
+            bar += f"{p_col}{USAGE_PACE}"
+        else:
+            bar += f"{DIM}{USAGE_CHARS[0]}"
+
+    return f"{bar}{RESET}", col
 
 
 def fmt_tokens(n):
@@ -308,15 +387,14 @@ def fetch_usage(version=""):
         except Exception:
             pass
 
-    # Try CodexBar snapshot first (instant, no API call)
-    usage = _usage_from_codexbar()
+    # OAuth is authoritative (has reset times); CodexBar is fallback
+    try:
+        usage = _usage_from_oauth(version)
+    except Exception:
+        usage = None
 
-    # Fall back to OAuth API
     if not usage:
-        try:
-            usage = _usage_from_oauth(version)
-        except Exception:
-            pass
+        usage = _usage_from_codexbar()
 
     if usage:
         write_cache(USAGE_CACHE, json.dumps(usage))
@@ -378,16 +456,12 @@ def main():
             latest = latest_version()
             if latest and latest != version:
                 update_prefix = f"{ORANGE}{UPDATE_ICON} {RESET}"
-        small = f"{DIM}{version.translate(SUPERSCRIPT)}{RESET}" if version else ""
-        sub = (
-            f"{PURPLE}{model_name.lower().translate(SUBSCRIPT)}{RESET}"
-            if model_name
-            else ""
-        )
+        small = f"{DIM}{version}{RESET}" if version else ""
+        sub = f" {PURPLE}{model_name.lower()}{RESET}" if model_name else ""
         parts1.append(f"{update_prefix}{small}{sub}")
-    bar, bar_col = dot_bar(pct)
+    bar, bar_col = context_bar(pct)
     parts1.append(
-        f"{bar} {bar_col}{pct}%{RESET} {DIM}{fmt_tokens(input_tokens)}/{fmt_tokens(ctx_size)}{RESET}"
+        f"{bar} {seg_pct(pct, bar_col)} {DIM}{fmt_tokens(input_tokens)}/{fmt_tokens(ctx_size)}{RESET}"
     )
     parts1.append(f"{LGRAY}󰅐 {fmt_duration(cost_data.get('total_duration_ms'))}{RESET}")
     parts1.append(f"{DIM}󰇁 {fmt_cost(cost_data.get('total_cost_usd'))}{RESET}")
@@ -406,23 +480,25 @@ def main():
         SEVEN_DAYS = 7 * 24 * 3600
 
         fh = quota.get("five_hour") or {}
-        fh_pct = int(fh.get("utilization") or 0)
+        fh_used = int(fh.get("utilization") or 0)
+        fh_rem = 100 - fh_used
         fh_reset_str, fh_remaining = fmt_reset(fh.get("resets_at"))
-        fh_col = quota_color(fh_pct, fh_remaining, FIVE_HOURS)
-        filled = round(fh_pct * 8 / 100)
-        fh_bar = f"{fh_col}{'●' * filled}{DIM}{'○' * (8 - filled)}{RESET}"
-        fh_label = f"5h: {fh_bar} {fh_col}{fh_pct}%{RESET}"
+        fh_col = quota_color(fh_used, fh_remaining, FIVE_HOURS)
+        fh_pace = (fh_remaining / FIVE_HOURS * 100) if fh.get("resets_at") else None
+        fh_bar, _ = usage_bar(fh_rem, width=12, col=fh_col, pace_pct=fh_pace)
+        fh_label = f"5h: {fh_bar} {seg_pct(fh_rem, fh_col)}"
         if fh_reset_str:
             fh_label += f" {DIM}{fh_reset_str}{RESET}"
         parts2.append(fh_label)
 
         sd = quota.get("seven_day") or {}
-        sd_pct = int(sd.get("utilization") or 0)
+        sd_used = int(sd.get("utilization") or 0)
+        sd_rem = 100 - sd_used
         sd_reset_str, sd_remaining = fmt_reset(sd.get("resets_at"))
-        sd_col = quota_color(sd_pct, sd_remaining, SEVEN_DAYS)
-        filled = round(sd_pct * 8 / 100)
-        sd_bar = f"{sd_col}{'●' * filled}{DIM}{'○' * (8 - filled)}{RESET}"
-        sd_label = f"7d: {sd_bar} {sd_col}{sd_pct}%{RESET}"
+        sd_col = quota_color(sd_used, sd_remaining, SEVEN_DAYS)
+        sd_pace = (sd_remaining / SEVEN_DAYS * 100) if sd.get("resets_at") else None
+        sd_bar, _ = usage_bar(sd_rem, width=12, col=sd_col, pace_pct=sd_pace)
+        sd_label = f"7d: {sd_bar} {seg_pct(sd_rem, sd_col)}"
         if sd_reset_str:
             sd_label += f" {DIM}{sd_reset_str}{RESET}"
         parts2.append(sd_label)
