@@ -18,6 +18,43 @@ RESET = "\033[0m"
 
 SEP = f" {DIM}|{RESET} "
 
+ANSI_RE = re.compile(r"\033\[[^m]*m|\033\]8;;[^\a]*\a")
+
+
+def term_width():
+    try:
+        fd = os.open("/dev/tty", os.O_RDONLY)
+        w = os.get_terminal_size(fd).columns
+        os.close(fd)
+        return w
+    except OSError:
+        return 120
+
+
+def visible_len(s):
+    return len(ANSI_RE.sub("", s))
+
+
+def join_segments(segments, max_width):
+    """Join segments with SEP, wrapping to new lines when they exceed max_width."""
+    if not segments:
+        return ""
+    sep_w = visible_len(SEP)
+    lines = []
+    cur = segments[0]
+    cur_w = visible_len(cur)
+    for seg in segments[1:]:
+        seg_w = visible_len(seg)
+        if cur_w + sep_w + seg_w <= max_width:
+            cur += SEP + seg
+            cur_w += sep_w + seg_w
+        else:
+            lines.append(cur)
+            cur = seg
+            cur_w = seg_w
+    lines.append(cur)
+    return "\n".join(lines)
+
 GIT_CACHE = "/tmp/claude-statusline-git"
 GIT_TTL = 5
 USAGE_CACHE = "/tmp/claude-statusline-usage.json"
@@ -450,7 +487,8 @@ def main():
         sys.stdout.write(f"{DIM}statusline: waiting{RESET}")
         return
 
-    model_name = (data.get("model") or {}).get("display_name", "")
+    model_raw = (data.get("model") or {}).get("display_name", "")
+    model_name = re.sub(r"\s*\((\d+\w*)\s+context\)", r" \1", model_raw)
     cw = data.get("context_window") or {}
     pct = int(cw.get("used_percentage") or 0)
     ctx_size = int(cw.get("context_window_size") or 200000)
@@ -493,7 +531,8 @@ def main():
     )
     parts1.append(f"{LGRAY}󰅐 {fmt_duration(cost_data.get('total_duration_ms'))}{RESET}")
     parts1.append(f"{DIM}󰇁 {fmt_cost(cost_data.get('total_cost_usd'))}{RESET}")
-    sys.stdout.write(SEP.join(parts1))
+    width = term_width()
+    sys.stdout.write(join_segments(parts1, width))
 
     # === LINE 2: git | 5h quota bar | weekly quota bar | vim | agent ===
     parts2 = []
@@ -503,6 +542,13 @@ def main():
         parts2.append(gi)
 
     quota = fetch_usage(version)
+
+    suffix_parts = []
+    if vim:
+        suffix_parts.append(f"{PURPLE} {vim['mode']}{RESET}")
+    if agent:
+        suffix_parts.append(f"{ORANGE}{agent['name']}{RESET}")
+
     if quota:
         FIVE_HOURS = 5 * 3600
         SEVEN_DAYS = 7 * 24 * 3600
@@ -513,11 +559,6 @@ def main():
         fh_reset_str, fh_remaining = fmt_reset(fh.get("resets_at"))
         fh_col = quota_color(fh_used, fh_remaining, FIVE_HOURS)
         fh_pace = (fh_remaining / FIVE_HOURS * 100) if fh.get("resets_at") else None
-        fh_bar, _ = usage_bar(fh_rem, width=12, col=fh_col, pace_pct=fh_pace)
-        fh_label = f"5h: {fh_bar} {seg_pct(fh_rem, fh_col)}"
-        if fh_reset_str:
-            fh_label += f" {DIM}{fh_reset_str}{RESET}"
-        parts2.append(fh_label)
 
         sd = quota.get("seven_day") or {}
         sd_used = int(sd.get("utilization") or 0)
@@ -525,27 +566,36 @@ def main():
         sd_reset_str, sd_remaining = fmt_reset(sd.get("resets_at"))
         sd_col = quota_color(sd_used, sd_remaining, SEVEN_DAYS)
         sd_pace = (sd_remaining / SEVEN_DAYS * 100) if sd.get("resets_at") else None
-        sd_bar, _ = usage_bar(sd_rem, width=12, col=sd_col, pace_pct=sd_pace)
         sd_bal = (
             pace_balance_secs(sd_used, sd_remaining, SEVEN_DAYS)
             if sd.get("resets_at")
             else None
         )
-        if sd_bal:
-            sd_label = f"7d: {sd_bar} {seg_pct(sd_rem, sd_col)} {fmt_pace(sd_bal, SEVEN_DAYS)}"
-        else:
-            sd_label = f"7d: {sd_bar} {seg_pct(sd_rem, sd_col)}"
-        if sd_reset_str:
-            sd_label += f" {DIM}{sd_reset_str}{RESET}"
-        parts2.append(sd_label)
 
-    if vim:
-        parts2.append(f"{PURPLE} {vim['mode']}{RESET}")
-    if agent:
-        parts2.append(f"{ORANGE}{agent['name']}{RESET}")
+        for bw in range(12, 3, -1):
+            fh_bar, _ = usage_bar(fh_rem, width=bw, col=fh_col, pace_pct=fh_pace)
+            fh_label = f"5h: {fh_bar} {seg_pct(fh_rem, fh_col)}"
+            if fh_reset_str:
+                fh_label += f" {DIM}{fh_reset_str}{RESET}"
+
+            sd_bar, _ = usage_bar(sd_rem, width=bw, col=sd_col, pace_pct=sd_pace)
+            if sd_bal:
+                sd_label = f"7d: {sd_bar} {seg_pct(sd_rem, sd_col)} {fmt_pace(sd_bal, SEVEN_DAYS)}"
+            else:
+                sd_label = f"7d: {sd_bar} {seg_pct(sd_rem, sd_col)}"
+            if sd_reset_str:
+                sd_label += f" {DIM}{sd_reset_str}{RESET}"
+
+            usage_seg = fh_label + SEP + sd_label
+            if visible_len(usage_seg) <= width:
+                break
+
+        parts2.append(usage_seg)
+
+    parts2.extend(suffix_parts)
 
     if parts2:
-        sys.stdout.write("\n" + SEP.join(parts2))
+        sys.stdout.write("\n" + join_segments(parts2, width))
 
 
 if __name__ == "__main__":
