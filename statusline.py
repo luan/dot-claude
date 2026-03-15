@@ -67,6 +67,7 @@ UPDATE_ICON = "\U000f0047"
 CTX_CHARS = ("□", "◧", "■")  # empty, half, filled
 CTX_THRESHOLDS = (4, 9)  # 0-3: green, 4-8: orange, 9-11: red
 DIM_GREEN = "\033[38;5;65m"
+DIM_YELLOW = "\033[38;5;136m"
 DIM_ORANGE = "\033[38;5;130m"
 DIM_RED = "\033[38;5;131m"
 DIM_CYAN = "\033[38;5;67m"
@@ -78,8 +79,8 @@ def seg_pct(n, col):
     return f"{col}{''.join(SEG_DIGITS[int(d)] for d in str(int(n)))}٪{RESET}"
 
 
-PLUS = "\uf067"
-MINUS = "\uf068"
+PLUS = "+"
+MINUS = "-"
 
 USAGE_CHARS = ("○", "◎", "◉", "●")  # empty, starting, half, filled
 USAGE_PACE = "◌"  # empty but within pace window
@@ -226,8 +227,8 @@ def pace_balance_secs(used, remaining_secs, window_secs):
     return int(round(balance_pct * window_secs / 100))
 
 
-def fmt_pace(secs, window_secs):
-    """Format pace balance as signed time with dim graded color."""
+def fmt_pace(secs, window_secs, remaining_secs=None):
+    """Format pace balance as signed decimal days (or hours if <10h left)."""
     if secs == 0:
         return ""
     sign = MINUS if secs < 0 else PLUS
@@ -235,9 +236,21 @@ def fmt_pace(secs, window_secs):
         col = DIM_CYAN
     else:
         deficit_pct = abs(secs) / window_secs * 100
-        col = DIM_RED if deficit_pct >= 15 else DIM_ORANGE
-    ul = "\033[4m" if secs < 0 else ""
-    return f"\033[3m{ul}{col}{sign}{_fmt_duration(secs)}{RESET}"
+        if deficit_pct >= 15:
+            col = DIM_RED
+        elif deficit_pct >= 8:
+            col = DIM_ORANGE
+        else:
+            col = DIM_YELLOW
+    a = abs(secs)
+    if remaining_secs is not None and remaining_secs < 36000:
+        txt = f"{a / 3600:.1f}h"
+    else:
+        txt = f"{a / 86400:.1f}d"
+    if txt.startswith("0"):
+        txt = txt[1:]
+    seg = "".join(SEG_DIGITS[int(c)] if c.isdigit() else c for c in txt)
+    return f"\033[3m{col}{sign}{seg}{RESET}"
 
 
 def quota_color(utilization, remaining_secs, window_secs):
@@ -580,7 +593,7 @@ def main():
 
             sd_bar, _ = usage_bar(sd_rem, width=bw, col=sd_col, pace_pct=sd_pace)
             if sd_bal:
-                sd_label = f"7d: {sd_bar} {seg_pct(sd_rem, sd_col)} {fmt_pace(sd_bal, SEVEN_DAYS)}"
+                sd_label = f"7d: {sd_bar} {seg_pct(sd_rem, sd_col)} {fmt_pace(sd_bal, SEVEN_DAYS, sd_remaining)}"
             else:
                 sd_label = f"7d: {sd_bar} {seg_pct(sd_rem, sd_col)}"
             if sd_reset_str:
