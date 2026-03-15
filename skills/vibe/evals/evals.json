@@ -3,101 +3,103 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "running /vibe. develop just finished. TaskList shows the epic has 4 children: 3 completed, 1 still in_progress (worker crashed mid-impl). git diff --stat shows changes from all 4 including partial work from the crashed one.\n\nwhat happens next?",
-      "expected_output": "Recognizes the develop stage is incomplete because not all children completed. Reports per-child status (which succeeded, which failed). Does NOT proceed to simplify/review/commit. Suggests /vibe --continue or /develop to retry.",
+      "prompt": "running /vibe 'add webhook retry with exponential backoff'. branch already created (on luan/add-webhook-retry). updated vibe_stage to 'branch'.\n\nshow the exact next two Skill() calls in order — spec and scope — and explain what flags each gets and why.",
+      "expected_output": "First: Skill('spec', args='add webhook retry with exponential backoff --auto'). Second: Skill('scope', args='t<spec-task-id> --no-develop --auto'). --auto on both suppresses output and approval gates since vibe is the orchestrator. --no-develop on scope prevents scope from launching develop itself — vibe handles that.",
       "expectations": [
-        "Checks child task statuses — does not assume develop succeeded just because it returned",
-        "Does NOT proceed to simplify or commit when a child task is still in_progress with partial work",
-        "Reports which tasks succeeded vs failed and suggests recovery (/vibe --continue or /develop)"
+        "Spec is invoked BEFORE scope — Skill('spec', ...) then Skill('scope', ...)",
+        "Both calls include --auto flag",
+        "Scope call includes --no-develop flag and references the spec task ID (t<id>)",
+        "Explains --auto suppresses text output — caller reads task metadata"
       ]
     },
     {
       "id": 2,
-      "prompt": "running /vibe 'add user avatars'. branch created, scope completed (vibe_stage='scope', scope task approved with metadata.design populated). invoked Skill('develop') but it errors out completely — skill call fails, zero progress.\n\nshow error handling.",
-      "expected_output": "Keeps vibe_stage at 'scope' (not 'develop') since the stage failed with no progress. Leaves tracker in_progress for --continue recovery. Reports completed vs failed stages and suggests /vibe --continue or /develop.",
+      "prompt": "running /vibe 'add dark mode toggle'. branch done, spec done (vibe_stage='spec', spec task approved with metadata.spec populated). scope done (vibe_stage='scope', scope task approved with metadata.design populated). --dry-run was NOT passed.\n\njust updated vibe_stage to 'scope'. what's next?",
+      "expected_output": "Outputs '[4/7] Develop' then immediately invokes Skill('develop'). No scope summary, no plan output, no user prompt, no pause.",
       "expectations": [
-        "Does NOT update vibe_stage to 'develop' — stays at 'scope' because develop made no progress",
-        "Leaves tracker in_progress (not completed/failed) so --continue can find it",
-        "Reports which stages completed vs failed and suggests /vibe --continue or /develop"
+        "Immediately invokes Skill('develop') — no pause, no scope summary, no plan output",
+        "Outputs stage announcement (e.g. '[4/7] Develop') BEFORE invoking Skill('develop')",
+        "Does NOT output scope results, phase breakdowns, or 'Next:' suggestions"
       ]
     },
     {
       "id": 3,
-      "prompt": "running /vibe 'add webhook retry with exponential backoff'. branch created, about to invoke scope.\n\nshow the exact Skill() call for scope and explain how it differs from a user invoking /scope directly.",
-      "expected_output": "Calls Skill('scope', args='add webhook retry with exponential backoff --no-develop --auto'). Explains --auto skips both spec review and plan review gates — auto-approving instead of halting for user feedback. Scope produces metadata.spec and metadata.design with status_detail='approved'.",
+      "prompt": "running /vibe 'add search feature'. about to start. no flags. on main branch.\n\nlist all stages in order with their [N/M] numbers.",
+      "expected_output": "M = 7 for full pipeline. Stages: [1/7] Branch, [2/7] Spec, [3/7] Scope, [4/7] Develop, [5/7] Simplify, [6/7] Review, [7/7] Commit.",
       "expectations": [
-        "Skill call includes --auto flag: Skill('scope', args='<prompt> --no-develop --auto')",
-        "Explains --auto skips BOTH spec and plan review gates",
-        "Scope produces metadata.spec and metadata.design with status_detail='approved'"
+        "M = 7 for the full pipeline (branch, spec, scope, develop, simplify, review, commit)",
+        "Spec appears as a separate stage BETWEEN branch and scope",
+        "Stages ordered correctly: Branch → Spec → Scope → Develop → Simplify → Review → Commit"
       ]
     },
     {
       "id": 4,
-      "prompt": "running /vibe 'add search feature'. just created the vibe tracker (task #55). about to do the Branch stage. I'm on main.\n\nshow the exact steps and tool calls for creating the branch.",
-      "expected_output": "Does NOT call Skill('start'). Instead inlines branch creation: generates slug via ct tool, calls Skill(gt:gt, 'create luan/<slug>'), links tracker via TaskUpdate. Then immediately continues to Scope without stopping.",
+      "prompt": "running /vibe 'add rate limiting middleware' with --no-branch flag. already on feature branch.\n\nlist all stages with [N/M] numbers.",
+      "expected_output": "M = 6 (branch skipped). [1/6] Spec, [2/6] Scope, [3/6] Develop, [4/6] Simplify, [5/6] Review, [6/6] Commit.",
       "expectations": [
-        "Does NOT call Skill('start') — inlines branch creation instead",
-        "Uses Skill(gt:gt, 'create <username>/<slug>') for branch creation",
-        "After branch creation, immediately continues to Scope — does not end response or pause"
+        "M = 6 when --no-branch is passed (7 base minus 1 skipped)",
+        "Spec is the first stage [1/6], not branch",
+        "All other stages present in correct order"
       ]
     },
     {
       "id": 5,
-      "prompt": "running /vibe 'add auth passthrough for tests'. branch just created via Skill(gt:gt). confirmed on new branch. updated vibe_stage to 'branch'.\n\nwhat do you do immediately?",
-      "expected_output": "Outputs the stage announcement (e.g. '[2/6] Scope') then immediately invokes Skill('scope', args='<prompt> --no-develop --auto'). Does not pause, summarize, or report branch status.",
+      "prompt": "running /vibe 'implement retry logic'. branch just created via Skill(gt:gt). confirmed on new branch. updated vibe_stage to 'branch'.\n\nwhat do you do immediately?",
+      "expected_output": "Outputs '[2/7] Spec' then immediately invokes Skill('spec', args='implement retry logic --auto'). Does not pause, summarize, or report branch status.",
       "expectations": [
-        "Immediately invokes Skill('scope', args='<prompt> --no-develop --auto') without pausing or waiting",
-        "Outputs stage announcement (e.g. '[2/6] Scope') as text BEFORE the Skill() call",
+        "Immediately invokes Skill('spec', args='... --auto') — not Skill('scope')",
+        "Outputs '[2/7] Spec' as text BEFORE the Skill() call",
         "Does not output branch creation summary or status report before continuing"
       ]
     },
     {
       "id": 6,
-      "prompt": "running /vibe 'add dark mode toggle'. branch done, scope done (vibe_stage='scope'). scope task has status_detail='approved' and metadata.design populated. --dry-run was NOT passed.\n\njust updated vibe_stage to 'scope'. what's next?",
-      "expected_output": "Outputs '[3/6] Develop' then immediately invokes Skill('develop'). No scope summary, no user prompt, no pause.",
+      "prompt": "running /vibe 'add auth passthrough'. spec just finished — Skill('spec') returned. spec task has status_detail='approved', metadata.spec populated. the spec output was completely silent (no text, just task metadata).\n\nvibe_stage updated to 'spec'. what's next?",
+      "expected_output": "Outputs '[3/7] Scope' then immediately invokes Skill('scope', args='t<spec-task-id> --no-develop --auto'). Verifies spec task status before proceeding.",
       "expectations": [
-        "Immediately invokes Skill('develop') — no pause, scope summary, or user prompt",
-        "Outputs stage announcement (e.g. '[3/6] Develop') BEFORE invoking Skill('develop')",
-        "Does NOT output scope results, phase breakdowns, or any summary of what scope produced"
+        "Immediately invokes Skill('scope') after spec — no pause or summary",
+        "Scope call references the spec task ID and includes --no-develop --auto",
+        "Outputs stage announcement before Skill() call"
       ]
     },
     {
       "id": 7,
-      "prompt": "running /vibe 'add rate limiting middleware'. all prior stages done (branch, scope, develop). all epic children completed. git diff shows changes across 5 files.\n\njust updated vibe_stage to 'develop'. what happens next?",
+      "prompt": "running /vibe 'add search feature'. develop just finished. all epic children completed. git diff --stat shows changes across 5 files.\n\njust updated vibe_stage to 'develop'. what happens next?",
       "expected_output": "Invokes Skill('simplify'), then Skill('review'), then Skill('commit') — all three in sequence without pausing between them.",
       "expectations": [
         "Immediately invokes Skill('simplify') — does not skip to review or commit",
         "After simplify, invokes Skill('review') before commit",
-        "Does not pause, summarize, or wait for user input between develop -> simplify -> review -> commit"
+        "Does not pause, summarize, or wait for user input between develop → simplify → review → commit"
       ]
     },
     {
       "id": 8,
-      "prompt": "about to run /vibe 'add search feature'. no flags. on the main branch.\n\nlist all stages in order with their [N/M] numbers.",
-      "expected_output": "M = 6 for full pipeline. Stages: [1/6] Branch, [2/6] Scope, [3/6] Develop, [4/6] Simplify, [5/6] Review, [6/6] Commit.",
+      "prompt": "running /vibe 'add user avatars'. branch created, spec completed (vibe_stage='spec', spec task approved). scope completed (vibe_stage='scope', scope task approved). invoked Skill('develop') but it errors out completely — skill call fails, zero progress.\n\nshow error handling.",
+      "expected_output": "Keeps vibe_stage at 'scope' (not 'develop') since the stage failed with no progress. Leaves tracker in_progress for --continue recovery. Reports completed vs failed stages.",
       "expectations": [
-        "M = 6 for the full pipeline: branch, scope, develop, simplify, review, commit",
-        "Stages ordered: [1/6] Branch, [2/6] Scope, [3/6] Develop, [4/6] Simplify, [5/6] Review, [6/6] Commit"
+        "Does NOT update vibe_stage to 'develop' — stays at 'scope' because develop made no progress",
+        "Leaves tracker in_progress so --continue can find and resume it",
+        "Reports which stages completed vs failed and suggests /vibe --continue or /develop"
       ]
     },
     {
       "id": 9,
-      "prompt": "context compaction just happened. SessionStart injected:\n\n\"COMPACTION RECOVERY — session_id: sess-AAA. Check TaskList for in_progress pipeline trackers where metadata.session_id === 'sess-AAA'. If found, resume with the appropriate --continue flag.\"\n\nTaskList returns 3 in_progress tasks:\n- Task 1: subject='Vibe: add dark mode', metadata={vibe_stage:'develop', session_id:'sess-BBB'}\n- Task 2: subject='Vibe: add auth bypass', metadata={vibe_stage:'scope', session_id:'sess-AAA'}\n- Task 3: subject='Super Vibe: refactor API', metadata={super_vibe:true, vibe_stage:'phase-2', session_id:'sess-CCC'}\n\nwhat do you do?",
-      "expected_output": "Resumes Task 2 only (session_id matches sess-AAA). Invokes /vibe --continue (not /super-vibe) since Task 2 is a vibe tracker. Does not touch Task 1 or Task 3 — they belong to other sessions.",
+      "prompt": "running /vibe 'add search feature'. on main. tracker created (task #72, vibe_stage='started').\n\nshow the exact steps for the Branch stage and what happens immediately after.",
+      "expected_output": "Branch: 1) ct tool slug, 2) Skill(gt:gt, 'create luan/<slug>'), 3) TaskUpdate to link branch. Does NOT use Skill('start'). Immediately after: updates vibe_stage to 'branch', outputs '[2/7] Spec', invokes Skill('spec', args='add search feature --auto').",
       "expectations": [
-        "Resumes Task 2 (session_id matches sess-AAA) — ignores Task 1 and Task 3",
-        "Invokes /vibe --continue (not /supervibe) because Task 2 has no super_vibe metadata",
-        "Does not attempt to resume, modify, or report on Task 1 or Task 3"
+        "Does NOT call Skill('start') — inlines branch creation",
+        "After branch, immediately continues to Spec (not Scope) — '[2/7] Spec'",
+        "No pause, summary, or response ending between Branch and Spec"
       ]
     },
     {
       "id": 10,
-      "prompt": "running /vibe 'implement retry logic for failed API calls'. on main branch. no flags passed. the tracker task is already created (task #72, vibe_stage='started').\n\nwalk me through the complete Branch stage — every tool call, in order. then show what happens immediately after.",
-      "expected_output": "Branch stage: 1) ct tool slug to generate slug, 2) Skill(gt:gt, 'create luan/<slug>'), 3) TaskUpdate to link branch. Does NOT use Skill('start'). Immediately after: updates vibe_stage to 'branch', outputs '[2/6] Scope', invokes Skill('scope', args='implement retry logic for failed API calls --no-develop --auto'). No pause between branch and scope.",
+      "prompt": "running /vibe 'refactor config loader' with --dry-run. on main.\n\nwhat stages run and where does it stop?",
+      "expected_output": "With --dry-run, M=3. Runs [1/3] Branch, [2/3] Spec, [3/3] Scope. Stops after scope. Does NOT invoke develop, simplify, review, or commit. Reports scope task and suggests /develop or /vibe --continue.",
       "expectations": [
-        "Branch creation uses inline steps (ct tool slug + Skill(gt:gt)) — NOT Skill('start')",
-        "After branch, immediately outputs '[2/6] Scope' and invokes Skill('scope') in the same response",
-        "Does not end response, pause, or output a branch status summary between Branch and Scope"
+        "--dry-run runs branch, spec, and scope only (3 stages)",
+        "Stops after scope — does NOT invoke develop",
+        "Suggests /develop or /vibe --continue as next steps"
       ]
     }
   ]

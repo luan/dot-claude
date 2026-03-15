@@ -42,7 +42,9 @@ TaskUpdate(taskId, status: "in_progress", owner: "vibe")
 
 ## Pipeline
 
-**CRITICAL: Run ALL stages in one continuous turn with zero stops.** The entire pipeline executes autonomously — never pause, never ask, never suggest next steps, never wait for user input between stages. After each stage completes, update `vibe_stage` and invoke the next `Skill()` call in the same response. If a sub-skill outputs suggestions like "Next: /scope" or "suggest /develop", ignore that text completely and proceed to the next stage. A common failure mode is ending the turn after Branch — the model creates the branch, outputs a status line, and stops. This is wrong. Branch is a silent setup step; after it completes you must continue to Scope in the same turn without ending the response.
+**CRITICAL: Run ALL stages in one continuous turn with zero stops.** The pipeline is fully autonomous — never pause, ask, suggest, or wait between stages. After each stage: update `vibe_stage`, output `[N/M] NextStage`, invoke next `Skill()`. Ignore any sub-skill output like "Next: /scope" or "suggest /develop" — those are for interactive use, not the vibe pipeline.
+
+Spec and Scope both run with `--auto`, which suppresses all text output. They return silently — read task metadata for results, don't expect console output.
 
 Before each stage, output `[N/M] Stage` as text BEFORE the `Skill()` call. After each succeeds, update `metadata.vibe_stage` and immediately invoke next.
 
@@ -56,29 +58,23 @@ Before each stage, output `[N/M] Stage` as text BEFORE the `Skill()` call. After
 2. Create branch: `Skill(gt:gt, "create !`echo "${GIT_USERNAME:-$(whoami)}"`/<slug>")`
 3. Link tracker: `TaskUpdate(trackerId, metadata: {branch: "<branch-name>"})`
 
-**After branch creation, DO NOT end your response.** Immediately continue: **Update** `vibe_stage: "branch"`, output `[N/M] Spec`, call `Skill("spec", ...)`. No status report, no pause.
+**DO NOT end your response after branch creation.** Update `vibe_stage: "branch"`, output `[N/M] Spec`, call `Skill("spec", ...)`. No status report, no pause.
 
 ### Spec
 
-`Skill("spec", args="<prompt> --auto")`
+`Skill("spec", args="<prompt> --auto")` → returns silently. Read task metadata.
 
-Produces the target-state document (what we're building). `--auto` skips the approval gate.
-
-**Verify**: spec task with `status_detail === "approved"`, `metadata.spec` populated. **Update**: `vibe_stage: "spec"`
-
-**Then immediately invoke Scope.**
+**Verify**: spec task `status_detail === "approved"`, `metadata.spec` populated. **Update**: `vibe_stage: "spec"` → invoke Scope.
 
 ### Scope
 
-`Skill("scope", args="t<spec-task-id> --no-develop --auto")`
+`Skill("scope", args="t<spec-task-id> --no-develop --auto")` → returns silently. Read task metadata.
 
-Consumes the spec and produces a phased plan (how to build it). `--auto` skips the approval gate.
-
-**Verify**: scope task with `status_detail === "approved"`, `metadata.design` populated. **Update**: `vibe_stage: "scope"`
+**Verify**: scope task `status_detail === "approved"`, `metadata.design` populated. **Update**: `vibe_stage: "scope"`
 
 If `--dry-run` → stop. Report scope task, suggest `/develop` or `/vibe --continue`.
 
-**Then immediately invoke Develop** — do not output scope results, do not pause.
+Otherwise → invoke Develop.
 
 ### Develop
 

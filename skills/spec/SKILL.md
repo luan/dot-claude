@@ -129,7 +129,9 @@ If user gives feedback:
 TaskUpdate(taskId, metadata: { status_detail: "approved" })
 ```
 
-**Output summary:**
+If `--auto` → return silently. Caller reads `metadata.spec`.
+
+**Output summary (interactive only):**
 ```
 Spec: t<id> — <topic>
 <one-line recommendation>
@@ -165,6 +167,6 @@ Resolve task: argument → task ID; bare → TaskList `type === "spec"`, `status
 - Spec is the "what" — no implementation details, no phases, no file-level plans.
 - metadata.spec = spec content. metadata.spec_file = ct archive path.
 - Codex review is best-effort, never blocks.
-- `--auto` bypasses approval gate AND codex review.
+- `--auto` bypasses approval gate, codex review, AND all text output. Caller reads task metadata.
 - Refinement: minor → revise from findings; major → dispatch follow-up subagent.
 - Present `Next:` options after approval — user chooses the executor.

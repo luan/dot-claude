@@ -109,13 +109,13 @@ metadata.design must be self-contained — full phased breakdown with file paths
 
 ### 7. Present and approve
 
-Set `status_detail: "approved"` atomically with presentation (user may run /develop in a fresh session):
-
 ```
 TaskUpdate(taskId, metadata: { status_detail: "approved" })
 ```
 
-Output:
+If `--auto` → skip to step 9. No plan output — caller reads `metadata.design`.
+
+Output (interactive only):
 ```
 Plan: t<id> — <topic>
 <phased approach — per phase: title, files, approach>
@@ -123,7 +123,7 @@ Plan: t<id> — <topic>
 Next: /develop t<id>
 ```
 
-If `--auto` → skip to step 9. Otherwise → stop for user review.
+Stop for user review.
 
 ### 8. Refinement
 
@@ -135,7 +135,7 @@ If user gives feedback:
 
 ### 9. Finalize
 
-- If `--no-develop` → report scope task ID, stop.
+- If `--no-develop` → return. Caller reads `metadata.design`.
 - Otherwise → `Skill("develop", "t<scopeTaskId>")`.
 
 ## Codex Review
@@ -168,4 +168,4 @@ Resolve task: argument → task ID; bare → TaskList `type === "scope"`, `statu
 - Scope does NOT create epic or tasks — develop handles that.
 - metadata.design = plan. metadata.spec = inherited from spec task (if any).
 - File paths in every phase — develop depends on them.
-- `--auto` bypasses approval gate AND codex review.
+- `--auto` bypasses approval gate, codex review, AND all text output. Caller reads task metadata.

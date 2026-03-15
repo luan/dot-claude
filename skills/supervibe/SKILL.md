@@ -41,19 +41,19 @@ TaskUpdate(epicId, status: "in_progress", owner: "supervibe")
 
 ## [2] Initial Research
 
-Lightweight scope — understand the codebase enough to plan the first increment. NOT a full decomposition into N phases.
+Define the target state — what does "done" look like? NOT a full decomposition into phases.
 
 ```
-Skill("scope", args="<goal>. Research the codebase and produce a spec + plan. The plan should describe the FULL scope of work but I will implement it incrementally — focus the plan on what to build first. --auto")
+Skill("spec", args="<goal> --auto")
 ```
 
 Store on epic:
 ```
-metadata.end_state = "<spec Recommendation — present-tense target state>"
-metadata.research = "<key findings: file locations, patterns, architecture>"
+metadata.end_state = "<spec target state — present-tense description of the system as if already built>"
+metadata.research = "<key findings from spec investigation: file locations, patterns, architecture>"
 ```
 
-Mark scope task completed.
+Mark spec task completed.
 
 ## [3] Loop
 
@@ -104,7 +104,7 @@ Write a focused prompt for vibe — one increment, not the whole remaining plan.
 Skill("vibe", args="<increment prompt> --no-branch")
 ```
 
-Vibe runs its full pipeline (scope → develop → review → commit) on the current branch.
+Vibe runs its full pipeline (spec → scope → develop → simplify → review → commit) on the current branch.
 
 ### Step F: Record
 
