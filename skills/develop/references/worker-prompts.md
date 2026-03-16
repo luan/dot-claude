@@ -15,22 +15,13 @@ Implement task <task-id>.
 
 ## Protocol
 1. TaskUpdate(taskId, status: "in_progress", owner: "solo")
-2. Read every file in scope. Read 2-3 existing test files in the same module/directory to learn conventions (imports, framework, base classes, assertion patterns, naming, fixtures). Match their style. No nearby tests → use rules/test-quality.md defaults.
-   Follow TDD: write failing tests, confirm red, implement until green. No test infra → note in report, implement directly.
-3. Build + test. All green → continue.
-   On failure: deduplicate errors (strip paths/line numbers). Same root error 2x → stop, report with context. 3 distinct errors → report all, stop.
-4. Self-check: re-read changed files. Remove debug artifacts (console.log, print, debugger), low-value comments (code-restating, contextless TODOs), unused imports. Flatten nesting via early returns. Apply language-idiomatic patterns.
-5. TaskUpdate(taskId, status: "completed", metadata: {completedAt: "<current ISO 8601 timestamp>"})
-6. Completion report: categorize each changed file as ✅ VERIFIED (test/build confirms correctness) or 👁️ UNVERIFIED_VISUAL (compiles but visual correctness not confirmed — no multimodal). Never claim visual correctness you didn't test.
+2. Skill("implement-worker", args="<task-id>")
 
 ## Rules
-- TDD: test first. Standards: rules/test-quality.md
 - Never run git commands — orchestrator handles commits
 - Never invoke Skill("commit") — orchestrator handles commits
-- Only modify files in your task scope
-- Bug found elsewhere → TaskCreate(subject: "Found: ...", metadata: {type: "bug", priority: "P2", project: "<repo root>"})
+- Fundamental design conflict → stop immediately, report "RESCOPE: <reason>" in output. Do not attempt workarounds.
 - Task too large (3+ subsystems, unclear approach) → TaskCreate child tasks under current task, mark current task completed. Scheduler picks up children automatically.
-- Fundamental design conflict (wrong approach, missing prerequisite, contradictory requirements) → stop immediately, report "RESCOPE: <reason>" in output. Do not attempt workarounds.
 ```
 
 ## Team-based Variant
@@ -56,12 +47,9 @@ Implement task <task-id>.
 4. Wait for shutdown request. Approve it.
 
 ## Rules
-- TDD: test first. Standards: rules/test-quality.md
-- Only modify files in your task scope
 - File conflict or blocker → SendMessage to team lead, wait
 - Never run git commands
 - Never invoke Skill("commit") — orchestrator handles commits
-- Bug found elsewhere → TaskCreate(subject: "Found: ...", metadata: {type: "bug", priority: "P2", project: "<repo root>"})
-- Task too large (3+ subsystems, unclear approach) → TaskCreate child tasks under current task, SendMessage "DECOMPOSED: <task-id> into N subtasks" to team lead. Mark current task completed.
 - Fundamental design conflict → stop, SendMessage "RESCOPE: <reason>" to team lead. Do not attempt workarounds.
+- Task too large (3+ subsystems, unclear approach) → TaskCreate child tasks under current task, SendMessage "DECOMPOSED: <task-id> into N subtasks" to team lead. Mark current task completed.
 ```
