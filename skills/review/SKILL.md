@@ -1,10 +1,11 @@
 ---
 name: review
 description: "Thorough adversarial code review covering correctness, security, architecture, and performance. Triggers: 'review', 'review my changes', 'check this code', 'code review'. Use --team for 3-perspective mode. Do NOT use when: investigating unknown bug — use /debugging."
-argument-hint: "[base..head | file-list | PR#] [--against <issue-id>] [--team] [--continue] [--auto]"
+argument-hint: "[base..head | file-list | PR#] [--against <issue-id>] [--team] [--continue] [--auto] [--no-simplify]"
 user-invocable: true
 allowed-tools:
   - Task
+  - Skill
   - Read
   - "Bash(git diff:*)"
   - "Bash(git log:*)"
@@ -31,7 +32,7 @@ See rules/skill-interviewing.md.
 
 BASE=!`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`
 
-Parse $ARGUMENTS: `--against <task-id>` (plan adherence), `--team` (perspective mode), remaining args override BASE.
+Parse $ARGUMENTS: `--against <task-id>` (plan adherence), `--team` (perspective mode), `--no-simplify` (skip pre-pass), remaining args override BASE.
 
 | Input        | Diff source                       |
 | ------------ | --------------------------------- |
@@ -41,6 +42,14 @@ Parse $ARGUMENTS: `--against <task-id>` (plan adherence), `--team` (perspective 
 | `#123`       | `gh pr diff 123`                  |
 
 Mode: `--team` → Perspective (3 specialists), ≥15 files → File-Split (~8/agent), else → Solo (2 lenses).
+
+## Step 1.5: Simplify Pre-pass
+
+Skip if: `--no-simplify`, `--continue`, or `#<PR>` input.
+
+`Skill("simplify")`
+
+Cleans up quality and efficiency issues before the adversarial review — reduces noise so reviewers focus on real bugs, not style. Any edits simplify makes become part of the diff reviewers see.
 
 ## Step 2: Setup + Context
 

@@ -30,6 +30,36 @@
         "When specialists disagree on severity, shows attribution (e.g., 'Architect: High, Code Quality: Medium') before the resolved row",
         "Applies consensus rules: critical from any reviewer survives; non-critical needs 2+ at same tier"
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "hey can you /review my changes? i added a new caching layer in src/cache/ — about 6 files. no special flags",
+      "expected_output": "Runs Step 1 (Scope), then Step 1.5 (Simplify Pre-pass) calling Skill('simplify') before dispatching reviewers. Then proceeds with Solo mode review.",
+      "expectations": [
+        "Invokes Skill('simplify') or equivalent simplify pre-pass before dispatching reviewers",
+        "Simplify pre-pass occurs after scoping and before setup/reviewer dispatch",
+        "Does NOT skip simplify — no skip conditions are met (no --no-simplify, not a PR, not --continue)"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "/review --no-simplify — just added some utility functions, already ran simplify separately",
+      "expected_output": "Skips Step 1.5 (Simplify Pre-pass) because --no-simplify flag is set. Proceeds directly from Step 1 to Step 2.",
+      "expectations": [
+        "Skips or explicitly omits the simplify pre-pass",
+        "Recognizes --no-simplify flag as reason for skipping simplify",
+        "Proceeds from scope directly to setup/reviewer dispatch without calling Skill('simplify')"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "/review #87 -- teammate's PR, want to give feedback before they merge",
+      "expected_output": "Skips Step 1.5 (Simplify Pre-pass) because this is a PR review (#87). Uses gh pr diff 87 as diff source.",
+      "expectations": [
+        "Skips or explicitly omits the simplify pre-pass for PR review",
+        "Recognizes #<PR> input as reason for skipping simplify (can't edit remote code)",
+        "Uses gh pr diff 87 to get the diff"
+      ]
     }
   ]
 }

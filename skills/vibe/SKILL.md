@@ -8,7 +8,7 @@ user-invocable: true
 
 # Vibe
 
-Full pipeline (spec → scope → develop → simplify → review → commit) from a single prompt.
+Full pipeline (spec → scope → develop → review → commit) from a single prompt.
 
 ## Arguments
 
@@ -48,7 +48,7 @@ Spec and Scope both run with `--auto`, which suppresses all text output. They re
 
 Before each stage, output `[N/M] Stage` as text BEFORE the `Skill()` call. After each succeeds, update `metadata.vibe_stage` and immediately invoke next.
 
-**Stage numbering `[N/M]`:** M = total stages that will run. Base: 7 (branch, spec, scope, develop, simplify, review, commit). Subtract skipped stages: `--no-branch` → 6, `--no-review` → 6, `--dry-run` → 3. Combine flags to subtract more. N counts only executed stages.
+**Stage numbering `[N/M]`:** M = total stages that will run. Base: 6 (branch, spec, scope, develop, review, commit). Subtract skipped stages: `--no-branch` → 5, `--no-review` → 5, `--dry-run` → 3. Combine flags to subtract more. N counts only executed stages.
 
 ### Branch (skip if `--no-branch` or already on non-main branch)
 
@@ -84,17 +84,9 @@ Acceptance check runs automatically as part of develop teardown.
 
 **Verify**: `TaskList()` → all epic children have `status === "completed"`. **Update**: `vibe_stage: "develop"`, `vibe_epic: "<epicId>"`, `vibe_slug: "<slug>"`
 
-Partial failures: if any child is still `in_progress` or `failed`, the stage is incomplete — report per-child status and suggest `/vibe --continue` or `/develop`. Only proceed to simplify if all children completed OR incomplete children produced no diff.
+Partial failures: if any child is still `in_progress` or `failed`, the stage is incomplete — report per-child status and suggest `/vibe --continue` or `/develop`. Only proceed to review if all children completed OR incomplete children produced no diff.
 
-**Then immediately invoke Simplify.**
-
-### Simplify
-
-`Skill("simplify")`
-
-Reviews changed code for reuse, quality, and efficiency, then fixes issues.
-
-**Update**: `vibe_stage: "simplify"` — **then immediately invoke Review.**
+**Then immediately invoke Review.**
 
 ### Review (skip if `--no-review`)
 
