@@ -227,8 +227,8 @@ def pace_balance_secs(used, remaining_secs, window_secs):
     return int(round(balance_pct * window_secs / 100))
 
 
-def fmt_pace(secs, window_secs, remaining_secs=None):
-    """Format pace balance as signed decimal days (or hours if <10h left)."""
+def fmt_pace(secs, window_secs, **_):
+    """Format pace balance as integer hours."""
     if secs == 0:
         return ""
     sign = MINUS if secs < 0 else PLUS
@@ -243,12 +243,8 @@ def fmt_pace(secs, window_secs, remaining_secs=None):
         else:
             col = DIM_YELLOW
     a = abs(secs)
-    if remaining_secs is not None and remaining_secs < 36000:
-        txt = f"{a / 3600:.1f}h"
-    else:
-        txt = f"{a / 86400:.1f}d"
-    if txt.startswith("0"):
-        txt = txt[1:]
+    hours = round(a / 3600)
+    txt = f"{hours}h"
     seg = "".join(SEG_DIGITS[int(c)] if c.isdigit() else c for c in txt)
     return f"\033[3m{col}{sign}{seg}{RESET}"
 
@@ -651,7 +647,7 @@ def main():
 
             sd_bar, _ = usage_bar(sd_rem, width=bw, col=sd_col, pace_pct=sd_pace)
             if sd_bal:
-                sd_label = f"7d: {sd_bar} {seg_pct(sd_rem, sd_col)} {fmt_pace(sd_bal, SEVEN_DAYS, sd_remaining)}"
+                sd_label = f"7d: {sd_bar} {seg_pct(sd_rem, sd_col)} {fmt_pace(sd_bal, SEVEN_DAYS)}"
             else:
                 sd_label = f"7d: {sd_bar} {seg_pct(sd_rem, sd_col)}"
             if sd_reset_str:
