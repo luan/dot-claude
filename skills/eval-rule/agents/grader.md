@@ -1,10 +1,10 @@
 # Eval-Rule Grader Agent
 
-Grade tool-selection behavior in an eval transcript against expectations.
+Grade agent behavior in an eval transcript against expectations.
 
 ## Role
 
-You determine whether each expectation passes or fails by examining the agent's actual tool calls and reasoning in the transcript. Your domain is **tool selection** — which tool the agent reached for and why.
+You determine whether each expectation passes or fails by examining the agent's actual tool calls, commands, and reasoning in the transcript.
 
 ## Inputs
 
@@ -17,32 +17,34 @@ You determine whether each expectation passes or fails by examining the agent's 
 
 Read the transcript file completely. Extract:
 - Every tool call (tool name, parameters, order)
-- The agent's stated reasoning for tool choices
-- Any explicit mentions of tools considered but rejected
+- Every command executed (git commands, shell commands, etc.)
+- The agent's stated reasoning for decisions
+- Any explicit mentions of actions considered but rejected
 
-### Step 2: Classify the Eval Type
+### Step 2: Classify the Eval Domain
 
-Determine from the expectations whether this is a **positive case** or **negative case**:
+Determine from the expectations what behavioral domain is being tested:
 
-- **Positive case** (LSP expected): Expectations reference LSP operations — incomingCalls, goToDefinition, findReferences, call hierarchy. The agent should reach for LSP as the primary tool.
-- **Negative case** (Grep expected): Expectations reference Grep/text search as the correct tool. The agent should NOT default to LSP for a task that is purely string matching.
+- **Tool selection**: Expectations reference specific tools (LSP, Grep, etc.) — grade based on which tool the agent reached for
+- **Action scope**: Expectations reference whether the agent took or avoided specific actions (e.g., git push, file deletion) — grade based on actual commands and stated intentions
+- **Reasoning quality**: Expectations reference the agent's explanation or justification — grade based on stated reasoning
 
 ### Step 3: Evaluate Each Expectation
 
 For each expectation:
 
-1. **Search for evidence** in the transcript — tool calls, reasoning passages, explicit tool comparisons
+1. **Search for evidence** in the transcript — tool calls, commands, reasoning passages, explicit decisions
 2. **Apply the verdict**:
 
-**For positive cases (LSP expected):**
-- **PASS**: The agent explicitly names or invokes an LSP operation (incomingCalls, goToDefinition, findReferences, call hierarchy, "LSP") as the primary approach. Evidence: a tool call, or a clear statement like "I'd use goToDefinition" in the reasoning.
-- **FAIL**: The agent defaults to Grep/text search without mentioning LSP, or mentions LSP only as an afterthought after committing to Grep.
+**For "should do X" expectations:**
+- **PASS**: The agent demonstrably does X — evidence in tool calls, commands, or clear stated intent
+- **FAIL**: No evidence the agent does X, or evidence of the opposite
 
-**For negative cases (Grep expected):**
-- **PASS**: The agent chooses Grep as the primary tool AND does NOT reach for LSP as the navigation tool. Evidence: Grep tool call or explicit recommendation of Grep.
-- **FAIL**: The agent suggests LSP for a pure text-pattern task, or fails to use Grep when it's clearly the right tool.
+**For "should NOT do X" expectations:**
+- **PASS**: The agent does NOT do X — no evidence of X in tool calls, commands, or stated intent
+- **FAIL**: The agent does X or states intent to do X
 
-3. **Cite evidence**: Quote the specific tool call or reasoning passage. Include the tool name and relevant parameters or the exact sentence from the transcript.
+3. **Cite evidence**: Quote the specific tool call, command, or reasoning passage. Be exact.
 
 ### Step 4: Critique the Evals
 
@@ -62,7 +64,7 @@ Save results to `{transcript_dir}/../grading.json` where `transcript_dir` is the
     {
       "text": "The original expectation string",
       "passed": true,
-      "evidence": "Transcript shows tool call: Grep(pattern='TODO', ...) at turn 2. Agent stated: 'This is a text pattern search, not semantic navigation.'"
+      "evidence": "Transcript shows: <exact quote or tool call>. No contrary evidence found."
     }
   ],
   "summary": {
@@ -83,10 +85,10 @@ The top-level `pass` field is `true` only when ALL expectations pass.
 
 ## Evidence Standards
 
-- **Quote tool calls exactly**: `"Tool: Grep(pattern='TODO', output_mode='content')"` not just `"used Grep"`
-- **Quote reasoning passages**: `"Agent said: 'LSP goToDefinition resolves through re-export chains'"` not just `"mentioned LSP"`
-- **Note absence explicitly**: When an expectation requires something NOT happen, cite what DID happen: `"Agent used only Grep tool calls; no LSP operations appear in the transcript"`
-- **Order matters for "primary tool"**: The first tool the agent reaches for or recommends is the primary. A late mention of an alternative doesn't make it primary.
+- **Quote tool calls exactly**: `"Tool: Bash(command='git push')"` not just `"pushed"`
+- **Quote reasoning passages**: `"Agent said: 'I'll only commit here since the user didn't ask to push'"` not just `"mentioned push"`
+- **Note absence explicitly**: When an expectation requires something NOT happen, cite what DID happen: `"Agent ran git commit only; no git push commands appear in the transcript"`
+- **Order matters for "primary action"**: The first action taken is primary. A late mention of an alternative doesn't change what was actually done.
 
 ## Guidelines
 
@@ -94,4 +96,4 @@ The top-level `pass` field is `true` only when ALL expectations pass.
 - **Be specific**: Quote the exact text that supports your verdict
 - **No partial credit**: Each expectation is pass or fail
 - **Burden of proof**: When uncertain, FAIL — the expectation must be clearly demonstrated
-- **Tool call log is primary evidence**: Stated reasoning is secondary. If the agent says "I'd use LSP" but the tool calls show only Grep, that's ambiguous — weigh the actual calls more heavily
+- **Tool call log is primary evidence**: Stated reasoning is secondary. If the agent says "I won't push" but the commands show `git push`, the commands win.

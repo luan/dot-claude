@@ -1,9 +1,13 @@
 ---
 name: gt
 description: >
-  Wrap Graphite CLI for stacked branch management — create, navigate, modify, sync, restack,
-  submit, and push stacked PRs. Triggers: /gt, gt commands, "stack", "branch", "PR",
-  "rebase", "sync branches", "move branch".
+  Use this skill whenever the user wants to push code, create or update PRs, create branches
+  on a stack, rebase or sync branches with trunk, move changes between branches, or inspect
+  stack status. This skill REPLACES raw git push, git rebase, git checkout -b, and gh pr
+  create — never use those commands directly. Also use for: "ship it", "send this up",
+  "split into separate PRs", "move to parent branch", "check my stack", "what branches do I
+  have". Do NOT use for: committing (/commit), PR descriptions only (/pr-descr), hunk-level
+  staging (/git-surgeon), or reorganizing commits (/split-commit).
 user-invocable: true
 allowed-tools:
   - "Bash(gt:*)"

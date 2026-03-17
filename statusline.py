@@ -69,6 +69,7 @@ DIM_YELLOW = "\033[38;5;136m"
 DIM_ORANGE = "\033[38;5;130m"
 DIM_RED = "\033[38;5;131m"
 DIM_CYAN = "\033[38;5;67m"
+DIM_PINK = "\033[38;5;175m"
 SEG_DIGITS = "🯰🯱🯲🯳🯴🯵🯶🯷🯸🯹"
 
 
@@ -326,6 +327,12 @@ def _run(cmd, cwd=None):
 # -- Data fetchers --
 
 
+def _trunc_wt(name, max_len=6):
+    if len(name) <= max_len:
+        return name
+    return name[:2] + ".." + name[-2:]
+
+
 def git_info(cwd):
     if not cwd:
         return None
@@ -368,6 +375,15 @@ def git_info(cwd):
             parts.append(f"\033]8;;{url}\a{CYAN}{name}{RESET}\033]8;;\a")
         except Exception:
             parts.append(f"{CYAN}{os.path.basename(cwd)}{RESET}")
+
+        try:
+            wt_lines = [l for l in _run(["git", "worktree", "list"], cwd).splitlines() if l.strip()]
+            if len(wt_lines) > 1:
+                toplevel = _run(["git", "rev-parse", "--show-toplevel"], cwd)
+                wt_name = os.path.basename(toplevel)
+                parts.append(f"\033[3m{DIM_PINK}{_trunc_wt(wt_name)}\033[23m{RESET}")
+        except Exception:
+            pass
 
         result = " ".join(parts)
     except Exception:

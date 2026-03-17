@@ -1,8 +1,9 @@
 ---
 name: gt:submit
 description: >
-  Push Graphite stack and update PRs. Triggers: 'submit', 'push',
-  'update PRs', 'push stack', 'send PRs'.
+  Use this skill to push code to remote and create or update PRs. REPLACES git push and gh pr
+  create — never use those directly. Triggers: 'push', 'push my changes', 'ship it', 'send
+  this up', 'submit', 'update PRs', 'create PR', 'push stack', 'send PRs'.
 user-invocable: true
 context: fork
 agent: general-purpose

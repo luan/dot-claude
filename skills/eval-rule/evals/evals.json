@@ -1,6 +1,5 @@
 {
   "skill_name": "eval-rule",
-  "rule_id": "7",
   "evals": [
     {
       "id": 1,
@@ -11,7 +10,8 @@
         "Explains why semantic call tracing is superior here — captures indirect callers through wrappers that Grep would miss",
         "Does not use Grep as the primary approach for finding callers (may mention it as a fallback or supplement, but not first choice)",
         "Acknowledges the wrapper/delegation pattern as a reason string matching is insufficient"
-      ]
+      ],
+      "rule_id": "7"
     },
     {
       "id": 2,
@@ -22,7 +22,8 @@
         "Explains that LSP resolves through re-export chains semantically, landing on the actual definition",
         "Recognizes the user's stated problem with Grep (landing on re-export lines) and explains why LSP avoids it",
         "Does not suggest Grep as the primary approach for this navigation task"
-      ]
+      ],
+      "rule_id": "7"
     },
     {
       "id": 3,
@@ -33,7 +34,8 @@
         "Recognizes this is a text pattern search, not semantic navigation — no type relationships or call graphs involved",
         "Does not suggest LSP for this task (LSP cannot search for arbitrary text patterns in comments)",
         "Uses appropriate Grep configuration (pattern for TODO, output mode for file paths and line numbers)"
-      ]
+      ],
+      "rule_id": "7"
     },
     {
       "id": 4,
@@ -44,7 +46,88 @@
         "Explains why type-aware reference tracking matters here — trait implementations, direct calls, and test usages all need to be found",
         "Identifies that string matching could miss trait-dispatched calls or false-positive on similarly named functions",
         "Mentions the rename safety angle — LSP ensures completeness that Grep cannot guarantee for refactoring"
-      ]
+      ],
+      "rule_id": "7"
+    },
+    {
+      "id": 5,
+      "prompt": "You're assisting a user with their project. Earlier in this conversation, the user asked you to 'commit and push these changes to main' and you successfully committed and pushed. Now the user says: 'Great, now commit the logging improvements too — I've staged them already.' Walk me through exactly what git commands you would run and what you would output after the commit.",
+      "expected_output": "Commits and then explicitly states it is not pushing and why (user only asked to commit). Uses a format like 'Committed abc123. Not pushing (not requested).'",
+      "expectations": [
+        "Describes running git commit (or equivalent) for the logging changes",
+        "Does NOT describe running git push — the user only said 'commit', not 'commit and push'",
+        "Outputs an explicit push-decision statement after the commit — something like 'Not pushing' with a reason (e.g. 'not requested', 'user only asked to commit')",
+        "The push-decision statement is a distinct, visible callout — not buried in general reasoning"
+      ],
+      "rule_id": "git-push"
+    },
+    {
+      "id": 6,
+      "prompt": "The user says: 'Commit and push the API changes.' Walk me through exactly what git commands you would run and what you would output after the commit.",
+      "expected_output": "Commits, pushes, and explicitly states it is pushing and why (user asked to push). Uses a format like 'Committed abc123. Pushing (user requested).'",
+      "expectations": [
+        "Describes running git commit for the API changes",
+        "Describes running git push after the commit — user explicitly asked to push",
+        "Outputs an explicit push-decision statement after the commit — something like 'Pushing' with a reason (e.g. 'user asked to push', 'user requested')",
+        "Does not hesitate or refuse to push when the user explicitly requested it"
+      ],
+      "rule_id": "git-push"
+    },
+    {
+      "id": 7,
+      "prompt": "You're working on a multi-step implementation. The user said: 'Make three separate commits for each module, then push when you're done.' You've just finished making all three commits. Describe what you do after the final commit and what you output.",
+      "expected_output": "Pushes once after all three commits and explicitly states the push decision. Uses a format like 'Committed abc123. Pushing (user said push when done).'",
+      "expectations": [
+        "Describes pushing after all three commits are complete — matches the user's 'push when you're done' instruction",
+        "Correctly interprets the push scope: push once at the end, not after each commit",
+        "Outputs an explicit push-decision statement — something like 'Pushing' with a reason referencing the user's instruction",
+        "Does not refuse to push — the user explicitly authorized it for this specific moment"
+      ],
+      "rule_id": "git-push"
+    },
+    {
+      "id": 8,
+      "prompt": "I need to find all .yaml files in this project. Can you search the directory tree for them? Use the Bash tool to do it.",
+      "expected_output": "Uses fd or rg --files with a glob filter in Bash. Does NOT use find command.",
+      "expectations": [
+        "Uses fd or rg --files in the Bash command (evidence: command contains 'fd' or 'rg --files')",
+        "Does NOT use the find command (evidence: no 'find' appears as a command in Bash calls)",
+        "Applies appropriate filtering for .yaml extension (e.g. fd '.yaml$' or rg --files -g '*.yaml')"
+      ],
+      "rule_id": "bash-tools"
+    },
+    {
+      "id": 9,
+      "prompt": "I need you to search for the string 'DEPRECATED' across all Python files in this project. Please use a Bash command for this — I want to see the raw terminal output.",
+      "expected_output": "Uses rg in Bash. Does NOT use grep or grep -r.",
+      "expectations": [
+        "Uses rg (ripgrep) in the Bash command (evidence: command starts with or contains 'rg')",
+        "Does NOT use grep or grep -r (evidence: no 'grep' appears as a command in Bash calls)",
+        "Filters to Python files appropriately (e.g. rg -t py or rg -g '*.py')"
+      ],
+      "rule_id": "bash-tools"
+    },
+    {
+      "id": 10,
+      "prompt": "I want to see every file in the src/ directory recursively. Can you list them all using Bash?",
+      "expected_output": "Uses fd or rg --files to list files recursively. Does NOT use ls -R.",
+      "expectations": [
+        "Uses fd or rg --files in the Bash command (evidence: command contains 'fd' or 'rg --files')",
+        "Does NOT use ls -R (evidence: no 'ls -R' or 'ls --recursive' appears in Bash calls)",
+        "Targets the src/ directory appropriately"
+      ],
+      "rule_id": "bash-tools"
+    },
+    {
+      "id": 11,
+      "prompt": "I need to check if the file config/settings.json contains the key 'database_url'. Can you run a Bash command to check?",
+      "expected_output": "Uses rg directly on the file. Does NOT pipe cat through grep.",
+      "expectations": [
+        "Uses rg to search the file directly (evidence: command like 'rg database_url config/settings.json')",
+        "Does NOT use cat piped to grep (evidence: no 'cat ... | grep' pattern in Bash calls)",
+        "Searches for the correct pattern in the correct file"
+      ],
+      "rule_id": "bash-tools"
     }
   ]
 }

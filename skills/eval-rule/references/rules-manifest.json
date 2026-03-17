@@ -216,6 +216,24 @@
       "toggle_type": "file",
       "toggle_text": null,
       "eval_ids": []
+    },
+    {
+      "rule_id": "git-push",
+      "name": "Git Push Authorization",
+      "description": "Git push is one-shot authorization; do not push subsequent commits without explicit re-authorization",
+      "source": "rules/git-push.md",
+      "toggle_type": "file",
+      "toggle_text": "After every git commit, state whether you are pushing or not and why:\n- \"Committed abc123. Not pushing (not requested).\"\n- \"Committed abc123. Pushing (user asked to push).\"\n\nPush only when the current message explicitly asks for it. A previous push does not authorize future pushes.",
+      "eval_ids": [5, 6, 7]
+    },
+    {
+      "rule_id": "bash-tools",
+      "name": "Bash Tool Replacements",
+      "description": "Use modern CLI tools (fd, rg) instead of legacy (find, grep, ls -R, cat|grep) in Bash",
+      "source": "rules/bash-tools.md",
+      "toggle_type": "file",
+      "toggle_text": "When using the Bash tool, never use legacy commands that have modern replacements:\n- `find` → `fd` or `rg --files`\n- `grep` / `grep -r` → `rg`\n- `ls -R` → `rg --files` or `fd`\n- `cat file | grep` → `rg pattern file`",
+      "eval_ids": [8, 9, 10, 11]
     }
   ]
 }

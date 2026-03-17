@@ -1,0 +1,11 @@
+# Graphite Workflow
+
+This repo uses Graphite for stacked PRs. For any push, PR, rebase, stack, or branch operation, invoke the gt skill as your FIRST action — before running any Bash commands to explore.
+
+- Push / create PRs / update PRs / ship it → `Skill(gt:submit)`
+- Rebase / sync with main / stack out of date → `Skill(gt:restack)`
+- Everything else (check stack, create branch, move changes between branches, split work into separate PRs, navigate stack) → `Skill(gt:gt)`
+
+The gt skills handle the full workflow including inspecting the current state — you do not need to run `git diff`, `git status`, or `gt log` in Bash first. Invoke the skill and it will handle exploration, stack safety, and PR metadata.
+
+Raw git/gt in Bash is fine only when the user explicitly requests it. Return `app.graphite.com/...` URLs.
