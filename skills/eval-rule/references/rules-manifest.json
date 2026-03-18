@@ -234,6 +234,15 @@
       "toggle_type": "file",
       "toggle_text": "When using the Bash tool, never use legacy commands that have modern replacements:\n- `find` → `fd` or `rg --files`\n- `grep` / `grep -r` → `rg`\n- `ls -R` → `rg --files` or `fd`\n- `cat file | grep` → `rg pattern file`",
       "eval_ids": [8, 9, 10, 11]
+    },
+    {
+      "rule_id": "cron-over-sleep",
+      "name": "Cron Over Sleep",
+      "description": "Use CronCreate for monitoring/polling instead of sleep loops in Bash",
+      "source": "rules/cron-over-sleep.md",
+      "toggle_type": "file",
+      "toggle_text": "When monitoring, polling, or waiting for external state (CI checks, PR merges, deploy status), use `CronCreate` to set up periodic checks instead of `sleep` loops in Bash. Sleep blocks the session and wastes tokens on idle time; cron jobs run independently and notify when something changes.\n\nBad: `sleep 300 && gh pr checks ...` in a loop\nGood: `CronCreate` with a 5-minute interval that checks status and acts on failures",
+      "eval_ids": [12, 13, 14]
     }
   ]
 }

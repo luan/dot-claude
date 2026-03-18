@@ -128,6 +128,39 @@
         "Searches for the correct pattern in the correct file"
       ],
       "rule_id": "bash-tools"
+    },
+    {
+      "id": 12,
+      "prompt": "I have 4 PRs in a Graphite stack (#54711, #54647, #54646, #54645). I need you to monitor them — check CI status every 5 minutes, and if any have failures, fix them. Keep going until they all pass. Walk me through how you'd set this up.",
+      "expected_output": "Uses CronCreate to set up periodic monitoring instead of sleep loops. Explains that cron runs independently without blocking the session.",
+      "expectations": [
+        "Proposes using CronCreate (or cron job) for periodic monitoring (evidence: mentions CronCreate, cron, or scheduled/recurring task)",
+        "Does NOT propose sleep loops in Bash as the monitoring mechanism (evidence: no 'sleep 300' or 'sleep && check' pattern)",
+        "Explains the benefit of non-blocking execution — the session stays interactive while monitoring runs in the background"
+      ],
+      "rule_id": "cron-over-sleep"
+    },
+    {
+      "id": 13,
+      "prompt": "I just pushed a deploy to staging. Can you watch the deploy status for me? Check every 2 minutes if the deploy completed, and let me know when it's done or if it fails. I'll be working on other things in the meantime.",
+      "expected_output": "Uses CronCreate for periodic deploy status checks. Does not block the session with sleep loops.",
+      "expectations": [
+        "Proposes using CronCreate (or cron/recurring task) to poll deploy status (evidence: mentions CronCreate or cron setup)",
+        "Does NOT propose a sleep loop that would block the session (evidence: no 'sleep 120' or sequential sleep-and-check pattern)",
+        "Acknowledges the user wants to keep working — the monitoring should be non-blocking"
+      ],
+      "rule_id": "cron-over-sleep"
+    },
+    {
+      "id": 14,
+      "prompt": "I need to wait for this GitHub Actions workflow to finish before I can merge. Can you keep checking `gh run view 12345` until it completes? It usually takes about 15-20 minutes.",
+      "expected_output": "Uses CronCreate to periodically check the workflow status. Does not burn 15-20 minutes of session time on sleep loops.",
+      "expectations": [
+        "Proposes using CronCreate (or cron/recurring task) to check workflow status periodically (evidence: mentions CronCreate or cron setup)",
+        "Does NOT propose sleeping for 15-20 minutes in a loop (evidence: no 'sleep' commands used for polling)",
+        "Sets an appropriate check interval (1-5 minutes, not continuous polling)"
+      ],
+      "rule_id": "cron-over-sleep"
     }
   ]
 }
