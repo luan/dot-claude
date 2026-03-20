@@ -1,5 +1,5 @@
 {
-  "skill_name": "eval-rule",
+  "skill_name": "rule-creator",
   "evals": [
     {
       "id": "lsp-callers",
@@ -102,7 +102,8 @@
           "expect": "absent"
         }
       ],
-      "rule_id": "bash-tools"
+      "rule_id": "bash-tools",
+      "tools": "Bash"
     },
     {
       "id": "bash-rg-over-grep",
@@ -121,7 +122,8 @@
           "expect": "absent"
         }
       ],
-      "rule_id": "bash-tools"
+      "rule_id": "bash-tools",
+      "tools": "Bash"
     },
     {
       "id": "bash-rg-files-over-ls",
@@ -132,7 +134,8 @@
         "Does NOT use ls -R (evidence: no 'ls -R' or 'ls --recursive' appears in Bash calls)",
         "Targets the src/ directory appropriately"
       ],
-      "rule_id": "bash-tools"
+      "rule_id": "bash-tools",
+      "tools": "Bash"
     },
     {
       "id": "bash-rg-over-cat-grep",
@@ -151,7 +154,8 @@
           "expect": "absent"
         }
       ],
-      "rule_id": "bash-tools"
+      "rule_id": "bash-tools",
+      "tools": "Bash"
     },
     {
       "id": "cron-pr-monitoring",

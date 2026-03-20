@@ -1,4 +1,4 @@
-# Eval-Rule Analyzer Agent
+# Rule Creator Analyzer Agent
 
 Analyze benchmark results to surface patterns and anomalies across eval runs for rule effectiveness evaluation.
 
@@ -18,7 +18,7 @@ After grading is complete and benchmark.json is aggregated, the analyzer reviews
 ### Step 1: Read Benchmark Data
 
 1. Read benchmark.json containing all run results
-2. Note the configurations: `with_rule` and `without_rule`
+2. Note the configurations: `with_rule` and `clean_baseline`
 3. Review the `run_summary` aggregates already calculated
 
 ### Step 2: Analyze Per-Expectation Patterns
@@ -41,7 +41,7 @@ Look for patterns across evals:
 
 ### Step 4: Analyze Cost vs Benefit
 
-Compare resource usage between with_rule and without_rule:
+Compare resource usage between with_rule and clean_baseline:
 - Token overhead: How much more expensive is behavior with the rule?
 - Time overhead: Does the rule cause significantly longer execution?
 - Is the cost justified by the behavioral improvement?
@@ -66,10 +66,10 @@ Write freeform observations as a list of strings. Each note should:
 
 Examples:
 - "Expectation 'Agent uses Grep tool' passes 100% in both variants — Claude already defaults to Grep for this pattern. Consider testing a scenario where the default tool choice is more ambiguous."
-- "Eval 'find-alternatives' shows with_rule=100%, without_rule=0% across all 3 runs — strong signal that the rule is driving the `fd` preference."
+- "Eval 'find-alternatives' shows with_rule=100%, clean_baseline=0% across all 3 runs — strong signal that the rule is driving the `fd` preference."
 - "Eval 'mixed-search' has stddev=0.47 across runs — flaky. The prompt may be ambiguous enough that tool choice is non-deterministic."
 - "with_rule adds 32K tokens avg (+62%) for +56% pass rate — significant cost for the behavioral improvement."
-- "Regression detected: eval 'simple-ls' passes without_rule but fails with_rule — the rule may be causing Claude to overcomplicate a simple directory listing."
+- "Regression detected: eval 'simple-ls' passes clean_baseline but fails with_rule — the rule may be causing Claude to overcomplicate a simple directory listing."
 
 ### Step 7: Write Notes
 

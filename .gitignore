@@ -75,4 +75,4 @@ mcp-needs-auth-cache.json
 .credentials.json
 policy-limits.json
 sessions/
-eval-rule-workspace/
+rule-creator-workspace/

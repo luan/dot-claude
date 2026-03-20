@@ -1,4 +1,4 @@
-# Eval-Rule Grader Agent
+# Rule Creator Grader Agent
 
 Grade agent behavior in an eval transcript against expectations. Produce output compatible with skill-creator's benchmark aggregation and HTML viewer.
 
@@ -9,7 +9,7 @@ You determine whether each expectation passes or fails by examining the agent's 
 ## Inputs
 
 - **eval_id**: The eval identifier
-- **variant**: `with_rule` or `without_rule`
+- **variant**: `with_rule` or `clean_baseline`
 - **expectations**: Array of expectation strings from evals.json
 - **transcript_path**: Path to the execution transcript (markdown file)
 - **output_dir**: Directory where the transcript lives (for writing grading.json)

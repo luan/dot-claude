@@ -1,18 +1,18 @@
 # JSON Schemas
 
-Schemas used by eval-rule. These are aligned with skill-creator's schemas so that the benchmark aggregation script and HTML viewer work without modification.
+Schemas used by rule-creator. These are aligned with skill-creator's schemas so that the benchmark aggregation script and HTML viewer work without modification.
 
 ---
 
 ## evals.json
 
 Defines evals for rule evaluation. Location depends on scope:
-- **Project rules**: `<project>/.eval-rule/evals.json`
+- **Project rules**: `<project>/.rule-creator/evals.json`
 - **Global rules**: `${CLAUDE_SKILL_DIR}/evals/evals.json`
 
 ```json
 {
-  "skill_name": "eval-rule",
+  "skill_name": "rule-creator",
   "evals": [
     {
       "id": "rule7-grep-over-bash",
@@ -51,6 +51,7 @@ Defines evals for rule evaluation. Location depends on scope:
 - `context`: Additional context injected into the prompt (project-specific details)
 - `assertions`: Programmatic checks (see Assertions section below)
 - `teardown`: Shell command(s) to run after the eval (cleanup)
+- `tools`: Tool restriction for `claude -p` baseline (e.g., `"Bash"` prevents sidestepping to Glob/Grep). Passed as `--tools` flag. Omit for default tool set.
 
 ### Assertions
 
@@ -180,7 +181,7 @@ Output from the aggregation script. Located at `<workspace>/iteration-<N>/benchm
 ```json
 {
   "metadata": {
-    "skill_name": "eval-rule-7",
+    "skill_name": "rule-creator-7",
     "skill_path": "rules/bash-tools.md",
     "executor_model": "claude-opus-4-6",
     "analyzer_model": "claude-opus-4-6",
@@ -216,7 +217,7 @@ Output from the aggregation script. Located at `<workspace>/iteration-<N>/benchm
       "time_seconds": {"mean": 23.3, "stddev": 2.1, "min": 21.0, "max": 25.5},
       "tokens": {"mean": 84852, "stddev": 5000, "min": 79000, "max": 90000}
     },
-    "without_rule": {
+    "clean_baseline": {
       "pass_rate": {"mean": 0.33, "stddev": 0.12, "min": 0.0, "max": 0.5},
       "time_seconds": {"mean": 18.1, "stddev": 3.0, "min": 15.0, "max": 21.0},
       "tokens": {"mean": 52000, "stddev": 4000, "min": 48000, "max": 56000}
@@ -235,7 +236,7 @@ Output from the aggregation script. Located at `<workspace>/iteration-<N>/benchm
 ```
 
 **Important for viewer compatibility:**
-- `configuration` must be exactly `"with_rule"` or `"without_rule"` (the viewer uses these for grouping and color coding)
+- `configuration` must be exactly `"with_rule"` or `"clean_baseline"` (the viewer uses these for grouping and color coding)
 - `result` must be a nested object (not flat fields on the run)
 - `expectations` entries must use `text`, `passed`, `evidence` field names
 

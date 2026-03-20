@@ -1,0 +1,35 @@
+{
+  "eval_id": "11",
+  "variant": "without_rule",
+  "expectations": [
+    {
+      "text": "Uses rg to search the file directly (evidence: command like 'rg database_url config/settings.json')",
+      "passed": false,
+      "evidence": "Agent used 'cat /Users/luan.santos/.claude/config/settings.json 2>&1' — no rg command appears anywhere in the transcript. The agent chose cat instead of rg."
+    },
+    {
+      "text": "Does NOT use cat piped to grep (evidence: no 'cat ... | grep' pattern in Bash calls)",
+      "passed": true,
+      "evidence": "Agent ran 'cat /Users/luan.santos/.claude/config/settings.json 2>&1' — plain cat with no pipe. No 'cat ... | grep' pattern appears in the transcript."
+    },
+    {
+      "text": "Searches for the correct pattern in the correct file",
+      "passed": false,
+      "evidence": "Agent targeted the correct file (config/settings.json) but never searched for the pattern 'database_url'. The command was a plain 'cat' of the entire file with no search/filter operation. The agent intended to read the file and visually inspect for the key, but the file didn't exist so no actual pattern search occurred."
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "failed": 2,
+    "total": 3,
+    "pass_rate": 0.33
+  },
+  "pass": false,
+  "eval_feedback": {
+    "suggestions": [
+      "Expectation 2 ('Does NOT use cat piped to grep') is trivially satisfied here because the agent used plain cat without any pipe at all. This expectation would be more meaningful if paired with an expectation that the agent actually performs a targeted search rather than reading the whole file. As written, 'cat file' with no pipe passes the negative expectation while still being a suboptimal approach.",
+      "Expectation 3 ('Searches for the correct pattern in the correct file') is ambiguous about what counts as 'searching'. An agent that cats the file and then reasons about the output could arguably be 'searching' — consider tightening to specify tool-level search (e.g., 'uses a search tool/command like rg or grep to find the pattern')."
+    ],
+    "overall": "The without_rule variant predictably fell back to cat instead of rg. Expectation 2 passes trivially since the agent didn't pipe at all — consider whether this negative expectation adds discriminative value."
+  }
+}

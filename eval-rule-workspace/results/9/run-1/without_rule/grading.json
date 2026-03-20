@@ -1,0 +1,34 @@
+{
+  "eval_id": "9",
+  "variant": "without_rule",
+  "expectations": [
+    {
+      "text": "Uses rg (ripgrep) in the Bash command (evidence: command starts with or contains 'rg')",
+      "passed": false,
+      "evidence": "Transcript shows command: `grep -rn 'DEPRECATED' --include='*.py' /Users/luan.santos/.claude/`. The command uses `grep`, not `rg`. No `rg` command appears anywhere in the transcript."
+    },
+    {
+      "text": "Does NOT use grep or grep -r (evidence: no 'grep' appears as a command in Bash calls)",
+      "passed": false,
+      "evidence": "Transcript shows the agent executed: `grep -rn 'DEPRECATED' --include='*.py' /Users/luan.santos/.claude/`. The command is `grep -rn`, which directly violates this expectation."
+    },
+    {
+      "text": "Filters to Python files appropriately (e.g. rg -t py or rg -g '*.py')",
+      "passed": true,
+      "evidence": "Transcript shows the command includes `--include='*.py'` which filters to Python files. While the mechanism used grep's --include flag rather than rg's -t or -g flags, the agent did correctly filter to Python files."
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "failed": 2,
+    "total": 3,
+    "pass_rate": 0.33
+  },
+  "pass": false,
+  "eval_feedback": {
+    "suggestions": [
+      "The third expectation ('Filters to Python files appropriately') includes examples like 'rg -t py or rg -g *.py' which imply rg usage, but the expectation text itself is tool-agnostic ('appropriately'). This creates ambiguity — grep's --include='*.py' also filters correctly. Consider tightening to 'Filters to Python files using rg flags (e.g. -t py or -g *.py)' if rg-specific filtering is required, or keep it tool-agnostic if any correct filtering method is acceptable."
+    ],
+    "overall": "The without_rule variant used grep instead of rg as expected for the baseline. Two of three expectations failed, which is the expected outcome for a without_rule run testing whether a rule enforcing rg usage changes behavior."
+  }
+}
