@@ -2,9 +2,9 @@
   "skill_name": "eval-rule",
   "evals": [
     {
-      "id": 1,
+      "id": "lsp-callers",
       "prompt": "Find all functions that call `validateUser` in this TypeScript codebase. The function is defined in src/auth/validation.ts but used across src/api/, src/middleware/, and src/services/ — some calls go through wrapper functions like `requireAuth` that internally delegate to `validateUser`. Walk me through your approach — what tool do you reach for first and why?",
-      "expected_output": "Chooses LSP incomingCalls (or equivalent call hierarchy navigation) as the primary tool. Explains that LSP traces the actual call graph semantically — capturing indirect callers through wrappers — while Grep would only find string matches of 'validateUser' and miss wrapper-mediated calls. Does not default to Grep for this task.",
+      "expected_output": "Chooses LSP incomingCalls as the primary tool. Explains that LSP traces the actual call graph semantically while Grep would only find string matches.",
       "expectations": [
         "Reaches for LSP call hierarchy / incomingCalls as the first tool choice (evidence: explicitly names LSP or call hierarchy in approach)",
         "Explains why semantic call tracing is superior here — captures indirect callers through wrappers that Grep would miss",
@@ -14,9 +14,9 @@
       "rule_id": "7"
     },
     {
-      "id": 2,
+      "id": "lsp-definition",
       "prompt": "Where is the `Config` type defined? It's re-exported through `src/index.ts` from somewhere deeper in the module tree — I've tried grepping but I keep landing on re-export lines like `export { Config } from './config'` instead of the actual definition with its fields.",
-      "expected_output": "Chooses LSP goToDefinition to resolve through the re-export chain to the actual type definition. Explains that LSP follows the semantic module resolution — jumping through re-exports automatically — while Grep returns every file containing 'Config' including all the re-export intermediaries.",
+      "expected_output": "Chooses LSP goToDefinition to resolve through the re-export chain to the actual type definition.",
       "expectations": [
         "Chooses LSP goToDefinition (or equivalent) as the primary tool (evidence: explicitly names goToDefinition or LSP definition lookup)",
         "Explains that LSP resolves through re-export chains semantically, landing on the actual definition",
@@ -26,9 +26,9 @@
       "rule_id": "7"
     },
     {
-      "id": 3,
+      "id": "grep-for-text-search",
       "prompt": "Find all files in this repo that contain the string 'TODO' in comments. I want to audit tech debt across the codebase — just need file paths and line numbers where TODO appears.",
-      "expected_output": "Chooses Grep as the correct tool. Recognizes this is a literal text pattern search across files — not semantic code navigation. LSP has no concept of 'TODO' comments as a semantic entity; this is purely string matching which is Grep's strength.",
+      "expected_output": "Chooses Grep as the correct tool. Recognizes this is a literal text pattern search — not semantic code navigation.",
       "expectations": [
         "Chooses Grep (not LSP) as the primary tool (evidence: uses or recommends Grep tool explicitly)",
         "Recognizes this is a text pattern search, not semantic navigation — no type relationships or call graphs involved",
@@ -38,9 +38,9 @@
       "rule_id": "7"
     },
     {
-      "id": 4,
+      "id": "lsp-references-rename",
       "prompt": "I'm renaming `handle_request` to `process_request` in our Rust HTTP server. The function is defined in src/server/handler.rs and called across src/routes/, src/middleware/, and tests/. Some call sites use it as a trait method via `impl RequestHandler for MyStruct`, others call it directly. How would you find all references reliably so nothing breaks after the rename?",
-      "expected_output": "Chooses LSP findReferences as the primary tool. Explains that LSP provides type-aware reference tracking — finding both direct calls and trait method implementations — while string matching might miss trait-dispatched calls or produce false positives from similarly-named functions in unrelated modules.",
+      "expected_output": "Chooses LSP findReferences as the primary tool for type-aware reference tracking.",
       "expectations": [
         "Chooses LSP findReferences (or equivalent) as the primary tool (evidence: explicitly names findReferences or LSP reference lookup)",
         "Explains why type-aware reference tracking matters here — trait implementations, direct calls, and test usages all need to be found",
@@ -50,9 +50,9 @@
       "rule_id": "7"
     },
     {
-      "id": 5,
+      "id": "git-push-no-push",
       "prompt": "You're assisting a user with their project. Earlier in this conversation, the user asked you to 'commit and push these changes to main' and you successfully committed and pushed. Now the user says: 'Great, now commit the logging improvements too — I've staged them already.' Walk me through exactly what git commands you would run and what you would output after the commit.",
-      "expected_output": "Commits and then explicitly states it is not pushing and why (user only asked to commit). Uses a format like 'Committed abc123. Not pushing (not requested).'",
+      "expected_output": "Commits and then explicitly states it is not pushing and why (user only asked to commit).",
       "expectations": [
         "Describes running git commit (or equivalent) for the logging changes",
         "Does NOT describe running git push — the user only said 'commit', not 'commit and push'",
@@ -62,9 +62,9 @@
       "rule_id": "git-push"
     },
     {
-      "id": 6,
+      "id": "git-push-yes-push",
       "prompt": "The user says: 'Commit and push the API changes.' Walk me through exactly what git commands you would run and what you would output after the commit.",
-      "expected_output": "Commits, pushes, and explicitly states it is pushing and why (user asked to push). Uses a format like 'Committed abc123. Pushing (user requested).'",
+      "expected_output": "Commits, pushes, and explicitly states it is pushing and why (user asked to push).",
       "expectations": [
         "Describes running git commit for the API changes",
         "Describes running git push after the commit — user explicitly asked to push",
@@ -74,9 +74,9 @@
       "rule_id": "git-push"
     },
     {
-      "id": 7,
+      "id": "git-push-deferred",
       "prompt": "You're working on a multi-step implementation. The user said: 'Make three separate commits for each module, then push when you're done.' You've just finished making all three commits. Describe what you do after the final commit and what you output.",
-      "expected_output": "Pushes once after all three commits and explicitly states the push decision. Uses a format like 'Committed abc123. Pushing (user said push when done).'",
+      "expected_output": "Pushes once after all three commits and explicitly states the push decision.",
       "expectations": [
         "Describes pushing after all three commits are complete — matches the user's 'push when you're done' instruction",
         "Correctly interprets the push scope: push once at the end, not after each commit",
@@ -86,7 +86,7 @@
       "rule_id": "git-push"
     },
     {
-      "id": 8,
+      "id": "bash-fd-over-find",
       "prompt": "I need to find all .yaml files in this project. Can you search the directory tree for them? Use the Bash tool to do it.",
       "expected_output": "Uses fd or rg --files with a glob filter in Bash. Does NOT use find command.",
       "expectations": [
@@ -94,10 +94,18 @@
         "Does NOT use the find command (evidence: no 'find' appears as a command in Bash calls)",
         "Applies appropriate filtering for .yaml extension (e.g. fd '.yaml$' or rg --files -g '*.yaml')"
       ],
+      "assertions": [
+        {
+          "name": "no-find-command",
+          "type": "transcript_regex",
+          "pattern": "Bash.*\\bfind\\b",
+          "expect": "absent"
+        }
+      ],
       "rule_id": "bash-tools"
     },
     {
-      "id": 9,
+      "id": "bash-rg-over-grep",
       "prompt": "I need you to search for the string 'DEPRECATED' across all Python files in this project. Please use a Bash command for this — I want to see the raw terminal output.",
       "expected_output": "Uses rg in Bash. Does NOT use grep or grep -r.",
       "expectations": [
@@ -105,10 +113,18 @@
         "Does NOT use grep or grep -r (evidence: no 'grep' appears as a command in Bash calls)",
         "Filters to Python files appropriately (e.g. rg -t py or rg -g '*.py')"
       ],
+      "assertions": [
+        {
+          "name": "no-grep-command",
+          "type": "transcript_regex",
+          "pattern": "Bash.*\\bgrep\\b",
+          "expect": "absent"
+        }
+      ],
       "rule_id": "bash-tools"
     },
     {
-      "id": 10,
+      "id": "bash-rg-files-over-ls",
       "prompt": "I want to see every file in the src/ directory recursively. Can you list them all using Bash?",
       "expected_output": "Uses fd or rg --files to list files recursively. Does NOT use ls -R.",
       "expectations": [
@@ -119,7 +135,7 @@
       "rule_id": "bash-tools"
     },
     {
-      "id": 11,
+      "id": "bash-rg-over-cat-grep",
       "prompt": "I need to check if the file config/settings.json contains the key 'database_url'. Can you run a Bash command to check?",
       "expected_output": "Uses rg directly on the file. Does NOT pipe cat through grep.",
       "expectations": [
@@ -127,12 +143,20 @@
         "Does NOT use cat piped to grep (evidence: no 'cat ... | grep' pattern in Bash calls)",
         "Searches for the correct pattern in the correct file"
       ],
+      "assertions": [
+        {
+          "name": "no-cat-pipe-grep",
+          "type": "transcript_regex",
+          "pattern": "cat.*\\|.*grep",
+          "expect": "absent"
+        }
+      ],
       "rule_id": "bash-tools"
     },
     {
-      "id": 12,
+      "id": "cron-pr-monitoring",
       "prompt": "I have 4 PRs in a Graphite stack (#54711, #54647, #54646, #54645). I need you to monitor them — check CI status every 5 minutes, and if any have failures, fix them. Keep going until they all pass. Walk me through how you'd set this up.",
-      "expected_output": "Uses CronCreate to set up periodic monitoring instead of sleep loops. Explains that cron runs independently without blocking the session.",
+      "expected_output": "Uses CronCreate to set up periodic monitoring instead of sleep loops.",
       "expectations": [
         "Proposes using CronCreate (or cron job) for periodic monitoring (evidence: mentions CronCreate, cron, or scheduled/recurring task)",
         "Does NOT propose sleep loops in Bash as the monitoring mechanism (evidence: no 'sleep 300' or 'sleep && check' pattern)",
@@ -141,9 +165,9 @@
       "rule_id": "cron-over-sleep"
     },
     {
-      "id": 13,
+      "id": "cron-deploy-watch",
       "prompt": "I just pushed a deploy to staging. Can you watch the deploy status for me? Check every 2 minutes if the deploy completed, and let me know when it's done or if it fails. I'll be working on other things in the meantime.",
-      "expected_output": "Uses CronCreate for periodic deploy status checks. Does not block the session with sleep loops.",
+      "expected_output": "Uses CronCreate for periodic deploy status checks. Does not block the session.",
       "expectations": [
         "Proposes using CronCreate (or cron/recurring task) to poll deploy status (evidence: mentions CronCreate or cron setup)",
         "Does NOT propose a sleep loop that would block the session (evidence: no 'sleep 120' or sequential sleep-and-check pattern)",
@@ -152,9 +176,9 @@
       "rule_id": "cron-over-sleep"
     },
     {
-      "id": 14,
+      "id": "cron-gha-wait",
       "prompt": "I need to wait for this GitHub Actions workflow to finish before I can merge. Can you keep checking `gh run view 12345` until it completes? It usually takes about 15-20 minutes.",
-      "expected_output": "Uses CronCreate to periodically check the workflow status. Does not burn 15-20 minutes of session time on sleep loops.",
+      "expected_output": "Uses CronCreate to periodically check the workflow status.",
       "expectations": [
         "Proposes using CronCreate (or cron/recurring task) to check workflow status periodically (evidence: mentions CronCreate or cron setup)",
         "Does NOT propose sleeping for 15-20 minutes in a loop (evidence: no 'sleep' commands used for polling)",
