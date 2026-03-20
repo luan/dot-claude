@@ -57,8 +57,6 @@ def join_segments(segments, max_width):
 
 GIT_CACHE = "/tmp/claude-statusline-git"
 GIT_TTL = 5
-USAGE_CACHE = "/tmp/claude-statusline-usage.json"
-USAGE_TTL = 120
 VERSION_CACHE = "/tmp/claude-statusline-version"
 VERSION_TTL = 3600
 UPDATE_ICON = "\U000f0047"
@@ -206,13 +204,15 @@ def fmt_duration(ms):
     return _fmt_duration(int(ms) // 1000, show_seconds=True)
 
 
-def fmt_reset(iso_str):
-    if not iso_str:
+def fmt_reset(resets_at):
+    if not resets_at:
         return "", 0
     try:
-        dt = datetime.fromisoformat(iso_str).astimezone()
-        now = datetime.now(timezone.utc).astimezone()
-        total_secs = max(0, (dt - now).total_seconds())
+        if isinstance(resets_at, (int, float)):
+            total_secs = max(0, resets_at - time.time())
+        else:
+            dt = datetime.fromisoformat(resets_at).astimezone()
+            total_secs = max(0, (dt - datetime.now(timezone.utc)).total_seconds())
         return _fmt_duration(total_secs), total_secs
     except Exception:
         return "", 0
@@ -377,173 +377,6 @@ def git_info(cwd):
     return result or None
 
 
-TOKEN_CACHE = "/tmp/claude-statusline-token"
-TOKEN_TTL = 300
-BACKOFF_STATE = "/tmp/claude-statusline-backoff.json"
-
-
-def _read_token():
-    """Read OAuth token from macOS Keychain."""
-    raw = _run(
-        ["security", "find-generic-password", "-s", "Claude Code-credentials", "-w"]
-    )
-    try:
-        creds = json.loads(raw)
-        return creds.get("claudeAiOauth", {}).get("accessToken")
-    except (json.JSONDecodeError, ValueError):
-        decoded = bytes.fromhex(raw).decode("utf-8", errors="replace")
-        m = re.search(r'"accessToken"\s*:\s*"(sk-ant-[^"]+)"', decoded)
-        return m.group(1) if m else None
-
-
-def _get_token():
-    """Get OAuth token, cached to avoid keychain reads every cycle."""
-    cached = read_cache(TOKEN_CACHE, TOKEN_TTL)
-    if cached:
-        return cached
-    token = _read_token()
-    if token:
-        write_cache(TOKEN_CACHE, token)
-    return token
-
-
-def _invalidate_token():
-    """Force re-read from keychain on next call."""
-    try:
-        os.unlink(TOKEN_CACHE)
-    except OSError:
-        pass
-
-
-def _get_backoff():
-    """Read backoff state: {failures: int, next_try: float}."""
-    try:
-        with open(BACKOFF_STATE) as f:
-            return json.loads(f.read())
-    except Exception:
-        return {"failures": 0, "next_try": 0}
-
-
-def _set_backoff(failures):
-    """Write backoff state with exponential delay: 2min, 4min, 8min, cap 15min."""
-    delay = min(120 * (2 ** (failures - 1)), 900) if failures > 0 else 0
-    state = {"failures": failures, "next_try": time.time() + delay}
-    try:
-        with open(BACKOFF_STATE, "w") as f:
-            f.write(json.dumps(state))
-    except OSError:
-        pass
-
-
-def _clear_backoff():
-    try:
-        os.unlink(BACKOFF_STATE)
-    except OSError:
-        pass
-
-
-def _usage_from_oauth(version="", token=None):
-    """Fetch usage from Anthropic OAuth API. Returns (data, http_status)."""
-    if not token:
-        return None, 0
-
-    result = subprocess.check_output(
-        [
-            "curl",
-            "-s",
-            "--max-time",
-            "5",
-            "-w",
-            "\n%{http_code}",
-            "-H",
-            "Accept: application/json",
-            "-H",
-            f"Authorization: Bearer {token}",
-            "-H",
-            "anthropic-beta: oauth-2025-04-20",
-            "-H",
-            f"User-Agent: claude-code/{version or '0.0.0'}",
-            "https://api.anthropic.com/api/oauth/usage",
-        ],
-        stderr=subprocess.DEVNULL,
-        text=True,
-        timeout=8,
-    ).strip()
-
-    lines = result.rsplit("\n", 1)
-    body = lines[0] if len(lines) == 2 else result
-    status = int(lines[1]) if len(lines) == 2 else 0
-
-    if status == 200 and body:
-        parsed = json.loads(body)
-        if "five_hour" in parsed or "seven_day" in parsed:
-            return parsed, status
-    return None, status
-
-
-def fetch_usage(version=""):
-    cached = read_cache(USAGE_CACHE, USAGE_TTL)
-    if cached is not None:
-        try:
-            return json.loads(cached) if cached else None
-        except Exception:
-            pass
-
-    # Check backoff — don't hammer API on repeated failures
-    backoff = _get_backoff()
-    if backoff["failures"] > 0 and time.time() < backoff["next_try"]:
-        cached = read_cache(USAGE_CACHE, USAGE_TTL * 10)
-        if cached:
-            try:
-                parsed = json.loads(cached)
-                if "five_hour" in parsed or "seven_day" in parsed:
-                    return parsed
-            except Exception:
-                pass
-        return None
-
-    token = _get_token()
-    usage = None
-    status = 0
-
-    try:
-        usage, status = _usage_from_oauth(version, token)
-    except Exception:
-        pass
-
-    # 401: token expired — re-read keychain once and retry
-    if status == 401 and token:
-        _invalidate_token()
-        fresh = _read_token()
-        if fresh and fresh != token:
-            write_cache(TOKEN_CACHE, fresh)
-            try:
-                usage, status = _usage_from_oauth(version, fresh)
-            except Exception:
-                pass
-
-    if usage:
-        _clear_backoff()
-        write_cache(USAGE_CACHE, json.dumps(usage))
-        return usage
-
-    # Failed — increase backoff
-    _set_backoff(backoff["failures"] + 1)
-    if status == 401:
-        _invalidate_token()
-
-    # Fall back to stale cache (up to 20 min old)
-    cached = read_cache(USAGE_CACHE, USAGE_TTL * 10)
-    if cached:
-        try:
-            parsed = json.loads(cached)
-            if "five_hour" in parsed or "seven_day" in parsed:
-                return parsed
-        except Exception:
-            pass
-    return None
-
-
 # -- Main --
 
 
@@ -608,7 +441,7 @@ def main():
     if gi:
         parts2.append(gi)
 
-    quota = fetch_usage(version)
+    quota = data.get("rate_limits")
 
     suffix_parts = []
     if vim:
@@ -621,14 +454,14 @@ def main():
         SEVEN_DAYS = 7 * 24 * 3600
 
         fh = quota.get("five_hour") or {}
-        fh_used = int(fh.get("utilization") or 0)
+        fh_used = int(fh.get("used_percentage") or 0)
         fh_rem = 100 - fh_used
         fh_reset_str, fh_remaining = fmt_reset(fh.get("resets_at"))
         fh_col = quota_color(fh_used, fh_remaining, FIVE_HOURS)
         fh_pace = (fh_remaining / FIVE_HOURS * 100) if fh.get("resets_at") else None
 
         sd = quota.get("seven_day") or {}
-        sd_used = int(sd.get("utilization") or 0)
+        sd_used = int(sd.get("used_percentage") or 0)
         sd_rem = 100 - sd_used
         sd_reset_str, sd_remaining = fmt_reset(sd.get("resets_at"))
         sd_col = quota_color(sd_used, sd_remaining, SEVEN_DAYS)
@@ -639,6 +472,7 @@ def main():
             else None
         )
 
+        usage_seg = ""
         for bw in range(12, 3, -1):
             fh_bar, _ = usage_bar(fh_rem, width=bw, col=fh_col, pace_pct=fh_pace)
             fh_label = f"5h: {fh_bar} {seg_pct(fh_rem, fh_col)}"
