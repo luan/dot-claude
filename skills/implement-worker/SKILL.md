@@ -70,9 +70,16 @@ Implement task <task-id>.
 ## Protocol
 1. Read every file in scope + 2-3 nearby test files to learn conventions.
    TDD: failing test → red → implement → green. No test infra → note, implement directly.
-2. Build + test. Same root error 2x → stop + report. 3 distinct errors → report all, stop.
-3. Self-check: re-read changed files. Remove debug artifacts, low-value comments, unused imports. Flatten nesting via early returns. Apply language-idiomatic patterns.
-4. Completion report: categorize each changed file as ✅ VERIFIED (test/build confirms correctness) or 👁️ UNVERIFIED_VISUAL (compiles but visual correctness not confirmed — no multimodal). Never claim visual correctness you didn't test.
+2. **Before writing new code**, verify assumptions and search for existing patterns:
+   - If the design depends on how an external field/API behaves (e.g., "filter by author_id"), read the source definition to verify the assumption. A field named "author" might mean "original creator" not "last modifier."
+   - Search the codebase for existing utilities before writing new ones (version strings, environment detection, header construction, error types). Use Grep to find similar patterns. Reuse > rewrite.
+   - For functions returning tuples/structs, account for EVERY return value. Never discard a return value with _ unless you've confirmed it's truly unused by all consumers.
+   - Never silently fall back to a default on error — especially not to a production URL or permissive state. Propagate errors or at minimum log a warning.
+   - For API calls that may return partial results (pagination, batch limits), handle all pages or warn about truncation.
+   - For error handling, distinguish between transient (network), permanent (auth), and cancellation errors. Don't map all errors to one type.
+3. Build + test. Same root error 2x → stop + report. 3 distinct errors → report all, stop.
+4. Self-check: re-read changed files. Remove debug artifacts, low-value comments, unused imports. Flatten nesting via early returns. Apply language-idiomatic patterns.
+5. Completion report: categorize each changed file as ✅ VERIFIED (test/build confirms correctness) or 👁️ UNVERIFIED_VISUAL (compiles but visual correctness not confirmed — no multimodal). Never claim visual correctness you didn't test.
 
 ## Rules
 - TDD first. Standards: rules/test-quality.md

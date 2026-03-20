@@ -82,6 +82,34 @@
         "Runs git diff --stat HEAD~N where N = number of completed children (3). Collects file paths from the output.",
         "Stores metadata.completion_summary with files_changed, commit_range (base..head SHAs), and a summary derived from child task subjects — not a generic description."
       ]
+    },
+    {
+      "id": 10,
+      "prompt": "/develop t400\n\nscope task approved. design says 'Phase 1: Add dedup filter — filter incoming records by originator_id to skip self-authored updates.' The design assumes originator_id tracks who last modified a record.",
+      "expected_output": "During task creation (Step 1b), the task's Approach section should include a verification step like 'Read source definition of originator_id to verify whether it means last modifier or original creator.' The Domain Assumptions to Verify section should flag this as a critical assumption that could cause data loss if wrong.",
+      "expectations": [
+        "Created tasks include verification of the originator_id semantics in their Approach or Assumptions section",
+        "Does NOT blindly accept the design's assumption about originator_id — flags it as something the worker must verify before implementing"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "/develop t500\n\nscope task approved. design says 'Phase 1: Add client version header. Create a helper to build the version string from app bundle info. Phase 2: Add environment header using compile-time DEBUG flag.' Two phases, 2 files each.",
+      "expected_output": "During task creation, the task for Phase 1 should include 'Search codebase for existing version string utilities before writing a new one' in the Approach section. This prevents reimplementing existing helpers that will diverge over time.",
+      "expectations": [
+        "Phase 1 task includes searching for existing version/bundle utilities in the codebase before creating new ones",
+        "Does NOT assume the design's approach of writing a new helper is correct — adds a verification step"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "/develop t600\n\nscope task approved. design says 'Phase 1: Build CLI with subcommands for our internal API. Phase 2: Add environment routing (staging/prod). Phase 3: Add authentication.' 3 phases, ~15 files total, creating a whole new CLI tool",
+      "expected_output": "For a whole-tool generation (15+ files), tasks should include upstream prevention steps: Phase 2 (environment routing) should include 'Never silently fall back to production on invalid input — propagate errors.' Phase 1 should include 'Handle API pagination — verify whether endpoints batch results.' Auth phase should include 'Distinguish error types: network vs auth vs cancellation.'",
+      "expectations": [
+        "Environment routing task includes safe-default verification — no silent fallback to production on error",
+        "API interaction tasks include pagination awareness — check for batch limits in server responses",
+        "Task descriptions are detailed enough that workers won't silently introduce the common bug patterns"
+      ]
     }
   ]
 }

@@ -60,6 +60,66 @@
         "Recognizes #<PR> input as reason for skipping simplify (can't edit remote code)",
         "Uses gh pr diff 87 to get the diff"
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "/review -- added a dedup filter to skip processing updates we already sent. The filter checks `originator_id` on each incoming record to see if we authored it, and skips records where originator_id matches our client ID. about 4 files in src/replication/",
+      "expected_output": "Reviewer agents should question the foundational assumption: does originator_id track the LAST modifier or the ORIGINAL creator? If it's set at creation and never updated, the filter would incorrectly skip legitimate updates from other clients to records we originally created. This is a design-level semantic issue, not a code-quality issue.",
+      "expectations": [
+        "At least one reviewer questions the semantics of originator_id — specifically whether it represents 'last modifier' or 'original creator'",
+        "Flags that the filter may incorrectly exclude legitimate remote updates to self-created records if originator_id is immutable",
+        "This is classified as Critical or High severity (potential data loss), not Medium or Low"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "/review -- added signed device authentication. The `generateSignedToken()` function returns `(deviceId: String, signature: String)` and we send the signature as the `X-Device-Id` header. about 3 files changed",
+      "expected_output": "Reviewer should catch that the tuple destructuring discards deviceId and sends signature in its place. The server needs the actual device ID to verify the signature (since the signed payload includes the device ID). This is a value-correctness-across-boundary bug.",
+      "expectations": [
+        "Flags that the deviceId return value is likely being discarded (via _ or unused binding) while signature is sent as X-Device-Id",
+        "Notes that the server needs the actual device ID to verify the signature, so sending only the signature is semantically wrong",
+        "Classified as High severity — authentication will silently fail or be unverifiable"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "/review -- built a CLI tool with 8 subcommands for our internal API. it parses --environment flag to pick staging vs production URLs. about 15 files, new Go CLI",
+      "expected_output": "For a new CLI with environment routing, reviewers should specifically check: (1) what happens when --environment is invalid — silent fallback to production is a security risk, (2) whether error messages double-wrap, (3) whether API calls handle pagination when the server batches responses, (4) whether input validation matches what the code assumes (e.g., mnemonic word count).",
+      "expectations": [
+        "Flags silent fallback to production URL on invalid --environment as a security concern (or at minimum, a correctness issue)",
+        "Checks whether API responses that may be paginated/batched are handled completely, or if results are silently truncated",
+        "Uses File-Split mode since 15 files meets the threshold"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "/review -- added HTTP request headers for client version and environment. hand-rolled a version string from Bundle info dictionary. also added a compile-time #if DEBUG block for environment detection. 2 files changed",
+      "expected_output": "Reviewer should search the codebase for existing version string utilities before accepting the hand-rolled implementation. If helpers like `AppInfo.fullVersion` or `Bundle.displayVersion` exist, flag the reimplementation as it will diverge when the shared utility is updated. Should also flag if static computed property re-evaluates on every call when values are constant.",
+      "expectations": [
+        "Flags hand-rolled version string as potential reimplementation of existing codebase utility",
+        "Suggests searching for existing helpers (e.g., AppInfo, Bundle extensions) before accepting new implementation",
+        "If a static computed property reads from a dictionary on every access for values that never change, suggests static let instead"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "/review -- error handling changes in our HTTP client. all token refresh errors now map to a single error type. also added a new error conformance for better logging. 3 files in src/network/",
+      "expected_output": "Reviewer should flag error type conflation: mapping all token refresh errors to one type (e.g., 'session expired') loses the distinction between transient network errors, permanent auth failures, and task cancellation. Each needs different handling — network errors should retry, auth failures should re-authenticate, cancellation should propagate.",
+      "expectations": [
+        "Flags that catch-all error mapping loses error specificity — transient network errors, auth failures, and cancellation are conflated",
+        "Notes that user-facing messages may be misleading (e.g., showing 'session expired' for a network blip)",
+        "Classified as Medium or higher — wrong error classification causes wrong recovery behavior"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "/review -- added a periodic background task that runs every 30 seconds. the task body uses `guard let self else { return }` after a weak self capture, creating a strong reference for the loop duration. also uses a nonisolated(unsafe) static var for a one-time setup flag. 2 files changed in src/background/",
+      "expected_output": "Reviewer should flag: (1) retain cycle risk if the strong self reference inside the periodic task body keeps the owner alive for the entire loop duration, preventing deallocation, (2) whether nonisolated(unsafe) is justified by actor isolation context — if the enclosing class is @MainActor, it may be safe but should be documented why.",
+      "expectations": [
+        "Flags the strong self capture in periodic task as a potential retain cycle / prevents deallocation",
+        "For nonisolated(unsafe) static var, checks whether the enclosing type's actor isolation makes it safe rather than blindly flagging as a race condition",
+        "Does NOT flag nonisolated(unsafe) as a bug if the class is @MainActor — recognizes the type system already provides the guarantee"
+      ]
     }
   ]
 }

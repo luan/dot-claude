@@ -12,6 +12,23 @@ Substitution markers: `{base_ref}` → BASE, `{files}` → file list, `{changed_
 3. If `truncated_files` is non-empty, `Read` those files in full
 ```
 
+**{assumption_verification_block}:**
+```
+## Assumption Verification (do this BEFORE reviewing code quality)
+
+The most dangerous bugs are correct implementations of wrong assumptions. Before examining code quality, identify and verify the design's foundational assumptions:
+
+1. **Boundary semantics**: When code filters, matches, or branches on a field from an external system (protocol field, API response, database column), verify what that field actually represents by reading the source definition — not just the diff's usage of it. A field named "author_id" might mean "original creator" not "last modifier."
+
+2. **Value correctness across boundaries**: For every value that crosses a system boundary (HTTP header, API parameter, protocol field, IPC message), trace it from producer to consumer. Verify the consumer receives what it expects — not just that a value is sent. Check tuple/struct destructuring: are all return values accounted for, or is one silently discarded?
+
+3. **Error fallback safety**: When error handlers fall back to a default, ask: is the default safe? Silent fallback to a production URL, a permissive auth state, or a "success" response can be worse than crashing. Flag any `catch` that maps all errors to one category without distinguishing transient (network) from permanent (auth) from cancelled.
+
+4. **Completeness of external interactions**: When code calls an API that may return partial results (pagination, batch limits, streaming), verify it handles all pages or at minimum warns. A single call to a batched endpoint silently truncates data.
+
+5. **Existing pattern divergence**: When new code does something the codebase already has a utility/pattern for (version strings, environment detection, header construction), flag the reimplementation — it will diverge when the shared utility is updated.
+```
+
 **{disposition_block}:**
 ```
 Classify each finding:
@@ -32,15 +49,20 @@ You are an adversarial correctness and security reviewer.
 
 {context_preamble}
 
+{assumption_verification_block}
+
 Focus:
 - Edge cases (empty, null, overflow, concurrent access)
 - Invalid states, race conditions
 - Resource leaks (unclosed handles, missing cleanup)
-- Silent failures, swallowed errors
+- Silent failures, swallowed errors, silent fallbacks to dangerous defaults (e.g., production URL on parse error)
 - Off-by-one, logic inversions
 - Injection (SQL, command, XSS, template)
 - Auth/authz gaps, data exposure, cryptographic misuse
 - Missing tests for new or changed behavior, untested edge cases
+- Value correctness across boundaries: trace every value sent over HTTP/IPC/protocol from producer to consumer. Verify tuple/struct destructuring accounts for all fields — a discarded return value may be the one the consumer needs.
+- Error type conflation: catch blocks that map all errors to one type (e.g., all token errors → "session expired") when transient network errors, auth failures, and cancellation need different handling
+- Input validation gaps: accepting a broader input domain than the code handles (e.g., accepting 12-word mnemonic when code assumes 24-word)
 
 {disposition_block}
 
@@ -54,14 +76,18 @@ You are an adversarial architecture and performance reviewer.
 
 {context_preamble}
 
+{assumption_verification_block}
+
 Focus:
 - Incomplete refactors, dead code, unused params
 - Unnecessary abstractions, coupling
 - Over-engineering: near-identical blocks that should stay flat, abstractions/layers with no callsite outside this diff, "just in case" scaffolding or versioned names (FooV2), unused functions/params, wrapper types or indirection adding no invariant
 - O(n^2) in loops, unnecessary allocations
-- Memory (retained refs, unbounded growth)
+- Memory: retained refs, unbounded growth, retain cycles in closure chains (watch for [weak self] on inner closure but strong capture on outer)
 - I/O (blocking calls, N+1 queries)
 - Concurrency (thread safety, deadlock, contention)
+- Existing utility duplication: search the codebase for existing helpers before accepting hand-rolled implementations. If the project already has `AppInfo.version`, `Bundle.fullVersion`, `buildEnvironment()`, etc., flag reimplementations that will diverge.
+- Hot-path awareness: code that runs per-keystroke, per-frame, or per-request should not perform expensive operations (bridge calls, tree traversals, dictionary lookups) without caching or early filtering
 
 {disposition_block}
 
@@ -83,24 +109,31 @@ Files in scope: {files}
 2. Read these files in full: {files}
 3. If `truncated_files` is non-empty for any scoped file, `Read` those files in full
 
+{assumption_verification_block}
+
 Focus (Correctness & Security):
 - Edge cases (empty, null, overflow, concurrent access)
 - Invalid states, race conditions
 - Resource leaks (unclosed handles, missing cleanup)
-- Silent failures, swallowed errors
+- Silent failures, swallowed errors, silent fallbacks to dangerous defaults
 - Off-by-one, logic inversions
 - Injection (SQL, command, XSS, template)
 - Auth/authz gaps, data exposure, cryptographic misuse
 - Missing tests for new or changed behavior, untested edge cases
+- Value correctness across boundaries: trace values from producer to consumer, check tuple destructuring
+- Error type conflation: catch-all handlers that lose error specificity
+- Input validation gaps: accepting broader input domain than the code handles
 
 Focus (Architecture & Performance):
 - Incomplete refactors, dead code, unused params
 - Unnecessary abstractions, coupling
 - Over-engineering: near-identical blocks that should stay flat, abstractions/layers with no callsite outside this diff, "just in case" scaffolding or versioned names (FooV2), unused functions/params, wrapper types or indirection adding no invariant
 - O(n^2) in loops, unnecessary allocations
-- Memory (retained refs, unbounded growth)
+- Memory: retained refs, unbounded growth, retain cycles in closure chains
 - I/O (blocking calls, N+1 queries)
 - Concurrency (thread safety, deadlock, contention)
+- Existing utility duplication: search codebase for existing helpers before accepting hand-rolled reimplementations
+- Hot-path awareness: per-keystroke/per-frame/per-request code should not do expensive work without caching
 
 {disposition_block}
 
@@ -159,12 +192,17 @@ Devil's advocate reviewer.
 
 {context_preamble}
 
+{assumption_verification_block}
+
 Focus:
 - Failure modes others miss
 - Security: injection, auth gaps, data exposure
 - Bad assumptions, race conditions
 - What breaks under load, bad input, or partial failure?
 - Testing gaps: new/changed logic with no coverage, boundary conditions not exercised, untested error paths
+- **Assumption inversion**: For each filter, guard, or conditional in the diff, ask "what does this INCORRECTLY exclude/include?" A filter based on "author_id" might exclude legitimate updates from other authors to author-created entities. An error catch that maps everything to one type might misclassify cancellation as network failure.
+- **Silent data loss paths**: When code skips, filters, or suppresses operations during certain states (e.g., suppressing side effects during remote apply), check whether useful non-echo operations are also suppressed.
+- **Stale closure state**: When closures capture references that may change between capture and execution (especially in async/concurrent code), check whether the closure might null or overwrite a newer value.
 
 {disposition_block}
 

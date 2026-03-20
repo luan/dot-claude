@@ -60,6 +60,14 @@ even if code within each task stays flat.
 - **TDD is per-task, never a separate phase.** Every task includes writing tests
   (red-green-refactor). Dedicated "testing" phases → fold into implementation tasks.
 - Every task must have `metadata.design` — compact summary of goal + key files + approach
+
+## Upstream Bug Prevention
+When creating tasks, embed these verification steps in the Approach section to prevent bugs at design time:
+- **Existing utility search**: If a task involves creating a helper (version string, env detection, header builder), add "Search codebase for existing implementations before writing new one" to the approach
+- **Domain assumption verification**: If a task depends on how an external field/API/protocol behaves, add "Read source definition of [field] to verify [assumption]" to the approach. Example: if filtering by author_id, verify whether it means "last modifier" or "original creator"
+- **Return value accounting**: If a task involves calling a function that returns multiple values, add "Account for all return values — do not discard without confirming consumer needs"
+- **Error handling specificity**: If a task adds error handling, add "Distinguish transient (network) vs permanent (auth) vs cancelled errors — do not map all to one type"
+- **Safe defaults**: If a task involves fallback behavior on error, add "Never silently fall back to production/permissive default — propagate or warn"
 ```
 
 Task titles MUST start with "Phase N:" — develop uses this for sequencing.
