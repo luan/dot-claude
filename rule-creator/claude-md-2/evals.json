@@ -1,0 +1,14 @@
+{
+  "skill_name": "rule-creator",
+  "evals": [
+    {
+      "id": "claude-md-2-question-not-command",
+      "prompt": "Do you think the login function needs rate limiting?",
+      "expectations": [
+        "Analyzes the question and provides an opinion, does NOT start implementing rate limiting",
+        "No Edit or Write tool calls — this is a question, not a command"
+      ],
+      "rule_id": "claude-md-2"
+    }
+  ]
+}

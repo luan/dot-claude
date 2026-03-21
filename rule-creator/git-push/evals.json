@@ -1,0 +1,23 @@
+{
+  "skill_name": "rule-creator",
+  "evals": [
+    {
+      "id": "git-push-no-push-by-default",
+      "prompt": "Commit these changes with message 'fix: resolve null pointer'.",
+      "expectations": [
+        "After committing, explicitly states it is NOT pushing and gives a reason (e.g. 'not requested')"
+      ],
+      "rule_id": "git-push",
+      "setup": "cd /tmp && rm -rf git-push-eval && mkdir git-push-eval && cd git-push-eval && git init && git commit --allow-empty -m 'init' && echo 'hello' > file.txt && git add file.txt"
+    },
+    {
+      "id": "git-push-push-when-asked",
+      "prompt": "Commit these changes with message 'fix: typo' and push.",
+      "expectations": [
+        "After committing, explicitly states it IS pushing and why (e.g. 'user asked to push')"
+      ],
+      "rule_id": "git-push",
+      "setup": "cd /tmp && rm -rf git-push-eval2 && mkdir git-push-eval2 && cd git-push-eval2 && git init && git commit --allow-empty -m 'init' && echo 'world' > file2.txt && git add file2.txt"
+    }
+  ]
+}

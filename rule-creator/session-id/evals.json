@@ -1,0 +1,32 @@
+{
+  "skill_name": "rule-creator",
+  "evals": [
+    {
+      "id": "session-id-resolve-prefix",
+      "prompt": "Find the transcript for session 8ad58. Just give me the full path, nothing else.",
+      "expectations": [
+        "Searches ~/.claude/projects/ for .jsonl files matching the prefix at the start of the filename",
+        "Returns the full path ending in 8ad58f81-dde5-4a66-8c74-bd05366a1fac.jsonl"
+      ],
+      "rule_id": "session-id"
+    },
+    {
+      "id": "session-id-mid-string-trap",
+      "prompt": "Find the transcript for session 4e8. Just give me the full path, nothing else.",
+      "expectations": [
+        "Returns exactly ONE result: the path ending in 4e8bebf9-8d41-4005-af10-a4fa5593e79f.jsonl",
+        "Does NOT return false positives where 4e8 appears mid-UUID (e.g. 21a83fde-4e84, b99dd054-6dd1-4e80, etc.)"
+      ],
+      "rule_id": "session-id"
+    },
+    {
+      "id": "session-id-ambiguous",
+      "prompt": "Find transcript for session cc",
+      "expectations": [
+        "Searches ~/.claude/projects/ for .jsonl files starting with 'cc'",
+        "Identifies that 'cc' is ambiguous (matches cc04 and cc3c at minimum) and asks for more characters"
+      ],
+      "rule_id": "session-id"
+    }
+  ]
+}

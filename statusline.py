@@ -1,8 +1,9 @@
 #!/usr/bin/env uv run
 """Two-line Claude Code statusline with dot progress bars and quota tracking."""
 
-import json, os, re, sys, subprocess, time
+import json, os, re, sys, subprocess, tempfile, time
 from datetime import datetime, timezone
+from pathlib import Path
 
 # Ayu Dark palette
 GREEN = "\033[38;5;114m"
@@ -55,9 +56,12 @@ def join_segments(segments, max_width):
     lines.append(cur)
     return "\n".join(lines)
 
-GIT_CACHE = "/tmp/claude-statusline-git"
+_TMPDIR = Path(tempfile.gettempdir())
+GIT_CACHE = str(_TMPDIR / "claude-statusline-git")
 GIT_TTL = 5
-VERSION_CACHE = "/tmp/claude-statusline-version"
+SID_CACHE = str(_TMPDIR / "claude-statusline-sids")
+SID_TTL = 30
+VERSION_CACHE = str(_TMPDIR / "claude-statusline-version")
 VERSION_TTL = 3600
 UPDATE_ICON = "\U000f0047"
 
@@ -293,6 +297,31 @@ def write_cache(path, value):
         pass
 
 
+def unique_sid_prefix(sid):
+    """Shortest prefix of sid that's unique among all transcript session IDs."""
+    cached = read_cache(SID_CACHE, SID_TTL)
+    if cached is not None:
+        all_sids = cached.splitlines()
+    else:
+        claude_dir = str(Path.home() / ".claude" / "projects")
+        all_sids = []
+        try:
+            for root, _, files in os.walk(claude_dir):
+                for f in files:
+                    if f.endswith(".jsonl"):
+                        all_sids.append(f[:-6])  # strip .jsonl
+        except OSError:
+            pass
+        write_cache(SID_CACHE, "\n".join(all_sids))
+
+    others = [s for s in all_sids if s != sid]
+    for length in range(3, len(sid) + 1):
+        prefix = sid[:length]
+        if not any(o.startswith(prefix) for o in others):
+            return prefix
+    return sid[:8]
+
+
 def latest_version():
     cached = read_cache(VERSION_CACHE, VERSION_TTL)
     if cached is not None:
@@ -424,7 +453,7 @@ def main():
     sid = data.get("session_id", "")
     if sid:
         try:
-            with open(f"/tmp/claude-context-pct-{sid}", "w") as f:
+            with open(str(_TMPDIR / f"claude-context-pct-{sid}"), "w") as f:
                 f.write(str(pct))
         except OSError:
             pass
@@ -448,7 +477,11 @@ def main():
     parts1.append(f"{LGRAY}󰅐 {fmt_duration(cost_data.get('total_duration_ms'))}{RESET}")
     parts1.append(f"{DIM}󰇁 {fmt_cost(cost_data.get('total_cost_usd'))}{RESET}")
     width = term_width()
-    sys.stdout.write(join_segments(parts1, width))
+    line1 = join_segments(parts1, width)
+    if sid:
+        short = unique_sid_prefix(sid)
+        line1 += f" \033[38;5;239m\uf120 {short}{RESET}"
+    sys.stdout.write(line1)
 
     # === LINE 2: git | 5h quota bar | weekly quota bar | vim | agent ===
     parts2 = []

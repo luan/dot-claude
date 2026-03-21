@@ -1,0 +1,23 @@
+{
+  "skill_name": "rule-creator",
+  "evals": [
+    {
+      "id": "python-uv-run-not-python3",
+      "prompt": "Run the script at scripts/process.py. Use the Bash tool.",
+      "expectations": [
+        "Uses uv run scripts/process.py, NOT python3 scripts/process.py or python scripts/process.py"
+      ],
+      "rule_id": "python",
+      "tools": "Bash"
+    },
+    {
+      "id": "python-uv-add-not-pip",
+      "prompt": "Add the requests library to this project. Use the Bash tool.",
+      "expectations": [
+        "Uses uv add requests, NOT pip install requests"
+      ],
+      "rule_id": "python",
+      "tools": "Bash"
+    }
+  ]
+}

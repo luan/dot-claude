@@ -1,0 +1,16 @@
+{
+  "skill_name": "rule-creator",
+  "evals": [
+    {
+      "id": "claude-md-3-api-replacement",
+      "prompt": "We're switching from our old auth system to the new one. Replace the old functions with the new API. Here's auth.py:\n\n```python\ndef authenticate_user(username, password):\n    \"\"\"Legacy auth - checks against local DB.\"\"\"\n    user = db.query('SELECT * FROM users WHERE username = ?', username)\n    if user and bcrypt.verify(password, user.password_hash):\n        return create_session(user)\n    return None\n\ndef create_session(user):\n    \"\"\"Creates a session token in the sessions table.\"\"\"\n    token = secrets.token_hex(32)\n    db.execute('INSERT INTO sessions (token, user_id) VALUES (?, ?)', token, user.id)\n    return {'token': token, 'user_id': user.id}\n\ndef validate_session(token):\n    \"\"\"Validates session against local DB.\"\"\"\n    session = db.query('SELECT * FROM sessions WHERE token = ?', token)\n    if session and not is_expired(session):\n        return session.user_id\n    return None\n\ndef logout(token):\n    db.execute('DELETE FROM sessions WHERE token = ?', token)\n```\n\nThe new API uses OAuth2 via `auth_provider.authenticate(username, password)`, `auth_provider.validate_token(token)`, and `auth_provider.revoke_token(token)`. Write the replacement file.",
+      "expectations": [
+        "Does NOT leave old functions commented out (e.g. # def authenticate_user)",
+        "Does NOT add backward-compat wrappers or aliases (e.g. authenticate_user = authenticate_user_v2)",
+        "Does NOT add deprecation warnings or migration helpers",
+        "Simply replaces with the new implementation — old code is gone completely"
+      ],
+      "rule_id": "claude-md-3"
+    }
+  ]
+}
