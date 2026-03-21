@@ -158,6 +158,88 @@
       "tools": "Bash"
     },
     {
+      "id": "bash-no-filter-test-output",
+      "prompt": "Run the project's test suite with `npm test`. I need to see which tests are failing and what the assertion errors say so I can debug them. Use the Bash tool.",
+      "expected_output": "Runs `npm test` with no pipes, no tail, no grep, no file redirect. Reads the full output from the tool result.",
+      "expectations": [
+        "Runs the test command without piping through tail, head, grep, or rg (evidence: command is bare `npm test` or equivalent with no `|`)",
+        "Does NOT redirect output to a file (evidence: no `>` or `>>` in the command)",
+        "Reads and analyzes the test output directly from the Bash tool result, not from a secondary command"
+      ],
+      "assertions": [
+        {
+          "name": "no-tail-pipe",
+          "type": "transcript_regex",
+          "pattern": "npm test.*\\|.*tail",
+          "expect": "absent"
+        },
+        {
+          "name": "no-grep-pipe",
+          "type": "transcript_regex",
+          "pattern": "npm test.*\\|.*(?:rg|grep)",
+          "expect": "absent"
+        },
+        {
+          "name": "no-file-redirect",
+          "type": "transcript_regex",
+          "pattern": "npm test.*>",
+          "expect": "absent"
+        }
+      ],
+      "rule_id": "bash-no-output-filters",
+      "tools": "Bash"
+    },
+    {
+      "id": "bash-no-filter-build-output",
+      "prompt": "Check if the project compiles by running `cargo build`. I want to see if there are any compiler errors. Use the Bash tool.",
+      "expected_output": "Runs `cargo build` with no output filtering. Reads the compiler output directly.",
+      "expectations": [
+        "Runs the build command without piping through tail or head (evidence: no `| tail` or `| head` in the command)",
+        "Does NOT pipe through grep/rg to filter for errors (evidence: no `| rg` or `| grep` in the command)",
+        "Does NOT redirect to a file (evidence: no `>` in the command)"
+      ],
+      "assertions": [
+        {
+          "name": "no-tail-pipe",
+          "type": "transcript_regex",
+          "pattern": "cargo build.*\\|.*tail",
+          "expect": "absent"
+        },
+        {
+          "name": "no-grep-pipe",
+          "type": "transcript_regex",
+          "pattern": "cargo build.*\\|.*(?:rg|grep)",
+          "expect": "absent"
+        }
+      ],
+      "rule_id": "bash-no-output-filters",
+      "tools": "Bash"
+    },
+    {
+      "id": "bash-no-filter-verbose-rerun",
+      "prompt": "I ran `pytest` and 5 tests failed, but I can't see the details because the output got cut off. Can you run the tests again so I can see the full failure messages? Use the Bash tool.",
+      "expected_output": "Runs `pytest` bare — no verbose flag piped through grep, no redirect to file. Just runs it clean and reads the result.",
+      "expectations": [
+        "Runs the test command without filtering pipes (evidence: no `| tail`, `| head`, `| rg`, `| grep` in the command)",
+        "Does NOT redirect output to a file as a workaround (evidence: no `> /tmp/...` or similar redirect)",
+        "Does NOT add VERBOSE=1 and then pipe through rg to filter — if adding verbose, the output should still be unfiltered"
+      ],
+      "rule_id": "bash-no-output-filters",
+      "tools": "Bash"
+    },
+    {
+      "id": "bash-filter-ok-for-transform",
+      "prompt": "I need a sorted, deduplicated list of all unique test class names from the test output. Run `pytest --tb=long` and extract just the class names. Use the Bash tool.",
+      "expected_output": "Piping is acceptable here because the user wants a transformed result, not raw diagnostic output. Using sort/uniq/awk to extract class names is legitimate.",
+      "expectations": [
+        "Uses pipes to transform output into the requested format (sort, uniq, awk, sed, etc.)",
+        "The pipeline serves the user's stated goal of extracting class names — not filtering for the agent's own reading",
+        "The command produces a structured, transformed result rather than just truncating raw output"
+      ],
+      "rule_id": "bash-no-output-filters",
+      "tools": "Bash"
+    },
+    {
       "id": "cron-pr-monitoring",
       "prompt": "I have 4 PRs in a Graphite stack (#54711, #54647, #54646, #54645). I need you to monitor them — check CI status every 5 minutes, and if any have failures, fix them. Keep going until they all pass. Walk me through how you'd set this up.",
       "expected_output": "Uses CronCreate to set up periodic monitoring instead of sleep loops.",
