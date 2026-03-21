@@ -20,7 +20,7 @@ dispatched = set(t.id for t in spawned)  # all task_ids ever dispatched (avoid r
 
 # Rolling loop
 while tasks remain incomplete:
-  Wait for ANY worker to complete (Task returns or SendMessage received).
+  Wait for ANY worker to complete (Agent returns or SendMessage received).
 
   On each completion:
     0. If worker output contains "RESCOPE:" → halt all dispatch, break loop immediately.

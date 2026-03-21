@@ -3,17 +3,17 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "hey can you /review my changes? i touched a bunch of files in src/auth/ and src/api/ — mainly adding rate limiting to the login endpoint. no special flags, just the default review",
+      "prompt": "hey can you /review my changes? i touched a bunch of files in src/auth/ and src/api/ \u2014 mainly adding rate limiting to the login endpoint. no special flags, just the default review",
       "expected_output": "Gathers context via ct tool gitcontext (not separate git commands), creates a review task, dispatches two reviewer subagents (Correctness & Security + Architecture & Performance) in a single message, then consolidates their findings into a phased summary with FIX table, IGNORE section, and verdict footer.",
       "expectations": [
         "Runs ct tool gitcontext with --stat --cochanges to collect context in a single command rather than multiple separate git calls",
-        "Dispatches all review work to Task subagents — main thread only gathers context and consolidates, never performs review analysis itself",
+        "Dispatches all review work to Task subagents \u2014 main thread only gathers context and consolidates, never performs review analysis itself",
         "Uses Solo mode (two lenses: Correctness & Security + Architecture & Performance) since no --team flag and fewer than 15 files"
       ]
     },
     {
       "id": 2,
-      "prompt": "/review — we refactored the entire data layer. git diff --name-only shows 22 files across src/models/, src/repos/, src/services/, tests/models/, tests/repos/. no --team flag",
+      "prompt": "/review \u2014 we refactored the entire data layer. git diff --name-only shows 22 files across src/models/, src/repos/, src/services/, tests/models/, tests/repos/. no --team flag",
       "expected_output": "Selects File-Split mode because 22 files exceeds the 15-file threshold. Groups files into ~8-file chunks and dispatches one combined-lens reviewer agent per group, all in a single message. Consolidation merges findings across groups.",
       "expectations": [
         "Selects File-Split mode (not Solo) because 22 files exceeds the >=15 threshold",
@@ -33,17 +33,17 @@
     },
     {
       "id": 4,
-      "prompt": "hey can you /review my changes? i added a new caching layer in src/cache/ — about 6 files. no special flags",
+      "prompt": "hey can you /review my changes? i added a new caching layer in src/cache/ \u2014 about 6 files. no special flags",
       "expected_output": "Runs Step 1 (Scope), then Step 1.5 (Simplify Pre-pass) calling Skill('simplify') before dispatching reviewers. Then proceeds with Solo mode review.",
       "expectations": [
         "Invokes Skill('simplify') or equivalent simplify pre-pass before dispatching reviewers",
         "Simplify pre-pass occurs after scoping and before setup/reviewer dispatch",
-        "Does NOT skip simplify — no skip conditions are met (no --no-simplify, not a PR, not --continue)"
+        "Does NOT skip simplify \u2014 no skip conditions are met (no --no-simplify, not a PR, not --continue)"
       ]
     },
     {
       "id": 5,
-      "prompt": "/review --no-simplify — just added some utility functions, already ran simplify separately",
+      "prompt": "/review --no-simplify \u2014 just added some utility functions, already ran simplify separately",
       "expected_output": "Skips Step 1.5 (Simplify Pre-pass) because --no-simplify flag is set. Proceeds directly from Step 1 to Step 2.",
       "expectations": [
         "Skips or explicitly omits the simplify pre-pass",
@@ -66,7 +66,7 @@
       "prompt": "/review -- added a dedup filter to skip processing updates we already sent. The filter checks `originator_id` on each incoming record to see if we authored it, and skips records where originator_id matches our client ID. about 4 files in src/replication/",
       "expected_output": "Reviewer agents should question the foundational assumption: does originator_id track the LAST modifier or the ORIGINAL creator? If it's set at creation and never updated, the filter would incorrectly skip legitimate updates from other clients to records we originally created. This is a design-level semantic issue, not a code-quality issue.",
       "expectations": [
-        "At least one reviewer questions the semantics of originator_id — specifically whether it represents 'last modifier' or 'original creator'",
+        "At least one reviewer questions the semantics of originator_id \u2014 specifically whether it represents 'last modifier' or 'original creator'",
         "Flags that the filter may incorrectly exclude legitimate remote updates to self-created records if originator_id is immutable",
         "This is classified as Critical or High severity (potential data loss), not Medium or Low"
       ]
@@ -78,13 +78,13 @@
       "expectations": [
         "Flags that the deviceId return value is likely being discarded (via _ or unused binding) while signature is sent as X-Device-Id",
         "Notes that the server needs the actual device ID to verify the signature, so sending only the signature is semantically wrong",
-        "Classified as High severity — authentication will silently fail or be unverifiable"
+        "Classified as High severity \u2014 authentication will silently fail or be unverifiable"
       ]
     },
     {
       "id": 9,
       "prompt": "/review -- built a CLI tool with 8 subcommands for our internal API. it parses --environment flag to pick staging vs production URLs. about 15 files, new Go CLI",
-      "expected_output": "For a new CLI with environment routing, reviewers should specifically check: (1) what happens when --environment is invalid — silent fallback to production is a security risk, (2) whether error messages double-wrap, (3) whether API calls handle pagination when the server batches responses, (4) whether input validation matches what the code assumes (e.g., mnemonic word count).",
+      "expected_output": "For a new CLI with environment routing, reviewers should specifically check: (1) what happens when --environment is invalid \u2014 silent fallback to production is a security risk, (2) whether error messages double-wrap, (3) whether API calls handle pagination when the server batches responses, (4) whether input validation matches what the code assumes (e.g., mnemonic word count).",
       "expectations": [
         "Flags silent fallback to production URL on invalid --environment as a security concern (or at minimum, a correctness issue)",
         "Checks whether API responses that may be paginated/batched are handled completely, or if results are silently truncated",
@@ -104,21 +104,120 @@
     {
       "id": 11,
       "prompt": "/review -- error handling changes in our HTTP client. all token refresh errors now map to a single error type. also added a new error conformance for better logging. 3 files in src/network/",
-      "expected_output": "Reviewer should flag error type conflation: mapping all token refresh errors to one type (e.g., 'session expired') loses the distinction between transient network errors, permanent auth failures, and task cancellation. Each needs different handling — network errors should retry, auth failures should re-authenticate, cancellation should propagate.",
+      "expected_output": "Reviewer should flag error type conflation: mapping all token refresh errors to one type (e.g., 'session expired') loses the distinction between transient network errors, permanent auth failures, and task cancellation. Each needs different handling \u2014 network errors should retry, auth failures should re-authenticate, cancellation should propagate.",
       "expectations": [
-        "Flags that catch-all error mapping loses error specificity — transient network errors, auth failures, and cancellation are conflated",
+        "Flags that catch-all error mapping loses error specificity \u2014 transient network errors, auth failures, and cancellation are conflated",
         "Notes that user-facing messages may be misleading (e.g., showing 'session expired' for a network blip)",
-        "Classified as Medium or higher — wrong error classification causes wrong recovery behavior"
+        "Classified as Medium or higher \u2014 wrong error classification causes wrong recovery behavior"
       ]
     },
     {
       "id": 12,
       "prompt": "/review -- added a periodic background task that runs every 30 seconds. the task body uses `guard let self else { return }` after a weak self capture, creating a strong reference for the loop duration. also uses a nonisolated(unsafe) static var for a one-time setup flag. 2 files changed in src/background/",
-      "expected_output": "Reviewer should flag: (1) retain cycle risk if the strong self reference inside the periodic task body keeps the owner alive for the entire loop duration, preventing deallocation, (2) whether nonisolated(unsafe) is justified by actor isolation context — if the enclosing class is @MainActor, it may be safe but should be documented why.",
+      "expected_output": "Reviewer should flag: (1) retain cycle risk if the strong self reference inside the periodic task body keeps the owner alive for the entire loop duration, preventing deallocation, (2) whether nonisolated(unsafe) is justified by actor isolation context \u2014 if the enclosing class is @MainActor, it may be safe but should be documented why.",
       "expectations": [
         "Flags the strong self capture in periodic task as a potential retain cycle / prevents deallocation",
         "For nonisolated(unsafe) static var, checks whether the enclosing type's actor isolation makes it safe rather than blindly flagging as a race condition",
-        "Does NOT flag nonisolated(unsafe) as a bug if the class is @MainActor — recognizes the type system already provides the guarantee"
+        "Does NOT flag nonisolated(unsafe) as a bug if the class is @MainActor \u2014 recognizes the type system already provides the guarantee"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "/review -- this is a bugfix for issue #412 where users see a crash on launch. commit message is 'fix(startup): add regression tests for launch crash'. diff shows 3 new test files under tests/startup/ and 0 production files changed",
+      "expected_output": "The bugfix scope validation (Step 2.5) detects that ALL changed files are test-only with zero production code changes. Since this is a bugfix, the review should FAIL with a Critical finding that tests alone cannot fix the reported bug. It must NOT declare PASS just because the test code looks correct.",
+      "expectations": [
+        "Classifies all changed files as test-only (zero production code changes)",
+        "Produces a FAIL verdict (not PASS or CHANGES_REQUESTED) \u2014 a bugfix with no production changes cannot fix the bug",
+        "Emits a Critical finding about missing production code changes, not just a warning or informational note"
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "/review -- small fix in src/utils/format.ts, about 30 lines changed. just fixing a date formatting edge case for leap years",
+      "expected_output": "With ~30 lines changed (well under 500), the review should use Solo-combined mode: a single reviewer agent covering all lenses (correctness, security, architecture, performance) rather than spawning two separate agents that would both read the same tiny diff.",
+      "expectations": [
+        "Uses Solo-combined mode (single agent) because diff is well under 500 lines",
+        "Does NOT spawn two separate reviewer agents (Correctness & Security + Architecture & Performance) for this small diff",
+        "The single agent covers all dimensions \u2014 correctness, security, architecture, performance \u2014 in one pass"
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "/review -- added emitSnapshot() calls after mutation methods across our sync drivers. FavoritesDriver.swift has emitSnapshot after moveItems, removeItems, and addItems. ConvergenceDriver.swift has emitSnapshot after moveItems and addItems but NOT after removeItems. HistoryDriver.swift has it after all three. 3 files changed",
+      "expected_output": "Reviewer should catch the asymmetry: ConvergenceDriver is missing emitSnapshot() after removeItems while the other two drivers have it after all three mutation methods. This is a pattern consistency bug \u2014 if FavoritesDriver and HistoryDriver emit after removeItems, ConvergenceDriver almost certainly should too.",
+      "expectations": [
+        "Flags that ConvergenceDriver is missing emitSnapshot() after removeItems while other drivers have it",
+        "Identifies this as a pattern consistency / symmetry issue across drivers, not just a missing call",
+        "Classified as High or Critical severity \u2014 inconsistent snapshot emission means stale state for ConvergenceDriver removals"
+      ]
+    },
+    {
+      "id": 16,
+      "prompt": "/review --perfection\n\nsmall 50-line diff adding a helper function to src/utils/format.ts. has a minor naming inconsistency (camelCase vs snake_case) and an unused import.",
+      "expected_output": "Perfection mode: uses Perspective (3 specialists) + Completeness + Codex regardless of diff size. All findings including nits are FIX. The fix loop runs until reviewers return zero findings. Does NOT stop at 4 iterations \u2014 keeps going. The naming inconsistency AND the unused import both get fixed, not just the critical stuff.",
+      "assertions": [
+        {
+          "name": "perfection_uses_perspective_mode",
+          "type": "output_contains",
+          "check": "Uses Perspective mode (3 specialists) despite small diff size \u2014 perfection overrides Solo-combined",
+          "description": "--perfection forces maximum reviewer coverage"
+        },
+        {
+          "name": "perfection_fixes_nits",
+          "type": "output_contains",
+          "check": "ALL findings including naming and unused import are classified as FIX, not IGNORE \u2014 perfection has zero tolerance",
+          "description": "--perfection treats everything as FIX"
+        },
+        {
+          "name": "perfection_loops_until_zero",
+          "type": "output_contains",
+          "check": "Fix loop has no iteration cap and continues until reviewers return zero findings",
+          "description": "--perfection loops until nothing remains"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "prompt": "/review\n\n3-file test-only diff (242 lines). all files are test helpers. BUT this is part of a bugfix pipeline \u2014 the commit message is fix(sync): replace .finished stubs with live streams",
+      "expected_output": "Simplify pre-pass runs (mandatory \u2014 not skipped for test-only code). Step 2.5 Bugfix Scope Validation catches that ALL files are test-only for a bugfix commit \u2192 verdict FAIL with Critical finding. Does NOT proceed to full review and rubber-stamp PASS.",
+      "assertions": [
+        {
+          "name": "simplify_runs_on_test_code",
+          "type": "output_contains",
+          "check": "Simplify pre-pass runs \u2014 it is NOT skipped with reasoning like \"test-only changes, low value\"",
+          "description": "Simplify is mandatory, no fabricated skip reasons"
+        },
+        {
+          "name": "bugfix_scope_catches_test_only",
+          "type": "output_contains",
+          "check": "Step 2.5 detects bugfix + test-only = FAIL verdict with Critical finding about missing production code",
+          "description": "Test-only changes for a bugfix = FAIL not PASS"
+        },
+        {
+          "name": "never_reviews_inline",
+          "type": "output_contains",
+          "check": "Dispatches at least one subagent for the review \u2014 does NOT do the review inline on the main thread",
+          "description": "No inline reviews allowed"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "prompt": "/review --against t508\n\nreviewing a bugfix diff. t508 is a spec task describing \"favorites reorder doesn't sync until restart\". the diff touches 3 test files and 0 production files.",
+      "expected_output": "Bug context from t508 is propagated to reviewer prompts via {bugfix_context_block}. Reviewers see the bug description and check whether the diff addresses it. Step 2.5 catches test-only for bugfix = FAIL.",
+      "assertions": [
+        {
+          "name": "bug_context_propagated",
+          "type": "output_contains",
+          "check": "Reviewer prompts include the bug description from t508 \u2014 reviewers know what problem the diff is supposed to fix",
+          "description": "--against propagates bug context to reviewer prompts"
+        },
+        {
+          "name": "reviewers_check_fix_completeness",
+          "type": "output_contains",
+          "check": "Reviewers verify the diff actually addresses the reported bug, not just that the code is internally correct",
+          "description": "Bug context enables fix completeness checking"
+        }
       ]
     }
   ]

@@ -27,6 +27,35 @@ The most dangerous bugs are correct implementations of wrong assumptions. Before
 4. **Completeness of external interactions**: When code calls an API that may return partial results (pagination, batch limits, streaming), verify it handles all pages or at minimum warns. A single call to a batched endpoint silently truncates data.
 
 5. **Existing pattern divergence**: When new code does something the codebase already has a utility/pattern for (version strings, environment detection, header construction), flag the reimplementation — it will diverge when the shared utility is updated.
+
+6. **Multi-driver/adapter symmetry**: When changes add or modify a pattern across multiple drivers, adapters, controllers, or protocol handlers (e.g., adding `emitSnapshot()` after mutations, adding logging to handlers, adding validation to endpoints), verify the pattern is applied consistently to ALL relevant code paths in ALL changed files. If DriverA has the pattern after both `moveItems` and `removeItems` but DriverB only has it after `moveItems`, flag the gap. Enumerate every mutation/action site per driver and cross-check.
+```
+
+**{perfection_block}** (only included when `--perfection`):
+```
+## Perfection Mode
+
+This review has zero tolerance. Every finding matters — nits, naming, style, everything.
+
+Additional requirements:
+- Trace every code path end-to-end, not just the diff surface
+- Read production code BEYOND the diff to check for latent issues the change exposes
+- For bugfixes: verify the diff actually solves the stated problem. If all changes are test-only for a bugfix, that is a Critical finding.
+- For refactors: verify no behavior changed unintentionally by checking callers
+- ALL findings are FIX disposition — nothing is IGNORE. The loop will continue until you have zero findings.
+```
+
+**{bugfix_context_block}** (included when `--against` references a bug or when invoked from a bugfix pipeline):
+```
+## Bug Context
+
+This review is for a bugfix. The diff should address the reported problem:
+{bug_description}
+
+Verify:
+1. Does the diff contain production code changes? Test-only changes cannot fix a production bug.
+2. Does the production change actually address the bug mechanism, not just related code?
+3. Trace the bug trigger path through the code — does the fix intercept it?
 ```
 
 **{disposition_block}:**
@@ -41,7 +70,48 @@ Assign a tier to each finding:
 - nitpick: style, naming, minor improvements
 ```
 
-## Solo Mode
+## Solo-Combined Mode (<500 diff lines)
+
+**Single Agent — All Lenses:**
+```
+You are an adversarial reviewer covering all dimensions: correctness, security, architecture, and performance.
+
+{context_preamble}
+
+{assumption_verification_block}
+
+Focus (Correctness & Security):
+- Edge cases (empty, null, overflow, concurrent access)
+- Invalid states, race conditions
+- Resource leaks (unclosed handles, missing cleanup)
+- Silent failures, swallowed errors, silent fallbacks to dangerous defaults (e.g., production URL on parse error)
+- Off-by-one, logic inversions
+- Injection (SQL, command, XSS, template)
+- Auth/authz gaps, data exposure, cryptographic misuse
+- Missing tests for new or changed behavior, untested edge cases
+- Value correctness across boundaries: trace every value sent over HTTP/IPC/protocol from producer to consumer. Verify tuple/struct destructuring accounts for all fields — a discarded return value may be the one the consumer needs.
+- Error type conflation: catch blocks that map all errors to one type when transient network errors, auth failures, and cancellation need different handling
+- Input validation gaps: accepting a broader input domain than the code handles
+
+Focus (Architecture & Performance):
+- Incomplete refactors, dead code, unused params
+- Unnecessary abstractions, coupling
+- Over-engineering: near-identical blocks that should stay flat, abstractions/layers with no callsite outside this diff, "just in case" scaffolding or versioned names (FooV2), unused functions/params, wrapper types or indirection adding no invariant
+- O(n^2) in loops, unnecessary allocations
+- Memory: retained refs, unbounded growth, retain cycles in closure chains
+- I/O (blocking calls, N+1 queries)
+- Concurrency (thread safety, deadlock, contention)
+- Existing utility duplication: search the codebase for existing helpers before accepting hand-rolled implementations
+- Hot-path awareness: per-keystroke/per-frame/per-request code should not do expensive work without caching
+
+{disposition_block}
+
+Output: table with Tier | Severity | Disposition | File:Line | Issue | Suggestion
+Then Simplicity table (same columns, severity capped at medium) for over-engineering findings.
+Then brief summary.
+```
+
+## Solo-Split Mode (≥500 diff lines)
 
 **Agent 1 — Correctness & Security:**
 ```
@@ -63,6 +133,7 @@ Focus:
 - Value correctness across boundaries: trace every value sent over HTTP/IPC/protocol from producer to consumer. Verify tuple/struct destructuring accounts for all fields — a discarded return value may be the one the consumer needs.
 - Error type conflation: catch blocks that map all errors to one type (e.g., all token errors → "session expired") when transient network errors, auth failures, and cancellation need different handling
 - Input validation gaps: accepting a broader input domain than the code handles (e.g., accepting 12-word mnemonic when code assumes 24-word)
+- Multi-driver/adapter symmetry: when changes add a pattern across multiple drivers/adapters/handlers, verify it's applied to ALL relevant code paths in ALL changed files — not just some
 
 {disposition_block}
 
@@ -123,6 +194,7 @@ Focus (Correctness & Security):
 - Value correctness across boundaries: trace values from producer to consumer, check tuple destructuring
 - Error type conflation: catch-all handlers that lose error specificity
 - Input validation gaps: accepting broader input domain than the code handles
+- Multi-driver/adapter symmetry: when changes add a pattern across multiple drivers/adapters/handlers, verify it's applied to ALL relevant code paths in ALL changed files
 
 Focus (Architecture & Performance):
 - Incomplete refactors, dead code, unused params
@@ -203,6 +275,7 @@ Focus:
 - **Assumption inversion**: For each filter, guard, or conditional in the diff, ask "what does this INCORRECTLY exclude/include?" A filter based on "author_id" might exclude legitimate updates from other authors to author-created entities. An error catch that maps everything to one type might misclassify cancellation as network failure.
 - **Silent data loss paths**: When code skips, filters, or suppresses operations during certain states (e.g., suppressing side effects during remote apply), check whether useful non-echo operations are also suppressed.
 - **Stale closure state**: When closures capture references that may change between capture and execution (especially in async/concurrent code), check whether the closure might null or overwrite a newer value.
+- **Multi-driver/adapter symmetry**: When changes add a pattern across multiple drivers/adapters/handlers (e.g., emitSnapshot after mutations), enumerate every mutation site per driver and cross-check — a pattern applied after moveItems but missing after removeItems in one driver is a bug.
 
 {disposition_block}
 

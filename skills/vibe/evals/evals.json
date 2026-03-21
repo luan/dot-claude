@@ -101,6 +101,39 @@
         "Stops after scope — does NOT invoke develop",
         "Suggests /develop or /vibe --continue as next steps"
       ]
+    },
+    {
+      "id": 11,
+      "prompt": "running /vibe 'fix: sync adapter drops updates when batch size exceeds 100'. develop just finished successfully — all epic children completed. the spec (metadata.spec) includes a reproduction section: 'Run /dia-inspect-data on user-data-dir, observe that sync_queue.db has 150 pending updates but only 100 were sent to the server.' the triage source classified this as a bug.\n\nvibe_stage updated to 'develop'. what's next — do we go straight to review?",
+      "expected_output": "No — this is a bugfix pipeline. Before review, run the Validate stage. Re-run the reproduction scenario (check sync_queue.db for pending updates, verify all 150 are sent) to confirm the bug is actually fixed. Only proceed to review if validation passes. If the bug persists, stop and report validation failure.",
+      "expectations": [
+        "Does NOT proceed directly to review — identifies this as a bugfix pipeline requiring validation",
+        "Describes re-running the reproduction scenario from the spec (sync_queue.db check, batch > 100 updates)",
+        "States that review is gated on validation passing — if the bug persists, the pipeline stops",
+        "Mentions updating vibe_stage to 'validate' before proceeding to review"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "running /vibe 'fix: memory adapter not persisting user preferences'. develop just finished. all epic children completed. git diff --name-only shows only these changed files:\n- tests/memory/test_adapter.py\n- tests/memory/test_persistence.py\n\nthe spec says this is a bug where user preferences set via the memory adapter are lost on restart. metadata from triage has type 'bug'.\n\nvibe_stage updated to 'develop'. what happens next?",
+      "expected_output": "Flag this as suspicious — develop produced ONLY test file changes for a bugfix. Tests prove what the adapter does when correctly triggered, but no production code was changed to fix the bug. Do NOT proceed to review or validate. Report the issue, update tracker with status_detail 'test-only-incomplete', and suggest re-running /develop or investigating manually.",
+      "expectations": [
+        "Flags the test-only changes as a red flag — does NOT proceed to review or validate",
+        "Explains that test-only changes for a bugfix means the fix is incomplete — no production code was changed",
+        "Updates tracker with status_detail 'test-only-incomplete'",
+        "Suggests re-running /develop or manual investigation — does NOT declare success"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "running /vibe 'fix: tab restore fails after crash'. develop just finished successfully. all epic children completed. git diff --name-only shows changes in both src/tab_restore.rs and tests/test_tab_restore.rs. the spec references a reproduction: 'Force-quit the app, relaunch, observe tabs are gone.' metadata.spec mentions 'bug' and 'regression'. triage type is 'bug'.\n\nthe validate stage runs the reproduction — force-quit and relaunch — but tabs are STILL gone after the fix. the output does not match the expected behavior.\n\nwhat does vibe do?",
+      "expected_output": "Validation failed — the reproduction still shows the bug. Do NOT proceed to review or commit. Report: actual output (tabs still gone) vs expected (tabs restored). Update tracker with status_detail 'validation-failed'. Suggest re-running /develop with more context or investigating with /debugging.",
+      "expectations": [
+        "Does NOT proceed to review or commit — validation gate blocks the pipeline",
+        "Reports the actual vs expected output from the reproduction",
+        "Updates tracker with status_detail 'validation-failed'",
+        "Suggests /develop with more context or /debugging as next steps — does NOT retry validation"
+      ]
     }
   ]
 }

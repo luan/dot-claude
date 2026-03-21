@@ -4,7 +4,7 @@ description: "Execute implementation for an epic or individual task. Triggers: '
 argument-hint: "[<epic-slug>|t<id>|<id>] [--solo] [--auto]"
 user-invocable: true
 allowed-tools:
-  - Task
+  - Agent
   - Skill
   - SendMessage
   - TeamCreate
@@ -33,7 +33,9 @@ Resolve argument:
 - No argument → first in_progress epic, else first pending epic, else first scope task with `status_detail === "approved"`, else first unblocked task
 - Nothing found → suggest `/scope`, stop
 
-**Scope task resolution:** if resolved task has `metadata.type === "scope"` and `status_detail === "approved"` → Preparation mode (Step 1b).
+**Scope task resolution:** if resolved task has `metadata.type === "scope"` and `status_detail === "approved"`:
+- **Check for existing epic first:** `TaskList()` → find any task with `metadata.type === "epic"` AND `metadata.spec_task_id === <scope task id>` AND `status === "in_progress"`. If found → treat as Recovery (resume that epic), do NOT re-enter Preparation mode.
+- No existing epic → Preparation mode (Step 1b).
 
 **Epic without children:** if resolved task has `metadata.type === "epic"` with `metadata.design` but no children → Preparation mode (Step 1b), skip epic creation.
 
@@ -50,13 +52,18 @@ Source: scope task's `metadata.design` (or epic's `metadata.design` if epic exis
 
 1. **Pre-check design quality:**
    - Must have structured sections with file paths
-   - Standalone testing phase → merge into implementation phases
    - Single phase spanning 3+ subsystems → `--auto`: proceed anyway. Otherwise AskUserQuestion.
    - Missing paths or approach under 20 words → `--auto`: proceed with best-effort. Otherwise AskUserQuestion.
 
+1b. **TDD detection:** Check if the project has TDD rules (`rules/testing.md`, `CLAUDE.md` TDD sections, or similar). If TDD workflow exists (write failing test → confirm RED → implement → confirm GREEN):
+   - Create a **Phase 0: Write ALL failing tests (RED)** task before implementation phases. This phase writes every test that describes the target behavior, runs them, and confirms they fail for the RIGHT reasons (API shape mismatches, missing methods — not random errors).
+   - Implementation phases become GREEN phases — their job is to make the RED tests pass.
+   - Phase 0 has no blockedBy. All implementation phases are blockedBy Phase 0.
+   - This overrides the "TDD is per-task" rule in task-creation-prompt.md. Epic-level RED/GREEN separation is the correct structure when the project mandates TDD — it catches API design issues early and enables parallel implementation once tests define the target.
+
 2. **Create epic** (skip if epic already exists):
    TaskCreate with title, Problem/Solution/Acceptance,
-   `metadata: {project: REPO_ROOT, slug: <topic-slug>, type: "epic", priority: "P1", design: <source design>, spec: <source spec if available>}`
+   `metadata: {project: REPO_ROOT, slug: <topic-slug>, type: "epic", priority: "P1", design: <source design>, spec: <source spec if available>, spec_task_id: <scope task id if source is a scope task>}`
 
 3. **Create tasks directly** — no subagent. Read `${CLAUDE_SKILL_DIR}/references/task-creation-prompt.md` for decomposition rules, quality requirements, and TaskCreate format. The orchestrator already has the design context; task creation is mechanical. Read referenced files as needed, then call TaskCreate/TaskUpdate inline.
 
@@ -86,12 +93,18 @@ After classifying, write `metadata: {breadcrumb: "Epic > Phase > ...", epic_desi
 
 ## Worker Dispatch
 
-All modes use `Task(subagent_type="general-purpose")`. Trivial tasks use `model="sonnet"`. Cap: 4 concurrent, 2 retries. Prompt variants in `${CLAUDE_SKILL_DIR}/references/worker-prompts.md`:
+All modes use `Agent(subagent_type="general-purpose")`. Trivial tasks use `model="sonnet"`. Cap: 4 concurrent, 2 retries. Prompt variants in `${CLAUDE_SKILL_DIR}/references/worker-prompts.md`:
 
 - **Standalone** (Solo/fallback): no messaging, returns directly
 - **Team-based** (Team): adds SendMessage + shutdown handshake
 
 **Re-scope escape hatch:** Worker output containing `RESCOPE:` signals a fundamental design conflict (wrong approach, missing prerequisite). Immediately halt — do NOT dispatch remaining workers or retry. Invoke `Skill("scope", "--continue <epicId>")` to re-scope, then restart from Step 2.
+
+**User-initiated rescope (`--rescope`):** When the user asks to rescope an epic (or says "rescope this"), clean up before rebuilding:
+1. `TaskList()` → find all children of the epic.
+2. For each child: `TaskUpdate(childId, status: "deleted")` — archive superseded tasks. Do NOT leave stale tasks for the user to clean up manually.
+3. `TaskUpdate(epicId, metadata: {children: null, impl_team: null, impl_completed: null, impl_active: null, impl_pending: null})` — clear epic's child references and scheduling state.
+4. Re-enter Step 1b (Preparation) with the epic's design (or updated design if the user provided one). The epic already exists, so skip epic creation.
 
 ## Solo Mode
 

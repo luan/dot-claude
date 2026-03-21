@@ -57,8 +57,8 @@ even if code within each task stays flat.
 - Testable acceptance criteria
 - Explicit assumptions about file structure
 - Each task = one logical unit (one feature/fix/change)
-- **TDD is per-task, never a separate phase.** Every task includes writing tests
-  (red-green-refactor). Dedicated "testing" phases → fold into implementation tasks.
+- **TDD per-task by default.** Every task includes writing tests (red-green-refactor). Dedicated "testing" phases → fold into implementation tasks.
+  **Exception:** When SKILL.md Step 1b detects project-level TDD rules, epic-level RED/GREEN phase separation overrides this. Phase 0 writes ALL failing tests; subsequent phases make them pass. This catches API design issues early and enables parallel GREEN implementation.
 - Every task must have `metadata.design` — compact summary of goal + key files + approach
 
 ## Upstream Bug Prevention

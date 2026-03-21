@@ -22,6 +22,9 @@ Implement task <task-id>.
 - Never invoke Skill("commit") — orchestrator handles commits
 - Fundamental design conflict → stop immediately, report "RESCOPE: <reason>" in output. Do not attempt workarounds.
 - Task too large (3+ subsystems, unclear approach) → TaskCreate child tasks under current task, mark current task completed. Scheduler picks up children automatically.
+
+## Exit Gate (mandatory)
+Before reporting completion, run the project's build command (e.g., `just build`, `swift build`, `npm run build`, `cargo build` — check Justfile/Makefile/package.json for the right one). If the build fails, fix the errors before completing. A worker that reports "done" with compilation errors forces the orchestrator to do fixup work — this wastes tokens and breaks the orchestration model. Only report completion when the build passes.
 ```
 
 ## Team-based Variant
@@ -52,4 +55,7 @@ Implement task <task-id>.
 - Never invoke Skill("commit") — orchestrator handles commits
 - Fundamental design conflict → stop, SendMessage "RESCOPE: <reason>" to team lead. Do not attempt workarounds.
 - Task too large (3+ subsystems, unclear approach) → TaskCreate child tasks under current task, SendMessage "DECOMPOSED: <task-id> into N subtasks" to team lead. Mark current task completed.
+
+## Exit Gate (mandatory)
+Before reporting completion, run the project's build command (e.g., `just build`, `swift build`, `npm run build`, `cargo build` — check Justfile/Makefile/package.json for the right one). If the build fails, fix the errors before completing. A worker that reports "done" with compilation errors forces the orchestrator to do fixup work — this wastes tokens and breaks the orchestration model. Only report completion when the build passes.
 ```

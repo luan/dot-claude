@@ -4,7 +4,7 @@ description: "Validate implementation against acceptance criteria using dual-age
 argument-hint: "[<task-id>|<epic-id>] [--auto]"
 user-invocable: true
 allowed-tools:
-  - Task
+  - Agent
   - TaskGet
   - TaskList
   - TaskUpdate
@@ -56,7 +56,7 @@ Flat epics (no grandchildren) produce flat `Task <id>: ...` output.
 
 ## Step 5: Spawn Verifier and Breaker
 
-Two parallel `Task(subagent_type="general-purpose")` agents:
+Two parallel `Agent(subagent_type="general-purpose")` calls:
 
 **Verifier** evaluates each criterion against the diff: PASS/FAIL/PARTIAL/N/A with line-level evidence. All criteria N/A → PASS with note "no applicable criteria found." Adds "Plan Deviations" section noting justified vs problematic divergences. Ends with one-line verdict.
 

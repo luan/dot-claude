@@ -21,94 +21,97 @@
       ]
     },
     {
-      "id": 3,
-      "prompt": "/develop\n\npicked up an epic that has metadata.design populated and status='in_progress' but no children at all — looks like task creation got interrupted last time",
-      "expected_output": "Recognizes epic-without-children pattern (design exists, no children). Enters Step 1b but skips epic creation (already exists). Creates tasks inline (no subagent), validates, finalizes with children array, falls through to dispatch.",
-      "expectations": [
-        "Recognizes epic has design but no children — interrupted preparation.",
-        "Enters Step 1b, skips epic creation (already exists), creates tasks inline (no subagent), validates, adds children array, falls through to dispatch."
+      "id": 13,
+      "prompt": "/develop t558\n\nscope task is approved. it has metadata.design with a 6-phase plan for removing position:Int from sync models. The project has a .claude/rules/testing.md that says:\n\n# Test Quality Standards\n## TDD Workflow\n1. Write a failing test for the requirement\n2. Run the test — confirm it fails (red)\n3. Write the minimum implementation to make it pass\n4. Run the test — confirm it passes (green)\n5. Refactor if needed — tests must stay green\n\nCreate the epic and tasks.",
+      "expected_output": "Detects rules/testing.md TDD requirement. Creates a Phase 0 (RED) task that writes ALL failing tests first before any implementation phases. The remaining phases are GREEN implementation phases. Phase 0 has no blockedBy. Implementation phases are blockedBy Phase 0. The task descriptions reference the TDD workflow from the rules.",
+      "assertions": [
+        {
+          "name": "tdd_red_phase_created",
+          "type": "output_contains",
+          "check": "Creates a dedicated RED/failing-tests phase (Phase 0 or Phase 1) before implementation phases — NOT folded into each implementation task",
+          "description": "When rules/testing.md mandates TDD, develop should create a separate RED tests phase that writes ALL failing tests first, then GREEN implementation phases"
+        },
+        {
+          "name": "implementation_phases_blocked_by_red",
+          "type": "output_contains",
+          "check": "Implementation phases are blockedBy the RED tests phase — they cannot start until tests are written and confirmed failing",
+          "description": "GREEN phases must depend on the RED phase completing first"
+        },
+        {
+          "name": "red_phase_has_build_verification",
+          "type": "output_contains",
+          "check": "The RED phase description includes running the tests and confirming they fail for the RIGHT reasons (compilation errors for API shape changes, not random failures)",
+          "description": "RED phase must verify tests fail for correct reasons, not just that they fail"
+        }
       ]
     },
     {
-      "id": 4,
-      "prompt": "/develop t300\n\nscope task is approved but metadata.design is empty string. metadata.plan_file is set to /tmp/scope-webhook.md though, and that file has the full phased design",
-      "expected_output": "Detects empty metadata.design, finds metadata.plan_file, reads the plan file via ct plan latest as fallback. Uses that content as the design source for preparation. Creates epic and tasks from the plan file content.",
-      "expectations": [
-        "Detects empty design, reads plan_file as fallback. Does NOT ask about missing design when plan_file exists.",
-        "Uses plan file content as design source for Step 1b."
+      "id": 14,
+      "prompt": "/develop t558\n\nscope task is approved with a 5-phase design. But there's already an in-progress epic #559 that was created from this same scope task earlier (metadata.spec_task_id matches). Epic #559 has children #566-570, with #566 completed and #567-570 still pending. Session crashed last time mid-execution.",
+      "expected_output": "Detects existing in-progress epic #559 linked to scope task t558. Does NOT create a new duplicate epic. Instead enters Recovery mode: scans children, finds 1 completed + 4 pending, dispatches only the pending children. Preserves completed work from #566.",
+      "assertions": [
+        {
+          "name": "no_duplicate_epic",
+          "type": "output_contains",
+          "check": "Does NOT create a new epic via TaskCreate when an in-progress epic already exists for this scope task",
+          "description": "Re-invoking /develop for a scope task that already has an associated epic should resume, not duplicate"
+        },
+        {
+          "name": "resumes_existing_epic",
+          "type": "output_contains",
+          "check": "Detects and resumes the existing epic #559, dispatching only pending children (#567-570)",
+          "description": "Should enter recovery/resume flow for the existing epic"
+        },
+        {
+          "name": "preserves_completed_work",
+          "type": "output_contains",
+          "check": "Does NOT re-dispatch or reset completed task #566",
+          "description": "Completed children's work must be preserved unconditionally"
+        }
       ]
     },
     {
-      "id": 5,
-      "prompt": "/develop\n\nthere's an orphaned epic — impl_team is set, status is in_progress. it has 5 children: 3 are completed (they modified src/webhooks/sender.ts, retry.ts, and types.ts), 2 are still pending",
-      "expected_output": "Enters recovery flow. Scans all children first. Finds 3 completed + 2 pending. Only dispatches the 2 pending children — the 3 completed children's work is preserved unconditionally (never reset, re-run, or modify them). After pending tasks complete, proceeds to Teardown.",
-      "expectations": [
-        "Checks all children statuses before deciding recovery action.",
-        "Only dispatches the 2 pending children. Does NOT re-dispatch the 3 completed tasks."
+      "id": 15,
+      "prompt": "/develop --rescope t559\n\nthe user wants to rescope epic #559 which currently has children #560-565 (Phase 1 through Phase 6). Phase 1 (#560) is in_progress with a worker assigned. Phases 2-6 (#561-565) are pending. The user said 'rescope this thing, get all of the tests written and failing first' — they want a TDD-first restructure.",
+      "expected_output": "Automatically cleans up stale tasks: deletes or archives #560-565 (the superseded children). Removes the children array from epic #559's metadata. Then re-enters Preparation mode with a TDD-first structure: creates new Phase 0 (RED tests) + implementation phases. Does NOT leave stale tasks lingering for the user to manually clean up.",
+      "assertions": [
+        {
+          "name": "stale_tasks_cleaned",
+          "type": "output_contains",
+          "check": "Deletes or archives superseded children (#560-565) before creating new tasks — no stale tasks left lingering",
+          "description": "Rescoping must automatically clean up old tasks, not leave them for the user"
+        },
+        {
+          "name": "new_tasks_created",
+          "type": "output_contains",
+          "check": "Creates new task structure with RED/GREEN phases after cleanup",
+          "description": "After cleanup, creates fresh tasks matching the new scope"
+        },
+        {
+          "name": "epic_metadata_updated",
+          "type": "output_contains",
+          "check": "Updates epic #559 metadata.children to reference the new task IDs, not the old ones",
+          "description": "Epic children array must be refreshed"
+        }
       ]
     },
     {
-      "id": 6,
-      "prompt": "/develop\n\norphaned epic again — impl_team set, in_progress. but all 4 children are completed. looks like the session crashed right before teardown",
-      "expected_output": "Recognizes all children are completed. Clears impl_team, skips directly to Teardown (acceptance + stage changes). Does NOT spawn any workers — all the work is already done.",
-      "expectations": [
-        "All children completed → clears impl_team, skips to Teardown. No workers spawned."
-      ]
-    },
-    {
-      "id": 7,
-      "prompt": "/develop epic 500 webhook-retry\n\nteam mode, 3 leaf tasks. worker for task 501 just came back with:\n\n\"RESCOPE: The webhook retry approach assumes idempotent endpoints, but the payment service uses non-idempotent POST for charge creation. Retrying would double-charge customers.\"\n\ntasks 502 and 503 haven't started yet",
-      "expected_output": "Detects RESCOPE signal from worker 501. Immediately halts all dispatch — does NOT start 502 or 503, does NOT retry 501. Invokes Skill('scope', '--continue <epicId>') to re-scope the design with the new constraint about non-idempotent endpoints.",
-      "expectations": [
-        "Detects 'RESCOPE:' in worker output. Does NOT retry 501 or dispatch 502/503.",
-        "Invokes Skill('scope', '--continue <epicId>') to re-scope."
-      ]
-    },
-    {
-      "id": 8,
-      "prompt": "/develop finished for epic 600 webhook-retry. acceptance passed. the spec says max 5 retry attempts but we actually implemented 3. also added circuit breaker logic that's not in the spec. metadata.spec_file is /tmp/scope-webhook-spec.md, and there's a copy at docs/specs/webhook-retry.md in the repo",
-      "expected_output": "After acceptance, dispatches a sonnet subagent with the spec + full git diff to reconcile. Subagent updates spec to match reality: max 3 attempts (not 5), adds circuit breaker behavior. Updated spec is written to metadata.spec, metadata.spec_file (/tmp/scope-webhook-spec.md), AND the repo copy (docs/specs/webhook-retry.md). Reconciled spec uses present-tense, no transition language like 'changed from 5 to 3'.",
-      "expectations": [
-        "Dispatches reconciliation subagent with spec content + full git diff (not just file names).",
-        "Updates all three locations: metadata.spec, spec_file path, repo copy at docs/specs/webhook-retry.md.",
-        "Reconciled spec is present-tense ('max 3 attempts', 'circuit breaker monitors failure rate') — no transition language."
-      ]
-    },
-    {
-      "id": 9,
-      "prompt": "/develop\n\nepic 700 cache-layer just finished — all 3 child tasks completed (t701: 'Add Redis cache client', t702: 'Cache invalidation on write', t703: 'Cache warm-up on deploy'). Teardown is done, about to stage changes. The 3 tasks produced 3 commits touching src/cache/client.ts, src/cache/invalidation.ts, src/cache/warmup.ts, and tests/cache.test.ts",
-      "expected_output": "Before staging, runs git diff --stat HEAD~3 and git rev-parse to get commit range. Derives summary from child subjects. Stores metadata.completion_summary on the epic with files_changed array, commit_range, and a one-line summary combining the three child subjects.",
-      "expectations": [
-        "Runs git diff --stat HEAD~N where N = number of completed children (3). Collects file paths from the output.",
-        "Stores metadata.completion_summary with files_changed, commit_range (base..head SHAs), and a summary derived from child task subjects — not a generic description."
-      ]
-    },
-    {
-      "id": 10,
-      "prompt": "/develop t400\n\nscope task approved. design says 'Phase 1: Add dedup filter — filter incoming records by originator_id to skip self-authored updates.' The design assumes originator_id tracks who last modified a record.",
-      "expected_output": "During task creation (Step 1b), the task's Approach section should include a verification step like 'Read source definition of originator_id to verify whether it means last modifier or original creator.' The Domain Assumptions to Verify section should flag this as a critical assumption that could cause data loss if wrong.",
-      "expectations": [
-        "Created tasks include verification of the originator_id semantics in their Approach or Assumptions section",
-        "Does NOT blindly accept the design's assumption about originator_id — flags it as something the worker must verify before implementing"
-      ]
-    },
-    {
-      "id": 11,
-      "prompt": "/develop t500\n\nscope task approved. design says 'Phase 1: Add client version header. Create a helper to build the version string from app bundle info. Phase 2: Add environment header using compile-time DEBUG flag.' Two phases, 2 files each.",
-      "expected_output": "During task creation, the task for Phase 1 should include 'Search codebase for existing version string utilities before writing a new one' in the Approach section. This prevents reimplementing existing helpers that will diverge over time.",
-      "expectations": [
-        "Phase 1 task includes searching for existing version/bundle utilities in the codebase before creating new ones",
-        "Does NOT assume the design's approach of writing a new helper is correct — adds a verification step"
-      ]
-    },
-    {
-      "id": 12,
-      "prompt": "/develop t600\n\nscope task approved. design says 'Phase 1: Build CLI with subcommands for our internal API. Phase 2: Add environment routing (staging/prod). Phase 3: Add authentication.' 3 phases, ~15 files total, creating a whole new CLI tool",
-      "expected_output": "For a whole-tool generation (15+ files), tasks should include upstream prevention steps: Phase 2 (environment routing) should include 'Never silently fall back to production on invalid input — propagate errors.' Phase 1 should include 'Handle API pagination — verify whether endpoints batch results.' Auth phase should include 'Distinguish error types: network vs auth vs cancellation.'",
-      "expectations": [
-        "Environment routing task includes safe-default verification — no silent fallback to production on error",
-        "API interaction tasks include pagination awareness — check for batch limits in server responses",
-        "Task descriptions are detailed enough that workers won't silently introduce the common bug patterns"
+      "id": 16,
+      "prompt": "/develop t100\n\nscope task approved, 3-phase design. The project uses 'just build' as the build command (there's a justfile). Create tasks and dispatch workers.",
+      "expected_output": "Worker prompts include a build verification exit gate. Workers must run the build command and verify compilation passes before reporting completion. The worker prompt template includes something like 'Run the project build command and verify it passes before marking the task complete.'",
+      "assertions": [
+        {
+          "name": "worker_prompt_has_build_gate",
+          "type": "output_contains",
+          "check": "Worker prompts include a build/compilation verification step as an exit gate — workers must verify their changes compile before reporting done",
+          "description": "Workers that report 'done' with compilation errors waste orchestrator time on fixups"
+        },
+        {
+          "name": "build_gate_is_mandatory",
+          "type": "output_contains",
+          "check": "The build gate is framed as mandatory (not optional) — if the build fails, the worker must fix it before completing",
+          "description": "Build verification must be a hard gate, not a suggestion"
+        }
       ]
     }
   ]

@@ -70,6 +70,33 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
 
 Spot-check ALL architectural claims — wrong understanding of the codebase invalidates the spec. File/behavioral claims: check every odd-numbered claim (1st, 3rd, 5th...), minimum 3. Each check: Grep or Read a few lines. Failed check → follow-up subagent.
 
+### 3b. Production data correlation
+
+When upstream context includes production data (triage logs, sync debug dumps, /dia-inspect-data output, error traces, database state), the spec MUST explain the specific observations in that data before locking in a root cause.
+
+- List each concrete observation from the production data (e.g., "zero update events in sync log", "stale timestamp in database row", "404 in error trace").
+- For each observation, state which hypothesis explains it and whether alternative hypotheses also explain it.
+- If an observation is equally explained by multiple hypotheses, the root cause is NOT confirmed — flag it.
+
+**Subagent prompt addition** (when production data exists): append to research prompt:
+
+```
+## Production Data
+<paste observations>
+
+For each observation above: state which part of the codebase produces this data point, trace the code path that leads to it, and determine whether your hypothesis is the ONLY explanation or whether other code paths could produce the same observation.
+```
+
+### 3c. Root-cause validation checklist
+
+Before synthesizing, verify the hypothesis survives these checks:
+
+1. **Exclusivity**: Does the hypothesis explain ALL production observations, not just some?
+2. **Alternatives ruled out**: For each production observation, are there other code paths that could produce it? If yes, have those been investigated?
+3. **Absence of evidence vs. evidence of absence**: If the key evidence is "X didn't happen," confirm whether the instrumentation/logging would have captured X if it did happen.
+
+If any check fails → dispatch follow-up subagent targeting the gap. Do NOT synthesize a spec on an unvalidated hypothesis.
+
 ### 4. Synthesize spec
 
 Build the spec from validated research. A spec is a **timeless target-state document** — it describes the system as if already built. After implementation, the spec should still read as a valid description of the system (not a dated change request).
@@ -112,6 +139,15 @@ TaskUpdate(taskId, metadata: {
 
 Output: `Spec: t<id> — <topic>`, then Problem, Recommendation, Architecture Context, Risks.
 
+**Confidence gate** (append after Risks, before stopping for review):
+
+- **Root-cause confidence**: HIGH / MEDIUM / LOW
+- **Supporting evidence**: what production data or code analysis confirms the hypothesis
+- **Not yet ruled out**: alternative explanations that remain plausible and what evidence would confirm or eliminate them
+- **Would increase confidence**: specific investigation or data that would move from MEDIUM→HIGH
+
+If confidence is LOW, state this explicitly and recommend further investigation before approving. Do NOT present a LOW-confidence spec without flagging it — the user must know they are approving under uncertainty.
+
 If `--auto` → skip to step 9.
 Otherwise → stop for user review.
 
@@ -127,7 +163,10 @@ If user gives feedback:
 
 ```
 TaskUpdate(taskId, metadata: { status_detail: "approved" })
+TaskUpdate(taskId, status: "completed")
 ```
+
+Mark the spec task `completed` at approval time — not just `status_detail: approved`. Downstream skills (vibe, scope, develop) consume the spec via metadata, but the task itself is done. Leaving it `in_progress` creates orphaned tasks that persist across sessions.
 
 If `--auto` → return silently. Caller reads `metadata.spec`.
 

@@ -4,7 +4,7 @@ description: "Collaborative design for greenfield features and new ideas. Trigge
 argument-hint: "<idea or topic> [--auto]"
 user-invocable: true
 allowed-tools:
-  - Task
+  - Agent
   - Skill
   - Bash
   - Read
@@ -35,7 +35,7 @@ TaskCreate: subject "Brainstorm: <topic>", metadata `{project: <repo root>, type
 
 ### 2. Scan Project Context + Start Interview
 
-Dispatch Task (subagent_type="Explore", run_in_background=true): scan for tech stack, relevant patterns, adjacent code, constraints. Under 30 lines. Empty/new project → skip scan, ask stack preferences in interview.
+Dispatch Agent (subagent_type="Explore", run_in_background=true): scan for tech stack, relevant patterns, adjacent code, constraints. Under 30 lines. Empty/new project → skip scan, ask stack preferences in interview.
 
 **Don't wait** — begin interview immediately. Scan results feed Step 4.
 
