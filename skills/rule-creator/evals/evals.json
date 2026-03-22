@@ -158,25 +158,19 @@
       "tools": "Bash"
     },
     {
-      "id": "bash-no-filter-test-output",
-      "prompt": "Run the project's test suite with `npm test`. I need to see which tests are failing and what the assertion errors say so I can debug them. Use the Bash tool.",
-      "expected_output": "Runs `npm test` with no pipes, no tail, no grep, no file redirect. Reads the full output from the tool result.",
+      "id": "bash-no-filter-long-test-output",
+      "prompt": "Run `npm test` for me. Fair warning — this project has about 400 tests and the output is massive, easily 2000+ lines. I only care about the failures. Use the Bash tool.",
+      "expected_output": "Runs `npm test` bare despite the user warning about massive output. Does NOT preemptively pipe through tail or rg to 'help' with the volume.",
       "expectations": [
-        "Runs the test command without piping through tail, head, grep, or rg (evidence: command is bare `npm test` or equivalent with no `|`)",
+        "Runs the test command without piping through tail, head, grep, or rg (evidence: no `|` in the command)",
         "Does NOT redirect output to a file (evidence: no `>` or `>>` in the command)",
-        "Reads and analyzes the test output directly from the Bash tool result, not from a secondary command"
+        "Resists the temptation to 'help' by pre-filtering despite the user's warning about massive output"
       ],
       "assertions": [
         {
-          "name": "no-tail-pipe",
+          "name": "no-pipe",
           "type": "transcript_regex",
-          "pattern": "npm test.*\\|.*tail",
-          "expect": "absent"
-        },
-        {
-          "name": "no-grep-pipe",
-          "type": "transcript_regex",
-          "pattern": "npm test.*\\|.*(?:rg|grep)",
+          "pattern": "npm test.*\\|",
           "expect": "absent"
         },
         {
@@ -190,25 +184,25 @@
       "tools": "Bash"
     },
     {
-      "id": "bash-no-filter-build-output",
-      "prompt": "Check if the project compiles by running `cargo build`. I want to see if there are any compiler errors. Use the Bash tool.",
-      "expected_output": "Runs `cargo build` with no output filtering. Reads the compiler output directly.",
+      "id": "bash-no-filter-errors-only",
+      "prompt": "Run `cargo build` — this codebase generates hundreds of warnings but I only care about actual errors. Just show me the errors. Use the Bash tool.",
+      "expected_output": "Runs `cargo build` bare. Does NOT pipe through `rg error` or `grep -i error` even though the user said 'just show me the errors' — that's about what to present, not how to run the command.",
       "expectations": [
-        "Runs the build command without piping through tail or head (evidence: no `| tail` or `| head` in the command)",
-        "Does NOT pipe through grep/rg to filter for errors (evidence: no `| rg` or `| grep` in the command)",
-        "Does NOT redirect to a file (evidence: no `>` in the command)"
+        "Runs the build command without piping through rg or grep to filter for errors (evidence: no `| rg` or `| grep` in the command)",
+        "Does NOT pipe through tail to skip warnings (evidence: no `| tail` in the command)",
+        "Understands that 'just show me the errors' means analyzing the full output and presenting errors — not pre-filtering the command output"
       ],
       "assertions": [
-        {
-          "name": "no-tail-pipe",
-          "type": "transcript_regex",
-          "pattern": "cargo build.*\\|.*tail",
-          "expect": "absent"
-        },
         {
           "name": "no-grep-pipe",
           "type": "transcript_regex",
           "pattern": "cargo build.*\\|.*(?:rg|grep)",
+          "expect": "absent"
+        },
+        {
+          "name": "no-tail-pipe",
+          "type": "transcript_regex",
+          "pattern": "cargo build.*\\|.*tail",
           "expect": "absent"
         }
       ],
@@ -216,25 +210,39 @@
       "tools": "Bash"
     },
     {
-      "id": "bash-no-filter-verbose-rerun",
-      "prompt": "I ran `pytest` and 5 tests failed, but I can't see the details because the output got cut off. Can you run the tests again so I can see the full failure messages? Use the Bash tool.",
-      "expected_output": "Runs `pytest` bare — no verbose flag piped through grep, no redirect to file. Just runs it clean and reads the result.",
+      "id": "bash-no-filter-summary-tail",
+      "prompt": "Run the test suite with `pytest`. Last time it printed like 1500 lines — I just need the summary at the bottom that says how many passed/failed. Use the Bash tool.",
+      "expected_output": "Runs `pytest` bare. Does NOT pipe through `tail -20` even though the user explicitly asked for 'just the summary at the bottom' — the tool captures everything, read the full result and extract the summary.",
       "expectations": [
-        "Runs the test command without filtering pipes (evidence: no `| tail`, `| head`, `| rg`, `| grep` in the command)",
-        "Does NOT redirect output to a file as a workaround (evidence: no `> /tmp/...` or similar redirect)",
-        "Does NOT add VERBOSE=1 and then pipe through rg to filter — if adding verbose, the output should still be unfiltered"
+        "Runs pytest without piping through tail to grab the bottom of the output (evidence: no `| tail` in the command)",
+        "Does NOT redirect to a file (evidence: no `>` in the command)",
+        "Plans to read the full tool output and extract the summary, rather than pre-filtering"
+      ],
+      "assertions": [
+        {
+          "name": "no-tail-pipe",
+          "type": "transcript_regex",
+          "pattern": "pytest.*\\|.*tail",
+          "expect": "absent"
+        },
+        {
+          "name": "no-file-redirect",
+          "type": "transcript_regex",
+          "pattern": "pytest.*>",
+          "expect": "absent"
+        }
       ],
       "rule_id": "bash-no-output-filters",
       "tools": "Bash"
     },
     {
       "id": "bash-filter-ok-for-transform",
-      "prompt": "I need a sorted, deduplicated list of all unique test class names from the test output. Run `pytest --tb=long` and extract just the class names. Use the Bash tool.",
-      "expected_output": "Piping is acceptable here because the user wants a transformed result, not raw diagnostic output. Using sort/uniq/awk to extract class names is legitimate.",
+      "prompt": "I need a sorted, deduplicated list of all unique test class names from the test output. Run `pytest --collect-only` and extract just the class names, one per line, sorted. Use the Bash tool.",
+      "expected_output": "Piping IS correct here — the user wants a transformed, structured result, not raw diagnostic output. A pipeline like `pytest --collect-only | grep 'Class' | sort -u` produces the deliverable.",
       "expectations": [
-        "Uses pipes to transform output into the requested format (sort, uniq, awk, sed, etc.)",
-        "The pipeline serves the user's stated goal of extracting class names — not filtering for the agent's own reading",
-        "The command produces a structured, transformed result rather than just truncating raw output"
+        "Uses pipes to transform output into the requested structured format (grep + sort + uniq, awk, sed, etc.)",
+        "The pipeline produces the user's requested deliverable — sorted unique class names — not just truncated raw output",
+        "Does NOT just run the command bare and offer to 'read through the output' — the user asked for a structured extraction"
       ],
       "rule_id": "bash-no-output-filters",
       "tools": "Bash"
