@@ -1,6 +1,6 @@
 ---
 name: git-surgeon
-description: 'Non-interactive hunk-level git operations — stage, unstage, discard, undo, fixup, split by hunk ID.'
+description: "Non-interactive hunk-level git operations — stage, unstage, discard, undo, fixup, split by hunk ID. Use this skill INSTEAD OF raw git commands for selective operations: replaces git checkout HEAD --, git restore, git add -p, git reset HEAD <file>, git stash-to-discard. Triggers: 'discard changes to specific files', 'stage only part of a file', 'partial staging', 'unstage specific changes', 'split this commit', 'fixup earlier commit', 'undo hunks from commit', 'reword commit message', 'selective staging', 'cherry-pick hunks'."
 ---
 
 # git-surgeon

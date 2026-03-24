@@ -163,20 +163,25 @@ If any returns `MERGED` — a parent just merged and child branches are stale:
 
 1. Mark the newly merged PRs as `merged: true` in metadata.
 
-2. Restack the stack:
+2. **Sync with remote** — this cleans up merged branches and restacks:
+   ```bash
+   gt sync 2>&1
+   ```
+   `gt sync` fetches remote, removes merged branches, and restacks the stack onto trunk. This is the ONLY correct way to handle merged parents. **NEVER** use `gt track`, `gt delete`, or manual reparenting — Graphite handles this automatically.
+
+3. If `gt sync` reports conflicts, resolve them:
    ```
    Skill("gt:restack")
    ```
-   This rebases child branches onto their updated parents (now trunk). If conflicts arise, the skill resolves them.
 
-3. Push the restacked branches:
+4. Push the restacked branches:
    ```
    Skill("gt:submit")
    ```
 
-4. Update task metadata with the merged flags.
+5. Update task metadata with the merged flags.
 
-5. **Exit early** — don't fix anything this interval. The restack changed code on child branches, so CI needs to re-run. Checking or fixing PRs now would be working against stale data. Report: "Parent PR(s) merged — restacked and pushed. Waiting for fresh CI."
+6. **Exit early** — don't fix anything this interval. The restack changed code on child branches, so CI needs to re-run. Checking or fixing PRs now would be working against stale data. Report: "Parent PR(s) merged — restacked and pushed. Waiting for fresh CI."
 
 If no PRs are newly merged → proceed to step [4]. Trunk having new commits is normal and doesn't invalidate CI.
 
