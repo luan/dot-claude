@@ -79,7 +79,8 @@ SEG_DIGITS = "🯰🯱🯲🯳🯴🯵🯶🯷🯸🯹"
 
 def seg_pct(n, col):
     """Format a number as segmented digit characters with color."""
-    return f"{col}{''.join(SEG_DIGITS[int(d)] for d in str(int(n)))}٪{RESET}"
+    v = max(0, int(n))
+    return f"{col}{''.join(SEG_DIGITS[int(d)] for d in str(v))}٪{RESET}"
 
 
 PLUS = "+"
