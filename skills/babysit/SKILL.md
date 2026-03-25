@@ -24,7 +24,7 @@ allowed-tools:
 
 Autonomous PR stack shepherd. Sets up a recurring cron that monitors every PR in a Graphite stack, running specified skills to fix CI failures and review comments until all PRs merge.
 
-Relentless by design — the cron never gives up. If a fix doesn't stick, it tries again next interval. If CI fails the same way twice, it tries a different approach. PRs waiting for approval are skipped (nothing actionable). Babysit stops only when all PRs merge, the 7-day cron auto-expires, or the user cancels.
+Relentless by design — the cron never gives up. If a fix doesn't stick, it tries again next interval. If CI fails the same way twice, it tries a different approach. Comments are checked on every open PR regardless of approval status — addressing review feedback is how PRs get approved. CI fixing is skipped for unapproved PRs (code may change after review). Babysit stops only when all PRs merge, the 7-day cron auto-expires, or the user cancels.
 
 ## Arguments
 
@@ -86,7 +86,8 @@ TaskCreate(
     skills: ["pr-ci", "pr-comments"],
     interval: "10m",
     cron_id: null,
-    work_dir: "<cwd>"
+    work_dir: "<cwd>",
+    idle_checks: 0
   }
 )
 TaskUpdate(<id>, status: "in_progress")
@@ -128,7 +129,9 @@ Invoked by cron, not the user. Each invocation is self-contained: read state, ac
 TaskGet(<task-id>)
 ```
 
-Extract `prs`, `skills`, `cron_id`, `work_dir`. If task is not `in_progress` → exit silently.
+Extract `prs`, `skills`, `cron_id`, `work_dir`, `last_check`, `idle_checks`. If task is not `in_progress` → exit silently.
+
+**Cron fork dedup:** If `last_check` exists and `now - last_check < interval`, another session already handled this check. Exit silently — don't duplicate work. This prevents parallel cron fork sessions from racing on the same task.
 
 ```bash
 cd <work_dir>
@@ -195,50 +198,53 @@ For each PR where `merged` is false:
 gh pr view <num> --json state,reviewDecision --jq '{state,reviewDecision}'
 ```
 
-**Routing:**
+**Routing — state only (not approval):**
 
-| state | reviewDecision | Action |
-|-------|---------------|--------|
-| MERGED | any | Mark `merged: true`, skip |
-| CLOSED | any | Report "closed", skip |
-| OPEN | != APPROVED | "Awaiting approval", skip |
-| OPEN | APPROVED | Check and fix (below) |
+| state | Action |
+|-------|--------|
+| MERGED | Mark `merged: true`, skip |
+| CLOSED | Report "closed", skip |
+| OPEN | Process (below) |
 
-For each approved, open PR:
+For each open PR, run comments and CI as **independent** concerns. Approval status gates CI fixing but NOT comment checking — review comments arrive before approval and must be addressed to unblock it.
 
-**a) Check CI**
-
-```bash
-gh pr checks <num> --json name,state,bucket --jq '[.[] | {name,state,bucket}]'
-```
-
-- Any check `IN_PROGRESS` or `QUEUED` → "CI running, will check next interval", skip this PR entirely (don't fix stale failures while new run is pending)
-- Any check with `bucket: "fail"` and `pr-ci` in skills →
-  ```bash
-  gt checkout <branch>
-  ```
-  ```
-  Skill("pr-ci", "--auto")
-  ```
-
-**b) Check comments** (if `pr-comments` in skills)
+**GitHub `reviewDecision` quirk:** An empty string `""` does NOT mean "not approved." GitHub resets `reviewDecision` to `""` when a bot reviewer (like `bcny-ai-agent`, `cursor[bot]`) posts a review after a human approved. Treat `""` the same as `"APPROVED"` — only `"REVIEW_REQUIRED"` or `"CHANGES_REQUESTED"` mean explicitly unapproved.
 
 ```bash
 gt checkout <branch>
 ```
+
+**a) Check comments** (if `pr-comments` or `pr-fix-comments` in skills)
+
+Always run comment checking on every open PR, regardless of approval or CI status. Comments and CI are independent workstreams — unresolved comments block approval, and addressing them while CI runs is productive use of time.
+
 ```
 Skill("pr-comments", "--auto")
 ```
 
 The skill exits quickly if there are no unresolved comments — safe to invoke unconditionally.
 
+**b) Check CI** (if `pr-ci` in skills)
+
+```bash
+gh pr checks <num> --json name,state,bucket --jq '[.[] | {name,state,bucket}]'
+```
+
+Skip CI fixing if:
+- Any check is `IN_PROGRESS` or `QUEUED` — don't fix stale failures while a new run is pending
+- `reviewDecision` is `"REVIEW_REQUIRED"` or `"CHANGES_REQUESTED"` — reviewer may request changes that invalidate current code, fixing CI before that is wasted effort
+
+If checks have `bucket: "fail"` and CI fixing is not skipped:
+```
+Skill("pr-ci", "--auto")
+```
+
+Never classify CI failures yourself (e.g., "flaky", "intermittent"). Always delegate to `pr-ci` — it reads the actual logs and determines the cause. Your job is to detect fail/pass status, not diagnose failures.
+
 **c) Other skills**
 
 For each remaining skill in the list that isn't `pr-ci` or `pr-comments`:
 
-```bash
-gt checkout <branch>
-```
 ```
 Skill("<name>", "--auto")
 ```
@@ -262,16 +268,39 @@ Skill("gt:submit")
 gt checkout <saved-branch>
 ```
 
-### [7] Update state
+### [7] Build structured status
+
+Before reporting, build a status object for each PR tracking exactly what happened. This prevents fabricating information that wasn't checked.
+
+```
+status = {
+  pr_num: N,
+  branch: "name",
+  state: "OPEN" | "MERGED" | "CLOSED",
+  comments_checked: true/false,
+  comments_result: "N resolved" | "0 unresolved" | null,
+  ci_checked: true/false,
+  ci_result: "all passing" | "N failing — delegated to pr-ci" | "in progress" | null,
+  ci_skipped_reason: "in progress" | "review required" | null,
+  actions_taken: ["pr-comments", "pr-ci", ...]
+}
+```
+
+Only populate fields for dimensions that were actually checked. If `comments_checked` is false, `comments_result` MUST be null — never infer or guess.
+
+### [8] Update state
+
+Determine whether this check was idle (no skills invoked, no merges detected, no actions taken on any PR):
 
 ```
 TaskUpdate(<task-id>, metadata: {
   prs: <updated array with merged flags>,
-  last_check: "<ISO 8601>"
+  last_check: "<ISO 8601>",
+  idle_checks: <previous idle_checks + 1 if idle, else 0>
 })
 ```
 
-### [8] Completion check
+### [9] Completion check and reporting
 
 If **all** PRs have `merged: true`:
 
@@ -282,13 +311,23 @@ TaskUpdate(<task-id>, status: "completed")
 
 Report: "All PRs merged. Babysit complete."
 
-Otherwise, brief status per PR:
+**Blocked-on-humans escalation:** If `idle_checks >= 3` and the only blocker across all PRs is reviewer approval (CI is green or in-progress, no comments to fix), report this once:
+
+```
+Babysit: stack blocked on human review.
+  All CI green. No unresolved comments. Awaiting reviewer approval on N PRs.
+  This is the 3rd consecutive idle check — nothing actionable for babysit.
+```
+
+This surfaces the bottleneck to the user so they know babysit isn't broken — it's just waiting on humans.
+
+Otherwise, format the status report from the structured status objects. Only include dimensions that were checked:
 
 ```
 Babysit: 1/3 merged.
   #123 (branch-a): merged
-  #124 (branch-b): CI fixed, pushed
-  #125 (branch-c): awaiting approval
+  #124 (branch-b): CI fixed + pushed, comments addressed (2 resolved)
+  #125 (branch-c): CI in progress (skipped), comments checked (0 unresolved)
 Next check in 10m.
 ```
 
