@@ -20,9 +20,9 @@ argument-hint: "[log|restack|sync|info|amend|up|down|top|bottom|submit|create|..
 ## Quick Reference
 
 ```bash
-# Create
-gt create -am "msg"         # New branch + staged changes
-gt c -am "msg"              # Short form
+# Create — ALWAYS pass a branch name, NEVER pass -m
+gt create <branch-name>             # New branch on top of current
+gt create <branch-name> -i          # Insert between current and its child
 
 # Navigate
 gt up / gt down             # Move through stack
@@ -30,8 +30,8 @@ gt top / gt bottom          # Jump to ends
 gt log --stack              # View CURRENT stack only (use this by default)
 gt log                      # View ALL branches (not just current stack)
 
-# Modify
-gt modify -a                # Amend changes to current branch
+# Modify (use these to add commits to the CURRENT branch)
+gt modify -a                # Amend staged changes into current branch's commit
 gt squash                   # Squash commits in current branch
 gt absorb -a                # Auto-distribute changes downstack
 
@@ -51,6 +51,34 @@ gt delete                   # Delete from stack
 
 # Recovery
 gt continue / gt abort / gt undo
+```
+
+## gt create — Critical Rules
+
+`gt create` does exactly ONE thing: **create a new branch** on the stack. It is NOT a commit command.
+
+**Always pass a branch name.** Without one, Graphite auto-generates ugly date-prefixed names like `03-26-fix_sync_bookmark_hierarchy_race_conditions_in_createfromremote`. This creates cleanup work and branch tracking confusion.
+
+**Never pass `-m` or `-am`.** `gt create` is a branch command, not a commit command. Create the branch first, then commit separately with `git commit` or `/commit`. Mixing branch creation and committing in one command leads to accidental empty branches, duplicate branches, and broken stack tracking.
+
+```bash
+# CORRECT — create branch, then commit separately
+gt create luan/my-feature
+git add -A && git commit -m "feat(x): add feature"
+
+# WRONG — never combine branch creation with commit message
+gt create luan/my-feature -am "feat(x): add feature"
+gt create -m "feat(x): add feature"
+gt create -am "fix: something"
+```
+
+**Do not use `gt create` to make commits on an existing branch.** Each `gt create` call creates a NEW branch. If you're already on the branch you want to commit to, use `git commit` or `gt modify` instead.
+
+**Use `--insert` (`-i`) to add a branch between existing stack members.** Without it, the new branch is always added on top. With `--insert`, it goes between the current branch and its child — useful when you need to insert a dependency or prerequisite into the middle of a stack.
+
+```bash
+# Insert a new branch between current and its child
+gt create luan/prerequisite-change -i
 ```
 
 ## Stack Structure
@@ -99,11 +127,11 @@ git-surgeon commit <id1> <id2> -m "message"    # stage + commit hunks
 git-surgeon commit <id>:5-30 -m "message"      # partial hunk by lines
 ```
 
-Then `gt create -m "msg"` picks up commit into new stack branch.
+Then `gt create <branch-name>` creates the new stack branch with that commit already on it.
 
 ## Commit Messages
 
-`gt create -am` messages follow the same conventional commit format as `/commit`:
+Commits on stack branches follow the same conventional commit format as `/commit`:
 `type(scope): description` — max 72 chars, lowercase, no period, imperative mood.
 
 To write a good message: analyze the staged diff (or all changes if nothing staged), determine the primary type and scope, describe the WHY not the WHAT.
@@ -112,8 +140,10 @@ To write a good message: analyze the staged diff (or all changes if nothing stag
 
 | Task | Commands |
 |------|----------|
-| Start new work | `gt create -am "feat(auth): add token refresh"` |
-| Add to stack | `gt create -am "fix(auth): handle expired tokens"` |
+| Start new work | `gt create luan/auth-token-refresh` then commit separately |
+| Add to stack | `gt create luan/auth-handle-expired` then commit separately |
+| Insert mid-stack | `gt create luan/auth-shared-utils -i` then commit separately |
+| Commit on current branch | `git add -A && git commit -m "msg"` or `gt modify -a` |
 | Push changes | `gt ss` (or `gt ss -u` for existing) |
 | Update from main | `gt sync` |
 | Amend current | `gt modify -a` |
