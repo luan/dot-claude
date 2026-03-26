@@ -5,18 +5,17 @@
     {
       "context": "Global",
       "bindings": {
-        "ctrl+f": null,
         "ctrl+t": "app:toggleTodos",
         "ctrl+o": "app:toggleTranscript",
         "ctrl+shift+o": "app:toggleTeammatePreview",
-        "ctrl+r": "history:search"
+        "ctrl+r": "history:search",
+        "ctrl+shift+b": "task:background",
+        "ctrl+f": null
       }
     },
     {
       "context": "Chat",
       "bindings": {
-        "ctrl+f": null,
-        "ctrl+l": "app:exit",
         "ctrl+x ctrl+x": "chat:cancel",
         "shift+tab": "chat:cycleMode",
         "meta+p": "chat:modelPicker",
@@ -28,7 +27,8 @@
         "ctrl+shift+-": "chat:undo",
         "ctrl+g": "chat:externalEditor",
         "ctrl+s": "chat:stash",
-        "ctrl+v": "chat:imagePaste"
+        "ctrl+v": "chat:imagePaste",
+        "ctrl+j": "chat:newline"
       }
     },
     {
@@ -66,7 +66,6 @@
         "up": "confirm:previous",
         "down": "confirm:next",
         "tab": "confirm:nextField",
-        "space": "confirm:toggle",
         "shift+tab": "confirm:cycleMode",
         "ctrl+e": "confirm:toggleExplanation"
       }
@@ -99,6 +98,7 @@
     {
       "context": "Task",
       "bindings": {
+        "ctrl+b": null,
         "ctrl+shift+b": "task:background",
         "ctrl+f": null
       }
