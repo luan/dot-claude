@@ -91,6 +91,14 @@ The plan is the HOW — phased implementation approach:
 
 If a spec exists (metadata.spec), verify the plan covers every capability in the spec.
 
+### 4b. Dedup and complexity check
+
+Before finalizing, scan the plan for two antipatterns:
+
+**Deduplication:** For each "Create" file in the plan, Grep the codebase for existing code that serves the same purpose. Search by operation keywords, not just name. If an equivalent exists under a different name or in an unexpected location, revise the plan to reuse it.
+
+**Complexity gate:** For each new interface, abstract class, factory, or multi-file abstraction in the plan, check: does it have 3+ call sites that exist today? If the justification is "we might need X later," remove the abstraction and plan the inline approach. One function beats a class hierarchy that serves a single caller.
+
 ### 5. Codex review
 
 **Skip if `--auto`.**

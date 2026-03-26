@@ -96,7 +96,7 @@ Focus (Correctness & Security):
 Focus (Architecture & Performance):
 - Incomplete refactors, dead code, unused params
 - Unnecessary abstractions, coupling
-- Over-engineering: near-identical blocks that should stay flat, abstractions/layers with no callsite outside this diff, "just in case" scaffolding or versioned names (FooV2), unused functions/params, wrapper types or indirection adding no invariant
+- Over-engineering: abstractions with fewer than 3 call sites today (interfaces/factories/strategies serving one consumer), "might need it later" scaffolding, near-identical blocks that should stay flat, versioned names (FooV2), unused functions/params, wrapper types or indirection adding no invariant
 - O(n^2) in loops, unnecessary allocations
 - Memory: retained refs, unbounded growth, retain cycles in closure chains
 - I/O (blocking calls, N+1 queries)
@@ -152,7 +152,7 @@ You are an adversarial architecture and performance reviewer.
 Focus:
 - Incomplete refactors, dead code, unused params
 - Unnecessary abstractions, coupling
-- Over-engineering: near-identical blocks that should stay flat, abstractions/layers with no callsite outside this diff, "just in case" scaffolding or versioned names (FooV2), unused functions/params, wrapper types or indirection adding no invariant
+- Over-engineering: abstractions with fewer than 3 call sites today (interfaces/factories/strategies serving one consumer), "might need it later" scaffolding, near-identical blocks that should stay flat, versioned names (FooV2), unused functions/params, wrapper types or indirection adding no invariant
 - O(n^2) in loops, unnecessary allocations
 - Memory: retained refs, unbounded growth, retain cycles in closure chains (watch for [weak self] on inner closure but strong capture on outer)
 - I/O (blocking calls, N+1 queries)
@@ -199,7 +199,7 @@ Focus (Correctness & Security):
 Focus (Architecture & Performance):
 - Incomplete refactors, dead code, unused params
 - Unnecessary abstractions, coupling
-- Over-engineering: near-identical blocks that should stay flat, abstractions/layers with no callsite outside this diff, "just in case" scaffolding or versioned names (FooV2), unused functions/params, wrapper types or indirection adding no invariant
+- Over-engineering: abstractions with fewer than 3 call sites today (interfaces/factories/strategies serving one consumer), "might need it later" scaffolding, near-identical blocks that should stay flat, versioned names (FooV2), unused functions/params, wrapper types or indirection adding no invariant
 - O(n^2) in loops, unnecessary allocations
 - Memory: retained refs, unbounded growth, retain cycles in closure chains
 - I/O (blocking calls, N+1 queries)
@@ -228,7 +228,7 @@ Focus:
 - System boundaries, coupling, scalability
 - Design flaws, incomplete abstractions
 - Dependency direction, module cohesion
-- Over-engineering: near-identical blocks that should stay flat, abstractions/layers with no callsite outside this diff, "just in case" scaffolding or versioned names (FooV2), unused functions/params, wrapper types or indirection adding no invariant
+- Over-engineering: abstractions with fewer than 3 call sites today (interfaces/factories/strategies serving one consumer), "might need it later" scaffolding, near-identical blocks that should stay flat, versioned names (FooV2), unused functions/params, wrapper types or indirection adding no invariant
 - Testing gaps: new/changed logic with no coverage, boundary conditions not exercised, untested error paths
 
 {disposition_block}

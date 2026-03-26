@@ -113,6 +113,17 @@ Re-run Step 3, max 4 iterations. Track fixed_issues by (file, description) — n
 
 **`--perfection` override:** No iteration cap. ALL findings are FIX (nothing is IGNORE — nits, style, naming, everything gets fixed). The loop continues until a review pass returns **zero findings of any severity**. Exit only when reviewers have nothing left to say. This can be expensive but produces immaculate code.
 
+## Step 5b: Failure Learning
+
+After the fix loop, check if any **Critical or High findings** revealed a codebase-specific antipattern — a mistake that could recur because nothing in the project structure prevents it. Indicators:
+- The finding stems from a non-obvious project convention (not a generic best practice)
+- The same class of issue has appeared before (check git log for similar fixes)
+- The fix required understanding something that isn't documented or enforced by types/linters
+
+If yes: create a project rule in `<project>/.claude/rules/<topic>.md` with `paths` frontmatter. Include what went wrong, why it's non-obvious, and what to do instead. This prevents the next session from repeating the same investigation.
+
+Skip if: findings were generic (null checks, missing tests), one-off (typo), or already covered by existing rules.
+
 ## Step 6: Summary + Next
 
 Output: Fixes Applied, Ignored, Remaining. `--auto` → skip defer selection, complete task, stop. Without `--auto` → Remaining + interactive: multiSelect to defer. Close: TaskUpdate → completed. Next via AskUserQuestion.
