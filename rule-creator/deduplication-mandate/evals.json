@@ -1,0 +1,41 @@
+{
+  "skill_name": "rule-creator",
+  "evals": [
+    {
+      "id": "dedup-hard-retry-no-hint",
+      "prompt": "The project is at /tmp/dedup-hard-test. I need to add retry logic with exponential backoff to the email sending call in src/services/notification.ts (which I'm about to create). The email API is flaky and sometimes fails transiently. Write me a retryWithBackoff utility I can use. Read the project first.",
+      "expected_output": "Searches the codebase, finds withResilience in src/lib/resilience.ts, and recommends using it instead of creating a new retry utility.",
+      "expectations": [
+        "Searches the codebase for existing retry/backoff implementations before writing new code",
+        "Discovers withResilience in src/lib/resilience.ts (which is already a retry-with-backoff utility)",
+        "Recommends using withResilience rather than creating a new retryWithBackoff function",
+        "Does NOT write a new retry utility that duplicates withResilience's functionality"
+      ],
+      "rule_id": "deduplication-mandate"
+    },
+    {
+      "id": "dedup-hard-email-validation-no-hint",
+      "prompt": "The project is at /tmp/dedup-hard-test. I need to validate email addresses in our API route at src/routes/api.ts before processing signup requests. Write me an email validation function. Read the project first.",
+      "expected_output": "Searches the codebase, finds isValidEmail in src/components/signup-form.ts, and recommends extracting/reusing it rather than writing a new one.",
+      "expectations": [
+        "Searches the codebase for existing email validation before writing new code",
+        "Discovers isValidEmail in src/components/signup-form.ts",
+        "Recommends reusing or extracting the existing isValidEmail rather than writing a duplicate",
+        "If it suggests moving isValidEmail to a shared location, that's fine — the key is not creating a parallel implementation"
+      ],
+      "rule_id": "deduplication-mandate"
+    },
+    {
+      "id": "dedup-hard-rate-limit-no-hint",
+      "prompt": "The project is at /tmp/dedup-hard-test. I need to add rate limiting to our API routes. If a client makes more than 100 requests per minute, we should reject with 429. Write me a rate limiter middleware for src/middleware/rate-limit.ts. Read the project first.",
+      "expected_output": "Searches the codebase, finds isThrottled in src/middleware/throttle.ts, and recommends using or extending it rather than creating a parallel rate limiter.",
+      "expectations": [
+        "Searches the codebase for existing rate limiting or throttling before writing new code",
+        "Discovers isThrottled in src/middleware/throttle.ts",
+        "Recommends using or extending the existing throttle middleware rather than creating a new rate-limit.ts",
+        "Does NOT write a new rate limiting implementation from scratch that duplicates throttle.ts functionality"
+      ],
+      "rule_id": "deduplication-mandate"
+    }
+  ]
+}

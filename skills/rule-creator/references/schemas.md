@@ -7,7 +7,7 @@ Schemas used by rule-creator. These are aligned with skill-creator's schemas so 
 ## evals.json
 
 Defines evals for rule evaluation. Location depends on scope:
-- **Project rules**: `<project>/.rule-creator/evals.json`
+- **Project rules**: `<project>/rule-creator/evals.json`
 - **Global rules**: `${CLAUDE_SKILL_DIR}/evals/evals.json`
 
 ```json

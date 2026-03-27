@@ -19,7 +19,7 @@ Create and test CLAUDE.md rules. Two modes:
 - `--new "intent"` — create a new rule from a behavioral description
 - `--runs N` — runs per eval for variance reduction (default: 1)
 - `--naked` — baseline uses fully stripped config (all rules + CLAUDE.md disabled, not just the target rule)
-- `--init` — scaffold `.rule-creator/` eval infrastructure for the current project
+- `--init` — scaffold `rule-creator/` eval infrastructure for the current project
 
 ## Creating Rules (`--new`)
 
@@ -74,7 +74,7 @@ The evaluation pipeline answers: "Does this rule actually change how Claude beha
 ### Project-Scoped Evals
 
 Evals belong where the rules live:
-1. `<project>/.rule-creator/evals.json` — project-specific evals (preferred)
+1. `<project>/rule-creator/evals.json` — project-specific evals (preferred)
 2. `${CLAUDE_SKILL_DIR}/evals/evals.json` — bundled evals for global rules
 
 ### Eval Schema
@@ -221,7 +221,7 @@ Verdict: RULE IS EFFECTIVE
 Scaffold eval infrastructure for the current project:
 
 1. Scan `CLAUDE.md` and `.claude/rules/` for rules
-2. Create `.rule-creator/evals.json` with eval stubs referencing actual project paths and patterns
+2. Create `rule-creator/evals.json` with eval stubs referencing actual project paths and patterns
 3. Present discovered rules and generated evals for user review
 
 ## Eval Writing Guide
