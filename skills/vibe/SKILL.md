@@ -8,7 +8,7 @@ user-invocable: true
 
 # Vibe
 
-Full pipeline (spec → scope → develop → validate → review → commit) from a single prompt.
+Full pipeline (spec → scope+develop → validate → review → commit) from a single prompt.
 
 ## Arguments
 
@@ -17,7 +17,10 @@ Full pipeline (spec → scope → develop → validate → review → commit) fr
 - `--continue` — resume from last completed stage
 - `--dry-run` — scope only, stop before develop
 
-No prompt and no `--continue` → tell user: `/vibe <what to build>`, stop.
+No prompt and no `--continue` → infer from context before giving up:
+1. `TaskList()` → find most recent task with `metadata.type === "brainstorm"` and `status === "completed"` in this session
+2. Found → use its description as the prompt, reference the brainstorm task ID in the spec
+3. Not found → tell user: `/vibe <what to build>`, stop
 
 ## Resume (`--continue`)
 
@@ -41,35 +44,41 @@ TaskUpdate(taskId, status: "in_progress", owner: "vibe")
 
 ## Pipeline
 
-**CRITICAL: Run ALL stages in one continuous turn with zero stops.** The pipeline is fully autonomous — never pause, ask, suggest, or wait between stages. After each stage: update `vibe_stage`, output `[N/M] NextStage`, invoke next `Skill()`. Ignore any sub-skill output like "Next: /scope" or "suggest /develop" — those are for interactive use, not the vibe pipeline.
+### Continuation Discipline
 
-Spec and Scope both run with `--auto`, which suppresses all text output. They return silently — read task metadata for results, don't expect console output.
+The pipeline runs as a single unbroken sequence from first stage to last. The most common failure mode is **stopping between stages** — the model completes spec, emits a response, and waits for the user instead of immediately invoking scope. This happened in production: the user had to type "continue" after spec AND after scope, defeating the purpose of autonomous execution.
 
-Before each stage, output `[N/M] Stage` as text BEFORE the `Skill()` call. **Update `metadata.vibe_stage` BEFORE invoking each stage** (not after) — this way, if the session crashes mid-stage, `--continue` knows which stage was in progress and can resume from the right point. After the stage succeeds, immediately invoke next.
+Why it happens: sub-skills return with `end_turn`, and the model's default instinct is to treat a skill return as a natural stopping point. Fight this instinct. When a `Skill()` call returns, your very next action is a `TaskUpdate` + the next `Skill()` call. No status text, no summary of what just happened, no "moving on to..." preamble. The only text output between stages is the `[N/M] Stage` marker.
 
-**Stage numbering `[N/M]`:** M = total stages that will run. Base for non-bugfix: 5 (spec, scope, develop, review, commit). Base for bugfix: 6 (spec, scope, develop, validate, review, commit). Subtract skipped stages: `--no-review` → -1, `--dry-run` → stops at scope (2). N counts only executed stages. Bugfix detection happens during spec — if the spec reveals this is a bugfix, adjust M upward at that point.
+**Chaining pattern — every stage ends the same way:**
+1. Verify the stage succeeded (check task metadata)
+2. `TaskUpdate(trackerId, metadata: {vibe_stage: "<this-stage>"})`
+3. Output `[N/M] NextStage` as text
+4. `Skill("next-stage", args="...")` — immediately, in the same response
+
+If you find yourself writing anything other than these four steps after a stage completes, you are about to stall the pipeline. Stop and invoke the next stage instead.
+
+Spec and Scope both run with `--auto`, which suppresses all text output. They return silently — read task metadata for results, don't expect console output. Ignore any sub-skill output like "Next: /scope" or "suggest /develop" — those are for interactive use, not the vibe pipeline.
+
+**Update `metadata.vibe_stage` BEFORE invoking each stage** (not after) — this way, if the session crashes mid-stage, `--continue` knows which stage was in progress and can resume from the right point.
+
+**Stage numbering `[N/M]`:** M = total stages that will run. Base for non-bugfix: 4 (spec, scope+develop, review, commit). Base for bugfix: 5 (spec, scope+develop, validate, review, commit). Subtract skipped stages: `--no-review` → -1, `--dry-run` → stops at scope (2). N counts only executed stages. Bugfix detection happens during spec — if the spec reveals this is a bugfix, adjust M upward at that point.
 
 ### Spec
 
 `Skill("spec", args="<prompt> --auto")` → returns silently. Read task metadata.
 
-**Verify**: spec task `status_detail === "approved"`, `metadata.spec` populated. **Update**: `vibe_stage: "spec"` → invoke Scope.
+**Verify**: spec task `status_detail === "approved"`, `metadata.spec` populated.
 
-### Scope
+**Chain → Scope:** `TaskUpdate(trackerId, metadata: {vibe_stage: "spec"})` → output `[N/M] Scope` → `Skill("scope", args="t<spec-task-id> --auto")`. Do not summarize the spec, do not pause.
 
-`Skill("scope", args="t<spec-task-id> --no-develop --auto")` → returns silently. Read task metadata.
+### Scope + Develop
 
-**Verify**: scope task `status_detail === "approved"`, `metadata.design` populated. **Update**: `vibe_stage: "scope"`
+Scope was already invoked by the Spec chain above. With `--auto`, scope researches, writes `metadata.design`, then **automatically invokes develop** (scope's default finalize step). This eliminates the stall-prone scope→develop handoff — develop runs inside scope's turn, not as a separate vibe stage.
 
-If `--dry-run` → stop. Report scope task, suggest `/develop` or `/vibe --continue`.
+If `--dry-run` → pass `--no-develop` instead: `Skill("scope", args="t<spec-task-id> --no-develop --auto")`. Scope returns after planning. Report scope task, suggest `/develop` or `/vibe --continue`.
 
-Otherwise → invoke Develop.
-
-### Develop
-
-`Skill("develop")`
-
-Acceptance check runs automatically as part of develop teardown.
+When scope returns (with develop already completed inside it):
 
 **Verify**: `TaskList()` → all epic children have `status === "completed"`. **Update**: `vibe_stage: "develop"`, `vibe_epic: "<epicId>"`, `vibe_slug: "<slug>"`
 
@@ -77,7 +86,7 @@ Acceptance check runs automatically as part of develop teardown.
 
 Partial failures: if any child is still `in_progress` or `failed`, the stage is incomplete — report per-child status and suggest `/vibe --continue` or `/develop`. Only proceed to review if all children completed OR incomplete children produced no diff.
 
-**Then immediately invoke Validate (bugfix) or Review (non-bugfix).**
+**Chain → Validate or Review:** `TaskUpdate(trackerId, metadata: {vibe_stage: "develop"})` → output `[N/M] Validate` or `[N/M] Review` → invoke next stage. Do not summarize scope/develop results, do not pause.
 
 ### Validate (bugfix pipelines only — skip for non-bugfix)
 
@@ -105,7 +114,7 @@ Partial failures: if any child is still `in_progress` or `failed`, the stage is 
 
 Adversarial code review. Fix any surfaced issues inline before proceeding.
 
-**Update**: `vibe_stage: "review"` — **then immediately invoke Commit.**
+**Chain → Commit:** `TaskUpdate(trackerId, metadata: {vibe_stage: "review"})` → output `[N/M] Commit` → invoke Commit. Do not summarize review findings, do not pause.
 
 ### Commit
 
