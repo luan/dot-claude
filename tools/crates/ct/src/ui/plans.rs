@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Modifier, Style};
@@ -42,10 +44,11 @@ pub struct PlansState {
     pub search_input: String,
     pub source: PlanSource,
     pub project_filter: Option<String>,
+    pub link_counts: HashMap<String, usize>,
 }
 
 impl PlansState {
-    pub fn new(plans: Vec<Plan>) -> Self {
+    pub fn new(plans: Vec<Plan>, link_counts: HashMap<String, usize>) -> Self {
         let mut table_state = TableState::default();
         if !plans.is_empty() {
             table_state.select(Some(0));
@@ -59,6 +62,7 @@ impl PlansState {
             search_input: String::new(),
             source: PlanSource::Active,
             project_filter: None,
+            link_counts,
         }
     }
 
@@ -156,7 +160,7 @@ impl PlansState {
 }
 
 pub fn render_plans(f: &mut Frame, area: Rect, state: &mut PlansState) {
-    let header = Row::new(vec!["Project", "Date", "Size", "Title"])
+    let header = Row::new(vec!["Project", "Date", "Size", "Tasks", "Title"])
         .style(
             Style::default()
                 .fg(theme::SUBTEXT)
@@ -174,6 +178,17 @@ pub fn render_plans(f: &mut Frame, area: Rect, state: &mut PlansState) {
                 &p.title
             };
             let proj = planfile::project_name(&p.project);
+            let path_key = p.path.to_string_lossy();
+            let task_count = state
+                .link_counts
+                .get(path_key.as_ref())
+                .copied()
+                .unwrap_or(0);
+            let task_label = if task_count == 0 {
+                "\u{2014}".to_string()
+            } else {
+                task_count.to_string()
+            };
             Row::new(vec![
                 Cell::from(Span::styled(proj, theme::muted_style())),
                 Cell::from(Span::styled(
@@ -184,6 +199,7 @@ pub fn render_plans(f: &mut Frame, area: Rect, state: &mut PlansState) {
                     plan::format_size(p.size),
                     theme::muted_style(),
                 )),
+                Cell::from(Span::styled(task_label, theme::muted_style())),
                 Cell::from(Span::raw(title)),
             ])
         })
@@ -192,6 +208,7 @@ pub fn render_plans(f: &mut Frame, area: Rect, state: &mut PlansState) {
     let widths = [
         Constraint::Length(12),
         Constraint::Length(12),
+        Constraint::Length(6),
         Constraint::Length(6),
         Constraint::Fill(1),
     ];

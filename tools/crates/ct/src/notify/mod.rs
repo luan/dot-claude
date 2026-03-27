@@ -106,27 +106,21 @@ fn set_tmux_attention(session: &str) {
         .args(["set-option", "-t", session, "@attention", "1"])
         .output();
 
-    let home = std::env::var("HOME").unwrap_or_default();
-    let script = format!("{home}/.config/tmux/scripts/session-list.sh");
-    if let Ok(out) = Command::new(&script).output()
-        && out.status.success()
-    {
-        let list = String::from_utf8_lossy(&out.stdout);
-        let list = list.trim();
-        if !list.is_empty() {
-            let status_left = format!(" {list} ");
-            let _ = Command::new("tmux")
-                .args([
-                    "set",
-                    "-g",
-                    "status-left",
-                    &status_left,
-                    ";",
-                    "refresh-client",
-                    "-S",
-                ])
-                .output();
-        }
+    // Get the actual active client session (not the session that fired the notification)
+    let client_session = Command::new("tmux")
+        .args(["list-clients", "-F", "#{client_session}"])
+        .output()
+        .ok()
+        .and_then(|o| {
+            let s = String::from_utf8_lossy(&o.stdout);
+            let first = s.lines().next()?.trim().to_string();
+            if first.is_empty() { None } else { Some(first) }
+        });
+
+    if let Some(active) = client_session {
+        let home = std::env::var("HOME").unwrap_or_default();
+        let bin = format!("{home}/.config/tmux/scripts/tmux-session");
+        let _ = Command::new(&bin).args(["update", &active]).output();
     }
 }
 

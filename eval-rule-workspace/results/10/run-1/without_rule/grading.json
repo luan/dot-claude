@@ -1,0 +1,34 @@
+{
+  "eval_id": "10",
+  "variant": "without_rule",
+  "expectations": [
+    {
+      "text": "Uses fd or rg --files in the Bash command (evidence: command contains 'fd' or 'rg --files')",
+      "passed": false,
+      "evidence": "Agent used `ls -R /Users/luan.santos/.claude/src/ 2>&1` and `ls /Users/luan.santos/.claude/`. Neither 'fd' nor 'rg --files' appears anywhere in the transcript."
+    },
+    {
+      "text": "Does NOT use ls -R (evidence: no 'ls -R' or 'ls --recursive' appears in Bash calls)",
+      "passed": false,
+      "evidence": "Agent's first command is exactly: `ls -R /Users/luan.santos/.claude/src/ 2>&1 || echo \"No src/ directory found at repo root\"`. This contains 'ls -R'."
+    },
+    {
+      "text": "Targets the src/ directory appropriately",
+      "passed": true,
+      "evidence": "Agent's first command targets src/ directly: `ls -R /Users/luan.santos/.claude/src/ 2>&1`. The agent correctly scoped to the src/ directory as requested."
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "failed": 2,
+    "total": 3,
+    "pass_rate": 0.33
+  },
+  "pass": false,
+  "eval_feedback": {
+    "suggestions": [
+      "Expectation 3 ('Targets the src/ directory appropriately') is trivially satisfied by almost any reasonable agent — even the naive ls -R approach passes it. Consider whether this expectation adds value alongside the tool-selection expectations, or if it should be replaced with something more discriminating (e.g., 'handles missing src/ directory gracefully')."
+    ],
+    "overall": "The without_rule variant predictably falls back to ls -R instead of fd/rg --files. The eval correctly catches the tool selection gap. Expectation 3 is somewhat redundant since any agent responding to the prompt will naturally target src/."
+  }
+}

@@ -1,6 +1,6 @@
-# Task Creation Subagent Prompt
+# Task Creation Reference
 
-Dispatched as ONE general-purpose subagent (model="sonnet" — mechanical task creation needs no architectural reasoning). Needs TaskCreate, TaskUpdate, TaskGet in allowed-tools.
+Inline reference for the develop orchestrator. Follow these rules when creating tasks in Step 1b.
 
 ```
 Create implementation tasks for all phases
@@ -57,9 +57,17 @@ even if code within each task stays flat.
 - Testable acceptance criteria
 - Explicit assumptions about file structure
 - Each task = one logical unit (one feature/fix/change)
-- **TDD is per-task, never a separate phase.** Every task includes writing tests
-  (red-green-refactor). Dedicated "testing" phases → fold into implementation tasks.
+- **TDD per-task by default.** Every task includes writing tests (red-green-refactor). Dedicated "testing" phases → fold into implementation tasks.
+  **Exception:** When SKILL.md Step 1b detects project-level TDD rules, epic-level RED/GREEN phase separation overrides this. Phase 0 writes ALL failing tests; subsequent phases make them pass. This catches API design issues early and enables parallel GREEN implementation.
 - Every task must have `metadata.design` — compact summary of goal + key files + approach
+
+## Upstream Bug Prevention
+When creating tasks, embed these verification steps in the Approach section to prevent bugs at design time:
+- **Existing utility search**: If a task involves creating a helper (version string, env detection, header builder), add "Search codebase for existing implementations before writing new one" to the approach
+- **Domain assumption verification**: If a task depends on how an external field/API/protocol behaves, add "Read source definition of [field] to verify [assumption]" to the approach. Example: if filtering by author_id, verify whether it means "last modifier" or "original creator"
+- **Return value accounting**: If a task involves calling a function that returns multiple values, add "Account for all return values — do not discard without confirming consumer needs"
+- **Error handling specificity**: If a task adds error handling, add "Distinguish transient (network) vs permanent (auth) vs cancelled errors — do not map all to one type"
+- **Safe defaults**: If a task involves fallback behavior on error, add "Never silently fall back to production/permissive default — propagate or warn"
 ```
 
 Task titles MUST start with "Phase N:" — develop uses this for sequencing.

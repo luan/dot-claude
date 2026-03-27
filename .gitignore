@@ -57,18 +57,26 @@ debug
 paste-cache
 plans
 specs/
+telemetry
+stats-cache.json
 tasks
 teams
 shell-snapshots/
 backups
 cache/
-stats-cache.json
 mcp-needs-auth-cache.json
 usage-data
-telemetry
 
-# Skills workspaces
-/skills/**/*-workspace/
+# Plugins (track config + bootstrap only)
+plugins/*
+!plugins/config.json
+!plugins/bootstrap/
+tools/target
+target
+backups
 /icons
+/skills/**/*-workspace/
 .credentials.json
 policy-limits.json
+sessions/
+rule-creator-workspace/

@@ -1,0 +1,35 @@
+{
+  "skill_name": "spec",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/spec fix sync not updating on secondary devices\n\ntriage found: sync debug logs from /dia-inspect-data show zero update events for entity X on device B. Server get-updates returns empty changeset. Local database shows entity X with position=0 and timestamp from 3 days ago. Device A (source) shows the entity was edited 2 hours ago.\n\nresearch subagent came back saying: 'the observation chain is broken — SyncObserver.swift doesn't register for changes on the relevant entity type, so edits are never detected and never queued for upload.' hypothesis: observation chain is the root cause.",
+      "expected_output": "Does NOT accept the observation-chain hypothesis at face value. The production data (zero update events) is ambiguous — it could be caused by the observation chain not detecting changes OR by the recording/position-encoding path failing to produce update events even when changes are detected. The spec must list the concrete production observations, map each to possible code paths, and flag that 'zero update events' has multiple explanations before locking in a root cause.",
+      "expectations": [
+        "Lists the specific production observations from triage data: zero update events, empty server changeset, stale local timestamp/position, edit visible on device A but not device B.",
+        "For 'zero update events', identifies that MULTIPLE code paths could produce this observation — not just the observation chain. At minimum: (1) observation chain doesn't detect the change, (2) change is detected but recording/encoding fails to produce an update event, (3) update event is produced but not uploaded. Flags this ambiguity explicitly.",
+        "Does NOT present the observation-chain hypothesis as confirmed root cause without ruling out alternatives. Either dispatches follow-up investigation or states confidence as MEDIUM/LOW with 'not yet ruled out' alternatives."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/spec fix webhook delivery reliability\n\nresearch subagent investigated the code and found: 'sender.ts is fire-and-forget, no retry logic exists, WebhookDeliveryStatus enum only has pending/delivered/failed with no retrying state.' No production data was provided — this is a greenfield improvement, not a bug investigation.",
+      "expected_output": "Since no production data exists and this is a greenfield improvement (not a bug with ambiguous root cause), the spec skips the production data correlation step and proceeds with HIGH confidence. The confidence gate reflects that this is a well-understood gap (missing feature) rather than a diagnostic hypothesis.",
+      "expectations": [
+        "Does NOT artificially apply production-data-correlation or root-cause-validation steps when there is no production data and no diagnostic ambiguity — these steps are for bug investigations with production evidence.",
+        "Confidence gate shows HIGH confidence with clear reasoning: this is a missing capability, not a contested hypothesis.",
+        "Produces a normal target-state spec with Problem/Recommendation/Architecture Context/Risks sections."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/spec fix memory leak in background sync\n\ntriage data from /dia-inspect-data: memory usage grows 50MB/hour during idle. Instruments trace shows SyncScheduler.scheduleNextSync() allocating Timer objects. Database shows 847 pending sync operations queued but never executed. Sync log shows 'sync paused: conflict detected' repeating every 30 seconds.\n\nresearch subagent says: 'SyncScheduler creates a new Timer each cycle without invalidating the previous one — classic retain cycle. The timer accumulates because scheduleNextSync is called on every sync-pause event, and the conflict causes continuous pause events.'",
+      "expected_output": "Validates the hypothesis against ALL production observations, not just the timer accumulation. Specifically: the hypothesis explains timer growth (new timer per pause event) and the repeating log message (conflict triggers pause loop), but must also explain the 847 pending operations — are they a symptom of the same bug, or an independent issue? The spec should trace the code path from conflict detection through pause-event firing through timer scheduling, confirming each link with the production data.",
+      "expectations": [
+        "Maps EACH production observation to the hypothesis: memory growth (timer accumulation), repeating log (conflict-pause loop), AND the 847 pending operations. Does not ignore observations that don't obviously fit.",
+        "For the 847 pending operations: either explains how they relate to the timer/conflict bug (e.g., sync never completes because of the pause loop, so operations queue indefinitely) or flags them as potentially independent — requiring separate investigation.",
+        "Confidence gate appears in the presentation with supporting evidence, alternatives not yet ruled out, and what would increase confidence. Does not present the spec as if the root cause is proven without addressing all observations."
+      ]
+    }
+  ]
+}

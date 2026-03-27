@@ -2,45 +2,28 @@
 
 Personal Claude Code plugin — skills, rules, and tools for AI-assisted development.
 
-## Setup
+## New User Setup
 
-This repo is a Claude Code plugin installed via a local marketplace.
-It is **not** a `$HOME/.claude` directory —
-personal config (CLAUDE.md, settings.json, hooks) lives in `$HOME/.claude` directly.
+1. **Set your username**
+   Add `"GIT_USERNAME": "<your-handle>"` to the `env` block in `settings.json` or `settings.local.json`. This controls branch prefixes and other user-specific behaviour.
 
-```
-$HOME/AI/
-├── commons/          ← this repo (commons plugin)
-├── gt/               ← Graphite CLI plugin (optional)
-└── dot-claude/       ← symlink to $HOME/.claude
+2. **Install the `ct` CLI**
+   ```bash
+   cd ~/.claude/tools && cargo install --path crates/ct
+   ```
+   Requires Rust (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`).
 
-$HOME/.claude/
-├── local-plugins/
-│   ├── .claude-plugin/marketplace.json   ← declares all local plugins
-│   └── plugins/
-│       ├── commons → $HOME/AI/commons
-│       └── gt      → $HOME/AI/gt
-├── settings.json     ← enabledPlugins: commons@local, gt@local
-├── CLAUDE.md         ← personal global instructions
-└── rules/            ← personal global rules
-```
+3. **Reinstall plugins**
+   Plugin state is not committed. Open Claude Code and reinstall plugins via the plugin manager.
 
-To install from scratch:
+## Quick Start
 
 ```bash
-git clone <repo-url> $HOME/AI/commons
-ln -sf $HOME/AI/commons $HOME/.claude/local-plugins/plugins/commons
-```
-
-Then in `$HOME/.claude/settings.json`:
-
-```json
-{
-  "extraKnownMarketplaces": {
-    "local": { "source": { "source": "directory", "path": "<home>/.claude/local-plugins" } }
-  },
-  "enabledPlugins": { "commons@local": true }
-}
+/vibe "add user authentication"      # Full pipeline, hands-off
+/scope "add user authentication"     # Research, design, create tasks
+/develop <epic-id>                   # Execute (solo or swarm)
+/review                              # Adversarial code review
+/commit                              # Conventional commit
 ```
 
 ## What's in here
@@ -84,3 +67,18 @@ Rust crates used by skills (in `tools/crates/`).
 ```
 brainstorm → scope → develop → split-commit → review → commit
 ```
+
+- **brainstorm**: Collaborative design for greenfield features
+- **scope**: Research codebase, design, and create implementation tasks
+- **develop**: Workers own TDD from briefs (auto solo/swarm)
+- **split-commit**: Repackage branch into clean, tested commits
+- **review**: Adversarial review with built-in fix loop + polish
+- **commit**: Conventional commit
+
+Other skills: `/test-plan`, `/triage`, `/debugging`, `/next`, `/start`,
+`/split-commit`, `/gt`, `/acceptance`, `/pr:descr`,
+`/pr:comments`, `/frontend-design`
+
+## License
+
+Do whatever you want with this.

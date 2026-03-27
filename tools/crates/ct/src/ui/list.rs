@@ -7,7 +7,7 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Cell, Row, Table, TableState};
 
 use crate::store::{
-    SortOrder, Status, StatusFilter, Task, filter_and_sort, tree_order, tree_prefix,
+    SortOrder, Status, StatusFilter, Task, child_counts, filter_and_sort, tree_order, tree_prefix,
 };
 use crate::ui::theme;
 
@@ -26,12 +26,14 @@ pub struct ListState {
     pub expanded_ids: HashSet<String>,
     pub pending_z: bool,
     pub visible_count: usize,
+    pub child_count_map: HashMap<String, (usize, usize)>,
 }
 
 impl ListState {
     pub fn new(tasks: Vec<Task>) -> Self {
         let filtered = filter_and_sort(&tasks, StatusFilter::All, SortOrder::Id, false, "");
         let visible_count = filtered.len();
+        let child_count_map = child_counts(&tasks);
         let mut table_state = TableState::default();
         if !filtered.is_empty() {
             table_state.select(Some(0));
@@ -51,10 +53,12 @@ impl ListState {
             expanded_ids: HashSet::new(),
             pending_z: false,
             visible_count,
+            child_count_map,
         }
     }
 
     pub fn rebuild(&mut self) {
+        self.child_count_map = child_counts(&self.tasks);
         self.filtered = filter_and_sort(
             &self.tasks,
             self.status_filter,
@@ -146,6 +150,8 @@ pub fn render_list(f: &mut Frame, area: Rect, state: &mut ListState) {
         )
         .bottom_margin(0);
 
+    let child_count_map = &state.child_count_map;
+
     let expanded_ids = &state.expanded_ids;
     let rows: Vec<Row> = display_tasks
         .iter()
@@ -195,31 +201,58 @@ pub fn render_list(f: &mut Frame, area: Rect, state: &mut ListState) {
             let has_desc = !t.description.is_empty();
             let is_expanded = has_desc && expanded_ids.contains(&t.id);
 
+            let badge_span = child_count_map.get(t.id.as_str()).map(|(done, total)| {
+                Span::styled(
+                    format!(" [{done}/{total}]"),
+                    if dim {
+                        theme::muted_style()
+                    } else {
+                        Style::default().fg(theme::GREEN)
+                    },
+                )
+            });
+
             let subject_cell = if is_expanded {
                 let desc_preview: String = t.description.chars().take(80).collect();
+                let mut first_line_spans =
+                    vec![Span::styled(format!("+ {}", t.subject), subject_style)];
+                if let Some(badge) = badge_span {
+                    first_line_spans.push(badge);
+                }
                 Cell::from(Text::from(vec![
-                    Line::from(Span::styled(format!("+ {}", t.subject), subject_style)),
+                    Line::from(first_line_spans),
                     Line::from(Span::styled(desc_preview, theme::muted_style())),
                 ]))
             } else if tree_view && blocked {
-                Cell::from(Line::from(vec![
-                    Span::styled(
-                        if has_desc {
-                            format!("+ {}", t.subject)
-                        } else {
-                            t.subject.clone()
-                        },
-                        subject_style,
-                    ),
-                    Span::styled(
-                        format!(" ← {}", active_blocker_ids.join(", ")),
-                        Style::default().fg(theme::ORANGE),
-                    ),
-                ]))
-            } else if has_desc {
-                Cell::from(Span::styled(format!("+ {}", t.subject), subject_style))
+                let mut spans = vec![Span::styled(
+                    if has_desc {
+                        format!("+ {}", t.subject)
+                    } else {
+                        t.subject.clone()
+                    },
+                    subject_style,
+                )];
+                if let Some(badge) = badge_span {
+                    spans.push(badge);
+                }
+                spans.push(Span::styled(
+                    format!(" ← {}", active_blocker_ids.join(", ")),
+                    Style::default().fg(theme::ORANGE),
+                ));
+                Cell::from(Line::from(spans))
             } else {
-                Cell::from(Span::styled(t.subject.as_str(), subject_style))
+                let mut spans = vec![Span::styled(
+                    if has_desc {
+                        format!("+ {}", t.subject)
+                    } else {
+                        t.subject.clone()
+                    },
+                    subject_style,
+                )];
+                if let Some(badge) = badge_span {
+                    spans.push(badge);
+                }
+                Cell::from(Line::from(spans))
             };
 
             let row = Row::new(vec![

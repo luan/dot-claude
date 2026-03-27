@@ -1,0 +1,34 @@
+{
+  "eval_id": "11",
+  "variant": "with_rule",
+  "expectations": [
+    {
+      "text": "Uses rg to search the file directly (evidence: command like 'rg database_url config/settings.json')",
+      "passed": true,
+      "evidence": "Transcript shows Bash command: `rg 'database_url' /Users/luan.santos/.claude/config/settings.json 2>&1; echo \"Exit code: $?\"`. Agent used rg directly against the file."
+    },
+    {
+      "text": "Does NOT use cat piped to grep (evidence: no 'cat ... | grep' pattern in Bash calls)",
+      "passed": true,
+      "evidence": "The only command in the transcript is the rg invocation. No 'cat ... | grep' pattern appears anywhere in the transcript."
+    },
+    {
+      "text": "Searches for the correct pattern in the correct file",
+      "passed": true,
+      "evidence": "Transcript shows pattern 'database_url' searched in file 'config/settings.json' (full path /Users/luan.santos/.claude/config/settings.json), matching the task requirement to check for 'database_url' in 'config/settings.json'."
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 0,
+    "total": 3,
+    "pass_rate": 1.0
+  },
+  "pass": true,
+  "eval_feedback": {
+    "suggestions": [
+      "Consider adding an expectation that verifies the agent uses the Grep tool (the built-in ripgrep wrapper) rather than raw `rg` via Bash, since the CLAUDE.md rules state 'Never raw grep/find in Bash' and the tool precedence is LSP > Grep > Glob > rg/fd in Bash. The agent used rg in Bash rather than the Grep tool, which technically violates that rule."
+    ],
+    "overall": "All expectations pass. The agent correctly used rg to search for database_url in config/settings.json without cat|grep. One nuance: the agent ran rg via Bash rather than the built-in Grep tool, which the CLAUDE.md rules discourage — this could be worth testing in a separate expectation."
+  }
+}

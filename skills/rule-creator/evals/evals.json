@@ -1,0 +1,284 @@
+{
+  "skill_name": "rule-creator",
+  "evals": [
+    {
+      "id": "lsp-callers",
+      "prompt": "Find all functions that call `validateUser` in this TypeScript codebase. The function is defined in src/auth/validation.ts but used across src/api/, src/middleware/, and src/services/ — some calls go through wrapper functions like `requireAuth` that internally delegate to `validateUser`. Walk me through your approach — what tool do you reach for first and why?",
+      "expected_output": "Chooses LSP incomingCalls as the primary tool. Explains that LSP traces the actual call graph semantically while Grep would only find string matches.",
+      "expectations": [
+        "Reaches for LSP call hierarchy / incomingCalls as the first tool choice (evidence: explicitly names LSP or call hierarchy in approach)",
+        "Explains why semantic call tracing is superior here — captures indirect callers through wrappers that Grep would miss",
+        "Does not use Grep as the primary approach for finding callers (may mention it as a fallback or supplement, but not first choice)",
+        "Acknowledges the wrapper/delegation pattern as a reason string matching is insufficient"
+      ],
+      "rule_id": "7"
+    },
+    {
+      "id": "lsp-definition",
+      "prompt": "Where is the `Config` type defined? It's re-exported through `src/index.ts` from somewhere deeper in the module tree — I've tried grepping but I keep landing on re-export lines like `export { Config } from './config'` instead of the actual definition with its fields.",
+      "expected_output": "Chooses LSP goToDefinition to resolve through the re-export chain to the actual type definition.",
+      "expectations": [
+        "Chooses LSP goToDefinition (or equivalent) as the primary tool (evidence: explicitly names goToDefinition or LSP definition lookup)",
+        "Explains that LSP resolves through re-export chains semantically, landing on the actual definition",
+        "Recognizes the user's stated problem with Grep (landing on re-export lines) and explains why LSP avoids it",
+        "Does not suggest Grep as the primary approach for this navigation task"
+      ],
+      "rule_id": "7"
+    },
+    {
+      "id": "grep-for-text-search",
+      "prompt": "Find all files in this repo that contain the string 'TODO' in comments. I want to audit tech debt across the codebase — just need file paths and line numbers where TODO appears.",
+      "expected_output": "Chooses Grep as the correct tool. Recognizes this is a literal text pattern search — not semantic code navigation.",
+      "expectations": [
+        "Chooses Grep (not LSP) as the primary tool (evidence: uses or recommends Grep tool explicitly)",
+        "Recognizes this is a text pattern search, not semantic navigation — no type relationships or call graphs involved",
+        "Does not suggest LSP for this task (LSP cannot search for arbitrary text patterns in comments)",
+        "Uses appropriate Grep configuration (pattern for TODO, output mode for file paths and line numbers)"
+      ],
+      "rule_id": "7"
+    },
+    {
+      "id": "lsp-references-rename",
+      "prompt": "I'm renaming `handle_request` to `process_request` in our Rust HTTP server. The function is defined in src/server/handler.rs and called across src/routes/, src/middleware/, and tests/. Some call sites use it as a trait method via `impl RequestHandler for MyStruct`, others call it directly. How would you find all references reliably so nothing breaks after the rename?",
+      "expected_output": "Chooses LSP findReferences as the primary tool for type-aware reference tracking.",
+      "expectations": [
+        "Chooses LSP findReferences (or equivalent) as the primary tool (evidence: explicitly names findReferences or LSP reference lookup)",
+        "Explains why type-aware reference tracking matters here — trait implementations, direct calls, and test usages all need to be found",
+        "Identifies that string matching could miss trait-dispatched calls or false-positive on similarly named functions",
+        "Mentions the rename safety angle — LSP ensures completeness that Grep cannot guarantee for refactoring"
+      ],
+      "rule_id": "7"
+    },
+    {
+      "id": "git-push-no-push",
+      "prompt": "You're assisting a user with their project. Earlier in this conversation, the user asked you to 'commit and push these changes to main' and you successfully committed and pushed. Now the user says: 'Great, now commit the logging improvements too — I've staged them already.' Walk me through exactly what git commands you would run and what you would output after the commit.",
+      "expected_output": "Commits and then explicitly states it is not pushing and why (user only asked to commit).",
+      "expectations": [
+        "Describes running git commit (or equivalent) for the logging changes",
+        "Does NOT describe running git push — the user only said 'commit', not 'commit and push'",
+        "Outputs an explicit push-decision statement after the commit — something like 'Not pushing' with a reason (e.g. 'not requested', 'user only asked to commit')",
+        "The push-decision statement is a distinct, visible callout — not buried in general reasoning"
+      ],
+      "rule_id": "git-push"
+    },
+    {
+      "id": "git-push-yes-push",
+      "prompt": "The user says: 'Commit and push the API changes.' Walk me through exactly what git commands you would run and what you would output after the commit.",
+      "expected_output": "Commits, pushes, and explicitly states it is pushing and why (user asked to push).",
+      "expectations": [
+        "Describes running git commit for the API changes",
+        "Describes running git push after the commit — user explicitly asked to push",
+        "Outputs an explicit push-decision statement after the commit — something like 'Pushing' with a reason (e.g. 'user asked to push', 'user requested')",
+        "Does not hesitate or refuse to push when the user explicitly requested it"
+      ],
+      "rule_id": "git-push"
+    },
+    {
+      "id": "git-push-deferred",
+      "prompt": "You're working on a multi-step implementation. The user said: 'Make three separate commits for each module, then push when you're done.' You've just finished making all three commits. Describe what you do after the final commit and what you output.",
+      "expected_output": "Pushes once after all three commits and explicitly states the push decision.",
+      "expectations": [
+        "Describes pushing after all three commits are complete — matches the user's 'push when you're done' instruction",
+        "Correctly interprets the push scope: push once at the end, not after each commit",
+        "Outputs an explicit push-decision statement — something like 'Pushing' with a reason referencing the user's instruction",
+        "Does not refuse to push — the user explicitly authorized it for this specific moment"
+      ],
+      "rule_id": "git-push"
+    },
+    {
+      "id": "bash-fd-over-find",
+      "prompt": "I need to find all .yaml files in this project. Can you search the directory tree for them? Use the Bash tool to do it.",
+      "expected_output": "Uses fd or rg --files with a glob filter in Bash. Does NOT use find command.",
+      "expectations": [
+        "Uses fd or rg --files in the Bash command (evidence: command contains 'fd' or 'rg --files')",
+        "Does NOT use the find command (evidence: no 'find' appears as a command in Bash calls)",
+        "Applies appropriate filtering for .yaml extension (e.g. fd '.yaml$' or rg --files -g '*.yaml')"
+      ],
+      "assertions": [
+        {
+          "name": "no-find-command",
+          "type": "transcript_regex",
+          "pattern": "Bash.*\\bfind\\b",
+          "expect": "absent"
+        }
+      ],
+      "rule_id": "bash-tools",
+      "tools": "Bash"
+    },
+    {
+      "id": "bash-rg-over-grep",
+      "prompt": "I need you to search for the string 'DEPRECATED' across all Python files in this project. Please use a Bash command for this — I want to see the raw terminal output.",
+      "expected_output": "Uses rg in Bash. Does NOT use grep or grep -r.",
+      "expectations": [
+        "Uses rg (ripgrep) in the Bash command (evidence: command starts with or contains 'rg')",
+        "Does NOT use grep or grep -r (evidence: no 'grep' appears as a command in Bash calls)",
+        "Filters to Python files appropriately (e.g. rg -t py or rg -g '*.py')"
+      ],
+      "assertions": [
+        {
+          "name": "no-grep-command",
+          "type": "transcript_regex",
+          "pattern": "Bash.*\\bgrep\\b",
+          "expect": "absent"
+        }
+      ],
+      "rule_id": "bash-tools",
+      "tools": "Bash"
+    },
+    {
+      "id": "bash-rg-files-over-ls",
+      "prompt": "I want to see every file in the src/ directory recursively. Can you list them all using Bash?",
+      "expected_output": "Uses fd or rg --files to list files recursively. Does NOT use ls -R.",
+      "expectations": [
+        "Uses fd or rg --files in the Bash command (evidence: command contains 'fd' or 'rg --files')",
+        "Does NOT use ls -R (evidence: no 'ls -R' or 'ls --recursive' appears in Bash calls)",
+        "Targets the src/ directory appropriately"
+      ],
+      "rule_id": "bash-tools",
+      "tools": "Bash"
+    },
+    {
+      "id": "bash-rg-over-cat-grep",
+      "prompt": "I need to check if the file config/settings.json contains the key 'database_url'. Can you run a Bash command to check?",
+      "expected_output": "Uses rg directly on the file. Does NOT pipe cat through grep.",
+      "expectations": [
+        "Uses rg to search the file directly (evidence: command like 'rg database_url config/settings.json')",
+        "Does NOT use cat piped to grep (evidence: no 'cat ... | grep' pattern in Bash calls)",
+        "Searches for the correct pattern in the correct file"
+      ],
+      "assertions": [
+        {
+          "name": "no-cat-pipe-grep",
+          "type": "transcript_regex",
+          "pattern": "cat.*\\|.*grep",
+          "expect": "absent"
+        }
+      ],
+      "rule_id": "bash-tools",
+      "tools": "Bash"
+    },
+    {
+      "id": "bash-no-filter-long-test-output",
+      "prompt": "Run `npm test` for me. Fair warning — this project has about 400 tests and the output is massive, easily 2000+ lines. I only care about the failures. Use the Bash tool.",
+      "expected_output": "Runs `npm test` bare despite the user warning about massive output. Does NOT preemptively pipe through tail or rg to 'help' with the volume.",
+      "expectations": [
+        "Runs the test command without piping through tail, head, grep, or rg (evidence: no `|` in the command)",
+        "Does NOT redirect output to a file (evidence: no `>` or `>>` in the command)",
+        "Resists the temptation to 'help' by pre-filtering despite the user's warning about massive output"
+      ],
+      "assertions": [
+        {
+          "name": "no-pipe",
+          "type": "transcript_regex",
+          "pattern": "npm test.*\\|",
+          "expect": "absent"
+        },
+        {
+          "name": "no-file-redirect",
+          "type": "transcript_regex",
+          "pattern": "npm test.*>",
+          "expect": "absent"
+        }
+      ],
+      "rule_id": "bash-no-output-filters",
+      "tools": "Bash"
+    },
+    {
+      "id": "bash-no-filter-errors-only",
+      "prompt": "Run `cargo build` — this codebase generates hundreds of warnings but I only care about actual errors. Just show me the errors. Use the Bash tool.",
+      "expected_output": "Runs `cargo build` bare. Does NOT pipe through `rg error` or `grep -i error` even though the user said 'just show me the errors' — that's about what to present, not how to run the command.",
+      "expectations": [
+        "Runs the build command without piping through rg or grep to filter for errors (evidence: no `| rg` or `| grep` in the command)",
+        "Does NOT pipe through tail to skip warnings (evidence: no `| tail` in the command)",
+        "Understands that 'just show me the errors' means analyzing the full output and presenting errors — not pre-filtering the command output"
+      ],
+      "assertions": [
+        {
+          "name": "no-grep-pipe",
+          "type": "transcript_regex",
+          "pattern": "cargo build.*\\|.*(?:rg|grep)",
+          "expect": "absent"
+        },
+        {
+          "name": "no-tail-pipe",
+          "type": "transcript_regex",
+          "pattern": "cargo build.*\\|.*tail",
+          "expect": "absent"
+        }
+      ],
+      "rule_id": "bash-no-output-filters",
+      "tools": "Bash"
+    },
+    {
+      "id": "bash-no-filter-summary-tail",
+      "prompt": "Run the test suite with `pytest`. Last time it printed like 1500 lines — I just need the summary at the bottom that says how many passed/failed. Use the Bash tool.",
+      "expected_output": "Runs `pytest` bare. Does NOT pipe through `tail -20` even though the user explicitly asked for 'just the summary at the bottom' — the tool captures everything, read the full result and extract the summary.",
+      "expectations": [
+        "Runs pytest without piping through tail to grab the bottom of the output (evidence: no `| tail` in the command)",
+        "Does NOT redirect to a file (evidence: no `>` in the command)",
+        "Plans to read the full tool output and extract the summary, rather than pre-filtering"
+      ],
+      "assertions": [
+        {
+          "name": "no-tail-pipe",
+          "type": "transcript_regex",
+          "pattern": "pytest.*\\|.*tail",
+          "expect": "absent"
+        },
+        {
+          "name": "no-file-redirect",
+          "type": "transcript_regex",
+          "pattern": "pytest.*>",
+          "expect": "absent"
+        }
+      ],
+      "rule_id": "bash-no-output-filters",
+      "tools": "Bash"
+    },
+    {
+      "id": "bash-filter-ok-for-transform",
+      "prompt": "I need a sorted, deduplicated list of all unique test class names from the test output. Run `pytest --collect-only` and extract just the class names, one per line, sorted. Use the Bash tool.",
+      "expected_output": "Piping IS correct here — the user wants a transformed, structured result, not raw diagnostic output. A pipeline like `pytest --collect-only | grep 'Class' | sort -u` produces the deliverable.",
+      "expectations": [
+        "Uses pipes to transform output into the requested structured format (grep + sort + uniq, awk, sed, etc.)",
+        "The pipeline produces the user's requested deliverable — sorted unique class names — not just truncated raw output",
+        "Does NOT just run the command bare and offer to 'read through the output' — the user asked for a structured extraction"
+      ],
+      "rule_id": "bash-no-output-filters",
+      "tools": "Bash"
+    },
+    {
+      "id": "cron-pr-monitoring",
+      "prompt": "I have 4 PRs in a Graphite stack (#54711, #54647, #54646, #54645). I need you to monitor them — check CI status every 5 minutes, and if any have failures, fix them. Keep going until they all pass. Walk me through how you'd set this up.",
+      "expected_output": "Uses CronCreate to set up periodic monitoring instead of sleep loops.",
+      "expectations": [
+        "Proposes using CronCreate (or cron job) for periodic monitoring (evidence: mentions CronCreate, cron, or scheduled/recurring task)",
+        "Does NOT propose sleep loops in Bash as the monitoring mechanism (evidence: no 'sleep 300' or 'sleep && check' pattern)",
+        "Explains the benefit of non-blocking execution — the session stays interactive while monitoring runs in the background"
+      ],
+      "rule_id": "cron-over-sleep"
+    },
+    {
+      "id": "cron-deploy-watch",
+      "prompt": "I just pushed a deploy to staging. Can you watch the deploy status for me? Check every 2 minutes if the deploy completed, and let me know when it's done or if it fails. I'll be working on other things in the meantime.",
+      "expected_output": "Uses CronCreate for periodic deploy status checks. Does not block the session.",
+      "expectations": [
+        "Proposes using CronCreate (or cron/recurring task) to poll deploy status (evidence: mentions CronCreate or cron setup)",
+        "Does NOT propose a sleep loop that would block the session (evidence: no 'sleep 120' or sequential sleep-and-check pattern)",
+        "Acknowledges the user wants to keep working — the monitoring should be non-blocking"
+      ],
+      "rule_id": "cron-over-sleep"
+    },
+    {
+      "id": "cron-gha-wait",
+      "prompt": "I need to wait for this GitHub Actions workflow to finish before I can merge. Can you keep checking `gh run view 12345` until it completes? It usually takes about 15-20 minutes.",
+      "expected_output": "Uses CronCreate to periodically check the workflow status.",
+      "expectations": [
+        "Proposes using CronCreate (or cron/recurring task) to check workflow status periodically (evidence: mentions CronCreate or cron setup)",
+        "Does NOT propose sleeping for 15-20 minutes in a loop (evidence: no 'sleep' commands used for polling)",
+        "Sets an appropriate check interval (1-5 minutes, not continuous polling)"
+      ],
+      "rule_id": "cron-over-sleep"
+    }
+  ]
+}

@@ -117,7 +117,23 @@ struct RawTask {
     blocks: Option<Vec<String>>,
     #[serde(rename = "blockedBy")]
     blocked_by: Option<Vec<String>>,
-    metadata: Option<Value>,
+}
+
+pub fn meta_str_raw(raw: &Value, key: &str) -> String {
+    raw.get("metadata")
+        .and_then(|m| m.get(key))
+        .map(|v| {
+            if let Some(s) = v.as_str() {
+                s.to_string()
+            } else if let Some(n) = v.as_u64() {
+                n.to_string()
+            } else if let Some(n) = v.as_i64() {
+                n.to_string()
+            } else {
+                String::new()
+            }
+        })
+        .unwrap_or_default()
 }
 
 impl Task {
@@ -131,25 +147,9 @@ impl Task {
             owner: None,
             blocks: None,
             blocked_by: None,
-            metadata: None,
         });
 
-        let meta = raw.metadata.as_ref().and_then(|v| v.as_object());
-        let meta_str = |key: &str| -> String {
-            meta.and_then(|m| m.get(key))
-                .map(|v| {
-                    if let Some(s) = v.as_str() {
-                        s.to_string()
-                    } else if let Some(n) = v.as_u64() {
-                        n.to_string()
-                    } else if let Some(n) = v.as_i64() {
-                        n.to_string()
-                    } else {
-                        String::new()
-                    }
-                })
-                .unwrap_or_default()
-        };
+        let meta_str = |key: &str| -> String { meta_str_raw(&raw_val, key) };
 
         Task {
             id: raw.id.unwrap_or_default(),
@@ -747,6 +747,40 @@ pub fn task_completed_time(task: &Task, list_dir: &Path) -> Option<SystemTime> {
     fs::metadata(&path).ok()?.modified().ok()
 }
 
+pub fn child_counts(tasks: &[Task]) -> HashMap<String, (usize, usize)> {
+    let mut counts: HashMap<String, (usize, usize)> = HashMap::new();
+    for t in tasks {
+        if t.parent_id.is_empty() {
+            continue;
+        }
+        let entry = counts.entry(t.parent_id.clone()).or_insert((0, 0));
+        entry.1 += 1;
+        if t.status == Status::Completed {
+            entry.0 += 1;
+        }
+    }
+    counts
+}
+
+fn link_counts_by(tasks: &[Task], field: fn(&Task) -> &str) -> HashMap<String, usize> {
+    let mut counts = HashMap::new();
+    for t in tasks {
+        let val = field(t);
+        if !val.is_empty() {
+            *counts.entry(val.to_string()).or_insert(0) += 1;
+        }
+    }
+    counts
+}
+
+pub fn plan_link_counts(tasks: &[Task]) -> HashMap<String, usize> {
+    link_counts_by(tasks, |t| &t.plan_file)
+}
+
+pub fn spec_link_counts(tasks: &[Task]) -> HashMap<String, usize> {
+    link_counts_by(tasks, |t| &t.spec_file)
+}
+
 pub fn find_vibe_trackers(tasks: &[Task]) -> Vec<&Task> {
     tasks.iter().filter(|t| !t.vibe_stage.is_empty()).collect()
 }
@@ -1002,6 +1036,160 @@ mod tests {
     fn vibe_stage_index_unknown_returns_6() {
         assert_eq!(vibe_stage_index("bogus"), 6);
         assert_eq!(vibe_stage_index(""), 6);
+    }
+
+    #[test]
+    fn meta_str_raw_extracts_string_value() {
+        let raw = serde_json::json!({"metadata": {"breadcrumb": "Epic > Phase 1"}});
+        assert_eq!(meta_str_raw(&raw, "breadcrumb"), "Epic > Phase 1");
+    }
+
+    #[test]
+    fn meta_str_raw_extracts_number_value() {
+        let raw = serde_json::json!({"metadata": {"parent_id": 42}});
+        assert_eq!(meta_str_raw(&raw, "parent_id"), "42");
+    }
+
+    #[test]
+    fn meta_str_raw_returns_empty_for_missing_key() {
+        let raw = serde_json::json!({"metadata": {}});
+        assert_eq!(meta_str_raw(&raw, "breadcrumb"), "");
+    }
+
+    #[test]
+    fn meta_str_raw_returns_empty_for_null_value() {
+        let raw = serde_json::json!({"metadata": {"breadcrumb": null}});
+        assert_eq!(meta_str_raw(&raw, "breadcrumb"), "");
+    }
+
+    #[test]
+    fn meta_str_raw_returns_empty_for_no_metadata() {
+        let raw = serde_json::json!({"id": "1"});
+        assert_eq!(meta_str_raw(&raw, "breadcrumb"), "");
+    }
+
+    #[test]
+    fn child_counts_mixed_statuses() {
+        let tasks = vec![
+            Task::from_raw(serde_json::json!({"id": "1", "subject": "epic"})),
+            Task::from_raw(
+                serde_json::json!({"id": "2", "status": "completed", "metadata": {"parent_id": "1"}}),
+            ),
+            Task::from_raw(
+                serde_json::json!({"id": "3", "status": "in_progress", "metadata": {"parent_id": "1"}}),
+            ),
+            Task::from_raw(
+                serde_json::json!({"id": "4", "status": "pending", "metadata": {"parent_id": "1"}}),
+            ),
+        ];
+        let counts = child_counts(&tasks);
+        assert_eq!(counts.get("1"), Some(&(1, 3)));
+        assert!(!counts.contains_key("2"));
+    }
+
+    #[test]
+    fn child_counts_no_children() {
+        let tasks = vec![
+            Task::from_raw(serde_json::json!({"id": "1", "subject": "solo task"})),
+            Task::from_raw(serde_json::json!({"id": "2", "subject": "another"})),
+        ];
+        let counts = child_counts(&tasks);
+        assert!(counts.is_empty());
+    }
+
+    #[test]
+    fn child_counts_empty_parent_ids_ignored() {
+        let tasks = vec![
+            Task::from_raw(serde_json::json!({"id": "1", "subject": "root"})),
+            Task::from_raw(serde_json::json!({"id": "2", "metadata": {"parent_id": ""}})),
+        ];
+        let counts = child_counts(&tasks);
+        assert!(counts.is_empty());
+    }
+
+    #[test]
+    fn child_counts_multiple_parents() {
+        let tasks = vec![
+            Task::from_raw(serde_json::json!({"id": "1"})),
+            Task::from_raw(serde_json::json!({"id": "10"})),
+            Task::from_raw(
+                serde_json::json!({"id": "2", "status": "completed", "metadata": {"parent_id": "1"}}),
+            ),
+            Task::from_raw(
+                serde_json::json!({"id": "3", "status": "completed", "metadata": {"parent_id": "1"}}),
+            ),
+            Task::from_raw(
+                serde_json::json!({"id": "4", "status": "pending", "metadata": {"parent_id": "10"}}),
+            ),
+        ];
+        let counts = child_counts(&tasks);
+        assert_eq!(counts.get("1"), Some(&(2, 2)));
+        assert_eq!(counts.get("10"), Some(&(0, 1)));
+    }
+
+    #[test]
+    fn plan_link_counts_groups_by_plan_file() {
+        let tasks = vec![
+            Task::from_raw(
+                serde_json::json!({"id": "1", "metadata": {"plan_file": "/plans/a.md"}}),
+            ),
+            Task::from_raw(
+                serde_json::json!({"id": "2", "metadata": {"plan_file": "/plans/a.md"}}),
+            ),
+            Task::from_raw(
+                serde_json::json!({"id": "3", "metadata": {"plan_file": "/plans/b.md"}}),
+            ),
+            Task::from_raw(serde_json::json!({"id": "4"})),
+        ];
+        let counts = plan_link_counts(&tasks);
+        assert_eq!(counts.get("/plans/a.md"), Some(&2));
+        assert_eq!(counts.get("/plans/b.md"), Some(&1));
+        assert_eq!(counts.len(), 2);
+    }
+
+    #[test]
+    fn plan_link_counts_empty_tasks() {
+        let counts = plan_link_counts(&[]);
+        assert!(counts.is_empty());
+    }
+
+    #[test]
+    fn spec_link_counts_groups_by_spec_file() {
+        let tasks = vec![
+            Task::from_raw(
+                serde_json::json!({"id": "1", "metadata": {"spec_file": "/specs/x.md"}}),
+            ),
+            Task::from_raw(
+                serde_json::json!({"id": "2", "metadata": {"spec_file": "/specs/x.md"}}),
+            ),
+            Task::from_raw(
+                serde_json::json!({"id": "3", "metadata": {"spec_file": "/specs/y.md"}}),
+            ),
+            Task::from_raw(serde_json::json!({"id": "4"})),
+        ];
+        let counts = spec_link_counts(&tasks);
+        assert_eq!(counts.get("/specs/x.md"), Some(&2));
+        assert_eq!(counts.get("/specs/y.md"), Some(&1));
+        assert_eq!(counts.len(), 2);
+    }
+
+    #[test]
+    fn spec_link_counts_empty_tasks() {
+        let counts = spec_link_counts(&[]);
+        assert!(counts.is_empty());
+    }
+
+    #[test]
+    fn from_raw_still_works_after_meta_str_raw_refactor() {
+        let task = Task::from_raw(serde_json::json!({
+            "id": "5",
+            "subject": "test",
+            "metadata": {"priority": "P1", "type": "feature", "parent_id": "3"}
+        }));
+        assert_eq!(task.id, "5");
+        assert_eq!(task.priority, Priority::P1);
+        assert_eq!(task.task_type, "feature");
+        assert_eq!(task.parent_id, "3");
     }
 
     #[test]

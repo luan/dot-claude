@@ -4,7 +4,7 @@ description: "Repackage branch into clean, tested, vertical commits. Triggers: '
 argument-hint: "[base-branch] [--test='command'] [--auto]"
 user-invocable: true
 allowed-tools:
-  - Task
+  - Agent
   - Bash
 ---
 

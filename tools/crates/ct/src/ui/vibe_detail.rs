@@ -4,7 +4,9 @@ use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Paragraph, Wrap};
 
-use crate::store::{self, Status, Task};
+use crate::planfile;
+use crate::store::{self, Status, Task, meta_str_raw};
+use crate::ui::detail::build_text_section;
 use crate::ui::theme;
 
 const STAGES: [&str; 6] = ["branch", "scope", "develop", "simplify", "review", "commit"];
@@ -91,6 +93,15 @@ fn build_progress_line(current_index: usize, total: usize) -> Line<'static> {
     ])
 }
 
+fn child_label(c: &Task) -> String {
+    let breadcrumb = meta_str_raw(&c.raw, "breadcrumb");
+    if breadcrumb.is_empty() {
+        c.subject.clone()
+    } else {
+        format!("{} > {}", breadcrumb, c.subject)
+    }
+}
+
 pub fn render_vibe_detail(f: &mut Frame, area: Rect, state: &VibeDetailState) {
     let t = &state.tracker;
     let mut lines: Vec<Line> = Vec::new();
@@ -126,8 +137,23 @@ pub fn render_vibe_detail(f: &mut Frame, area: Rect, state: &VibeDetailState) {
     if !t.slug.is_empty() {
         lines.push(field("Slug", &t.slug, theme::value_style()));
     }
+    if !t.project.is_empty() {
+        lines.push(field(
+            "Project",
+            &planfile::project_name(&t.project),
+            theme::value_style(),
+        ));
+    }
     if !t.vibe_epic.is_empty() {
         lines.push(field("Epic", &t.vibe_epic, theme::value_style()));
+    }
+    if !t.session_id.is_empty() {
+        let sid = t.session_id.get(..8).unwrap_or(&t.session_id);
+        lines.push(field("Session", sid, theme::muted_style()));
+    }
+    let completed_at = meta_str_raw(&t.raw, "completedAt");
+    if !completed_at.is_empty() {
+        lines.push(field("CompletedAt", &completed_at, theme::value_style()));
     }
 
     let current_index = store::vibe_stage_index(&t.vibe_stage);
@@ -146,6 +172,11 @@ pub fn render_vibe_detail(f: &mut Frame, area: Rect, state: &VibeDetailState) {
     lines.push(Line::raw(""));
     lines.push(build_progress_line(current_index, STAGES.len()));
 
+    let design = meta_str_raw(&t.raw, "design");
+    if !design.is_empty() {
+        lines.extend(build_text_section("Design", &design));
+    }
+
     if !state.children.is_empty() {
         lines.push(Line::raw(""));
         lines.push(Line::from(vec![
@@ -159,13 +190,14 @@ pub fn render_vibe_detail(f: &mut Frame, area: Rect, state: &VibeDetailState) {
         lines.push(Line::raw(""));
         for c in &state.children {
             let icon = status_icon(&c.status);
+            let label = child_label(c);
             lines.push(Line::from(vec![
                 Span::raw("  "),
                 Span::styled(icon, theme::status_style(&c.status)),
                 Span::raw(" "),
                 Span::styled(format!("#{}", c.id), theme::muted_style()),
                 Span::raw(" "),
-                Span::styled(&c.subject, theme::value_style()),
+                Span::styled(label, theme::value_style()),
             ]));
         }
     }
@@ -302,5 +334,29 @@ mod tests {
         assert_eq!(status_icon(&state.children[0].status), "✓");
         assert_eq!(status_icon(&state.children[1].status), "→");
         assert_eq!(status_icon(&state.children[2].status), "·");
+    }
+
+    #[test]
+    fn child_with_breadcrumb_shows_breadcrumb_in_label() {
+        let child = Task::from_raw(serde_json::json!({
+            "id": "284",
+            "subject": "Trade handlers",
+            "status": "completed",
+            "metadata": {
+                "parent_id": "42",
+                "breadcrumb": "Trading System > Phase 1"
+            }
+        }));
+        let label = child_label(&child);
+        assert!(label.contains("Trading System > Phase 1"));
+        assert!(label.contains("Trade handlers"));
+    }
+
+    #[test]
+    fn child_without_breadcrumb_shows_subject_only() {
+        let child = make_child("43", "Create branch", "completed");
+        let label = child_label(&child);
+        assert!(label.contains("Create branch"));
+        assert!(!label.contains(">"));
     }
 }

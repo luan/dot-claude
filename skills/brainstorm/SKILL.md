@@ -5,7 +5,7 @@ description: "Collaborative design for greenfield features and new ideas. Trigge
 argument-hint: "<idea or topic> [--auto]"
 user-invocable: true
 allowed-tools:
-  - Task
+  - Agent
   - Skill
   - Bash
   - Read
@@ -36,7 +36,7 @@ TaskCreate: subject "Brainstorm: <topic>", metadata `{project: <repo root>, type
 
 ### 2. Scan Project Context + Start Interview
 
-Dispatch Task (subagent_type="Explore", run_in_background=true): scan for tech stack, relevant patterns, adjacent code, constraints. Under 30 lines. Empty/new project → skip scan, ask stack preferences in interview.
+Dispatch Agent (subagent_type="Explore", run_in_background=true): scan for tech stack, relevant patterns, adjacent code, constraints. Under 30 lines. Empty/new project → skip scan, ask stack preferences in interview.
 
 **Don't wait** — begin interview immediately. Scan results feed Step 4.
 
@@ -91,16 +91,17 @@ Findings format: `## Problem` → `## Chosen Approach` (with rationale) → `## 
 Brainstorm: t<id> — <topic>
 Problem: <1 sentence>
 Approach: <1 sentence>
-Phases:
-1. <title> — <key files>
-Next: /scope t<id>
+Next: /spec t<id>, /scope t<id>, or /vibe t<id>
 ```
 
 ### 8. Stop
 
-User reviews design before proceeding — do not auto-invoke scope.
+User reviews design before proceeding — do not auto-invoke next step. The user decides the executor:
+- `/spec t<id>` — define the target state formally (feeds supervibe or scope)
+- `/scope t<id>` — skip spec, go straight to planning (feeds develop)
+- `/vibe t<id>` — skip spec and scope, just build it
 
 ## Key Rules
 
-- Next Steps must include file paths — scope depends on them
 - YAGNI: push back on scope creep during interview
+- Design is the deliverable — don't prescribe implementation details (that's spec/scope's job)

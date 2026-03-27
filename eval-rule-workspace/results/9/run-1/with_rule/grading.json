@@ -1,0 +1,34 @@
+{
+  "eval_id": "9",
+  "variant": "with_rule",
+  "expectations": [
+    {
+      "text": "Uses rg (ripgrep) in the Bash command (evidence: command starts with or contains 'rg')",
+      "passed": true,
+      "evidence": "Both commands use rg. Attempt 1: `$ rg 'DEPRECATED' --type py /Users/luan.santos/.claude`. Attempt 2: `$ command rg 'DEPRECATED' --type py /Users/luan.santos/.claude`. The agent explicitly chose rg over grep."
+    },
+    {
+      "text": "Does NOT use grep or grep -r (evidence: no 'grep' appears as a command in Bash calls)",
+      "passed": true,
+      "evidence": "No grep command was issued by the agent. The transcript notes that `rg` was aliased to `grep` by the shell environment (not by the agent), but every command the agent ran used `rg`. The second attempt used `command rg` to bypass the alias. No `grep` or `grep -r` appears as an agent-initiated command."
+    },
+    {
+      "text": "Filters to Python files appropriately (e.g. rg -t py or rg -g '*.py')",
+      "passed": true,
+      "evidence": "Both attempts include `--type py` which is ripgrep's file-type filter for Python files. Attempt 1: `rg 'DEPRECATED' --type py ...`. Attempt 2: `command rg 'DEPRECATED' --type py ...`."
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 0,
+    "total": 3,
+    "pass_rate": 1.0
+  },
+  "pass": true,
+  "eval_feedback": {
+    "suggestions": [
+      "Consider adding an expectation that verifies the agent recovers gracefully when rg is aliased (as happened in this transcript). The agent's use of `command rg` to bypass the alias is good behavior worth asserting."
+    ],
+    "overall": "Expectations are well-targeted for this eval. The evidence hints in parentheses make grading unambiguous. One minor suggestion above for alias-bypass recovery."
+  }
+}

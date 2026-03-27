@@ -1,0 +1,82 @@
+[
+  {
+    "query": "ok i'm done with the sync engine changes, push everything up and make sure the PR descriptions are current",
+    "should_trigger": true
+  },
+  {
+    "query": "i need to split this into two PRs — the proto regen should be separate from the sync logic changes. can you move the proto stuff to its own branch underneath?",
+    "should_trigger": true
+  },
+  {
+    "query": "my stack is out of date, main moved forward a bunch since yesterday. sync it up and fix any conflicts",
+    "should_trigger": true
+  },
+  {
+    "query": "create a new branch on top of luan/sync-engine-improvements for the test infrastructure changes",
+    "should_trigger": true
+  },
+  {
+    "query": "push this but don't create new PRs for the WIP branches, just update the ones that already exist",
+    "should_trigger": true
+  },
+  {
+    "query": "check the current stack, i want to see what branches i have and their status",
+    "should_trigger": true
+  },
+  {
+    "query": "the changes to SyncEngine.swift should actually be in the parent branch, not this one. can you move them down?",
+    "should_trigger": true
+  },
+  {
+    "query": "i accidentally committed the test file to the wrong branch in my stack, can you amend it to the right one?",
+    "should_trigger": true
+  },
+  {
+    "query": "rebase my branches onto the latest main, there were some conflicts last time so watch out for the proto files",
+    "should_trigger": true
+  },
+  {
+    "query": "ship it — push all my branches and create PRs for any that don't have one yet",
+    "should_trigger": true
+  },
+  {
+    "query": "commit these changes with a message about fixing the duplication_index convergence test",
+    "should_trigger": false
+  },
+  {
+    "query": "the test in SyncEngineTests.swift is failing on line 234, can you take a look? it's the convergence test for profile dedup",
+    "should_trigger": false
+  },
+  {
+    "query": "review my changes before i submit — i want to make sure the sync batching logic is correct",
+    "should_trigger": false
+  },
+  {
+    "query": "update the PR description for luan/sync-profile-dedup-index to mention the new convergence tests",
+    "should_trigger": false
+  },
+  {
+    "query": "stage just the changes to SyncEngine.swift but not the test file, i want to commit them separately",
+    "should_trigger": false
+  },
+  {
+    "query": "show me the git log for the last 10 commits on main, i want to see what landed while i was out",
+    "should_trigger": false
+  },
+  {
+    "query": "what does the remoteOriginSyncIDs property do? i see it referenced in the convergence test but i'm not sure how it works",
+    "should_trigger": false
+  },
+  {
+    "query": "reorganize the commits on this branch — the first commit has both the refactor and the feature mixed together, split them clean",
+    "should_trigger": false
+  },
+  {
+    "query": "discard the changes to Package.swift, i don't want those in this branch. keep everything else staged",
+    "should_trigger": false
+  },
+  {
+    "query": "create a new branch for the copy confirmation feature, it's tracked in BRSR-1922",
+    "should_trigger": false
+  }
+]

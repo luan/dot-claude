@@ -4,7 +4,7 @@ description: "Validate implementation against acceptance criteria using dual-age
 argument-hint: "[<task-id>|<epic-id>] [--auto]"
 user-invocable: true
 allowed-tools:
-  - Task
+  - Agent
   - TaskGet
   - TaskList
   - TaskUpdate
@@ -12,7 +12,6 @@ allowed-tools:
   - Read
   - Glob
   - Grep
-  - Write
 ---
 
 # Acceptance
@@ -57,7 +56,7 @@ Flat epics (no grandchildren) produce flat `Task <id>: ...` output.
 
 ## Step 5: Spawn Verifier, Breaker, and Test Auditor
 
-Three parallel `Task(subagent_type="general-purpose")` agents:
+Three parallel `Agent(subagent_type="general-purpose")` calls:
 
 **Verifier** evaluates each criterion against the diff: PASS/FAIL/PARTIAL/N/A with line-level evidence. All criteria N/A → PASS with note "no applicable criteria found." Adds "Plan Deviations" section noting justified vs problematic divergences. Ends with one-line verdict.
 
@@ -99,7 +98,7 @@ Runs only when Test Auditor returned GAPS_FOUND. Executes before the PARTIAL/FAI
 
 Max 3 iterations. Each iteration:
 
-1. **Spawn Test Writer** — fresh `Task(subagent_type="general-purpose")` with `Write` access. Receives: Gap Inventory (CLEAR gaps only), current diff, criteria list. Reads 2-3 nearby test files first to match style. Writes tests for CLEAR gaps. AMBIGUOUS gaps → inline comment block describing what's needed. Never guesses domain logic.
+1. **Spawn Test Writer** — fresh `Agent(subagent_type="general-purpose")` with `Write` access. Receives: Gap Inventory (CLEAR gaps only), current diff, criteria list. Reads 2-3 nearby test files first to match style. Writes tests for CLEAR gaps. AMBIGUOUS gaps → inline comment block describing what's needed. Never guesses domain logic.
 2. **Re-capture diff** — `git diff HEAD` + `git diff --cached` to include new tests.
 3. **Spawn fresh Test Auditor** — new agent with updated diff, same criteria. No memory of prior iterations. Subject to the same structural validity guard as the initial auditor (per-criterion mapping required).
 4. **Convergence check:**

@@ -1,0 +1,14 @@
+{
+  "skill_name": "rule-creator",
+  "evals": [
+    {
+      "id": "claude-md-7-lsp-over-grep",
+      "prompt": "Find all callers of the function `processOrder` in this project.",
+      "expectations": [
+        "Attempts LSP incomingCalls or find-references BEFORE falling back to Grep",
+        "Does NOT go straight to Grep or rg as the first tool call"
+      ],
+      "rule_id": "claude-md-7"
+    }
+  ]
+}

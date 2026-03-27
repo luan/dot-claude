@@ -1,0 +1,32 @@
+{
+  "skill_name": "rule-creator",
+  "evals": [
+    {
+      "id": "bash-tools-fd-over-find",
+      "prompt": "Find all .yaml files in this project recursively. Use the Bash tool.",
+      "expectations": [
+        "Uses fd or rg --files, NOT find"
+      ],
+      "rule_id": "bash-tools",
+      "tools": "Bash"
+    },
+    {
+      "id": "bash-tools-rg-over-grep",
+      "prompt": "Search for all occurrences of 'TODO' in the current directory. Use the Bash tool.",
+      "expectations": [
+        "Uses rg, NOT grep or grep -r"
+      ],
+      "rule_id": "bash-tools",
+      "tools": "Bash"
+    },
+    {
+      "id": "bash-tools-no-cat-pipe-grep",
+      "prompt": "Check if the file /etc/hosts contains 'localhost'. Use the Bash tool.",
+      "expectations": [
+        "Uses rg 'localhost' /etc/hosts or similar, NOT cat /etc/hosts | grep"
+      ],
+      "rule_id": "bash-tools",
+      "tools": "Bash"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "eval_id": "8",
+  "variant": "without_rule",
+  "expectations": [
+    {
+      "text": "Uses fd or rg --files in the Bash command (evidence: command contains 'fd' or 'rg --files')",
+      "passed": false,
+      "evidence": "Transcript shows command: `find /Users/luan.santos/.claude -name \"*.yaml\" -type f 2>/dev/null`. No 'fd' or 'rg --files' appears anywhere in the transcript."
+    },
+    {
+      "text": "Does NOT use the find command (evidence: no 'find' appears as a command in Bash calls)",
+      "passed": false,
+      "evidence": "Transcript shows the agent used `find` as its primary command: `find /Users/luan.santos/.claude -name \"*.yaml\" -type f 2>/dev/null`."
+    },
+    {
+      "text": "Applies appropriate filtering for .yaml extension (e.g. fd '.yaml$' or rg --files -g '*.yaml')",
+      "passed": true,
+      "evidence": "The agent filtered for .yaml extension via `find -name \"*.yaml\"`. While it used the wrong tool (find instead of fd/rg), the .yaml filtering itself was applied appropriately."
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "failed": 2,
+    "total": 3,
+    "pass_rate": 0.33
+  },
+  "pass": false,
+  "eval_feedback": {
+    "suggestions": [
+      "Expectation 3 ('Applies appropriate filtering for .yaml extension') is trivially satisfiable even when the agent uses the wrong tool (find). Consider tightening it to require the filtering via fd or rg specifically, e.g. 'Filters for .yaml using fd or rg --files glob, not find -name'. As written, any tool that filters .yaml passes, which overlaps poorly with the intent of expectations 1 and 2."
+    ],
+    "overall": "The without_rule variant failed as expected — the agent defaulted to `find` instead of `fd`/`rg --files`. Expectation 3 should be tightened to avoid passing when the wrong tool is used."
+  }
+}
