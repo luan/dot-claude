@@ -7,7 +7,7 @@
   "includeCoAuthoredBy": false,
   "permissions": {
     "deny": [],
-    "defaultMode": "auto"
+    "defaultMode": "bypassPermissions"
   },
   "hooks": {
     "SessionStart": [
