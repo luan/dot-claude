@@ -3,17 +3,29 @@
   "evals": [
     {
       "id": 1,
+<<<<<<< HEAD
+      "prompt": "hey can you /review my changes? i touched a bunch of files in src/auth/ and src/api/ — mainly adding rate limiting to the login endpoint. no special flags, just the default review",
+      "expected_output": "Gathers context via ct tool gitcontext (not separate git commands), creates a review task, dispatches two reviewer subagents (Correctness & Security + Architecture & Performance) in a single message, then consolidates their findings into a phased summary with FIX table, IGNORE section, and verdict footer.",
+      "expectations": [
+        "Runs ct tool gitcontext with --stat --cochanges to collect context in a single command rather than multiple separate git calls",
+        "Dispatches all review work to Task subagents — main thread only gathers context and consolidates, never performs review analysis itself",
+=======
       "prompt": "hey can you /review my changes? i touched a bunch of files in src/auth/ and src/api/ \u2014 mainly adding rate limiting to the login endpoint. no special flags, just the default review",
       "expected_output": "Gathers context via ct tool gitcontext (not separate git commands), creates a review task, dispatches two reviewer subagents (Correctness & Security + Architecture & Performance) in a single message, then consolidates their findings into a phased summary with FIX table, IGNORE section, and verdict footer.",
       "expectations": [
         "Runs ct tool gitcontext with --stat --cochanges to collect context in a single command rather than multiple separate git calls",
         "Dispatches all review work to Task subagents \u2014 main thread only gathers context and consolidates, never performs review analysis itself",
+>>>>>>> upstream/main
         "Uses Solo mode (two lenses: Correctness & Security + Architecture & Performance) since no --team flag and fewer than 15 files"
       ]
     },
     {
       "id": 2,
+<<<<<<< HEAD
+      "prompt": "/review — we refactored the entire data layer. git diff --name-only shows 22 files across src/models/, src/repos/, src/services/, tests/models/, tests/repos/. no --team flag",
+=======
       "prompt": "/review \u2014 we refactored the entire data layer. git diff --name-only shows 22 files across src/models/, src/repos/, src/services/, tests/models/, tests/repos/. no --team flag",
+>>>>>>> upstream/main
       "expected_output": "Selects File-Split mode because 22 files exceeds the 15-file threshold. Groups files into ~8-file chunks and dispatches one combined-lens reviewer agent per group, all in a single message. Consolidation merges findings across groups.",
       "expectations": [
         "Selects File-Split mode (not Solo) because 22 files exceeds the >=15 threshold",
@@ -30,6 +42,11 @@
         "When specialists disagree on severity, shows attribution (e.g., 'Architect: High, Code Quality: Medium') before the resolved row",
         "Applies consensus rules: critical from any reviewer survives; non-critical needs 2+ at same tier"
       ]
+<<<<<<< HEAD
+    }
+  ]
+}
+=======
     },
     {
       "id": 4,
@@ -222,3 +239,4 @@
     }
   ]
 }
+>>>>>>> upstream/main

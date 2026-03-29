@@ -1,0 +1,50 @@
+{
+  "skill_name": "eval-rule",
+  "rule_id": "7",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Find all functions that call `validateUser` in this TypeScript codebase. The function is defined in src/auth/validation.ts but used across src/api/, src/middleware/, and src/services/ — some calls go through wrapper functions like `requireAuth` that internally delegate to `validateUser`. Walk me through your approach — what tool do you reach for first and why?",
+      "expected_output": "Chooses LSP incomingCalls (or equivalent call hierarchy navigation) as the primary tool. Explains that LSP traces the actual call graph semantically — capturing indirect callers through wrappers — while Grep would only find string matches of 'validateUser' and miss wrapper-mediated calls. Does not default to Grep for this task.",
+      "expectations": [
+        "Reaches for LSP call hierarchy / incomingCalls as the first tool choice (evidence: explicitly names LSP or call hierarchy in approach)",
+        "Explains why semantic call tracing is superior here — captures indirect callers through wrappers that Grep would miss",
+        "Does not use Grep as the primary approach for finding callers (may mention it as a fallback or supplement, but not first choice)",
+        "Acknowledges the wrapper/delegation pattern as a reason string matching is insufficient"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Where is the `Config` type defined? It's re-exported through `src/index.ts` from somewhere deeper in the module tree — I've tried grepping but I keep landing on re-export lines like `export { Config } from './config'` instead of the actual definition with its fields.",
+      "expected_output": "Chooses LSP goToDefinition to resolve through the re-export chain to the actual type definition. Explains that LSP follows the semantic module resolution — jumping through re-exports automatically — while Grep returns every file containing 'Config' including all the re-export intermediaries.",
+      "expectations": [
+        "Chooses LSP goToDefinition (or equivalent) as the primary tool (evidence: explicitly names goToDefinition or LSP definition lookup)",
+        "Explains that LSP resolves through re-export chains semantically, landing on the actual definition",
+        "Recognizes the user's stated problem with Grep (landing on re-export lines) and explains why LSP avoids it",
+        "Does not suggest Grep as the primary approach for this navigation task"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Find all files in this repo that contain the string 'TODO' in comments. I want to audit tech debt across the codebase — just need file paths and line numbers where TODO appears.",
+      "expected_output": "Chooses Grep as the correct tool. Recognizes this is a literal text pattern search across files — not semantic code navigation. LSP has no concept of 'TODO' comments as a semantic entity; this is purely string matching which is Grep's strength.",
+      "expectations": [
+        "Chooses Grep (not LSP) as the primary tool (evidence: uses or recommends Grep tool explicitly)",
+        "Recognizes this is a text pattern search, not semantic navigation — no type relationships or call graphs involved",
+        "Does not suggest LSP for this task (LSP cannot search for arbitrary text patterns in comments)",
+        "Uses appropriate Grep configuration (pattern for TODO, output mode for file paths and line numbers)"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I'm renaming `handle_request` to `process_request` in our Rust HTTP server. The function is defined in src/server/handler.rs and called across src/routes/, src/middleware/, and tests/. Some call sites use it as a trait method via `impl RequestHandler for MyStruct`, others call it directly. How would you find all references reliably so nothing breaks after the rename?",
+      "expected_output": "Chooses LSP findReferences as the primary tool. Explains that LSP provides type-aware reference tracking — finding both direct calls and trait method implementations — while string matching might miss trait-dispatched calls or produce false positives from similarly-named functions in unrelated modules.",
+      "expectations": [
+        "Chooses LSP findReferences (or equivalent) as the primary tool (evidence: explicitly names findReferences or LSP reference lookup)",
+        "Explains why type-aware reference tracking matters here — trait implementations, direct calls, and test usages all need to be found",
+        "Identifies that string matching could miss trait-dispatched calls or false-positive on similarly named functions",
+        "Mentions the rename safety angle — LSP ensures completeness that Grep cannot guarantee for refactoring"
+      ]
+    }
+  ]
+}

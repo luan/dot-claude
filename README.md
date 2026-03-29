@@ -1,7 +1,6 @@
-# ~/.claude
+# commons
 
-Claude Code configuration. Skills, rules, and workflows
-for AI-assisted development.
+Personal Claude Code plugin — skills, rules, and tools for AI-assisted development.
 
 ## New User Setup
 
@@ -26,6 +25,42 @@ for AI-assisted development.
 /review                              # Adversarial code review
 /commit                              # Conventional commit
 ```
+
+## What's in here
+
+### Skills
+
+```
+/vibe           Full autonomous pipeline: scope → develop → commit
+/scope          Research codebase, design, create implementation tasks
+/develop        Execute epic/tasks (auto solo or swarm)
+/brainstorm     Collaborative design for greenfield features
+/review         Adversarial code review with fix loop
+/commit         Conventional commit
+/start          Create branch (gt or git)
+/next           Resume branch work or pick next item from board
+/split-commit   Repackage branch into clean vertical commits
+/debugging      Systematic root cause investigation
+/triage         Convert feedback into phased tasks (no implementation)
+/test-plan      Manual test plan from current diff
+/acceptance     Verify implementation against acceptance criteria
+/pr-descr       Update PR title/description from branch context
+/pr-comments    Fix unresolved PR review comments
+/frontend-design  Production-grade UI design
+/git-surgeon    Hunk-level git operations
+/promote        Move skill/rule from personal to shared plugin
+/sync-plugins   Pull latest updates for all plugins
+/writing-skills Create and edit Claude Code skills
+```
+
+### Rules
+
+Language-specific conventions (Rust, Python, Swift, Svelte 5, Cargo)
+plus skill authoring guides.
+
+### Tools
+
+Rust crates used by skills (in `tools/crates/`).
 
 ## Pipeline
 

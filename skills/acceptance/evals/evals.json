@@ -34,11 +34,11 @@
     {
       "id": 4,
       "prompt": "/acceptance\n\nno task id, just check whatever epic is most recent. i think it was the webhook retry one",
-      "expected_output": "No argument provided. TaskList filtered by type='epic' and status in ['completed', 'in_progress']. Picks highest ID (most recent). Enters epic mode — recursively collects all descendants, groups criteria by subtree (phases as section headers, leaves with acceptance criteria). Spawns verifier and breaker in parallel against the diff.",
+      "expected_output": "No argument provided. TaskList filtered by type='epic' and status in ['completed', 'in_progress']. Picks highest ID (most recent). Enters epic mode — recursively collects all descendants, groups criteria by subtree (phases as section headers, leaves with acceptance criteria). Spawns verifier, breaker, and test auditor in parallel against the diff.",
       "expectations": [
         "Resolves target via TaskList without argument — picks highest-ID epic with status completed/in_progress.",
         "Epic mode: recursively collects descendants, groups criteria by subtree.",
-        "Spawns verifier and breaker as parallel agents."
+        "Spawns verifier, breaker, and test auditor as parallel agents."
       ]
     },
     {
@@ -49,6 +49,46 @@
         "Flags the orphaned task (pending child, completed parent) with a warning.",
         "Warning is advisory only — does NOT block acceptance.",
         "Continues normal verification flow for all other descendants."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "/acceptance for the auth-service epic. verifier passed all criteria. breaker analyzed all 5 angles, found one MEDIUM (session token rotation not tested under concurrent requests). test auditor came back with 'SUFFICIENT — all criteria are well covered by tests' but didn't actually list which tests cover which criteria",
+      "expected_output": "Detects the auditor report is structurally invalid — 'SUFFICIENT' without per-criterion test mapping. Re-runs the auditor with explicit instruction to map specific test names to each criterion. Does NOT accept the rubber-stamp verdict.",
+      "expectations": [
+        "Detects 'SUFFICIENT' without per-criterion analysis is structurally invalid — same rubber-stamp guard as Breaker.",
+        "Re-runs auditor with explicit instruction to show per-criterion test mapping.",
+        "Does NOT accept the verdict — a lazy auditor defeats the purpose of test sufficiency checking."
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "/acceptance for the payment-gateway epic. verifier PASS, breaker found one MEDIUM. test auditor found 2 CLEAR gaps: 'no test for 402 Payment Required response' and 'no test for idempotency key collision'. test writer wrote both tests successfully. fresh auditor on re-run returned SUFFICIENT",
+      "expected_output": "Test sufficiency loop runs because auditor returned GAPS_FOUND. Iteration 1: test writer fills both CLEAR gaps. Fresh auditor returns SUFFICIENT → loop exits after 1 iteration. Verdict improves — GAPS_FOUND no longer contributes to PARTIAL. Report notes test audit convergence.",
+      "expectations": [
+        "Loop triggers because initial auditor returned GAPS_FOUND with CLEAR gaps.",
+        "Test writer writes tests for both CLEAR gaps. Fresh auditor returns SUFFICIENT.",
+        "Loop exits after 1 iteration — convergence achieved. Verdict improves accordingly."
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "/acceptance for the notification-service epic. test auditor found 3 CLEAR gaps. after iteration 1: 1 gap filled, 2 remain. after iteration 2: still 2 gaps (writer couldn't figure out the test setup). iteration 3: same 2 gaps persist",
+      "expected_output": "Test sufficiency loop runs for all 3 iterations. Each iteration: test writer attempts CLEAR gaps, fresh auditor re-evaluates. After iteration 3 with CLEAR gaps still unresolved → escalation. Flags unresolved gaps in report as warnings. Does NOT attempt a 4th iteration.",
+      "expectations": [
+        "Loop runs exactly 3 iterations — does not exceed the cap.",
+        "After iteration 3 with unresolved CLEAR gaps, escalates with warning in report.",
+        "Does NOT attempt iteration 4 — 3 is the hard cap."
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "/acceptance for the analytics-dashboard epic. test auditor found 1 CLEAR gap (no test for empty dataset rendering) and 2 AMBIGUOUS gaps (unclear what 'graceful degradation' means for chart components, unclear which metrics are business-critical). test writer filled the CLEAR gap. fresh auditor shows only the 2 AMBIGUOUS gaps remain",
+      "expected_output": "Test sufficiency loop iteration 1: test writer fills the CLEAR gap. Fresh auditor returns GAPS_FOUND but only AMBIGUOUS gaps remain → loop exits (CLEAR gaps resolved). AMBIGUOUS gaps surface as advisory 'Flagged for review' in the report, not as blockers.",
+      "expectations": [
+        "Loop exits after iteration 1 because only AMBIGUOUS gaps remain — all CLEAR gaps resolved.",
+        "AMBIGUOUS gaps appear as advisory 'Flagged for review' notes, not blockers.",
+        "Does NOT attempt to write tests for AMBIGUOUS gaps — they require domain knowledge."
       ]
     }
   ]
