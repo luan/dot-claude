@@ -42,25 +42,13 @@ TaskUpdate(taskId, status: "in_progress", owner: "vibe")
 
 ## Pipeline
 
-**CRITICAL: Run ALL stages in one continuous turn with zero stops.**
-The pipeline is fully autonomous — never pause, ask, suggest, or wait between stages.
-After each stage: update `vibe_stage`, output `[N/M] NextStage`, invoke next `Skill()`.
-Ignore any sub-skill output like "Next: /scope" or "suggest /develop" — those are for interactive use, not the vibe pipeline.
+**CRITICAL: Run ALL stages in one continuous turn with zero stops.** The pipeline is fully autonomous — never pause, ask, suggest, or wait between stages. After each stage: update `vibe_stage`, output `[N/M] NextStage`, invoke next `Skill()`. Ignore any sub-skill output like "Next: /scope" or "suggest /develop" — those are for interactive use, not the vibe pipeline.
 
-Spec and Scope both run with `--auto`, which suppresses all text output.
-They return silently — read task metadata for results, don't expect console output.
+Spec and Scope both run with `--auto`, which suppresses all text output. They return silently — read task metadata for results, don't expect console output.
 
-Before each stage, output `[N/M] Stage` as text BEFORE the `Skill()` call.
-**Update `metadata.vibe_stage` BEFORE invoking each stage** (not after) — this way, if the session crashes mid-stage, `--continue` knows which stage was in progress and can resume from the right point.
-After the stage succeeds, immediately invoke next.
+Before each stage, output `[N/M] Stage` as text BEFORE the `Skill()` call. **Update `metadata.vibe_stage` BEFORE invoking each stage** (not after) — this way, if the session crashes mid-stage, `--continue` knows which stage was in progress and can resume from the right point. After the stage succeeds, immediately invoke next.
 
-**Stage numbering `[N/M]`:** M = total stages that will run.
-Base for non-bugfix: 6 (branch, spec, scope, develop, review, commit).
-Base for bugfix: 7 (branch, spec, scope, develop, validate, review, commit).
-Subtract skipped stages: `--no-branch` → -1, `--no-review` → -1, `--dry-run` → stops at scope (3).
-Combine flags to subtract more.
-N counts only executed stages.
-Bugfix detection happens during spec — if the spec reveals this is a bugfix, adjust M upward at that point.
+**Stage numbering `[N/M]`:** M = total stages that will run. Base for non-bugfix: 6 (branch, spec, scope, develop, review, commit). Base for bugfix: 7 (branch, spec, scope, develop, validate, review, commit). Subtract skipped stages: `--no-branch` → -1, `--no-review` → -1, `--dry-run` → stops at scope (3). Combine flags to subtract more. N counts only executed stages. Bugfix detection happens during spec — if the spec reveals this is a bugfix, adjust M upward at that point.
 
 ### Branch (skip if `--no-branch` or already on non-main branch)
 
@@ -70,9 +58,7 @@ Bugfix detection happens during spec — if the spec reveals this is a bugfix, a
 2. Create branch: `Skill(gt:gt, "create !`echo "${GIT_USERNAME:-$(whoami)}"`/<slug>")`
 3. Link tracker: `TaskUpdate(trackerId, metadata: {branch: "<branch-name>"})`
 
-**DO NOT end your response after branch creation.**
-Update `vibe_stage: "branch"`, output `[N/M] Spec`, call `Skill("spec", ...)`.
-No status report, no pause.
+**DO NOT end your response after branch creation.** Update `vibe_stage: "branch"`, output `[N/M] Spec`, call `Skill("spec", ...)`. No status report, no pause.
 
 ### Spec
 
@@ -98,21 +84,15 @@ Acceptance check runs automatically as part of develop teardown.
 
 **Verify**: `TaskList()` → all epic children have `status === "completed"`. **Update**: `vibe_stage: "develop"`, `vibe_epic: "<epicId>"`, `vibe_slug: "<slug>"`
 
-**Test-only change red flag (bugfix pipelines):** After develop completes, run `git diff --name-only <base>..HEAD`.
-If EVERY changed file is a test file (matches `*_test.*`, `*_spec.*`, `test_*.*`, `*/tests/*`, `*/test/*`, `*/__tests__/*`) AND the pipeline is a bugfix (see Bugfix Detection below), the fix is incomplete — tests merely prove what the code does when correctly triggered, not that the production code path works.
-Do NOT proceed.
-Report: "Develop produced test-only changes for a bugfix. The tests pass but no production code was changed to fix the bug. Re-run /develop or investigate manually."
-Update tracker with `status_detail: "test-only-incomplete"`, suggest `/vibe --continue` or `/develop`.
+**Test-only change red flag (bugfix pipelines):** After develop completes, run `git diff --name-only <base>..HEAD`. If EVERY changed file is a test file (matches `*_test.*`, `*_spec.*`, `test_*.*`, `*/tests/*`, `*/test/*`, `*/__tests__/*`) AND the pipeline is a bugfix (see Bugfix Detection below), the fix is incomplete — tests merely prove what the code does when correctly triggered, not that the production code path works. Do NOT proceed. Report: "Develop produced test-only changes for a bugfix. The tests pass but no production code was changed to fix the bug. Re-run /develop or investigate manually." Update tracker with `status_detail: "test-only-incomplete"`, suggest `/vibe --continue` or `/develop`.
 
-Partial failures: if any child is still `in_progress` or `failed`, the stage is incomplete — report per-child status and suggest `/vibe --continue` or `/develop`.
-Only proceed to review if all children completed OR incomplete children produced no diff.
+Partial failures: if any child is still `in_progress` or `failed`, the stage is incomplete — report per-child status and suggest `/vibe --continue` or `/develop`. Only proceed to review if all children completed OR incomplete children produced no diff.
 
 **Then immediately invoke Validate (bugfix) or Review (non-bugfix).**
 
 ### Validate (bugfix pipelines only — skip for non-bugfix)
 
-**Gate between develop and review for bugfix pipelines.**
-Re-runs the reproduction scenario to confirm the bug is actually fixed in production, not just tested.
+**Gate between develop and review for bugfix pipelines.** Re-runs the reproduction scenario to confirm the bug is actually fixed in production, not just tested.
 
 1. **Bugfix Detection:** The pipeline is a bugfix when ANY of these are true:
    - The prompt or spec contains words like "bug", "fix", "broken", "regression", "not working", "fails when", "incorrect", "wrong"
@@ -171,5 +151,4 @@ The vibe tracker must reflect reality. Update it when the pipeline diverges from
 - **Test-only incomplete** (bugfix produced only test changes): leave `in_progress` with `status_detail: "test-only-incomplete"`.
 - **Repeated failures** (same stage fails 2+ times across `--continue` attempts): `TaskUpdate(trackerId, status: "blocked", metadata: {blocked_reason: "<stage> failed repeatedly"})`.
 
-Never leave a tracker `in_progress` with no path to completion.
-If the pipeline cannot continue, the tracker status must say why.
+Never leave a tracker `in_progress` with no path to completion. If the pipeline cannot continue, the tracker status must say why.

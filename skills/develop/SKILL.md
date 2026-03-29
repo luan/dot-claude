@@ -4,11 +4,7 @@ description: "Execute implementation for an epic or individual task. Triggers: '
 argument-hint: "[<epic-slug>|t<id>|<id>] [--solo] [--auto]"
 user-invocable: true
 allowed-tools:
-<<<<<<< HEAD
-  - Task
-=======
   - Agent
->>>>>>> upstream/main
   - Skill
   - SendMessage
   - TeamCreate
@@ -37,13 +33,9 @@ Resolve argument:
 - No argument → first in_progress epic, else first pending epic, else first scope task with `status_detail === "approved"`, else first unblocked task
 - Nothing found → suggest `/scope`, stop
 
-<<<<<<< HEAD
-**Scope task resolution:** if resolved task has `metadata.type === "scope"` and `status_detail === "approved"` → Preparation mode (Step 1b).
-=======
 **Scope task resolution:** if resolved task has `metadata.type === "scope"` and `status_detail === "approved"`:
 - **Check for existing epic first:** `TaskList()` → find any task with `metadata.type === "epic"` AND `metadata.spec_task_id === <scope task id>` AND `status === "in_progress"`. If found → treat as Recovery (resume that epic), do NOT re-enter Preparation mode.
 - No existing epic → Preparation mode (Step 1b).
->>>>>>> upstream/main
 
 **Epic without children:** if resolved task has `metadata.type === "epic"` with `metadata.design` but no children → Preparation mode (Step 1b), skip epic creation.
 
@@ -60,20 +52,6 @@ Source: scope task's `metadata.design` (or epic's `metadata.design` if epic exis
 
 1. **Pre-check design quality:**
    - Must have structured sections with file paths
-<<<<<<< HEAD
-   - Standalone testing phase → merge into implementation phases
-   - Single phase spanning 3+ subsystems → `--auto`: proceed anyway. Otherwise AskUserQuestion.
-   - Missing paths or approach under 20 words → `--auto`: proceed with best-effort. Otherwise AskUserQuestion.
-
-2. **Create epic** (skip if epic already exists):
-   TaskCreate with title, Problem/Solution/Acceptance,
-   `metadata: {project: REPO_ROOT, slug: <topic-slug>, type: "epic", priority: "P1", design: <source design>, spec: <source spec if available>}`
-
-3. **Create tasks:** Dispatch ONE subagent (model="sonnet"). Read `${CLAUDE_SKILL_DIR}/references/task-creation-prompt.md` and pass its content verbatim as the subagent prompt — do NOT write an ad-hoc prompt. The reference contains decomposition rules, quality requirements, and format specs that must not be paraphrased.
-
-4. **Validate tasks:** spot-check 1-2 file paths (Read), acceptance criteria,
-   approach. Vague → send back to subagent.
-=======
    - Single phase spanning 3+ subsystems → `--auto`: proceed anyway. Otherwise AskUserQuestion.
    - Missing paths or approach under 20 words → `--auto`: proceed with best-effort. Otherwise AskUserQuestion.
 
@@ -91,7 +69,6 @@ Source: scope task's `metadata.design` (or epic's `metadata.design` if epic exis
 
 4. **Validate tasks:** spot-check 1-2 file paths (Read), acceptance criteria,
    approach. Vague → fix inline.
->>>>>>> upstream/main
 
 5. **Finalize:** Collect child task IDs. Two updates:
    - `TaskUpdate(epicId, status: "in_progress", metadata: {children: [<child IDs>]})`
@@ -116,26 +93,19 @@ After classifying, write `metadata: {breadcrumb: "Epic > Phase > ...", epic_desi
 
 ## Worker Dispatch
 
-<<<<<<< HEAD
-All modes use `Task(subagent_type="general-purpose")`. Trivial tasks use `model="sonnet"`. Cap: 4 concurrent, 2 retries. Prompt variants in `${CLAUDE_SKILL_DIR}/references/worker-prompts.md`:
-=======
 All modes use `Agent(subagent_type="general-purpose")`. Trivial tasks use `model="sonnet"`. Cap: 4 concurrent, 2 retries. Prompt variants in `${CLAUDE_SKILL_DIR}/references/worker-prompts.md`:
->>>>>>> upstream/main
 
 - **Standalone** (Solo/fallback): no messaging, returns directly
 - **Team-based** (Team): adds SendMessage + shutdown handshake
 
 **Re-scope escape hatch:** Worker output containing `RESCOPE:` signals a fundamental design conflict (wrong approach, missing prerequisite). Immediately halt — do NOT dispatch remaining workers or retry. Invoke `Skill("scope", "--continue <epicId>")` to re-scope, then restart from Step 2.
 
-<<<<<<< HEAD
-=======
 **User-initiated rescope (`--rescope`):** When the user asks to rescope an epic (or says "rescope this"), clean up before rebuilding:
 1. `TaskList()` → find all children of the epic.
 2. For each child: `TaskUpdate(childId, status: "deleted")` — archive superseded tasks. Do NOT leave stale tasks for the user to clean up manually.
 3. `TaskUpdate(epicId, metadata: {children: null, impl_team: null, impl_completed: null, impl_active: null, impl_pending: null})` — clear epic's child references and scheduling state.
 4. Re-enter Step 1b (Preparation) with the epic's design (or updated design if the user provided one). The epic already exists, so skip epic creation.
 
->>>>>>> upstream/main
 ## Solo Mode
 
 1. Set task in_progress. Walk ancestor chain for epic context.

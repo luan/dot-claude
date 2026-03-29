@@ -24,9 +24,7 @@ allowed-tools:
 
 Research → plan → approve → develop. **Never research on main thread** — subagents do all codebase exploration.
 
-Scope is the "how" — it produces a phased implementation plan with file paths and approaches.
-If a spec exists (from /spec or a parent task), scope consumes it as the goal.
-If not, scope does its own lightweight research.
+Scope is the "how" — it produces a phased implementation plan with file paths and approaches. If a spec exists (from /spec or a parent task), scope consumes it as the goal. If not, scope does its own lightweight research.
 
 ## Interviewing
 
@@ -82,10 +80,7 @@ Research <topic>. Return findings as text (do NOT write files or create tasks).
 
 ### 3. Validate research
 
-Spot-check ALL architectural claims.
-File/behavioral claims: check every odd-numbered claim (1st, 3rd, 5th...), minimum 3.
-Each check: Grep or Read a few lines.
-Failed check → follow-up subagent.
+Spot-check ALL architectural claims. File/behavioral claims: check every odd-numbered claim (1st, 3rd, 5th...), minimum 3. Each check: Grep or Read a few lines. Failed check → follow-up subagent.
 
 ### 4. Generate plan
 
@@ -100,13 +95,9 @@ If a spec exists (metadata.spec), verify the plan covers every capability in the
 
 Before finalizing, scan the plan for two antipatterns:
 
-**Deduplication:** For each "Create" file in the plan, Grep the codebase for existing code that serves the same purpose.
-Search by operation keywords, not just name.
-If an equivalent exists under a different name or in an unexpected location, revise the plan to reuse it.
+**Deduplication:** For each "Create" file in the plan, Grep the codebase for existing code that serves the same purpose. Search by operation keywords, not just name. If an equivalent exists under a different name or in an unexpected location, revise the plan to reuse it.
 
-**Complexity gate:** For each new interface, abstract class, factory, or multi-file abstraction in the plan, check: does it have 3+ call sites that exist today?
-If the justification is "we might need X later," remove the abstraction and plan the inline approach.
-One function beats a class hierarchy that serves a single caller.
+**Complexity gate:** For each new interface, abstract class, factory, or multi-file abstraction in the plan, check: does it have 3+ call sites that exist today? If the justification is "we might need X later," remove the abstraction and plan the inline approach. One function beats a class hierarchy that serves a single caller.
 
 ### 5. Codex review
 

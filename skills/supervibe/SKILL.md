@@ -8,18 +8,13 @@ user-invocable: true
 
 # Super Vibe
 
-Goal-directed loop around `/vibe`.
-Each iteration: assess where we are, decide the next increment, vibe it, check if we're done.
-No predetermined phase count — the loop discovers the right shape as it goes.
+Goal-directed loop around `/vibe`. Each iteration: assess where we are, decide the next increment, vibe it, check if we're done. No predetermined phase count — the loop discovers the right shape as it goes.
 
-Ship a PR when the branch is reviewable.
-Start a new branch and keep going if the goal isn't met.
+Ship a PR when the branch is reviewable. Start a new branch and keep going if the goal isn't met.
 
 ## YOU ARE IN A LOOP
 
-After every `/vibe` call returns, you **MUST** execute the assess step.
-Do NOT stop, summarize, or mark the epic complete until the assess step confirms the goal is met.
-Vibe completing its task does NOT mean your goal is met — vibe only knows about its increment, not your end-state.
+After every `/vibe` call returns, you **MUST** execute the assess step. Do NOT stop, summarize, or mark the epic complete until the assess step confirms the goal is met. Vibe completing its task does NOT mean your goal is met — vibe only knows about its increment, not your end-state.
 
 ## Arguments
 
@@ -70,8 +65,7 @@ Mark spec task completed.
 TaskGet(epicId)
 ```
 
-Read `metadata.end_state`, `metadata.iterations[]`, `metadata.prs[]`.
-Re-ground yourself on what the goal is and what's been done.
+Read `metadata.end_state`, `metadata.iterations[]`, `metadata.prs[]`. Re-ground yourself on what the goal is and what's been done.
 
 ### Step B: Assess
 
@@ -82,15 +76,13 @@ git log --oneline -20
 git diff --stat HEAD~<commits_since_start>  # scope of all changes
 ```
 
-For each capability described in `metadata.end_state`, check: does it exist in the codebase now?
-Read key files if needed — don't guess.
+For each capability described in `metadata.end_state`, check: does it exist in the codebase now? Read key files if needed — don't guess.
 
 **If goal is met**: `TaskUpdate(epicId, metadata: {goal_met: true})` → go to Teardown.
 
 ### Step C: Branch check
 
-Count commits on current branch since the last PR (or since start).
-If the branch has **5+ commits** or **touches 15+ files**, it's big enough to review:
+Count commits on current branch since the last PR (or since start). If the branch has **5+ commits** or **touches 15+ files**, it's big enough to review:
 
 1. `Skill("commit")` if there are uncommitted changes
 2. `Skill("gt:submit")` to ship the PR
@@ -99,8 +91,7 @@ If the branch has **5+ commits** or **touches 15+ files**, it's big enough to re
 
 ### Step D: Plan next increment
 
-Based on the assessment (Step B), decide the **single most valuable next step** toward the goal.
-Consider:
+Based on the assessment (Step B), decide the **single most valuable next step** toward the goal. Consider:
 - What's already built (from `metadata.iterations[]`)
 - What's missing (from the assessment)
 - What has the most dependencies downstream (do it first)

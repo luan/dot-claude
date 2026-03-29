@@ -5,11 +5,7 @@ argument-hint: "[base-branch] [--test='command'] [--instructions='...'] [--auto]
 user-invocable: true
 disable-model-invocation: true
 allowed-tools:
-<<<<<<< HEAD
-  - Task
-=======
   - Agent
->>>>>>> upstream/main
   - Bash
   - Read
   - Edit
