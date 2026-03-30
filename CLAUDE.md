@@ -1,17 +1,14 @@
-1. Never external actions without explicit request (PR comments, GitHub issues, Slack, email, Notion).
-2. Questions are reflections to analyze, not disguised commands. Think critically and answer the question. Don't treat "do you think X needs Y?" as "do Y."
-3. No dead code, commented-out code, "just in case" code. Delete old code completely — no deprecation, versioned names, migration code.
+1. External actions (PR comments, GitHub issues, Slack, email, Notion) require explicit user request.
+2. Questions are reflections to analyze, not disguised commands. Think critically and answer the question.
+3. Delete dead code completely — no commented-out code, deprecation shims, versioned names, or "just in case" code.
 4. Comments for WHY / edge cases / surprising only. No docstrings unless project convention. No comments on code you didn't write.
-5. Always delegate work to subagents or teams.
-6. Subagent trust is adversarial by default. Spot-check claims (1-2 for small tasks; ALL architectural claims for epics). Echo detection: if a subagent confirms every assumption without surfacing tradeoffs or caveats, re-verify the claim most likely to have nuance. Build gate exemption: build/test-verified results skip spot-checks.
-7. **Use the LSP tool first** for: go-to-definition, find-references, find-callers (incomingCalls), and type info. LSP resolves through re-exports, trait impls, and abstractions that Grep cannot follow. Only fall back to Grep when LSP is unavailable or for text-pattern searches (TODO, string literals). Tool precedence: LSP > Grep > Glob > `rg`/`fd` in Bash > `ck`. Never raw `grep`/`find` in Bash (hook-enforced).
-8. Never `git checkout` to "restore" — make targeted edits. Ask before discarding uncommitted work.
-9. Never drop, revert, or modify things you don't recognize (commits, files, branches, config). If something unexpected appears, **stop and ask** — it's the user's work.
-10. When saving memories, consider if a universal rule would be more useful → `~/.claude/rules/<topic>.md`
-11. Skills flow: brainstorm → spec → scope → develop [acceptance] → review → commit. Shortcuts: vibe (spec→scope→develop→review→commit), supervibe (spec→loop(vibe))
-12. Fix exactly what was asked — no scope creep on review feedback, no deferring "for later" (there's no mechanism to track later). Either fix it or push back with a specific reason.
-13. When tests fail during your work, investigate. Never dismiss as "pre-existing" without verifying via `git stash` that the test was already failing before your changes.
-14. On resume after compaction: if tasks exist with `metadata.impl_team` set and status `in_progress`, re-invoke `/develop` to trigger recovery.
-15. Skill scripts: use `${CLAUDE_SKILL_DIR}` in SKILL.md to reference skill-local files (scripts, references, agents). Expands to the skill's absolute directory at load time.
+5. Subagent trust is adversarial by default. Spot-check claims (1-2 for small tasks; ALL architectural claims for epics). Echo detection: if a subagent confirms every assumption without surfacing tradeoffs, re-verify the claim most likely to have nuance. Build/test-verified results skip spot-checks.
+6. **Use the LSP tool first** for go-to-definition, find-references, find-callers, and type info. Fall back to Grep for text-pattern searches. Tool precedence: LSP > Grep > Glob > `rg`/`fd` in Bash.
+7. Restore files with targeted edits. Confirm before discarding uncommitted work.
+8. Unrecognized artifacts (commits, files, branches, config) are the user's work — stop and ask before modifying.
+9. Skills flow: brainstorm → spec → develop → review → commit. Shortcut: vibe (spec→develop→review→commit).
+10. Fix exactly what was asked — no scope creep, no deferring. Either fix it or push back with a specific reason.
+11. When tests fail, investigate. Verify via `git stash` whether the failure predates your changes.
+12. Skill scripts: use `${CLAUDE_SKILL_DIR}` in SKILL.md to reference skill-local files.
 
 @RTK.md

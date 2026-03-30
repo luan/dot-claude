@@ -24,7 +24,13 @@ allowed-tools:
 
 Autonomous PR stack shepherd. Sets up a recurring cron that monitors every PR in a Graphite stack, running specified skills to fix CI failures and review comments until all PRs merge.
 
-Relentless by design — the cron never gives up. If a fix doesn't stick, it tries again next interval. If CI fails the same way twice, it tries a different approach. Comments are checked on every open PR regardless of approval status — addressing review feedback is how PRs get approved. CI fixing is skipped for unapproved PRs (code may change after review). Babysit stops only when all PRs merge, the 7-day cron auto-expires, or the user cancels.
+Persistent but bounded. Checks every interval, fixes CI and comments, addresses review feedback. Stops when all PRs merge, a hard cap is hit, or the user cancels.
+
+## Hard Caps
+
+- **Max iterations**: 50 (override via metadata). Each cron tick = 1 iteration.
+- **Max wall time**: 24h from first check (override via metadata).
+- Hit any cap → report status, CronDelete, complete the task. The user re-invokes if needed.
 
 ## Arguments
 
@@ -129,7 +135,9 @@ Invoked by cron, not the user. Each invocation is self-contained: read state, ac
 TaskGet(<task-id>)
 ```
 
-Extract `prs`, `skills`, `cron_id`, `work_dir`, `last_check`, `idle_checks`. If task is not `in_progress` → exit silently.
+Extract `prs`, `skills`, `cron_id`, `work_dir`, `last_check`, `idle_checks`, `iteration_count`, `started_at`. If task is not `in_progress` → exit silently.
+
+**Cap check:** Increment `iteration_count`. If `iteration_count > max_iterations` (default 50) OR `now - started_at > max_wall_time` (default 24h) → report status, `CronDelete(<cron_id>)`, `TaskUpdate(status: "completed", metadata: {stopped_reason: "cap_hit"})`, exit.
 
 **Cron fork dedup:** If `last_check` exists and `now - last_check < interval`, another session already handled this check. Exit silently — don't duplicate work. This prevents parallel cron fork sessions from racing on the same task.
 

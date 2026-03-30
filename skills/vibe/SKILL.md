@@ -1,6 +1,6 @@
 ---
 name: vibe
-description: "Fully autonomous development workflow from prompt to commit. Triggers: /vibe, 'vibe this', 'autonomous workflow', 'just do it all', 'build this end-to-end', 'full pipeline', 'handle everything', 'do everything from scratch'. Do NOT use when: only implementing already-prepared tasks — use /develop instead."
+description: "Fully autonomous development workflow from prompt to commit. Chains spec → develop → review → commit. Triggers: /vibe, 'vibe this', 'autonomous workflow', 'just do it all', 'build this end-to-end', 'full pipeline', 'handle everything'."
 allowed-tools: Bash, Read, Glob, Skill, TaskCreate, TaskUpdate, TaskGet, TaskList
 argument-hint: "<prompt> [--continue] [--dry-run]"
 user-invocable: true
@@ -8,145 +8,101 @@ user-invocable: true
 
 # Vibe
 
-Full pipeline (spec → scope+develop → validate → review → commit) from a single prompt.
+Full pipeline (spec → develop → review → commit) from a single prompt.
 
 ## Arguments
 
 - `<prompt>` — what to build (required unless `--continue`)
-- `--no-review` — skip review stage (used by supervibe to keep phases lean)
+- `--no-review` — skip review stage
 - `--continue` — resume from last completed stage
-- `--dry-run` — scope only, stop before develop
+- `--dry-run` — spec only, stop before develop
 
-No prompt and no `--continue` → infer from context before giving up:
-1. `TaskList()` → find most recent task with `metadata.type === "brainstorm"` and `status === "completed"` in this session
-2. Found → use its description as the prompt, reference the brainstorm task ID in the spec
+No prompt and no `--continue` → infer from context:
+1. `TaskList()` → find most recent task with `metadata.type === "brainstorm"` and `status === "completed"`
+2. Found → use its description as the prompt
 3. Not found → tell user: `/vibe <what to build>`, stop
 
 ## Resume (`--continue`)
 
 1. `TaskList()` → find task with `metadata.vibe_stage` present and `status == "in_progress"`
-2. Multiple matches → filter by `metadata.session_id` matching current session. Ignore other sessions.
-3. Read `metadata.vibe_stage` for resume point, `metadata.vibe_prompt` as prompt
-4. Skip to the stage after `vibe_stage`
-5. Not found → tell user no pipeline to resume, stop
-
-## Fresh Start
-
-```
-TaskCreate(
-  subject: "Vibe: <prompt (truncated 60 chars)>",
-  description: "<full prompt>",
-  activeForm: "Vibing",
-  metadata: { type: "epic", priority: "P2", vibe_prompt: "<full prompt>", vibe_stage: "started", session_id: "${CLAUDE_SESSION_ID}" }
-)
-TaskUpdate(taskId, status: "in_progress", owner: "vibe")
-```
+2. Read `metadata.vibe_stage` for resume point, `metadata.vibe_prompt` as prompt
+3. Skip to the stage after `vibe_stage`
 
 ## Pipeline
 
-### Continuation Discipline
+Create a tracker task:
+```
+TaskCreate(
+  subject: "Vibe: <prompt (truncated 60 chars)>",
+  metadata: { type: "vibe", vibe_prompt: "<full prompt>", vibe_stage: "started" }
+)
+TaskUpdate(taskId, status: "in_progress")
+```
 
-The pipeline runs as a single unbroken sequence from first stage to last. The most common failure mode is **stopping between stages** — the model completes spec, emits a response, and waits for the user instead of immediately invoking scope. This happened in production: the user had to type "continue" after spec AND after scope, defeating the purpose of autonomous execution.
+**Stage numbering `[N/M]`:** M = total stages that will run. Base: 4 (spec, develop, review, commit). `--no-review` → 3. `--dry-run` → 1.
 
-Why it happens: sub-skills return with `end_turn`, and the model's default instinct is to treat a skill return as a natural stopping point. Fight this instinct. When a `Skill()` call returns, your very next action is a `TaskUpdate` + the next `Skill()` call. No status text, no summary of what just happened, no "moving on to..." preamble. The only text output between stages is the `[N/M] Stage` marker.
+### [1/M] Spec
 
-**Chaining pattern — every stage ends the same way:**
-1. Verify the stage succeeded (check task metadata)
-2. `TaskUpdate(trackerId, metadata: {vibe_stage: "<this-stage>"})`
-3. Output `[N/M] NextStage` as text
-4. `Skill("next-stage", args="...")` — immediately, in the same response
+Update `vibe_stage: "spec"`, output `[1/M] Spec`.
 
-If you find yourself writing anything other than these four steps after a stage completes, you are about to stall the pipeline. Stop and invoke the next stage instead.
+```
+Skill("spec", args="<prompt> --auto")
+```
 
-Spec and Scope both run with `--auto`, which suppresses all text output. They return silently — read task metadata for results, don't expect console output. Ignore any sub-skill output like "Next: /scope" or "suggest /develop" — those are for interactive use, not the vibe pipeline.
+Spec runs silently with `--auto` and returns a file path. Read the spec file path from the output or find via `ct spec latest`.
 
-**Update `metadata.vibe_stage` BEFORE invoking each stage** (not after) — this way, if the session crashes mid-stage, `--continue` knows which stage was in progress and can resume from the right point.
+Verify the spec file exists and has content. Immediately proceed to develop.
 
-**Stage numbering `[N/M]`:** M = total stages that will run. Base for non-bugfix: 4 (spec, scope+develop, review, commit). Base for bugfix: 5 (spec, scope+develop, validate, review, commit). Subtract skipped stages: `--no-review` → -1, `--dry-run` → stops at scope (2). N counts only executed stages. Bugfix detection happens during spec — if the spec reveals this is a bugfix, adjust M upward at that point.
+### [2/M] Develop
 
-### Spec
+Update `vibe_stage: "develop"`, output `[2/M] Develop`.
 
-`Skill("spec", args="<prompt> --auto")` → returns silently. Read task metadata.
+If `--dry-run` → stop here. Report the spec file path, suggest `/develop <path>` or `/vibe --continue`.
 
-**Verify**: spec task `status_detail === "approved"`, `metadata.spec` populated.
+```
+Skill("develop", args="<spec-file-path> --auto")
+```
 
-**Chain → Scope:** `TaskUpdate(trackerId, metadata: {vibe_stage: "spec"})` → output `[N/M] Scope` → `Skill("scope", args="t<spec-task-id> --auto")`. Do not summarize the spec, do not pause.
+Verify all workers completed. If some failed, report per-worker status and suggest `/vibe --continue`.
 
-### Scope + Develop
+**Bugfix detection:** If the spec mentions "bug", "fix", "regression", or includes reproduction steps — after develop completes, re-run the reproduction scenario to confirm the fix works. If reproduction still fails, report and stop (do not proceed to review with a broken fix).
 
-Scope was already invoked by the Spec chain above. With `--auto`, scope researches, writes `metadata.design`, then **automatically invokes develop** (scope's default finalize step). This eliminates the stall-prone scope→develop handoff — develop runs inside scope's turn, not as a separate vibe stage.
+Immediately proceed to review.
 
-If `--dry-run` → pass `--no-develop` instead: `Skill("scope", args="t<spec-task-id> --no-develop --auto")`. Scope returns after planning. Report scope task, suggest `/develop` or `/vibe --continue`.
+### [3/M] Review
 
-When scope returns (with develop already completed inside it):
+Update `vibe_stage: "review"`, output `[3/M] Review`.
 
-**Verify**: `TaskList()` → all epic children have `status === "completed"`. **Update**: `vibe_stage: "develop"`, `vibe_epic: "<epicId>"`, `vibe_slug: "<slug>"`
+Skip if `--no-review`.
 
-**Test-only change red flag (bugfix pipelines):** After develop completes, run `git diff --name-only <base>..HEAD`. If EVERY changed file is a test file (matches `*_test.*`, `*_spec.*`, `test_*.*`, `*/tests/*`, `*/test/*`, `*/__tests__/*`) AND the pipeline is a bugfix (see Bugfix Detection below), the fix is incomplete — tests merely prove what the code does when correctly triggered, not that the production code path works. Do NOT proceed. Report: "Develop produced test-only changes for a bugfix. The tests pass but no production code was changed to fix the bug. Re-run /develop or investigate manually." Update tracker with `status_detail: "test-only-incomplete"`, suggest `/vibe --continue` or `/develop`.
+```
+Skill("review")
+```
 
-Partial failures: if any child is still `in_progress` or `failed`, the stage is incomplete — report per-child status and suggest `/vibe --continue` or `/develop`. Only proceed to review if all children completed OR incomplete children produced no diff.
+Fix any critical issues inline. Immediately proceed to commit.
 
-**Chain → Validate or Review:** `TaskUpdate(trackerId, metadata: {vibe_stage: "develop"})` → output `[N/M] Validate` or `[N/M] Review` → invoke next stage. Do not summarize scope/develop results, do not pause.
+### [4/M] Commit
 
-### Validate (bugfix pipelines only — skip for non-bugfix)
-
-**Gate between develop and review for bugfix pipelines.** Re-runs the reproduction scenario to confirm the bug is actually fixed in production, not just tested.
-
-1. **Bugfix Detection:** The pipeline is a bugfix when ANY of these are true:
-   - The prompt or spec contains words like "bug", "fix", "broken", "regression", "not working", "fails when", "incorrect", "wrong"
-   - `metadata.spec` or `metadata.design` references reproduction steps, error output, or expected-vs-actual behavior
-   - The triage source (`metadata.type === "triage"`) classified the item as `bug`
-   - A diagnostic skill (e.g., `/dia-inspect-data`, `/debugging`) was invoked earlier in the session or referenced in task metadata
-
-2. **Find reproduction steps:** Check in order: spec's reproduction section, triage task description, scope design, vibe prompt. Extract the concrete command or steps that demonstrate the bug.
-
-3. **Re-run reproduction:** Execute the reproduction steps (or the closest automated equivalent). Compare output against the expected behavior from the spec.
-
-4. **Gate:**
-   - Bug is fixed (output matches expected) → **Update**: `vibe_stage: "validate"` → invoke Review.
-   - Bug persists → Do NOT proceed. Report: "Validation failed — reproduction still shows the bug after develop. The implementation changed code but did not fix the root cause." Include the actual output vs expected. Update tracker with `status_detail: "validation-failed"`. Suggest: re-run `/develop` with more context, or investigate with `/debugging`.
-
-**Update**: `vibe_stage: "validate"` → invoke Review.
-
-### Review (skip if `--no-review`)
-
-`Skill("review")`
-
-Adversarial code review. Fix any surfaced issues inline before proceeding.
-
-**Chain → Commit:** `TaskUpdate(trackerId, metadata: {vibe_stage: "review"})` → output `[N/M] Commit` → invoke Commit. Do not summarize review findings, do not pause.
-
-### Commit
+Update `vibe_stage: "commit"`, output `[4/M] Commit`.
 
 If `git diff --stat` is empty → skip.
 
-`Skill("commit")`
-
-**Verify**: `git log -1 --oneline` shows new commit. **Update**: `vibe_stage: "commit"`
+```
+Skill("commit")
+```
 
 ## Finalize
 
 ```
-TaskUpdate(trackerId, status: "completed", metadata: {completedAt: "<ISO 8601>"})
+TaskUpdate(trackerId, status: "completed")
 ```
 
-Report summary: one line per stage (**completed** / **skipped** / **failed**).
+Report: one line per stage (completed / skipped / failed).
 
 ## Error Handling
 
-If a stage completely fails (skill errors out, zero progress):
-1. Do NOT update `vibe_stage` — stays at last successful stage so `--continue` resumes correctly
-2. Leave tracker `in_progress`
+If a stage fails with zero progress:
+1. Keep `vibe_stage` at last successful stage (so `--continue` resumes correctly)
+2. Leave tracker in_progress
 3. Report completed stages + failure details
 4. Suggest: `/vibe --continue` or `/<failed-skill> [args]`
-
-### Tracker Cleanup
-
-The vibe tracker must reflect reality. Update it when the pipeline diverges from the normal flow:
-
-- **User redirects** (user invokes a different skill, asks to do something else, or abandons the pipeline): `TaskUpdate(trackerId, status: "cancelled", metadata: {vibe_stage: "<last completed>", cancelled_reason: "user redirect"})`.
-- **Validation gate fails** (bugfix not actually fixed): leave `in_progress` with `status_detail: "validation-failed"` so `--continue` can resume after manual investigation.
-- **Test-only incomplete** (bugfix produced only test changes): leave `in_progress` with `status_detail: "test-only-incomplete"`.
-- **Repeated failures** (same stage fails 2+ times across `--continue` attempts): `TaskUpdate(trackerId, status: "blocked", metadata: {blocked_reason: "<stage> failed repeatedly"})`.
-
-Never leave a tracker `in_progress` with no path to completion. If the pipeline cannot continue, the tracker status must say why.

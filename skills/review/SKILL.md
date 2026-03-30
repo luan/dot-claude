@@ -40,7 +40,7 @@ See rules/skill-interviewing.md.
 
 BASE=!`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`
 
-Parse $ARGUMENTS: `--against <task-id>` (plan adherence), `--team` (perspective mode), `--no-simplify` (skip pre-pass), remaining args override BASE.
+Parse $ARGUMENTS: `--against <task-id|spec-file-path>` (spec/plan adherence — if path ends in `.md`, read file via `ct spec read`; if numeric, TaskGet for plan), `--team` (perspective mode), `--no-simplify` (skip pre-pass), remaining args override BASE.
 
 | Input        | Diff source                       |
 | ------------ | --------------------------------- |
@@ -63,7 +63,7 @@ Cleans up quality and efficiency issues before the adversarial review — reduce
 
 TaskCreate `metadata: {type: "review", project: REPO_ROOT}`, in_progress. `--continue`: TaskList `metadata.type == "review"` + `in_progress`, first match; not found → stop. Resume: prepend metadata.design.
 
-`ct tool gitcontext --base $BASE --stat --cochanges` → diff-stat, changed-files, log, cochanges (no full diff). `--against`: TaskGet for plan.
+`ct tool gitcontext --base $BASE --stat --cochanges` → diff-stat, changed-files, log, cochanges (no full diff). `--against`: if file path → `ct spec read <path>` for spec content; if task-id → TaskGet for plan.
 
 ## Step 2.5: Bugfix Scope Validation
 

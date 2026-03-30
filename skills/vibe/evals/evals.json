@@ -3,141 +3,73 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "running /vibe 'add webhook retry with exponential backoff'. spec stage about to start.\n\nshow the exact next two Skill() calls in order — spec and scope — and explain what flags each gets and why.",
-      "expected_output": "First: Skill('spec', args='add webhook retry with exponential backoff --auto'). Second: Skill('scope', args='t<spec-task-id> --auto'). --auto on both suppresses output and approval gates since vibe is the orchestrator. Scope runs with --auto only (no --no-develop) — scope naturally invokes develop as part of its finalize step.",
+      "prompt": "running /vibe 'add webhook retry with exponential backoff'. about to start.\n\nshow the exact Skill() calls in order and what each gets.",
+      "expected_output": "First: Skill('spec', args='add webhook retry with exponential backoff --auto'). Spec returns a file path. Second: Skill('develop', args='<spec-file-path> --auto'). Third: Skill('review'). Fourth: Skill('commit').",
       "expectations": [
-        "Spec is invoked BEFORE scope — Skill('spec', ...) then Skill('scope', ...)",
-        "Both calls include --auto flag",
-        "Scope call references the spec task ID and does NOT include --no-develop",
-        "Explains --auto suppresses text output — caller reads task metadata"
+        "Spec is first, with --auto flag",
+        "Develop receives the spec file path (not a task ID)",
+        "Review and commit follow in order",
+        "No scope call — scope no longer exists"
       ]
     },
     {
       "id": 2,
-      "prompt": "running /vibe 'add search feature'. about to start. no flags. on main branch.\n\nlist all stages in order with their [N/M] numbers.",
-      "expected_output": "M = 4 for full non-bugfix pipeline. Stages: [1/4] Spec, [2/4] Scope+Develop, [3/4] Review, [4/4] Commit.",
+      "prompt": "running /vibe 'add search feature'. no flags.\n\nlist all stages in order with [N/M] numbers.",
+      "expected_output": "M = 4. Stages: [1/4] Spec, [2/4] Develop, [3/4] Review, [4/4] Commit.",
       "expectations": [
-        "M = 4 for the full non-bugfix pipeline (spec, scope+develop, review, commit)",
-        "Scope and Develop are combined into one stage — scope invokes develop internally",
-        "Stages ordered correctly: Spec → Scope+Develop → Review → Commit",
-        "No Branch stage — vibe works on the current branch"
+        "M = 4 for the full pipeline (spec, develop, review, commit)",
+        "No scope stage — scope is merged into spec",
+        "Stages ordered: Spec → Develop → Review → Commit"
       ]
     },
     {
       "id": 3,
-      "prompt": "running /vibe 'add search feature'. about to start. no flags. on main branch.\n\nwould vibe create a branch before starting?",
-      "expected_output": "No — vibe does not create branches. It works on the current branch. The first stage is Spec.",
+      "prompt": "running /vibe 'add caching layer'. spec just completed and returned a file path.\n\nwhat happens immediately?",
+      "expected_output": "Update vibe_stage to 'spec', output '[2/4] Develop', immediately invoke Skill('develop', args='<spec-file-path> --auto'). Pass the spec file path to develop.",
       "expectations": [
-        "Does NOT create a branch — no gt create, no /start, no git checkout -b",
-        "First stage is Spec, not Branch",
-        "Works on whatever branch the user is currently on"
+        "Immediately invokes develop after spec — no pause or summary",
+        "Passes the spec FILE PATH to develop (not a task ID or metadata)",
+        "Outputs '[2/4] Develop' before the Skill() call"
       ]
     },
     {
       "id": 4,
-      "prompt": "running /vibe 'implement retry logic'. spec stage about to start.\n\nwhat do you do immediately?",
-      "expected_output": "Outputs '[1/4] Spec' then immediately invokes Skill('spec', args='implement retry logic --auto'). Does not pause or report status.",
+      "prompt": "running /vibe 'refactor config loader' with --dry-run.\n\nwhat stages run?",
+      "expected_output": "With --dry-run, M=1. Runs [1/1] Spec only. Stops after spec. Reports the spec file path and suggests /develop or /vibe --continue.",
       "expectations": [
-        "Immediately invokes Skill('spec', args='... --auto') — not Skill('scope')",
-        "Outputs '[1/4] Spec' as text BEFORE the Skill() call",
-        "Does not create a branch or pause before starting spec"
+        "--dry-run runs spec only (1 stage)",
+        "Stops after spec — does not invoke develop",
+        "Reports the spec file path for manual use"
       ]
     },
     {
       "id": 5,
-      "prompt": "running /vibe 'add auth passthrough'. spec just finished — Skill('spec') returned. spec task has status_detail='approved', metadata.spec populated. the spec output was completely silent (no text, just task metadata).\n\nvibe_stage updated to 'spec'. what's next?",
-      "expected_output": "Outputs '[2/4] Scope+Develop' then immediately invokes Skill('scope', args='t<spec-task-id> --auto'). No --no-develop — scope will invoke develop internally. Verifies spec task status before proceeding.",
+      "prompt": "running /vibe 'fix: sync drops updates over batch size 100'. develop just finished. the spec mentions reproduction steps. this is a bugfix.\n\ndo we go straight to review?",
+      "expected_output": "No — this is a bugfix. Re-run the reproduction scenario to confirm the fix works before proceeding to review. If the bug persists, stop and report.",
       "expectations": [
-        "Immediately invokes Skill('scope') after spec — no pause or summary",
-        "Scope call references the spec task ID and includes --auto but NOT --no-develop",
-        "Outputs stage announcement before Skill() call"
+        "Identifies this as a bugfix requiring reproduction validation",
+        "Re-runs reproduction before review",
+        "Does not proceed to review if reproduction still fails"
       ]
     },
     {
       "id": 6,
-      "prompt": "running /vibe 'add search feature'. scope+develop just finished (scope invoked develop internally). all epic children completed. git diff --stat shows changes across 5 files. not a bugfix.\n\njust updated vibe_stage to 'develop'. what happens next?",
-      "expected_output": "Invokes Skill('review'), then Skill('commit') — in sequence without pausing between them. Skips validate since this is not a bugfix.",
+      "prompt": "running /vibe 'fix: memory adapter'. develop finished. git diff shows only test files changed. this is a bugfix.\n\nwhat happens?",
+      "expected_output": "Flags test-only changes as a red flag for a bugfix. No production code was changed. Does not proceed to review. Reports the issue and suggests re-running /develop.",
       "expectations": [
-        "Immediately invokes Skill('review') — does not pause or summarize develop results",
-        "After review, invokes Skill('commit')",
-        "Does not pause, summarize, or wait for user input between develop → review → commit",
-        "Skips validate stage since this is not a bugfix"
+        "Flags test-only changes as incomplete for a bugfix",
+        "Does not proceed to review or commit",
+        "Suggests re-running /develop or manual investigation"
       ]
     },
     {
       "id": 7,
-      "prompt": "running /vibe 'add user avatars'. spec completed (vibe_stage='spec', spec task approved). scope+develop started but scope errors out completely — skill call fails, zero progress.\n\nshow error handling.",
-      "expected_output": "Keeps vibe_stage at 'spec' (not 'scope' or 'develop') since scope+develop made no progress. Leaves tracker in_progress for --continue recovery. Reports completed vs failed stages.",
+      "prompt": "running /vibe 'add user avatars'. spec completed. develop errors out completely — zero progress.\n\nshow error handling.",
+      "expected_output": "Keeps vibe_stage at 'spec' since develop made no progress. Leaves tracker in_progress for --continue. Reports which stages completed vs failed.",
       "expectations": [
-        "Does NOT update vibe_stage past 'spec' — stays at 'spec' because scope+develop made no progress",
-        "Leaves tracker in_progress so --continue can find and resume it",
-        "Reports which stages completed vs failed and suggests /vibe --continue or /scope"
-      ]
-    },
-    {
-      "id": 8,
-      "prompt": "running /vibe 'refactor config loader' with --dry-run. on main.\n\nwhat stages run and where does it stop?",
-      "expected_output": "With --dry-run, M=2. Runs [1/2] Spec, [2/2] Scope. Stops after scope (passes --no-develop to scope). Does NOT invoke develop, review, or commit. Reports scope task and suggests /develop or /vibe --continue.",
-      "expectations": [
-        "--dry-run runs spec and scope only (2 stages)",
-        "Passes --no-develop to scope when --dry-run is set",
-        "Stops after scope — does NOT invoke develop",
-        "Suggests /develop or /vibe --continue as next steps"
-      ]
-    },
-    {
-      "id": 9,
-      "prompt": "running /vibe 'fix: sync adapter drops updates when batch size exceeds 100'. scope+develop just finished successfully — all epic children completed. the spec (metadata.spec) includes a reproduction section: 'Run /dia-inspect-data on user-data-dir, observe that sync_queue.db has 150 pending updates but only 100 were sent to the server.' the triage source classified this as a bug.\n\nvibe_stage updated to 'develop'. what's next — do we go straight to review?",
-      "expected_output": "No — this is a bugfix pipeline. Before review, run the Validate stage. Re-run the reproduction scenario (check sync_queue.db for pending updates, verify all 150 are sent) to confirm the bug is actually fixed. Only proceed to review if validation passes. If the bug persists, stop and report validation failure.",
-      "expectations": [
-        "Does NOT proceed directly to review — identifies this as a bugfix pipeline requiring validation",
-        "Describes re-running the reproduction scenario from the spec (sync_queue.db check, batch > 100 updates)",
-        "States that review is gated on validation passing — if the bug persists, the pipeline stops",
-        "Mentions updating vibe_stage to 'validate' before proceeding to review"
-      ]
-    },
-    {
-      "id": 10,
-      "prompt": "running /vibe 'fix: memory adapter not persisting user preferences'. scope+develop just finished. all epic children completed. git diff --name-only shows only these changed files:\n- tests/memory/test_adapter.py\n- tests/memory/test_persistence.py\n\nthe spec says this is a bug where user preferences set via the memory adapter are lost on restart. metadata from triage has type 'bug'.\n\nvibe_stage updated to 'develop'. what happens next?",
-      "expected_output": "Flag this as suspicious — develop produced ONLY test file changes for a bugfix. Tests prove what the adapter does when correctly triggered, but no production code was changed to fix the bug. Do NOT proceed to review or validate. Report the issue, update tracker with status_detail 'test-only-incomplete', and suggest re-running /develop or investigating manually.",
-      "expectations": [
-        "Flags the test-only changes as a red flag — does NOT proceed to review or validate",
-        "Explains that test-only changes for a bugfix means the fix is incomplete — no production code was changed",
-        "Updates tracker with status_detail 'test-only-incomplete'",
-        "Suggests re-running /develop or manual investigation — does NOT declare success"
-      ]
-    },
-    {
-      "id": 11,
-      "prompt": "running /vibe 'fix: tab restore fails after crash'. scope+develop just finished successfully. all epic children completed. git diff --name-only shows changes in both src/tab_restore.rs and tests/test_tab_restore.rs. the spec references a reproduction: 'Force-quit the app, relaunch, observe tabs are gone.' metadata.spec mentions 'bug' and 'regression'. triage type is 'bug'.\n\nthe validate stage runs the reproduction — force-quit and relaunch — but tabs are STILL gone after the fix. the output does not match the expected behavior.\n\nwhat does vibe do?",
-      "expected_output": "Validation failed — the reproduction still shows the bug. Do NOT proceed to review or commit. Report: actual output (tabs still gone) vs expected (tabs restored). Update tracker with status_detail 'validation-failed'. Suggest re-running /develop with more context or investigating with /debugging.",
-      "expectations": [
-        "Does NOT proceed to review or commit — validation gate blocks the pipeline",
-        "Reports the actual vs expected output from the reproduction",
-        "Updates tracker with status_detail 'validation-failed'",
-        "Suggests /develop with more context or /debugging as next steps — does NOT retry validation"
-      ]
-    },
-    {
-      "id": 12,
-      "prompt": "I just finished /brainstorm and it produced task #42 (type: 'brainstorm', status: 'completed') with subject 'Design: multi-tenant auth system'. Now I type just /vibe with no arguments.\n\nwhat happens?",
-      "expected_output": "Vibe infers the task from context. It finds the completed brainstorm task #42 in the current session, uses its description as the prompt, and starts the pipeline referencing the brainstorm task. Does NOT ask the user to specify a prompt.",
-      "expectations": [
-        "Does NOT ask the user to provide a prompt — infers from the brainstorm task",
-        "Finds task #42 via TaskList() — looks for metadata.type === 'brainstorm' and status === 'completed'",
-        "Uses the brainstorm task description as the vibe prompt",
-        "Proceeds to start the pipeline (creates tracker, begins Spec)"
-      ]
-    },
-    {
-      "id": 13,
-      "prompt": "running /vibe 'add caching layer'. spec just completed — Skill('spec') returned with end_turn. the spec task has status_detail='approved' and metadata.spec is populated.\n\nthe model's instinct is to summarize what the spec produced and say 'Moving on to scope...'. what should it do instead according to the continuation discipline?",
-      "expected_output": "Do NOT summarize the spec or write any transition text. The chaining pattern is: 1) verify spec task approved, 2) TaskUpdate vibe_stage to 'spec', 3) output '[2/4] Scope+Develop', 4) immediately Skill('scope', args='t<id> --auto'). Writing a summary or 'moving on to...' is the exact failure mode that causes pipeline stalls — the model emits text, treats it as a response, and stops.",
-      "expectations": [
-        "Explicitly warns against summarizing spec output or writing transition text",
-        "States the exact 4-step chaining pattern: verify → TaskUpdate → stage marker → Skill()",
-        "Explains WHY text between stages causes stalls — model treats text as complete response",
-        "Scope call uses --auto only (no --no-develop)"
+        "Does not update vibe_stage past 'spec'",
+        "Leaves tracker in_progress for --continue recovery",
+        "Reports completed vs failed stages, suggests /vibe --continue"
       ]
     }
   ]

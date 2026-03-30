@@ -1,211 +1,105 @@
 ---
 name: spec
-description: "Define what to build — produces a target-state spec through codebase research and synthesis. The spec describes the system as if already built, excluding implementation details. Use this skill when the user wants to define requirements, specify a target state, answer 'what should we build', write a spec, or needs a clear definition of done before executing. Also triggers on: 'spec', 'specify', 'define the target', 'target state', 'what are we building'. Do NOT use when: the user wants to plan HOW to build (use /scope), wants to brainstorm design OPTIONS (use /brainstorm), or wants to just execute (use /vibe or /develop)."
+description: "Research a codebase and produce a target-state spec — what to build, with enough architecture context to execute. Triggers: 'spec', 'specify', 'define the target', 'what are we building', 'what should we build', 'write a spec'. Use for both greenfield features and bug investigations."
 argument-hint: "<topic> [--auto] [--continue]"
 allowed-tools:
   - Agent
-  - TaskCreate
-  - TaskUpdate
-  - TaskList
-  - TaskGet
-  - Skill
   - Bash
   - Read
   - Glob
   - Grep
   - Write
-  - TeamCreate
-  - TeamDelete
-  - SendMessage
 user-invocable: true
 ---
 
 # Spec
 
-Research a codebase and produce a **target-state spec** — a timeless document describing the system as if already built. The spec answers "what are we building?" without prescribing how.
+Research a codebase and produce a **target-state spec** — a document describing the system as if already built, with enough architecture context for develop to execute without losing intent.
 
-**Never research on main thread** — subagents do all codebase exploration.
+Subagents do all codebase exploration. The main thread synthesizes, validates, and presents.
 
 ## Arguments
 
 - `<topic>` — what to spec (required unless `--continue`)
-- `--auto` — skip approval gate and codex review (for inner calls from vibe/supervibe)
-- `--continue` — resume from existing spec task
-
-## Interviewing
-
-See rules/skill-interviewing.md.
+- `--auto` — skip approval gate and codex review. Return the spec file path silently.
+- `--continue` — resume from existing spec file
 
 ## Workflow
 
-### 1. Create tracking task
+### 1. Research
+
+Dispatch Agent (subagent_type="Explore"):
 
 ```
-TaskCreate(
-  subject: "Spec: <topic>",
-  metadata: { project: <repo root>, type: "spec", priority: "P2" }
-)
-TaskUpdate(taskId, status: "in_progress", owner: "spec")
-```
-
-### 2. Research
-
-Dispatch subagent (subagent_type="Explore"):
-
-```
-Research <topic>. Return findings as text (do NOT write files or create tasks).
+Research <topic>. Return findings as text.
 
 ## Output
-1. **Current State**: per file — path, exports/defines, patterns
+1. **Current State**: per relevant file — path, purpose, patterns
 2. **Recommendation**: chosen approach + rationale
-3. **Key Files**: exact paths relevant to the change
-4. **Risks**: edge cases, failure modes
+3. **Key Files**: exact paths relevant to the change, with role descriptions
+4. **Risks**: edge cases, failure modes, constraints
 ```
 
-**Warm-start:** When the prompt contains prior research (from brainstorm, previous spec, or supervibe context), the subagent validates and fills gaps instead of broad exploration. Include prior context and say: "Prior research provided below. Validate and fill gaps — do NOT re-explore what's already covered."
+**Warm-start:** When the prompt contains prior research (from brainstorm or previous spec), include it and say: "Prior research provided below. Validate and fill gaps — focus on what's new."
 
-**On complex domains (3+ subsystems or 3+ viable approaches):** TeamCreate, dispatch 3 agents (mode: "plan") — Researcher, Architect, Skeptic. Synthesize: Architect's approach + contradictions from Skeptic. TeamDelete.
+**Complex domains (3+ subsystems or 3+ viable approaches):** Dispatch 3 parallel Explore agents — Researcher (breadth), Architect (approach), Skeptic (risks). Synthesize the architect's approach with the skeptic's contradictions.
 
-### 3. Validate research
+### 2. Validate research
 
-Spot-check ALL architectural claims — wrong understanding of the codebase invalidates the spec. File/behavioral claims: check every odd-numbered claim (1st, 3rd, 5th...), minimum 3. Each check: Grep or Read a few lines. Failed check → follow-up subagent.
+Spot-check architectural claims — wrong understanding invalidates the spec. Check every odd-numbered claim (1st, 3rd, 5th...), minimum 3. Each check: Grep or Read a few lines. Failed check → follow-up subagent to correct.
 
-### 3b. Production data correlation
+**Production data correlation** (when upstream context includes logs, error traces, database state): list each concrete observation, state which hypothesis explains it, flag observations that multiple hypotheses explain equally. An unvalidated hypothesis produces a wrong spec.
 
-When upstream context includes production data (triage logs, sync debug dumps, /dia-inspect-data output, error traces, database state), the spec MUST explain the specific observations in that data before locking in a root cause.
+### 3. Synthesize spec
 
-- List each concrete observation from the production data (e.g., "zero update events in sync log", "stale timestamp in database row", "404 in error trace").
-- For each observation, state which hypothesis explains it and whether alternative hypotheses also explain it.
-- If an observation is equally explained by multiple hypotheses, the root cause is NOT confirmed — flag it.
-
-**Subagent prompt addition** (when production data exists): append to research prompt:
-
-```
-## Production Data
-<paste observations>
-
-For each observation above: state which part of the codebase produces this data point, trace the code path that leads to it, and determine whether your hypothesis is the ONLY explanation or whether other code paths could produce the same observation.
-```
-
-### 3c. Root-cause validation checklist
-
-Before synthesizing, verify the hypothesis survives these checks:
-
-1. **Exclusivity**: Does the hypothesis explain ALL production observations, not just some?
-2. **Alternatives ruled out**: For each production observation, are there other code paths that could produce it? If yes, have those been investigated?
-3. **Absence of evidence vs. evidence of absence**: If the key evidence is "X didn't happen," confirm whether the instrumentation/logging would have captured X if it did happen.
-
-If any check fails → dispatch follow-up subagent targeting the gap. Do NOT synthesize a spec on an unvalidated hypothesis.
-
-### 4. Synthesize spec
-
-Build the spec from validated research. A spec is a **timeless target-state document** — it describes the system as if already built. After implementation, the spec should still read as a valid description of the system (not a dated change request).
+Build the spec from validated research. The spec is **timeless** — it describes the system as if already built.
 
 **Sections:**
 
-- **Problem**: What's broken or missing. The only section that describes current state.
+- **Problem**: What's broken or missing. The only section describing current state.
 
-- **Recommendation**: Target behavior in present tense, strategy-level. No transition verbs — "Webhook delivery uses exponential backoff via BullMQ" not "Add exponential backoff." Describes the system, not the change.
+- **Recommendation**: Target behavior in present tense, strategy-level. "Webhook delivery uses exponential backoff via BullMQ" — describes the system, not the change.
 
-- **Architecture Context**: The code landscape post-implementation. Describe by module role and pattern, not file path. Paths may appear parenthetically but the description stands without them. No Create/Modify annotations.
+- **Architecture Context**: The code landscape post-implementation. Module roles, patterns, key file paths, and how components interact. Include enough detail that a developer reading only this section understands where to work and why things are structured this way.
 
 - **Risks**: Edge cases, failure modes, constraints.
 
-The spec **excludes** implementation details: phases, task breakdowns, files to create/modify, specific code changes. Those belong to /scope.
+**Confidence gate** (for bug investigations):
+- **Root-cause confidence**: HIGH / MEDIUM / LOW
+- **Supporting evidence**: what confirms the hypothesis
+- **Not yet ruled out**: alternatives that remain plausible
+- If LOW, flag explicitly — the user must know they're approving under uncertainty.
 
-### 5. Codex review
-
-**Skip if `--auto`.**
-
-See [Codex Review](#codex-review). Prompt: "Review this spec for gaps, ambiguities, edge cases, and feasibility. This is a WHAT document — do NOT suggest implementation details."
-
-High-severity actionable issues → revise. Best-effort — if codex fails, proceed.
-
-### 6. Store
+### 4. Store as file
 
 ```bash
 SPEC_FILE=$(echo "<spec content>" | ct spec create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "spec" 2>/dev/null)
 ```
 
-```
-TaskUpdate(taskId, metadata: {
-  spec: "<spec content>",
-  spec_file: "$SPEC_FILE" (omit if empty),
-  status_detail: "spec_review"
-})
-```
+The spec file is the durable artifact. Downstream skills (develop, vibe) read it via `ct spec read`.
 
-### 7. Present
+### 5. Present
 
-Output: `Spec: t<id> — <topic>`, then Problem, Recommendation, Architecture Context, Risks.
+If `--auto` → return silently. Caller reads the spec file path.
 
-**Confidence gate** (append after Risks, before stopping for review):
+Otherwise → present the spec: Problem, Recommendation, Architecture Context, Risks (+ confidence gate if bug investigation). Stop for user review.
 
-- **Root-cause confidence**: HIGH / MEDIUM / LOW
-- **Supporting evidence**: what production data or code analysis confirms the hypothesis
-- **Not yet ruled out**: alternative explanations that remain plausible and what evidence would confirm or eliminate them
-- **Would increase confidence**: specific investigation or data that would move from MEDIUM→HIGH
-
-If confidence is LOW, state this explicitly and recommend further investigation before approving. Do NOT present a LOW-confidence spec without flagging it — the user must know they are approving under uncertainty.
-
-If `--auto` → skip to step 9.
-Otherwise → stop for user review.
-
-### 8. Refinement
+### 6. Refinement
 
 If user gives feedback:
+- **Minor (no new research):** Revise from stored research + feedback. Overwrite the spec file.
+- **Major (unexplored code or new approach):** Dispatch follow-up subagent with current spec as context. Merge findings. Overwrite spec file.
 
-- **Minor (no new research):** Revise from stored research + feedback. TaskUpdate metadata.spec. If metadata.spec_file → overwrite existing path (do NOT `ct spec create` again). status_detail stays `"spec_review"`.
-- **Major (unexplored code or new approach):** Dispatch follow-up subagent with current spec as context. Merge findings. TaskUpdate. Overwrite spec_file if set.
-- Persist metadata.spec before re-presenting (downstream skills read stored artifacts, not conversation).
+### 7. Approve
 
-### 9. Approve
-
+Output:
 ```
-TaskUpdate(taskId, metadata: { status_detail: "approved" })
-TaskUpdate(taskId, status: "completed")
-```
-
-Mark the spec task `completed` at approval time — not just `status_detail: approved`. Downstream skills (vibe, scope, develop) consume the spec via metadata, but the task itself is done. Leaving it `in_progress` creates orphaned tasks that persist across sessions.
-
-If `--auto` → return silently. Caller reads `metadata.spec`.
-
-**Output summary (interactive only):**
-```
-Spec: t<id> — <topic>
+Spec: <topic>
 <one-line recommendation>
-Next: /scope t<id>, /vibe t<id>, or /supervibe t<id>
+Spec file: <path>
+Next: /develop <path>, /vibe, or /plan
 ```
-
-## Codex Review
-
-Adversarial review using OpenAI Codex before storing. Codex gets read-only codebase access to validate claims.
-
-```bash
-echo "<content>" | codex exec \
-  --sandbox read-only --ephemeral \
-  -C "$(git rev-parse --show-toplevel)" \
-  -o /tmp/codex-review-output.txt \
-  "Review prompt here. Content follows on stdin." -
-```
-
-Timeout: 120s. Failure → log and proceed (best-effort, never blocks).
-
-Read output file. High-severity actionable → revise before storing. Low/med → note, don't block.
 
 ## Resume (`--continue`)
 
-Resolve task: argument → task ID; bare → TaskList `type === "spec"`, `status_detail` in `["spec_review", "approved"]`, most recent.
-
-- `status_detail === "approved"` → already done. Report and suggest next steps.
-- `status_detail === "spec_review"` → if metadata.spec_file is set, read via `ct spec read <spec_file>`; otherwise use metadata.spec. Re-present spec. Resume from step 7.
-
-## Key Rules
-
-- Main thread does NOT research — subagents do.
-- Spec is the "what" — no implementation details, no phases, no file-level plans.
-- metadata.spec = spec content. metadata.spec_file = ct archive path.
-- Codex review is best-effort, never blocks.
-- `--auto` bypasses approval gate, codex review, AND all text output. Caller reads task metadata.
-- Refinement: minor → revise from findings; major → dispatch follow-up subagent.
-- Present `Next:` options after approval — user chooses the executor.
+Find the most recent spec file: `ct spec latest --project "$(git rev-parse --show-toplevel)"`. Read via `ct spec read <path>`. Re-present and resume from step 5.
