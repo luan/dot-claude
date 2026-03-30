@@ -1,7 +1,7 @@
 ---
 name: develop
 description: "Execute implementation from a spec file. Reads the spec, decomposes into tasks, dispatches workers with full spec context, verifies each against the spec. Triggers: 'develop', 'execute the plan', 'build this', 'implement this spec'."
-argument-hint: "<spec-file-path> [--solo] [--auto]"
+argument-hint: "<spec-file-path> [--auto]"
 user-invocable: true
 allowed-tools:
   - Agent
@@ -26,7 +26,6 @@ Read a spec, decompose execution, dispatch workers with full context, verify eac
 ## Arguments
 
 - `<spec-file-path>` — path to spec file (from /spec or ct spec latest)
-- `--solo` — force single-worker mode
 - `--auto` — skip user confirmations (for vibe/supervibe calls)
 - No argument → find most recent spec: `ct spec latest --project "$(git rev-parse --show-toplevel)"`
 
@@ -45,21 +44,14 @@ Parse sections: Problem, Recommendation, Architecture Context, Risks. The Archit
 
 Break the spec into implementation tasks. Each task is a coherent chunk of work that one worker can complete. Use the Architecture Context to determine natural boundaries (files, modules, layers).
 
-For each task, create a TaskCreate with:
-- Subject describing what to build
-- Description with relevant spec excerpts, file paths, and approach
-- The full Recommendation and Architecture Context from the spec
-
-Set up blockedBy relationships where tasks have dependencies.
-
-Task system is for progress tracking — the real context comes from the spec text in the worker prompt.
+For each task, note:
+- What to build
+- Relevant spec excerpts, file paths, and approach
+- Dependencies on other tasks (which must complete first)
 
 ## Step 3: Dispatch Workers
 
-For each ready task, spawn an Agent with the worker prompt below. Cap: 4 concurrent workers.
-
-**Solo mode** (`--solo` or single task): one worker at a time.
-**Team mode** (2+ tasks): TeamCreate, dispatch unblocked tasks in parallel (up to 4), re-dispatch as tasks complete and unblock others.
+For each ready task, spawn an Agent with the worker prompt below. Cap: 4 concurrent workers. Dispatch unblocked tasks in parallel, re-dispatch as tasks complete and unblock others. Single task → one worker.
 
 ### Worker Prompt
 

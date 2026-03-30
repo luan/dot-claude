@@ -1,7 +1,7 @@
 ---
 name: review
 description: "Thorough adversarial code review covering correctness, security, architecture, and performance. Triggers: 'review', 'review my changes', 'check this code', 'code review'. Use --team for 3-perspective mode. Do NOT use when: investigating unknown bug — use /debugging."
-argument-hint: "[base..head | file-list | PR#] [--against <issue-id>] [--team] [--perfection] [--continue] [--auto]"
+argument-hint: "[base..head | file-list | PR#] [--against <spec-path>] [--team] [--perfection] [--auto]"
 user-invocable: true
 allowed-tools:
   - Agent
@@ -32,15 +32,12 @@ Solo has two sub-modes based on diff size:
 
 **NEVER review inline.** Always dispatch at least one subagent via the Agent tool. The orchestrator reading the diff and writing a verdict directly is not a review — it's a skim. In a real session, the orchestrator did an inline "review" of a 242-line bugfix, read 80 lines of 1 of 3 files, declared PASS, and the bug was still present. Subagents read all files, cross-reference patterns, and catch what a quick skim misses.
 
-## Interviewing
-
-See rules/skill-interviewing.md.
 
 ## Step 1: Scope + Mode
 
 BASE=!`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`
 
-Parse $ARGUMENTS: `--against <task-id|spec-file-path>` (spec/plan adherence — if path ends in `.md`, read file via `ct spec read`; if numeric, TaskGet for plan), `--team` (perspective mode), `--no-simplify` (skip pre-pass), remaining args override BASE.
+Parse $ARGUMENTS: `--against <spec-file-path>` (spec adherence — read file via `ct spec read`), `--team` (perspective mode), `--no-simplify` (skip pre-pass), remaining args override BASE.
 
 | Input        | Diff source                       |
 | ------------ | --------------------------------- |
@@ -53,7 +50,7 @@ Mode: `--team` → Perspective (3 specialists), ≥15 files → File-Split (~8/a
 
 ## Step 1.5: Simplify Pre-pass (mandatory)
 
-**ALWAYS run.** The only valid skip condition is `--continue` or `#<PR>` input. Do NOT invent skip reasons ("test-only changes", "already clean", "already carefully designed"). These are not valid — the assistant fabricated them in a real session and missed real duplication, naming, and reuse issues that simplify later caught.
+**ALWAYS run.** The only valid skip condition is `#<PR>` input. Do NOT invent skip reasons ("test-only changes", "already clean", "already carefully designed"). These are not valid — the assistant fabricated them in a real session and missed real duplication, naming, and reuse issues that simplify later caught.
 
 `Skill("simplify")`
 
@@ -61,9 +58,7 @@ Cleans up quality and efficiency issues before the adversarial review — reduce
 
 ## Step 2: Setup + Context
 
-TaskCreate `metadata: {type: "review", project: REPO_ROOT}`, in_progress. `--continue`: TaskList `metadata.type == "review"` + `in_progress`, first match; not found → stop. Resume: prepend metadata.design.
-
-`ct tool gitcontext --base $BASE --stat --cochanges` → diff-stat, changed-files, log, cochanges (no full diff). `--against`: if file path → `ct spec read <path>` for spec content; if task-id → TaskGet for plan.
+`ct tool gitcontext --base $BASE --stat --cochanges` → diff-stat, changed-files, log, cochanges (no full diff). `--against`: `ct spec read <path>` for spec content.
 
 ## Step 2.5: Bugfix Scope Validation
 
@@ -99,7 +94,7 @@ Output `# Adversarial Review Summary`:
 - **--team disagreements**: when specialists differ on severity, show attribution (e.g., "Architect: High, Code Quality: Medium → resolved: High") before the resolved row.
 - **Verdict footer**: PASS (no FIX items), CHANGES_REQUESTED (any FIX items), FAIL (any Critical).
 
-Store via `ct plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "review"` + TaskUpdate metadata.design.
+Store via `ct plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "review"`.
 
 !`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Return findings to caller. Don't fix." || echo "AskUserQuestion: Fix all / Fix critical+high / Fix critical only / Skip fixes"`
 
@@ -126,6 +121,6 @@ Skip if: findings were generic (null checks, missing tests), one-off (typo), or 
 
 ## Step 6: Summary + Next
 
-Output: Fixes Applied, Ignored, Remaining. `--auto` → skip defer selection, complete task, stop. Without `--auto` → Remaining + interactive: multiSelect to defer. Close: TaskUpdate → completed. Next via AskUserQuestion.
+Output: Fixes Applied, Ignored, Remaining. `--auto` → skip defer selection, stop. Without `--auto` → Remaining + interactive: multiSelect to defer. Next via AskUserQuestion.
 
 **Receiving feedback:** Verify claims by reading the file. Push back with evidence when feedback breaks functionality.

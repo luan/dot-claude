@@ -1,7 +1,7 @@
 ---
 name: babysit
-description: "Watch a Graphite PR stack until all PRs merge, automatically fixing CI failures and review comments using configurable skills on a cron schedule. Triggers: 'babysit', 'babysit my PRs', 'babysit stack', 'watch my stack', 'keep PRs green', 'monitor until merged', 'shepherd PRs', 'keep fixing until merged', 'babysit-prs'. Use whenever the user wants ongoing, unattended PR stack maintenance — not for one-time fixes (use /pr-ci or /pr-comments directly)."
-argument-hint: "[interval] [skills...]"
+description: "Watch a Graphite PR stack until all PRs merge, automatically fixing CI failures and review comments. Single-pass: checks every PR once, fixes what it can, reports status. Use with /loop for recurring checks (e.g. /loop 10m /babysit). Triggers: 'babysit', 'babysit my PRs', 'babysit stack', 'watch my stack', 'keep PRs green', 'monitor until merged', 'shepherd PRs', 'keep fixing until merged'. Use whenever the user wants ongoing or one-shot PR stack maintenance."
+argument-hint: "[skills...]"
 user-invocable: true
 allowed-tools:
   - Bash
@@ -15,58 +15,52 @@ allowed-tools:
   - TaskUpdate
   - TaskGet
   - TaskList
-  - CronCreate
-  - CronDelete
   - CronList
+  - CronDelete
 ---
 
 # Babysit
 
-Autonomous PR stack shepherd. Sets up a recurring cron that monitors every PR in a Graphite stack, running specified skills to fix CI failures and review comments until all PRs merge.
+Single-pass PR stack shepherd. Checks every PR in a Graphite stack, runs specified skills to fix CI failures and review comments, reports status. Designed to be invoked repeatedly via `/loop` (e.g. `/loop 10m /babysit`).
 
-Persistent but bounded. Checks every interval, fixes CI and comments, addresses review feedback. Stops when all PRs merge, a hard cap is hit, or the user cancels.
-
-## Hard Caps
-
-- **Max iterations**: 50 (override via metadata). Each cron tick = 1 iteration.
-- **Max wall time**: 24h from first check (override via metadata).
-- Hit any cap → report status, CronDelete, complete the task. The user re-invokes if needed.
+Each invocation is self-contained: discover or load state, act on current reality, update state, exit.
 
 ## Arguments
 
-`[interval] [skills...]`
+`[skills...]`
 
-| Arg | Pattern | Default | Example |
-|-----|---------|---------|---------|
-| interval | `\d+[smhd]` (first token only) | `10m` | `5m`, `1h` |
-| skills | remaining tokens | `pr-ci pr-comments` | `pr-ci pr-comments review` |
-
-Internal: `--check <task-id>` — cron loop mode, not user-facing.
+Remaining tokens are skill names. Defaults to `pr-ci pr-comments`.
 
 **Examples:**
-- `/babysit` — 10m, pr-ci + pr-comments
-- `/babysit 5m` — 5m, pr-ci + pr-comments
-- `/babysit pr-ci` — 10m, CI only
-- `/babysit 5m pr-ci pr-comments review` — 5m, three skills
+- `/babysit` — pr-ci + pr-comments
+- `/babysit pr-ci` — CI only
+- `/babysit pr-ci pr-comments review` — three skills
+- `/loop 10m /babysit` — recurring babysit every 10m
+- `/loop 5m /babysit pr-ci` — recurring, CI only, every 5m
 
 ---
 
-## Setup mode (default)
+## Invocation flow
 
-### [1] Parse arguments
+On every invocation, determine mode by checking for an existing tracking task.
 
-Split by whitespace. If the first token matches `^\d+[smhd]$`, extract as interval; remaining tokens are skill names. Otherwise all tokens are skills, interval defaults to `10m`.
+### [1] Find or create tracking task
 
-Interval to cron expression:
-- `Nm` (N <= 59) → `*/N * * * *`
-- `Nm` (N >= 60) → `0 */H * * *` (H = ceil(N/60))
-- `Nh` → `0 */N * * *`
-- `Nd` → `0 0 */N * *`
-- `Ns` → ceil(N/60) minutes, minimum `*/1 * * * *`
+```
+TaskList → look for a task with metadata.type == "babysit" and status == "in_progress"
+```
 
-Avoid minute 0 and 30 for fixed-time crons. For `*/N` intervals, the built-in jitter handles load spreading — don't nudge the interval itself.
+**Existing task found** → load state, go to **Check pass** (step 3).
 
-### [2] Discover the stack
+**No existing task** → **Setup** (step 2).
+
+### [2] Setup (first invocation only)
+
+#### Parse arguments
+
+Split by whitespace. All tokens are skill names. If empty, default to `["pr-ci", "pr-comments"]`.
+
+#### Discover the stack
 
 ```bash
 gt log --stack 2>&1
@@ -80,7 +74,7 @@ gh pr list --head <branch> --json number,state --jq '.[0]'
 
 Collect `{num, branch}`. Warn the user if any branch has no PR ("branch X has no PR — submit first?").
 
-### [3] Create tracking task
+#### Create tracking task
 
 ```
 TaskCreate(
@@ -90,79 +84,49 @@ TaskCreate(
     type: "babysit",
     prs: [{num: N, branch: "name", merged: false}, ...],
     skills: ["pr-ci", "pr-comments"],
-    interval: "10m",
-    cron_id: null,
     work_dir: "<cwd>",
-    idle_checks: 0
+    idle_checks: 0,
+    iteration_count: 0,
+    started_at: "<ISO 8601>"
   }
 )
 TaskUpdate(<id>, status: "in_progress")
 ```
 
-### [4] Create cron
-
-```
-CronCreate(
-  cron: "<expression>",
-  prompt: "/babysit --check <task-id>"
-)
-```
-
-Store the returned ID:
-
-```
-TaskUpdate(<task-id>, metadata: {cron_id: "<returned-id>"})
-```
-
-### [5] Report to user
+#### Report to user
 
 Tell them:
 - PR count, numbers, and branches
 - Skills that will run (all invoked with `--auto`)
-- Check interval and cron job ID
-- How to cancel: `CronDelete(<id>)`
-- 7-day auto-expiry reminder
+- How to run recurring: `/loop 10m /babysit`
+- How to see status: look for the babysit task in `TaskList`
 
----
+Then proceed directly to **Check pass** (step 3).
 
-## Check mode (--check <task-id>)
+### [3] Check pass
 
-Invoked by cron, not the user. Each invocation is self-contained: read state, act on current reality, update state.
+Load state from the tracking task: `prs`, `skills`, `work_dir`, `idle_checks`, `iteration_count`, `started_at`.
 
-### [1] Load state
+Increment `iteration_count` in metadata.
 
-```
-TaskGet(<task-id>)
-```
-
-Extract `prs`, `skills`, `cron_id`, `work_dir`, `last_check`, `idle_checks`, `iteration_count`, `started_at`. If task is not `in_progress` → exit silently.
-
-**Cap check:** Increment `iteration_count`. If `iteration_count > max_iterations` (default 50) OR `now - started_at > max_wall_time` (default 24h) → report status, `CronDelete(<cron_id>)`, `TaskUpdate(status: "completed", metadata: {stopped_reason: "cap_hit"})`, exit.
-
-**Cron fork dedup:** If `last_check` exists and `now - last_check < interval`, another session already handled this check. Exit silently — don't duplicate work. This prevents parallel cron fork sessions from racing on the same task.
-
-```bash
-cd <work_dir>
-```
-
-### [2] Safety: uncommitted changes
+#### Safety: uncommitted changes
 
 ```bash
 git status --porcelain
 ```
 
-If non-empty → "Babysit check skipped: uncommitted changes in worktree. Will retry next interval." → exit. This prevents the cron from interfering with the user's in-progress work.
+If non-empty → "Babysit check skipped: uncommitted changes in worktree. Will retry next invocation." → exit.
 
 Save the current branch for restoration later:
 ```bash
 git branch --show-current
 ```
 
-### [3] Detect newly merged parent PRs
+#### Detect newly merged parent PRs
 
-When a parent PR in the stack merges, child branches go stale — their CI tests against old parent code, producing phantom failures. Detect this before doing any per-PR work.
+When a parent PR merges, child branches go stale — their CI tests against old parent code. Detect this before doing per-PR work.
 
-Do NOT use `gt log --stack`'s `(needs restack)` flag for this — it fires on any trunk divergence (other teams merging to main), which would cause restacking on every interval in an active repo. Instead, check if any PR that was previously unmerged is now merged:
+Do NOT use `gt log --stack`'s `(needs restack)` flag — it fires on any trunk divergence, causing unnecessary restacks in active repos. Instead, check if any previously-unmerged PR is now merged:
 
 For each PR in `metadata.prs` where `merged` is false:
 
@@ -170,35 +134,30 @@ For each PR in `metadata.prs` where `merged` is false:
 gh pr view <num> --json state --jq '.state'
 ```
 
-If any returns `MERGED` — a parent just merged and child branches are stale:
+If any returns `MERGED`:
 
 1. Mark the newly merged PRs as `merged: true` in metadata.
-
-2. **Sync with remote** — this cleans up merged branches and restacks:
+2. Sync with remote:
    ```bash
    gt sync 2>&1
    ```
-   `gt sync` fetches remote, removes merged branches, and restacks the stack onto trunk. This is the ONLY correct way to handle merged parents. **NEVER** use `gt track`, `gt delete`, or manual reparenting — Graphite handles this automatically.
-
-3. If `gt sync` reports conflicts, resolve them:
+   `gt sync` fetches remote, removes merged branches, and restacks onto trunk. **Never** use `gt track`, `gt delete`, or manual reparenting.
+3. If `gt sync` reports conflicts:
    ```
    Skill("gt:restack")
    ```
-
 4. Push the restacked branches:
    ```
    Skill("gt:submit")
    ```
+5. Update task metadata with merged flags.
+6. **Exit early** — don't fix anything this pass. CI needs to re-run against restacked code. Report: "Parent PR(s) merged — restacked and pushed. Waiting for fresh CI."
 
-5. Update task metadata with the merged flags.
-
-6. **Exit early** — don't fix anything this interval. The restack changed code on child branches, so CI needs to re-run. Checking or fixing PRs now would be working against stale data. Report: "Parent PR(s) merged — restacked and pushed. Waiting for fresh CI."
-
-If no PRs are newly merged → proceed to step [4]. Trunk having new commits is normal and doesn't invalidate CI.
+If no PRs are newly merged → proceed to step 4.
 
 ### [4] Process each PR (bottom to top)
 
-Process PRs from the bottom of the stack upward. Fixes on lower branches may resolve issues on upper branches after restacking — don't worry about cascade effects during a single pass. If a lower fix resolves an upper CI failure, the next interval will confirm it.
+Process from the bottom of the stack upward. Fixes on lower branches may resolve issues on upper branches after restacking.
 
 For each PR where `merged` is false:
 
@@ -206,7 +165,7 @@ For each PR where `merged` is false:
 gh pr view <num> --json state,reviewDecision --jq '{state,reviewDecision}'
 ```
 
-**Routing — state only (not approval):**
+**Routing by state:**
 
 | state | Action |
 |-------|--------|
@@ -214,9 +173,9 @@ gh pr view <num> --json state,reviewDecision --jq '{state,reviewDecision}'
 | CLOSED | Report "closed", skip |
 | OPEN | Process (below) |
 
-For each open PR, run comments and CI as **independent** concerns. Approval status gates CI fixing but NOT comment checking — review comments arrive before approval and must be addressed to unblock it.
+For each open PR, run comments and CI as **independent** concerns. Approval status gates CI fixing but NOT comment checking.
 
-**GitHub `reviewDecision` quirk:** An empty string `""` does NOT mean "not approved." GitHub resets `reviewDecision` to `""` when a bot reviewer (like `bcny-ai-agent`, `cursor[bot]`) posts a review after a human approved. Treat `""` the same as `"APPROVED"` — only `"REVIEW_REQUIRED"` or `"CHANGES_REQUESTED"` mean explicitly unapproved.
+**GitHub `reviewDecision` quirk:** An empty string `""` does NOT mean "not approved." GitHub resets `reviewDecision` to `""` when a bot reviewer posts a review after a human approved. Treat `""` the same as `"APPROVED"` — only `"REVIEW_REQUIRED"` or `"CHANGES_REQUESTED"` mean explicitly unapproved.
 
 ```bash
 gt checkout <branch>
@@ -224,13 +183,13 @@ gt checkout <branch>
 
 **a) Check comments** (if `pr-comments` or `pr-fix-comments` in skills)
 
-Always run comment checking on every open PR, regardless of approval or CI status. Comments and CI are independent workstreams — unresolved comments block approval, and addressing them while CI runs is productive use of time.
+Always run on every open PR regardless of approval or CI status. Comments and CI are independent — unresolved comments block approval.
 
 ```
 Skill("pr-comments", "--auto")
 ```
 
-The skill exits quickly if there are no unresolved comments — safe to invoke unconditionally.
+The skill exits quickly if no unresolved comments — safe to invoke unconditionally.
 
 **b) Check CI** (if `pr-ci` in skills)
 
@@ -240,26 +199,25 @@ gh pr checks <num> --json name,state,bucket --jq '[.[] | {name,state,bucket}]'
 
 Skip CI fixing if:
 - Any check is `IN_PROGRESS` or `QUEUED` — don't fix stale failures while a new run is pending
-- `reviewDecision` is `"REVIEW_REQUIRED"` or `"CHANGES_REQUESTED"` — reviewer may request changes that invalidate current code, fixing CI before that is wasted effort
+- `reviewDecision` is `"REVIEW_REQUIRED"` or `"CHANGES_REQUESTED"` — reviewer may request changes that invalidate current code
 
 If checks have `bucket: "fail"` and CI fixing is not skipped:
 ```
 Skill("pr-ci", "--auto")
 ```
 
-Never classify CI failures yourself (e.g., "flaky", "intermittent"). Always delegate to `pr-ci` — it reads the actual logs and determines the cause. Your job is to detect fail/pass status, not diagnose failures.
+Never classify CI failures yourself. Always delegate to `pr-ci`.
 
 **c) Other skills**
 
-For each remaining skill in the list that isn't `pr-ci` or `pr-comments`:
-
+For each remaining skill not `pr-ci` or `pr-comments`:
 ```
 Skill("<name>", "--auto")
 ```
 
-All skills are invoked with `--auto` because cron runs are non-interactive. If a skill doesn't recognize `--auto`, it proceeds with its default behavior.
+All skills invoked with `--auto` because this may run unattended.
 
-**Error handling:** If `gt checkout <branch>` fails (branch deleted, force-pushed, conflicts), skip this PR and report the error. Don't abort the entire check — continue to the next PR.
+**Error handling:** If `gt checkout <branch>` fails, skip this PR and report the error. Don't abort — continue to the next PR.
 
 ### [5] Restack and push
 
@@ -278,7 +236,7 @@ gt checkout <saved-branch>
 
 ### [7] Build structured status
 
-Before reporting, build a status object for each PR tracking exactly what happened. This prevents fabricating information that wasn't checked.
+Before reporting, build a status object per PR tracking exactly what happened. This prevents fabricating information.
 
 ```
 status = {
@@ -294,17 +252,18 @@ status = {
 }
 ```
 
-Only populate fields for dimensions that were actually checked. If `comments_checked` is false, `comments_result` MUST be null — never infer or guess.
+Only populate fields for dimensions that were checked. If `comments_checked` is false, `comments_result` MUST be null.
 
 ### [8] Update state
 
-Determine whether this check was idle (no skills invoked, no merges detected, no actions taken on any PR):
+Determine whether this check was idle (no skills invoked, no merges detected, no actions taken):
 
 ```
 TaskUpdate(<task-id>, metadata: {
   prs: <updated array with merged flags>,
   last_check: "<ISO 8601>",
-  idle_checks: <previous idle_checks + 1 if idle, else 0>
+  iteration_count: <incremented>,
+  idle_checks: <previous + 1 if idle, else 0>
 })
 ```
 
@@ -312,14 +271,17 @@ TaskUpdate(<task-id>, metadata: {
 
 If **all** PRs have `merged: true`:
 
-```
-CronDelete(<cron_id>)
-TaskUpdate(<task-id>, status: "completed")
-```
+1. Find and delete any cron that invokes babysit:
+   ```
+   CronList → find cron where prompt contains "/babysit" → CronDelete(<id>)
+   ```
+2. Mark task completed:
+   ```
+   TaskUpdate(<task-id>, status: "completed")
+   ```
+3. Report: "All PRs merged. Babysit complete."
 
-Report: "All PRs merged. Babysit complete."
-
-**Blocked-on-humans escalation:** If `idle_checks >= 3` and the only blocker across all PRs is reviewer approval (CI is green or in-progress, no comments to fix), report this once:
+**Blocked-on-humans escalation:** If `idle_checks >= 3` and the only blocker is reviewer approval (CI green or in-progress, no comments to fix):
 
 ```
 Babysit: stack blocked on human review.
@@ -327,16 +289,13 @@ Babysit: stack blocked on human review.
   This is the 3rd consecutive idle check — nothing actionable for babysit.
 ```
 
-This surfaces the bottleneck to the user so they know babysit isn't broken — it's just waiting on humans.
-
-Otherwise, format the status report from the structured status objects. Only include dimensions that were checked:
+Otherwise, format the status report:
 
 ```
 Babysit: 1/3 merged.
   #123 (branch-a): merged
   #124 (branch-b): CI fixed + pushed, comments addressed (2 resolved)
   #125 (branch-c): CI in progress (skipped), comments checked (0 unresolved)
-Next check in 10m.
 ```
 
 ---
@@ -345,8 +304,8 @@ Next check in 10m.
 
 | Trigger | How |
 |---------|-----|
-| All merged | Automatic — cron self-deletes |
-| User cancels | `CronDelete(<id>)` |
+| All merged | Automatic — finds and deletes cron, completes task |
+| User cancels | Delete the cron (via `/loop` ID) or mark task completed |
 | Session ends | Cron dies with session |
 | 7-day expiry | Cron auto-expires |
 
