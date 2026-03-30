@@ -12,7 +12,6 @@ allowed-tools:
   - "Bash(git push:*)"
   - Skill
   - Read
-  - Edit
   - Glob
   - Grep
 ---
@@ -23,17 +22,11 @@ Fix unresolved review comments from a PR.
 
 **Safety: never replies to or resolves threads — only fetches and fixes locally. Push requires confirmation (unless `--auto`). `--auto` auto-resolves bot comments only (not human comments).**
 
-## Context
-
-PR: !`gh pr view --json number,headRefName -q '{number,headRefName}' 2>/dev/null`
-Repo: !`gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null`
-Branch: !`git branch --show-current 2>/dev/null`
-
 ## Steps
 
-1. **Detect PR**: Use injected context above. If empty, ask user.
+1. **Detect PR**: Run `gh pr view --json number,headRefName` and `gh repo view --json nameWithOwner -q .nameWithOwner`. If no PR found, ask user.
 
-2. **Verify branch**: Compare injected Branch vs PR headRefName — mismatch → ask user and **stop**. Do not proceed to Step 3 until the user confirms or switches branches.
+2. **Verify branch**: Compare `git branch --show-current` vs PR headRefName — mismatch → ask user and **stop**. Do not proceed to Step 3 until the user confirms or switches branches.
 
 3. **Fetch comments** (execute directly — never prefix with `python3`/`uv run`):
 

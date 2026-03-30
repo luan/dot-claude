@@ -13,11 +13,6 @@ allowed-tools:
   - "Bash(ct tool:*)"
   - "Bash(gh pr:*)"
   - "Bash(gh api:*)"
-  - TaskCreate
-  - TaskUpdate
-  - TaskList
-  - TaskGet
-  - Write
 ---
 
 # Adversarial Review
@@ -35,9 +30,9 @@ Solo has two sub-modes based on diff size:
 
 ## Step 1: Scope + Mode
 
-BASE=!`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`
-
 Parse $ARGUMENTS: `--against <spec-file-path>` (spec adherence — read file via `ct spec read`), `--team` (perspective mode), `--no-simplify` (skip pre-pass), remaining args override BASE.
+
+Resolve BASE at runtime: `gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`. Args override this default.
 
 | Input        | Diff source                       |
 | ------------ | --------------------------------- |
@@ -96,9 +91,7 @@ Output `# Adversarial Review Summary`:
 
 Store via `ct plan create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "review"`.
 
-!`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Return findings to caller. Don't fix." || echo "AskUserQuestion: Fix all / Fix critical+high / Fix critical only / Skip fixes"`
-
-`--auto` → fix critical+high automatically (skip AskUserQuestion).
+`--auto` → fix critical+high automatically. Otherwise → AskUserQuestion: Fix all / Fix critical+high / Fix critical only / Skip fixes.
 
 ## Step 5: Fix + Re-review Loop
 

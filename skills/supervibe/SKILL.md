@@ -1,8 +1,8 @@
 ---
 name: supervibe
 description: "Goal-directed autonomous development — reads the spec, breaks it into chunks, runs each as a vibe cycle. Triggers: /supervibe, 'super vibe', 'multi-phase', 'keep going until done'."
-allowed-tools: Bash, Read, Glob, Grep, Agent, Skill, TaskCreate, TaskUpdate, TaskGet, TaskList
-argument-hint: "<goal> [--continue] [--max-iterations N]"
+allowed-tools: Bash, Read, Glob, Grep, Skill
+argument-hint: "<goal> [--max-iterations N]"
 user-invocable: true
 ---
 
@@ -12,8 +12,7 @@ Break a goal into independent chunks informed by the spec, run each as a vibe cy
 
 ## Arguments
 
-- `<goal>` — what to build (required unless `--continue`)
-- `--continue` — resume from tracker metadata
+- `<goal>` — what to build (required)
 - `--max-iterations N` — hard cap on vibe iterations (default: 5)
 
 ## Hard Caps
@@ -63,10 +62,6 @@ Spec: <file path>
 ```
 
 If max iterations hit before completion, report what remains.
-
-## Resume (`--continue`)
-
-Find tracker: `TaskList()` → `metadata.super_vibe === true`, `status === "in_progress"`. Read the spec file path and chunk plan from metadata. Resume from the next unfinished chunk.
 
 ## Error Handling
 

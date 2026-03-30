@@ -41,7 +41,7 @@ Fixing without understanding creates new bugs. Investigate first, fix second.
 
 Repeated patches without root cause understanding signal a design problem. Tactical fixes compound debt and mask the real issue.
 
-!`[ "$CLAUDE_NON_INTERACTIVE" = "1" ] && echo "Document concern in task description, attempt one structural fix, surface to caller." || echo "STOP. Discuss with human before more fixes."`
+STOP. Discuss with human before more fixes.
 
 ## Red Flags → Back to Phase 1
 

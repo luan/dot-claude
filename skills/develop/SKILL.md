@@ -9,14 +9,6 @@ allowed-tools:
   - Read
   - Glob
   - Grep
-  - Write
-  - TaskCreate
-  - TaskUpdate
-  - TaskList
-  - TaskGet
-  - SendMessage
-  - TeamCreate
-  - TeamDelete
 ---
 
 # Develop
@@ -31,7 +23,8 @@ Read a spec, decompose execution, dispatch workers with full context, verify eac
 
 ## Step 1: Read the Spec
 
-Read the spec file directly:
+If the spec content is already in your conversation (e.g., from a preceding /spec call or user paste), use it directly — don't re-read the file. Only read from disk when the spec isn't in context:
+
 ```bash
 SPEC_CONTENT=$(ct spec read <spec-file-path>)
 ```

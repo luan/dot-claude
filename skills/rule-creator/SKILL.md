@@ -1,7 +1,7 @@
 ---
 name: rule-creator
 description: "Create, evaluate, and iterate on CLAUDE.md rules. Drafts rules from behavioral intent, tests whether they actually change Claude's behavior via isolated baselines, and produces benchmark reports with an interactive HTML viewer. Supports project-scoped evals that live alongside the rules they test. Triggers: /rule-creator, 'test this rule', 'does this rule work', 'evaluate rule', 'benchmark rule', 'rule effectiveness', 'create a rule', 'new rule', 'write a rule'. Use whenever someone wants to create, evaluate, or iterate on rules in CLAUDE.md or .claude/rules/."
-allowed-tools: Agent, Bash, Read, Glob, Grep, Write, Edit
+allowed-tools: Agent, Bash, Read, Glob, Grep
 argument-hint: "<rule-id-or-path | --new 'intent'> [--runs N] [--naked] [--init]"
 user-invocable: true
 ---

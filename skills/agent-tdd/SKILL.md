@@ -6,17 +6,9 @@ argument-hint: "<problem description or rule/skill path>"
 allowed-tools:
   - Bash
   - Read
-  - Write
-  - Edit
   - Glob
   - Grep
-  - Agent
   - Skill
-  - TaskCreate
-  - TaskUpdate
-  - TaskGet
-  - TaskList
-  - AskUserQuestion
 ---
 
 # Agent TDD
