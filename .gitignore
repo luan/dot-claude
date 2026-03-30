@@ -76,3 +76,5 @@ mcp-needs-auth-cache.json
 policy-limits.json
 sessions/
 rule-creator-workspace/
+channels/
+.claude/worktrees/

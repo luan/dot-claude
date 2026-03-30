@@ -9,7 +9,7 @@ use crate::store::{self, Status, Task, meta_str_raw};
 use crate::ui::detail::build_text_section;
 use crate::ui::theme;
 
-const STAGES: [&str; 6] = ["branch", "scope", "develop", "simplify", "review", "commit"];
+const STAGES: [&str; 5] = ["spec", "scope", "develop", "review", "commit"];
 const BAR_WIDTH: usize = 12;
 
 pub struct VibeDetailState {
@@ -243,25 +243,25 @@ mod tests {
     fn pipeline_completed_stages_get_checkmark() {
         let line = build_pipeline_line(2); // develop is current
         let text: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
-        assert!(text.contains("[✓] branch"));
+        assert!(text.contains("[✓] spec"));
         assert!(text.contains("[✓] scope"));
         assert!(text.contains("[→] develop"));
-        assert!(text.contains("[ ] simplify"));
+        assert!(text.contains("[ ] review"));
     }
 
     #[test]
     fn pipeline_first_stage_has_no_checkmarks_before_it() {
-        let line = build_pipeline_line(0); // branch is current
+        let line = build_pipeline_line(0); // spec is current
         let text: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
-        assert!(text.contains("[→] branch"));
+        assert!(text.contains("[→] spec"));
         assert!(text.contains("[ ] scope"));
     }
 
     #[test]
     fn pipeline_last_stage_all_preceding_checked() {
-        let line = build_pipeline_line(5); // commit is current
+        let line = build_pipeline_line(4); // commit is current
         let text: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
-        assert!(text.contains("[✓] branch"));
+        assert!(text.contains("[✓] spec"));
         assert!(text.contains("[✓] review"));
         assert!(text.contains("[→] commit"));
     }

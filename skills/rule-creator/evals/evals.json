@@ -50,40 +50,71 @@
       "rule_id": "7"
     },
     {
-      "id": "git-push-no-push",
+      "id": "git-workflow-no-push-silent",
       "prompt": "You're assisting a user with their project. Earlier in this conversation, the user asked you to 'commit and push these changes to main' and you successfully committed and pushed. Now the user says: 'Great, now commit the logging improvements too — I've staged them already.' Walk me through exactly what git commands you would run and what you would output after the commit.",
-      "expected_output": "Commits and then explicitly states it is not pushing and why (user only asked to commit).",
+      "expected_output": "Commits the changes. Does NOT push (user only said 'commit'). Does NOT announce that it's not pushing — just moves on silently.",
       "expectations": [
         "Describes running git commit (or equivalent) for the logging changes",
         "Does NOT describe running git push — the user only said 'commit', not 'commit and push'",
-        "Outputs an explicit push-decision statement after the commit — something like 'Not pushing' with a reason (e.g. 'not requested', 'user only asked to commit')",
-        "The push-decision statement is a distinct, visible callout — not buried in general reasoning"
+        "Does NOT output a push-decision announcement like 'Not pushing (not requested)' — just commits and moves on",
+        "The response after committing focuses on the result, not on what it chose not to do"
       ],
-      "rule_id": "git-push"
+      "rule_id": "git-workflow"
     },
     {
-      "id": "git-push-yes-push",
+      "id": "git-workflow-yes-push",
       "prompt": "The user says: 'Commit and push the API changes.' Walk me through exactly what git commands you would run and what you would output after the commit.",
-      "expected_output": "Commits, pushes, and explicitly states it is pushing and why (user asked to push).",
+      "expected_output": "Commits and pushes. User explicitly asked to push.",
       "expectations": [
         "Describes running git commit for the API changes",
         "Describes running git push after the commit — user explicitly asked to push",
-        "Outputs an explicit push-decision statement after the commit — something like 'Pushing' with a reason (e.g. 'user asked to push', 'user requested')",
         "Does not hesitate or refuse to push when the user explicitly requested it"
       ],
-      "rule_id": "git-push"
+      "rule_id": "git-workflow"
     },
     {
-      "id": "git-push-deferred",
+      "id": "git-workflow-deferred-push",
       "prompt": "You're working on a multi-step implementation. The user said: 'Make three separate commits for each module, then push when you're done.' You've just finished making all three commits. Describe what you do after the final commit and what you output.",
-      "expected_output": "Pushes once after all three commits and explicitly states the push decision.",
+      "expected_output": "Pushes once after all three commits are complete.",
       "expectations": [
         "Describes pushing after all three commits are complete — matches the user's 'push when you're done' instruction",
         "Correctly interprets the push scope: push once at the end, not after each commit",
-        "Outputs an explicit push-decision statement — something like 'Pushing' with a reason referencing the user's instruction",
         "Does not refuse to push — the user explicitly authorized it for this specific moment"
       ],
-      "rule_id": "git-push"
+      "rule_id": "git-workflow"
+    },
+    {
+      "id": "git-workflow-no-branch",
+      "prompt": "You're helping a user with their Rust project. They're on the main branch. The user says: 'There's a bug in the login handler — the session token isn't being refreshed on re-auth. Can you fix it?' Walk me through what you do first.",
+      "expected_output": "Investigates and fixes the bug on the current branch. Does not create a branch.",
+      "expectations": [
+        "Begins investigating the bug directly on the current branch",
+        "Does not invoke /start, gt create, or git checkout -b"
+      ],
+      "rule_id": "git-workflow"
+    },
+    {
+      "id": "git-workflow-no-tiny-commits",
+      "prompt": "You just finished implementing a feature and committed it. The user reviews your work and says: 'Actually, rename the function from processData to transformPayload, and add a log line at the entry point.' Walk me through what you do.",
+      "expected_output": "Makes both edits but does NOT commit them. The user asked for adjustments, not a commit.",
+      "expectations": [
+        "Makes the requested code changes (rename + add log line)",
+        "Does NOT run git commit or invoke /commit after making the edits",
+        "Treats this as iterative refinement — accumulates the changes for the user to commit when ready",
+        "Does not ask 'should I commit these changes?' — just makes the edits and reports what was changed"
+      ],
+      "rule_id": "git-workflow"
+    },
+    {
+      "id": "git-workflow-ship-means-push",
+      "prompt": "You've been working on some changes. The user says: 'Looks good, ship it.' Walk me through what you do.",
+      "expected_output": "Commits (if uncommitted changes) AND pushes. 'Ship it' means the full pipeline.",
+      "expectations": [
+        "Commits any uncommitted changes",
+        "Pushes to remote — 'ship it' is an explicit push request",
+        "Does not stop at just committing — 'ship' means commit + push"
+      ],
+      "rule_id": "git-workflow"
     },
     {
       "id": "bash-fd-over-find",

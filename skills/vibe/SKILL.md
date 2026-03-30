@@ -2,7 +2,7 @@
 name: vibe
 description: "Fully autonomous development workflow from prompt to commit. Triggers: /vibe, 'vibe this', 'autonomous workflow', 'just do it all', 'build this end-to-end', 'full pipeline', 'handle everything', 'do everything from scratch'. Do NOT use when: only implementing already-prepared tasks — use /develop instead."
 allowed-tools: Bash, Read, Glob, Skill, TaskCreate, TaskUpdate, TaskGet, TaskList
-argument-hint: "<prompt> [--no-branch] [--continue] [--dry-run]"
+argument-hint: "<prompt> [--continue] [--dry-run]"
 user-invocable: true
 ---
 
@@ -13,7 +13,6 @@ Full pipeline (spec → scope → develop → validate → review → commit) fr
 ## Arguments
 
 - `<prompt>` — what to build (required unless `--continue`)
-- `--no-branch` — skip branch creation, use current branch
 - `--no-review` — skip review stage (used by supervibe to keep phases lean)
 - `--continue` — resume from last completed stage
 - `--dry-run` — scope only, stop before develop
@@ -48,17 +47,7 @@ Spec and Scope both run with `--auto`, which suppresses all text output. They re
 
 Before each stage, output `[N/M] Stage` as text BEFORE the `Skill()` call. **Update `metadata.vibe_stage` BEFORE invoking each stage** (not after) — this way, if the session crashes mid-stage, `--continue` knows which stage was in progress and can resume from the right point. After the stage succeeds, immediately invoke next.
 
-**Stage numbering `[N/M]`:** M = total stages that will run. Base for non-bugfix: 6 (branch, spec, scope, develop, review, commit). Base for bugfix: 7 (branch, spec, scope, develop, validate, review, commit). Subtract skipped stages: `--no-branch` → -1, `--no-review` → -1, `--dry-run` → stops at scope (3). Combine flags to subtract more. N counts only executed stages. Bugfix detection happens during spec — if the spec reveals this is a bugfix, adjust M upward at that point.
-
-### Branch (skip if `--no-branch` or already on non-main branch)
-
-**NEVER call `Skill("start")`** — it creates a task frame that halts the pipeline after branch creation (observed bug: model creates branch, outputs status, stops). Inline instead:
-
-1. Generate slug: `ct tool slug "<prompt>"`
-2. Create branch: `Skill(gt:gt, "create !`echo "${GIT_USERNAME:-$(whoami)}"`/<slug>")`
-3. Link tracker: `TaskUpdate(trackerId, metadata: {branch: "<branch-name>"})`
-
-**DO NOT end your response after branch creation.** Update `vibe_stage: "branch"`, output `[N/M] Spec`, call `Skill("spec", ...)`. No status report, no pause.
+**Stage numbering `[N/M]`:** M = total stages that will run. Base for non-bugfix: 5 (spec, scope, develop, review, commit). Base for bugfix: 6 (spec, scope, develop, validate, review, commit). Subtract skipped stages: `--no-review` → -1, `--dry-run` → stops at scope (2). N counts only executed stages. Bugfix detection happens during spec — if the spec reveals this is a bugfix, adjust M upward at that point.
 
 ### Spec
 

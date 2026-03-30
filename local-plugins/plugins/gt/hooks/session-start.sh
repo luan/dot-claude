@@ -9,7 +9,7 @@ cat <<'EOF'
 {
   "hookSpecificOutput": {
     "hookEventName": "SessionStart",
-    "additionalContext": "## Graphite Workflow\n\nThis repo uses Graphite for stacked PRs. For any push, PR, rebase, stack, or branch operation, invoke the gt skill as your FIRST action — before running any Bash commands to explore.\n\n- Push / create PRs / update PRs / ship it → `Skill(gt:submit)`\n- Rebase / sync with main / stack out of date → `Skill(gt:restack)`\n- Everything else (check stack, create branch, move changes between branches, split work into separate PRs, navigate stack) → `Skill(gt:gt)`\n\nThe gt skills handle the full workflow including inspecting the current state — you do not need to run `git diff`, `git status`, or `gt log` in Bash first. Invoke the skill and it will handle exploration, stack safety, and PR metadata.\n\nRaw git/gt in Bash is fine only when the user explicitly requests it. Return `app.graphite.com/...` URLs."
+    "additionalContext": "## Graphite Workflow\n\nThis repo uses Graphite for stacked PRs. Decision rule: if on a gt-managed branch, use gt commands exclusively (never raw git rebase, git push, or git checkout -b). If not on a gt-managed branch, use git normally. Never mix.\n\n- Push / create-update PRs → `Skill(gt:submit)`\n- Rebase / sync with main → `Skill(gt:restack)`\n- Create branch / navigate / stack ops → `Skill(gt:gt)`\n\nRaw git/gt in Bash is fine only when the user explicitly requests it. Return `app.graphite.com/...` URLs."
   }
 }
 EOF

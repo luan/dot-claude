@@ -115,10 +115,10 @@ impl VibeState {
 
 fn stage_display(stage: &str) -> String {
     let idx = store::vibe_stage_index(stage);
-    if idx <= 5 {
-        format!("[{}/6]", idx + 1)
+    if idx <= 4 {
+        format!("[{}/5]", idx + 1)
     } else {
-        "[?/6]".to_string()
+        "[?/5]".to_string()
     }
 }
 
@@ -396,17 +396,16 @@ mod tests {
 
     #[test]
     fn stage_display_known_stages() {
-        assert_eq!(stage_display("branch"), "[1/6]");
-        assert_eq!(stage_display("scope"), "[2/6]");
-        assert_eq!(stage_display("develop"), "[3/6]");
-        assert_eq!(stage_display("simplify"), "[4/6]");
-        assert_eq!(stage_display("review"), "[5/6]");
-        assert_eq!(stage_display("commit"), "[6/6]");
+        assert_eq!(stage_display("spec"), "[1/5]");
+        assert_eq!(stage_display("scope"), "[2/5]");
+        assert_eq!(stage_display("develop"), "[3/5]");
+        assert_eq!(stage_display("review"), "[4/5]");
+        assert_eq!(stage_display("commit"), "[5/5]");
     }
 
     #[test]
     fn stage_display_unknown_stage() {
-        assert_eq!(stage_display("bogus"), "[?/6]");
+        assert_eq!(stage_display("bogus"), "[?/5]");
     }
 
     #[test]

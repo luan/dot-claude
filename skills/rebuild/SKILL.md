@@ -3,7 +3,7 @@ name: rebuild
 description: "Collapse branch into working tree and rebuild as clean, refined commits with code improvements per commit. Triggers: 'rebuild branch', 'rebuild commits', 'clean up and improve branch'. Unlike /split-commit which preserves the exact diff, rebuild applies refinements and simplifications to each commit."
 argument-hint: "[base-branch] [--test='command'] [--instructions='...'] [--auto]"
 user-invocable: true
-disable-model-invocation: true
+disable-model-invocation: false
 allowed-tools:
   - Agent
   - Bash

@@ -8,8 +8,10 @@
 8. Never `git checkout` to "restore" — make targeted edits. Ask before discarding uncommitted work.
 9. Never drop, revert, or modify things you don't recognize (commits, files, branches, config). If something unexpected appears, **stop and ask** — it's the user's work.
 10. When saving memories, consider if a universal rule would be more useful → `~/.claude/rules/<topic>.md`
-11. Skills flow: brainstorm → spec → scope → develop [acceptance] → review → commit. Shortcuts: vibe (spec→scope→develop→review→commit), supervibe (spec→loop(vibe)→PRs)
-12. On resume after compaction: if tasks exist with `metadata.impl_team` set and status `in_progress`, re-invoke `/develop` to trigger recovery.
-13. Skill scripts: use `${CLAUDE_SKILL_DIR}` in SKILL.md to reference skill-local files (scripts, references, agents). Expands to the skill's absolute directory at load time.
+11. Skills flow: brainstorm → spec → scope → develop [acceptance] → review → commit. Shortcuts: vibe (spec→scope→develop→review→commit), supervibe (spec→loop(vibe))
+12. Fix exactly what was asked — no scope creep on review feedback, no deferring "for later" (there's no mechanism to track later). Either fix it or push back with a specific reason.
+13. When tests fail during your work, investigate. Never dismiss as "pre-existing" without verifying via `git stash` that the test was already failing before your changes.
+14. On resume after compaction: if tasks exist with `metadata.impl_team` set and status `in_progress`, re-invoke `/develop` to trigger recovery.
+15. Skill scripts: use `${CLAUDE_SKILL_DIR}` in SKILL.md to reference skill-local files (scripts, references, agents). Expands to the skill's absolute directory at load time.
 
 @RTK.md

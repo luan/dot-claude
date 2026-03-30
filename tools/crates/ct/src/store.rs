@@ -791,13 +791,12 @@ pub fn find_vibe_children<'a>(tasks: &'a [Task], epic_id: &str) -> Vec<&'a Task>
 
 pub fn vibe_stage_index(stage: &str) -> usize {
     match stage {
-        "branch" => 0,
+        "spec" => 0,
         "scope" => 1,
         "develop" => 2,
-        "simplify" => 3,
-        "review" => 4,
-        "commit" => 5,
-        _ => 6,
+        "review" => 3,
+        "commit" => 4,
+        _ => 5,
     }
 }
 
@@ -1024,18 +1023,17 @@ mod tests {
 
     #[test]
     fn vibe_stage_index_maps_known_stages() {
-        assert_eq!(vibe_stage_index("branch"), 0);
+        assert_eq!(vibe_stage_index("spec"), 0);
         assert_eq!(vibe_stage_index("scope"), 1);
         assert_eq!(vibe_stage_index("develop"), 2);
-        assert_eq!(vibe_stage_index("simplify"), 3);
-        assert_eq!(vibe_stage_index("review"), 4);
-        assert_eq!(vibe_stage_index("commit"), 5);
+        assert_eq!(vibe_stage_index("review"), 3);
+        assert_eq!(vibe_stage_index("commit"), 4);
     }
 
     #[test]
-    fn vibe_stage_index_unknown_returns_6() {
-        assert_eq!(vibe_stage_index("bogus"), 6);
-        assert_eq!(vibe_stage_index(""), 6);
+    fn vibe_stage_index_unknown_returns_5() {
+        assert_eq!(vibe_stage_index("bogus"), 5);
+        assert_eq!(vibe_stage_index(""), 5);
     }
 
     #[test]
