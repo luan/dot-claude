@@ -50,7 +50,8 @@
     "skill-creator@claude-plugins-official": true,
     "lua-lsp@claude-plugins-official": false,
     "telegram@claude-plugins-official": true,
-    "codex@openai-codex": true
+    "codex@openai-codex": true,
+    "worktrunk@worktrunk": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -63,6 +64,12 @@
       "source": {
         "source": "github",
         "repo": "openai/codex-plugin-cc"
+      }
+    },
+    "worktrunk": {
+      "source": {
+        "source": "github",
+        "repo": "max-sixty/worktrunk"
       }
     }
   },
