@@ -33,7 +33,7 @@ gt log                      # View ALL branches (not just current stack)
 # Modify (use these to add commits to the CURRENT branch)
 gt modify -a                # Amend staged changes into current branch's commit
 gt squash                   # Squash commits in current branch
-gt absorb -a                # Auto-distribute changes downstack
+gt absorb -af               # Stage all + auto-distribute changes to correct downstack commits (no prompt)
 
 # Sync
 gt sync                     # Pull trunk, restack (NO PUSH)
@@ -146,7 +146,8 @@ To write a good message: analyze the staged diff (or all changes if nothing stag
 | Commit on current branch | `git add -A && git commit -m "msg"` or `gt modify -a` |
 | Push changes | `gt ss` (or `gt ss -u` for existing) |
 | Update from main | `gt sync` |
-| Amend current | `gt modify -a` |
+| Amend current branch | `gt modify -a` |
+| Distribute fixes to correct downstack commits | `gt absorb -af` |
 | View current stack | `gt log --stack` |
 | View all branches | `gt log` |
 
