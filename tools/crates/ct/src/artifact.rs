@@ -98,7 +98,7 @@ pub fn artifact_dir(project_path: &str, kind: ArtifactKind) -> PathBuf {
 #[cfg(test)]
 pub fn artifact_dir_with_base(project_path: &str, kind: &str, base: &Path) -> PathBuf {
     let name = project_name(project_path);
-    base.join(kind).join(name)
+    base.join(name).join(kind)
 }
 
 // ---------------------------------------------------------------------------
@@ -115,7 +115,7 @@ pub fn project_name(project_path: &str) -> String {
         .filter_map(|c| c.as_os_str().to_str())
         .collect();
 
-    for (i, comp) in components.iter().enumerate() {
+    for comp in &components {
         if comp.ends_with(".git") {
             // All worktrees of a repo share the same project name
             return comp.strip_suffix(".git").unwrap_or(comp).to_string();
@@ -949,7 +949,12 @@ pub fn cmd_blueprint_migrate() {
 
     let mut migrated = 0u32;
 
-    for kind in [ArtifactKind::Plan, ArtifactKind::Spec] {
+    for kind in [
+        ArtifactKind::Plan,
+        ArtifactKind::Spec,
+        ArtifactKind::Review,
+        ArtifactKind::Report,
+    ] {
         let legacy_base = Path::new(&home)
             .join(".claude")
             .join(kind.legacy_dir_name());

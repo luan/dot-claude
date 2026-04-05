@@ -175,6 +175,7 @@ const SPEC_SECTIONS: &[Section] = &[
             ("tab / 1", "switch to Tasks tab"),
             ("2", "switch to Plans tab"),
             ("3", "switch to Specs tab"),
+            ("4", "switch to Vibe tab"),
         ],
     },
     Section {
