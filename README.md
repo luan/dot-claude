@@ -21,8 +21,8 @@ for AI-assisted development.
 
 ```bash
 /vibe "add user authentication"      # Full pipeline, hands-off
-/scope "add user authentication"     # Research, design, create tasks
-/develop <epic-id>                   # Execute (solo or swarm)
+/spec "add user authentication"      # Research codebase, produce spec
+/develop                             # Execute implementation from spec
 /review                              # Adversarial code review
 /commit                              # Conventional commit
 ```
@@ -30,19 +30,25 @@ for AI-assisted development.
 ## Pipeline
 
 ```
-brainstorm → scope → develop → split-commit → review → commit
+brainstorm → spec → develop → split-commit → review → commit
 ```
 
 - **brainstorm**: Collaborative design for greenfield features
-- **scope**: Research codebase, design, and create implementation tasks
-- **develop**: Workers own TDD from briefs (auto solo/swarm)
+- **spec**: Research codebase and produce a target-state spec
+- **develop**: Execute implementation from a spec file
 - **split-commit**: Repackage branch into clean, tested commits
 - **review**: Adversarial review with built-in fix loop + polish
 - **commit**: Conventional commit
 
-Other skills: `/test-plan`, `/triage`, `/debugging`, `/next`, `/start`,
-`/split-commit`, `/gt`, `/acceptance`, `/pr:descr`,
-`/pr:comments`, `/frontend-design`
+## Other Skills
+
+| Category | Skills |
+|----------|--------|
+| **Workflow** | `/supervibe`, `/simplify`, `/loop`, `/schedule`, `/challenge` |
+| **Git & PRs** | `/start`, `/gt`, `/git-surgeon`, `/pr-descr`, `/pr-comments`, `/pr-ci`, `/babysit` |
+| **Testing & Debug** | `/test-plan`, `/debugging`, `/agent-tdd` |
+| **Creation** | `/rule-creator`, `/skill-creator`, `/frontend-design`, `/claude-api` |
+| **Utilities** | `/show-image`, `/update-config`, `/keybindings-help` |
 
 ## License
 

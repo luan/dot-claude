@@ -1,5 +1,7 @@
-use crate::plan::{self, Plan};
-use crate::spec::{self, Spec};
+use crate::artifact::{self, Artifact, ArtifactKind};
+
+type Plan = Artifact;
+type Spec = Artifact;
 use crate::store::{Status, Task, meta_str_raw};
 use crate::ui::theme;
 use ratatui::Frame;
@@ -21,13 +23,13 @@ impl DetailState {
         // Phase 3: If task has a linked plan_file, show that plan specifically.
         // Otherwise fall back to project-wide matching.
         let related_plans: Vec<Plan> = if !task.plan_file.is_empty() {
-            plan::list_plans()
+            artifact::list_artifacts(ArtifactKind::Plan)
                 .into_iter()
                 .filter(|p| p.path.to_string_lossy() == task.plan_file)
                 .take(1)
                 .collect()
         } else if !task.project.is_empty() {
-            plan::list_plans()
+            artifact::list_artifacts(ArtifactKind::Plan)
                 .into_iter()
                 .filter(|p| !p.project.is_empty() && p.project == task.project)
                 .take(3)
@@ -37,13 +39,13 @@ impl DetailState {
         };
 
         let related_specs: Vec<Spec> = if !task.spec_file.is_empty() {
-            spec::list_specs()
+            artifact::list_artifacts(ArtifactKind::Spec)
                 .into_iter()
                 .filter(|s| s.path.to_string_lossy() == task.spec_file)
                 .take(1)
                 .collect()
         } else if !task.project.is_empty() {
-            spec::list_specs()
+            artifact::list_artifacts(ArtifactKind::Spec)
                 .into_iter()
                 .filter(|s| !s.project.is_empty() && s.project == task.project)
                 .take(3)
@@ -231,7 +233,7 @@ pub fn render_detail(f: &mut Frame, area: Rect, state: &DetailState) {
             };
             lines.push(Line::from(vec![
                 Span::raw("  "),
-                Span::styled(plan::format_date(s.mod_time), theme::muted_style()),
+                Span::styled(artifact::format_date(s.mod_time), theme::muted_style()),
                 Span::raw("  "),
                 Span::styled(title.clone(), theme::value_style()),
             ]));
@@ -262,7 +264,7 @@ pub fn render_detail(f: &mut Frame, area: Rect, state: &DetailState) {
             };
             lines.push(Line::from(vec![
                 Span::raw("  "),
-                Span::styled(plan::format_date(p.mod_time), theme::muted_style()),
+                Span::styled(artifact::format_date(p.mod_time), theme::muted_style()),
                 Span::raw("  "),
                 Span::styled(title.clone(), theme::value_style()),
             ]));

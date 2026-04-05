@@ -6,7 +6,7 @@ use ratatui::widgets::{Cell, Row, Table, TableState};
 
 use std::collections::HashMap;
 
-use crate::planfile;
+use crate::artifact;
 use crate::store::{self, Task};
 use crate::ui::theme;
 
@@ -169,7 +169,7 @@ pub fn render_vibes(f: &mut Frame, area: Rect, state: &mut VibeState) {
             Row::new(vec![
                 Cell::from(Span::styled(&t.id, theme::muted_style())),
                 Cell::from(Span::styled(
-                    planfile::project_name(&t.project),
+                    artifact::project_name(&t.project),
                     theme::muted_style(),
                 )),
                 Cell::from(Span::styled(

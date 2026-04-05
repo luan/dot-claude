@@ -4,7 +4,7 @@ use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Paragraph, Wrap};
 
-use crate::planfile;
+use crate::artifact;
 use crate::store::{self, Status, Task, meta_str_raw};
 use crate::ui::detail::build_text_section;
 use crate::ui::theme;
@@ -140,7 +140,7 @@ pub fn render_vibe_detail(f: &mut Frame, area: Rect, state: &VibeDetailState) {
     if !t.project.is_empty() {
         lines.push(field(
             "Project",
-            &planfile::project_name(&t.project),
+            &artifact::project_name(&t.project),
             theme::value_style(),
         ));
     }

@@ -7,11 +7,7 @@ mod editor;
 mod gitcontext;
 mod notify;
 mod phases;
-mod plan;
-mod planfile;
 mod slug;
-mod spec;
-mod specfile;
 mod store;
 mod ui;
 
@@ -94,63 +90,155 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 cli::run_prune(&store, days, dry_run, list)
             }
         },
-        Some(cli::Command::Plan { action }) => match action {
-            cli::PlanAction::List {
-                json,
-                all,
-                project,
-                archived,
-            } => {
-                let (_, cwd) = store_and_cwd();
-                cli::run_plans(&cwd, json, all, project, archived)
+        Some(cli::Command::Plan { action }) => {
+            let kind = crate::artifact::ArtifactKind::Plan;
+            match action {
+                cli::PlanAction::List {
+                    json,
+                    all,
+                    project,
+                    archived,
+                } => {
+                    let (_, cwd) = store_and_cwd();
+                    cli::run_artifact_list(kind, &cwd, json, all, project, archived)
+                }
+                cli::PlanAction::Create {
+                    topic,
+                    project,
+                    slug,
+                    prefix,
+                    body,
+                } => cli::run_artifact_create(kind, topic, project, slug, prefix, body),
+                cli::PlanAction::Read { file, frontmatter } => {
+                    cli::run_artifact_read(file, frontmatter)
+                }
+                cli::PlanAction::Latest { project, task_file } => {
+                    cli::run_artifact_latest(kind, project, task_file)
+                }
+                cli::PlanAction::Archive { file } => cli::run_artifact_archive(kind, file),
+                cli::PlanAction::Show { id } => cli::run_artifact_show(kind, &id),
+                cli::PlanAction::Prune {
+                    days,
+                    dry_run,
+                    project,
+                } => cli::run_artifact_prune(kind, days, dry_run, project),
             }
-            cli::PlanAction::Create {
-                topic,
-                project,
-                slug,
-                prefix,
-                body,
-            } => cli::run_plan_create(topic, project, slug, prefix, body),
-            cli::PlanAction::Read { file, frontmatter } => cli::run_plan_read(file, frontmatter),
-            cli::PlanAction::Latest { project, task_file } => {
-                cli::run_plan_latest(project, task_file)
+        }
+        Some(cli::Command::Spec { action }) => {
+            let kind = crate::artifact::ArtifactKind::Spec;
+            match action {
+                cli::SpecAction::List {
+                    json,
+                    all,
+                    project,
+                    archived,
+                } => {
+                    let (_, cwd) = store_and_cwd();
+                    cli::run_artifact_list(kind, &cwd, json, all, project, archived)
+                }
+                cli::SpecAction::Create {
+                    topic,
+                    project,
+                    slug,
+                    prefix,
+                    body,
+                } => cli::run_artifact_create(kind, topic, project, slug, prefix, body),
+                cli::SpecAction::Read { file, frontmatter } => {
+                    cli::run_artifact_read(file, frontmatter)
+                }
+                cli::SpecAction::Latest { project, task_file } => {
+                    cli::run_artifact_latest(kind, project, task_file)
+                }
+                cli::SpecAction::Archive { file } => cli::run_artifact_archive(kind, file),
+                cli::SpecAction::Show { id } => cli::run_artifact_show(kind, &id),
+                cli::SpecAction::Prune {
+                    days,
+                    dry_run,
+                    project,
+                } => cli::run_artifact_prune(kind, days, dry_run, project),
             }
-            cli::PlanAction::Archive { file } => cli::run_plan_archive(file),
-            cli::PlanAction::Show { id } => cli::run_plan_show(&id),
-            cli::PlanAction::Prune {
-                days,
-                dry_run,
-                project,
-            } => cli::run_plan_prune(days, dry_run, project),
-        },
-        Some(cli::Command::Spec { action }) => match action {
-            cli::SpecAction::List {
-                json,
-                all,
-                project,
-                archived,
-            } => {
-                let (_, cwd) = store_and_cwd();
-                cli::run_specs(&cwd, json, all, project, archived)
+        }
+        Some(cli::Command::Review { action }) => {
+            let kind = crate::artifact::ArtifactKind::Review;
+            match action {
+                cli::ReviewAction::List {
+                    json,
+                    all,
+                    project,
+                    archived,
+                } => {
+                    let (_, cwd) = store_and_cwd();
+                    cli::run_artifact_list(kind, &cwd, json, all, project, archived)
+                }
+                cli::ReviewAction::Create {
+                    topic,
+                    project,
+                    slug,
+                    prefix,
+                    body,
+                } => cli::run_artifact_create(kind, topic, project, slug, prefix, body),
+                cli::ReviewAction::Read { file, frontmatter } => {
+                    cli::run_artifact_read(file, frontmatter)
+                }
+                cli::ReviewAction::Latest { project, task_file } => {
+                    cli::run_artifact_latest(kind, project, task_file)
+                }
+                cli::ReviewAction::Archive { file } => cli::run_artifact_archive(kind, file),
+                cli::ReviewAction::Show { id } => cli::run_artifact_show(kind, &id),
+                cli::ReviewAction::Prune {
+                    days,
+                    dry_run,
+                    project,
+                } => cli::run_artifact_prune(kind, days, dry_run, project),
             }
-            cli::SpecAction::Create {
-                topic,
-                project,
-                slug,
-                prefix,
-                body,
-            } => cli::run_spec_create(topic, project, slug, prefix, body),
-            cli::SpecAction::Read { file, frontmatter } => cli::run_spec_read(file, frontmatter),
-            cli::SpecAction::Latest { project, task_file } => {
-                cli::run_spec_latest(project, task_file)
+        }
+        Some(cli::Command::Report { action }) => {
+            let kind = crate::artifact::ArtifactKind::Report;
+            match action {
+                cli::ReportAction::List {
+                    json,
+                    all,
+                    project,
+                    archived,
+                } => {
+                    let (_, cwd) = store_and_cwd();
+                    cli::run_artifact_list(kind, &cwd, json, all, project, archived)
+                }
+                cli::ReportAction::Create {
+                    topic,
+                    project,
+                    slug,
+                    prefix,
+                    body,
+                } => cli::run_artifact_create(kind, topic, project, slug, prefix, body),
+                cli::ReportAction::Read { file, frontmatter } => {
+                    cli::run_artifact_read(file, frontmatter)
+                }
+                cli::ReportAction::Latest { project, task_file } => {
+                    cli::run_artifact_latest(kind, project, task_file)
+                }
+                cli::ReportAction::Archive { file } => cli::run_artifact_archive(kind, file),
+                cli::ReportAction::Show { id } => cli::run_artifact_show(kind, &id),
+                cli::ReportAction::Prune {
+                    days,
+                    dry_run,
+                    project,
+                } => cli::run_artifact_prune(kind, days, dry_run, project),
             }
-            cli::SpecAction::Archive { file } => cli::run_spec_archive(file),
-            cli::SpecAction::Show { id } => cli::run_spec_show(&id),
-            cli::SpecAction::Prune {
-                days,
-                dry_run,
-                project,
-            } => cli::run_spec_prune(days, dry_run, project),
+        }
+        Some(cli::Command::Blueprint { action }) => match action {
+            cli::BlueprintAction::Init => {
+                crate::artifact::cmd_blueprint_init();
+                Ok(())
+            }
+            cli::BlueprintAction::Migrate => {
+                crate::artifact::cmd_blueprint_migrate();
+                Ok(())
+            }
+            cli::BlueprintAction::Project => {
+                crate::artifact::cmd_blueprint_project();
+                Ok(())
+            }
         },
         Some(cli::Command::Project { action }) => match action {
             cli::ProjectAction::List { json } => {

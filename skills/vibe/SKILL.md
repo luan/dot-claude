@@ -20,7 +20,7 @@ No prompt → tell user: `/vibe <what to build>`, stop.
 
 ## Pipeline
 
-**Stage numbering `[N/M]`:** M = total stages that will run. Base: 4 (spec, develop, review, commit). `--no-review` → 3. `--dry-run` → 1.
+**Stage numbering `[N/M]`:** M = total stages that will run. Base: 5 (spec, develop, review, commit, report). `--no-review` → 4. `--dry-run` → 1.
 
 ### [1/M] Spec
 
@@ -71,6 +71,16 @@ If `git diff --stat` is empty → skip.
 ```
 Skill("commit")
 ```
+
+### [M/M] Report
+
+Output `[M/M] Report`.
+
+```
+Skill("report")
+```
+
+Generates a post-implementation summary in `~/blueprints/`. Runs silently — failure here doesn't block the pipeline.
 
 ## Finalize
 

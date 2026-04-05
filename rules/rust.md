@@ -7,19 +7,14 @@ paths:
 
 **Zero warnings:**
 
-- `cargo clippy -- -W clippy::all` after EVERY implementation
-- Zero warnings before complete — do not present code to the user with known warnings
-- Never write code that will obviously warn (empty enums making types uninhabited, unused variables, dead code) and rationalize it as "expected" or "will go away later"
-- If a construct warns without content, use a simpler construct that doesn't (e.g. flat struct instead of struct+empty enum)
-- Avoid #[allow(...)] with reason unless DIRECTLY instructed by user.
+- `cargo clippy -- -W clippy::all` after every implementation
+- Zero warnings before presenting code to user
+- Never write code that obviously warns (unused variables, dead code, empty enums making types uninhabited)
+- Use simpler constructs that don't warn over complex ones that do
+- No `#[allow(...)]` unless user directly instructs it
 
-**Validation:**
+**Validation:** `cargo fmt` → `cargo clippy -- -W clippy::all` → `cargo test` → `cargo build`
 
-1. `cargo fmt`
-2. `cargo clippy -- -W clippy::all`
-3. `cargo test`
-4. `cargo build`
-
-**Dead code:** Remove immediately. Use #[cfg(test)] for test-only.
+**Dead code:** Remove immediately. `#[cfg(test)]` for test-only.
 
 **Imports:** All `use` at file top. No inline imports.

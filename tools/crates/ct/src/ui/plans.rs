@@ -6,9 +6,10 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Cell, Row, Table, TableState};
 
-use crate::plan::{self, Plan};
-use crate::planfile;
+use crate::artifact::{self, Artifact, ArtifactKind};
 use crate::ui::theme;
+
+type Plan = Artifact;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PlanSource {
@@ -68,9 +69,9 @@ impl PlansState {
 
     pub fn reload_plans(&mut self) {
         let raw = match self.source {
-            PlanSource::Active => plan::list_plans(),
-            PlanSource::Archived => plan::list_archived_plans(),
-            PlanSource::GitNotes => plan::list_git_notes_plans_all(),
+            PlanSource::Active => artifact::list_artifacts(ArtifactKind::Plan),
+            PlanSource::Archived => artifact::list_archived_artifacts(ArtifactKind::Plan),
+            PlanSource::GitNotes => artifact::list_git_notes_artifacts_all(ArtifactKind::Plan),
         };
         self.plans = raw
             .into_iter()
@@ -100,7 +101,7 @@ impl PlansState {
                 .filter(|p| {
                     p.title.to_lowercase().contains(&q)
                         || p.name.to_lowercase().contains(&q)
-                        || planfile::project_name(&p.project)
+                        || artifact::project_name(&p.project)
                             .to_lowercase()
                             .contains(&q)
                 })
@@ -177,7 +178,7 @@ pub fn render_plans(f: &mut Frame, area: Rect, state: &mut PlansState) {
             } else {
                 &p.title
             };
-            let proj = planfile::project_name(&p.project);
+            let proj = artifact::project_name(&p.project);
             let path_key = p.path.to_string_lossy();
             let task_count = state
                 .link_counts
@@ -192,11 +193,11 @@ pub fn render_plans(f: &mut Frame, area: Rect, state: &mut PlansState) {
             Row::new(vec![
                 Cell::from(Span::styled(proj, theme::muted_style())),
                 Cell::from(Span::styled(
-                    plan::format_date(p.mod_time),
+                    artifact::format_date(p.mod_time),
                     theme::muted_style(),
                 )),
                 Cell::from(Span::styled(
-                    plan::format_size(p.size),
+                    artifact::format_size(p.size),
                     theme::muted_style(),
                 )),
                 Cell::from(Span::styled(task_label, theme::muted_style())),
@@ -247,7 +248,7 @@ pub fn render_plans_filter_bar(f: &mut Frame, area: Rect, state: &PlansState) {
 
     if let Some(ref proj) = state.project_filter {
         spans.push(Span::styled(
-            format!(" project:{} ", planfile::project_name(proj)),
+            format!(" project:{} ", artifact::project_name(proj)),
             theme::filter_tag_style(),
         ));
         spans.push(Span::raw(" "));
