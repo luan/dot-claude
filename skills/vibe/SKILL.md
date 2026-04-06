@@ -30,18 +30,18 @@ Output `[1/M] Spec`.
 Skill("spec", args="<prompt> --auto")
 ```
 
-Spec runs silently with `--auto` and returns a file path. Read the spec file path from the output or find via `ct spec latest`.
+Spec runs silently with `--auto` and returns both spec and plan file paths. Read the plan file path from the output or find via `ct plan latest`.
 
-Verify the spec file exists and has content. Immediately proceed to develop.
+Verify the plan file exists and has content. Immediately proceed to develop.
 
 ### [2/M] Develop
 
 Output `[2/M] Develop`.
 
-If `--dry-run` → stop here. Report the spec file path, suggest `/develop <path>`.
+If `--dry-run` → stop here. Report the plan file path, suggest `/develop <path>`.
 
 ```
-Skill("develop", args="<spec-file-path> --auto")
+Skill("develop", args="<plan-file-path> --auto")
 ```
 
 Verify all workers completed. If some failed, report per-worker status and stop.

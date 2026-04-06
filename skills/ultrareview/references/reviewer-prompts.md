@@ -214,81 +214,94 @@ Then Simplicity table (same columns, severity capped at medium) for over-enginee
 Then brief summary.
 ```
 
-## Perspective Mode (--team)
+## Language Reviewer (Perspective Mode, conditional)
 
-Spawn EXACTLY 3 agents (+ extras if applicable):
+Only spawned when `$LANG` is set. Use the matching block:
 
-**Agent 1 — Architect:**
 ```
-Architecture reviewer.
+You are a senior {lang} engineer with deep expertise in idiomatic
+patterns and common pitfalls specific to the language ecosystem.
 
-{context_preamble}
+## PR Context
+{pr_context}
 
-Focus:
-- System boundaries, coupling, scalability
-- Design flaws, incomplete abstractions
-- Dependency direction, module cohesion
-- Over-engineering: abstractions with fewer than 3 call sites today (interfaces/factories/strategies serving one consumer), "might need it later" scaffolding, near-identical blocks that should stay flat, versioned names (FooV2), unused functions/params, wrapper types or indirection adding no invariant
-- Testing gaps: new/changed logic with no coverage, boundary conditions not exercised, untested error paths
+## Language Focus
+
+{{if lang == "go"}}
+- **Error handling**: check `err != nil` consistently, no silently
+  ignored errors, wrap with context via `fmt.Errorf("...: %w", err)`
+- **Goroutine leaks**: ensure goroutines have cancellation paths,
+  no unbounded spawns without context/done channels
+- **Interface bloat**: interfaces should be small and consumer-defined,
+  flag interfaces with 5+ methods or defined by the implementer
+- **Context propagation**: `context.Context` passed as first arg,
+  no `context.Background()` in library code, respect cancellation
+{{else if lang == "typescript"}}
+- **Type safety**: flag `any` usage, prefer unknown + narrowing,
+  ensure generics are constrained, no unnecessary type assertions
+- **Async/await**: no floating promises (missing await), proper
+  error handling in async paths, no mixing callbacks and promises
+- **Null/undefined handling**: use optional chaining and nullish
+  coalescing, flag non-null assertions (`!`) without justification
+- **Import cycles**: flag circular dependencies between modules
+{{else if lang == "python"}}
+- **Type hints**: consistency of annotations across function
+  signatures, use of `Optional` / `Union` / modern `X | Y` syntax
+- **Exception handling**: no bare `except:`, catch specific
+  exceptions, preserve exception chains with `from`
+- **Import structure**: stdlib → third-party → local ordering,
+  no circular imports, no star imports
+- **Context managers**: resources (files, connections, locks) must
+  use `with` statements, flag manual open/close patterns
+{{else if lang == "rust"}}
+- **Ownership patterns**: unnecessary clones, borrowing where
+  ownership isn't needed, overly complex lifetime annotations
+- **Unsafe blocks**: each `unsafe` must have a `// SAFETY:` comment
+  justifying soundness, minimize unsafe surface area
+- **Error propagation**: prefer `?` over `.unwrap()` / `.expect()`
+  in library code, use thiserror/anyhow appropriately
+- **Lifetime clarity**: flag elided lifetimes that obscure intent,
+  ensure lifetime names are descriptive in complex signatures
+{{else if lang == "swift"}}
+- **Memory management**: retain cycles in closures (missing [weak self]),
+  strong reference chains in async contexts, actor isolation
+- **Concurrency**: proper use of async/await, actor isolation,
+  Sendable conformance, MainActor annotations
+- **Optionals**: force unwraps without justification, pyramid of
+  doom optional chains, missing nil coalescing
+- **Protocol conformance**: default implementations hiding bugs,
+  retroactive conformances, protocol witness table issues
+{{endif}}
+
+## Scope
+Focus on the INTRODUCED code (the diff). Only flag pre-existing
+language issues if the new code directly depends on them.
+
+## Branch
+{branch}
+
+## Commits
+{log}
+
+## Changed Files
+{files}
+
+## Diffs
+{diff}
+
+Review strictly through a {lang} idiom lens using the focus areas above.
+Stay in your lane: ONLY flag language-specific idiom issues. Do not
+flag architecture, security, operations, or shared concerns.
 
 {disposition_block}
 
-Tag: [architect]
-Output: Phase 1 (Critical) → Phase 2 (Design & Simplicity, cap simplicity severity at medium) → Phase 3 (Testing Gaps)
-Each finding: table with Tier | Severity | Disposition | File:Line | Issue | Suggestion
+Output: table with Tier | Severity | Disposition | File:Line | Issue | Suggestion
+Then brief summary.
 ```
 
-**Agent 2 — Code Quality:**
-```
-Code quality reviewer.
+## Completeness Reviewer (all modes, conditional)
 
-{context_preamble}
-
-Focus:
-- Readability, naming, error handling
-- Edge cases, off-by-one, null safety
-- Consistency with surrounding code
-- Resource leaks, missing cleanup
-- Testing gaps: new/changed logic with no coverage, boundary conditions not exercised, untested error paths
-
-{disposition_block}
-
-Tag: [code-quality]
-Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
-Each finding: table with Tier | Severity | Disposition | File:Line | Issue | Suggestion
-```
-
-**Agent 3 — Devil's Advocate:**
-```
-Devil's advocate reviewer.
-
-{context_preamble}
-
-{assumption_verification_block}
-
-Focus:
-- Failure modes others miss
-- Security: injection, auth gaps, data exposure
-- Bad assumptions, race conditions
-- What breaks under load, bad input, or partial failure?
-- Testing gaps: new/changed logic with no coverage, boundary conditions not exercised, untested error paths
-- **Assumption inversion**: For each filter, guard, or conditional in the diff, ask "what does this INCORRECTLY exclude/include?" A filter based on "author_id" might exclude legitimate updates from other authors to author-created entities. An error catch that maps everything to one type might misclassify cancellation as network failure.
-- **Silent data loss paths**: When code skips, filters, or suppresses operations during certain states (e.g., suppressing side effects during remote apply), check whether useful non-echo operations are also suppressed.
-- **Stale closure state**: When closures capture references that may change between capture and execution (especially in async/concurrent code), check whether the closure might null or overwrite a newer value.
-- **Multi-driver/adapter symmetry**: When changes add a pattern across multiple drivers/adapters/handlers (e.g., emitSnapshot after mutations), enumerate every mutation site per driver and cross-check — a pattern applied after moveItems but missing after removeItems in one driver is a bug.
-
-{disposition_block}
-
-Tag: [devil]
-Output: Phase 1 (Critical) → Phase 2 (Design) → Phase 3 (Testing Gaps)
-Each finding: table with Tier | Severity | Disposition | File:Line | Issue | Suggestion
-```
-
-## Additional Agents (all modes)
-
-Spawned in the same message as the mode's primary agents.
-
-**Completeness (only if COCHANGES non-empty):**
+Only spawned if COCHANGES non-empty:
 ```
 You are a completeness reviewer. Find files NOT updated that likely should have been.
 
@@ -313,7 +326,9 @@ Output: table with Tier | Severity | Disposition | File | Issue | Suggestion
 Then brief summary.
 ```
 
-**Codex (only if CODEX_TRIGGERED):**
+## Codex Reviewer (all modes, conditional)
+
+Only spawned if codex is available AND (files≥5 or lines≥200), or `--perfection`:
 ```
 Run `codex review --base {base_ref}` via Bash. Capture the full output.
 If the command fails or is not found, return empty findings with a warning note.

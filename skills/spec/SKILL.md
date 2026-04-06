@@ -1,7 +1,7 @@
 ---
 name: spec
-description: "Research a codebase and produce a target-state spec — what to build, with enough architecture context to execute. Triggers: 'spec', 'specify', 'define the target', 'what are we building', 'what should we build', 'write a spec'. Use for both greenfield features and bug investigations."
-argument-hint: "<topic> [--auto] [--continue]"
+description: "Research a codebase and produce a target-state spec and implementation plan — what to build and how. Two approval gates: spec (what) then plan (how). Triggers: 'spec', 'specify', 'define the target', 'what are we building', 'write a spec', 'plan'. Use for both greenfield features and bug investigations."
+argument-hint: "<topic> [--auto] [--continue] [--spec-only] [--depth medium|high|max]"
 allowed-tools:
   - Agent
   - Bash
@@ -13,17 +13,22 @@ user-invocable: true
 
 # Spec
 
-Research a codebase and produce a **target-state spec** — a document describing the system as if already built, with enough architecture context for develop to execute without losing intent.
+Research a codebase and produce a **target-state spec** (what to build) and an **implementation plan** (how to build it). Two approval gates — the user approves the spec before seeing the plan. The plan becomes the contract `/develop` consumes.
 
 Subagents do all codebase exploration. The main thread synthesizes, validates, and presents.
 
 ## Arguments
 
 - `<topic>` — what to spec (required unless `--continue`)
-- `--auto` — skip approval gate and codex review. Return the spec file path silently.
-- `--continue` — resume from existing spec file
+- `--auto` — skip both approval gates. Return the plan file path silently.
+- `--continue` — resume from existing spec or plan file
+- `--spec-only` — stop after spec approval, don't generate a plan
+- `--depth medium|high|max` — controls research and plan granularity (default: medium)
+  - **medium**: key files, 3-5 phases
+  - **high**: call chains, integration points, 5-7 phases with verification steps
+  - **max**: exhaustive analysis, cross-reference matrix, 7+ phases with sub-steps
 
-## Workflow
+## Phase 1: Spec (the "what")
 
 ### 1. Research
 
@@ -69,43 +74,98 @@ Build the spec from validated research. The spec is **timeless** — it describe
 - **Not yet ruled out**: alternatives that remain plausible
 - If LOW, flag explicitly — the user must know they're approving under uncertainty.
 
-### 4. Store as file
+**Quality gates** (run in parallel before presenting):
+- **Simplifier** (conditional — fires when Recommendation has >5 bullets or Architecture Context has >3 subsections): Spawn a subagent to flag over-specification and suggest cuts.
+- **Devil's advocate** (always): Spawn a subagent to challenge — is the problem real? Is the scope right? What's the simplest version that works? Carry challenges forward for the user to see.
+
+### 4. Store spec
 
 ```bash
 SPEC_FILE=$(echo "<spec content>" | ct spec create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" 2>/dev/null)
 ```
 
-The spec file is the durable artifact. Downstream skills (develop, vibe) read it via `ct spec read`.
-
-After writing, check for related artifacts and append wiki-links if found:
+The spec file is the durable artifact. After writing, check for related artifacts and append wiki-links if found:
 
 ```bash
 RELATED=$(ct blueprint related --project "$(git rev-parse --show-toplevel)" "<topic>")
 # If non-empty, append a ## Related section to the spec file with the links
 ```
 
-### 5. Present
+### 5. Present spec
 
-If `--auto` → return silently. Caller reads the spec file path.
+If `--auto` → skip to Phase 2 silently.
 
-Otherwise → present the spec: Problem, Recommendation, Architecture Context, Risks (+ confidence gate if bug investigation). Stop for user review.
+Otherwise → present the spec: Problem, Recommendation, Architecture Context, Risks (+ confidence gate if bug investigation). Include devil's advocate challenges. **Stop for user review.**
 
-### 6. Refinement
+### 6. Spec refinement
 
 If user gives feedback:
 - **Minor (no new research):** Revise from stored research + feedback. Overwrite the spec file.
 - **Major (unexplored code or new approach):** Dispatch follow-up subagent with current spec as context. Merge findings. Overwrite spec file.
 
-### 7. Approve
+If `--spec-only` → after approval, output spec path and stop.
+
+## Phase 2: Plan (the "how")
+
+Generated from the approved spec + research findings. The plan is tactical and consumable — `/develop` auto-parses it into tasks.
+
+### 7. Generate plan
+
+From the approved spec and retained research, produce a phased implementation plan. Each phase:
+
+```markdown
+**Phase N: <title>**
+- **Files**: Read: <paths> | Modify: <paths> | Create: <paths>
+- **Approach**: what this phase accomplishes and why
+- **Steps**:
+  1. <concrete step with file path>
+  2. ...
+- **Dependencies**: Phase M (if any)
+- **Verification**: how to confirm this phase works (test command, expected output)
+```
+
+**Rules:**
+- Every step must include a file path — `/develop` depends on them.
+- Phase boundaries follow natural code boundaries (module, layer, feature slice).
+- Earlier phases should unblock later ones — order by dependency, not importance.
+- Scale phase count to `--depth`: medium → 3-5, high → 5-7, max → 7+.
+
+### 8. Store plan
+
+```bash
+SPEC_STEM=$(basename "$SPEC_FILE" .md)
+PLAN_FILE=$(echo "<plan content>" | ct plan create --topic "<topic>" --source "$SPEC_STEM" --project "$(git rev-parse --show-toplevel)" 2>/dev/null)
+```
+
+The plan links back to its source spec via `--source`.
+
+### 9. Present plan
+
+If `--auto` → return the plan file path silently.
+
+Otherwise → present the plan phases. **Stop for user review.**
+
+### 10. Plan refinement
+
+If user gives feedback:
+- **Reorder/resize phases:** Revise plan from existing research.
+- **New approach or missed files:** Dispatch follow-up subagent, update plan.
+- Overwrite the plan file after each revision.
+
+### 11. Approve
 
 Output:
 ```
 Spec: <topic>
 <one-line recommendation>
-Spec file: <path>
-Next: /develop <path>, /vibe, or /plan
+Spec file: <spec-path>
+Plan file: <plan-path>
+Phases: N
+Next: /develop <plan-path> or /vibe
 ```
 
 ## Resume (`--continue`)
 
-Find the most recent spec file: `ct spec latest --project "$(git rev-parse --show-toplevel)"`. Read via `ct spec read <path>`. Re-present and resume from step 5.
+Check for existing plan first: `ct plan latest --project "$(git rev-parse --show-toplevel)"`. If found, read via `ct plan read <path>`, re-present, resume from step 9.
+
+Otherwise check for spec: `ct spec latest --project "$(git rev-parse --show-toplevel)"`. If found, read via `ct spec read <path>`, re-present, resume from step 5 (spec review → plan generation).

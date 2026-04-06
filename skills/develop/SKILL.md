@@ -1,7 +1,7 @@
 ---
 name: develop
-description: "Execute implementation from a spec file. Reads the spec, decomposes into tasks, dispatches workers with full spec context, verifies each against the spec. Triggers: 'develop', 'execute the plan', 'build this', 'implement this spec'."
-argument-hint: "<spec-file-path> [--auto]"
+description: "Execute implementation from a plan or spec file. Reads the plan phases, dispatches workers with full spec context, verifies each against the spec. Triggers: 'develop', 'execute the plan', 'build this', 'implement this spec'."
+argument-hint: "<plan-or-spec-path> [--auto]"
 user-invocable: true
 allowed-tools:
   - Agent
@@ -13,31 +13,40 @@ allowed-tools:
 
 # Develop
 
-Read a spec, decompose execution, dispatch workers with full context, verify each worker's output against the spec.
+Read a plan (preferred) or spec, dispatch workers per phase, verify each worker's output against the spec.
 
 ## Arguments
 
-- `<spec-file-path>` — path to spec file (from /spec or ct spec latest)
+- `<path>` — path to plan file (preferred) or spec file
 - `--auto` — skip user confirmations (for vibe/supervibe calls)
-- No argument → find most recent spec: `ct spec latest --project "$(git rev-parse --show-toplevel)"`
+- No argument → find most recent plan: `ct plan latest --project "$(git rev-parse --show-toplevel)"`. If no plan, fall back to `ct spec latest`.
 
-## Step 1: Read the Spec
+## Step 1: Read Plan and Spec
 
-If the spec content is already in your conversation (e.g., from a preceding /spec call or user paste), use it directly — don't re-read the file. Only read from disk when the spec isn't in context:
+If content is already in your conversation (from a preceding /spec call), use it directly.
 
+**Plan file provided (preferred path):**
 ```bash
-SPEC_CONTENT=$(ct spec read <spec-file-path>)
+PLAN_CONTENT=$(ct plan read <path>)
 ```
+The plan's frontmatter contains `source:` linking to its spec. Read the spec too — workers need both:
+```bash
+SPEC_CONTENT=$(ct spec read <spec-stem>)
+```
+
+**Spec file provided (no plan):**
+```bash
+SPEC_CONTENT=$(ct spec read <path>)
+```
+Decompose into tasks yourself (Step 2 fallback).
 
 If the file doesn't exist or is empty, report and stop.
 
-Parse sections: Problem, Recommendation, Architecture Context, Risks. The Architecture Context contains the key files and module roles that inform task decomposition.
-
 ## Step 2: Decompose
 
-Break the spec into implementation tasks. Each task is a coherent chunk of work that one worker can complete. Use the Architecture Context to determine natural boundaries (files, modules, layers).
+**From plan file:** Parse `**Phase N:**` markers directly into tasks. Each phase becomes one task. The plan already specifies files, approach, steps, and dependencies — use them as-is.
 
-For each task, note:
+**From spec file (fallback):** Break the spec into implementation tasks. Use the Architecture Context to determine natural boundaries (files, modules, layers). For each task, note:
 - What to build
 - Relevant spec excerpts, file paths, and approach
 - Dependencies on other tasks (which must complete first)
@@ -49,29 +58,30 @@ For each ready task, spawn an Agent with the worker prompt below. Cap: 4 concurr
 ### Worker Prompt
 
 ```
-Implement this task.
+Implement this phase.
 
-## Task
-<task description>
+## Phase
+<phase title, files, approach, steps from plan>
 
 ## Full Spec
 <entire spec content — Problem, Recommendation, Architecture Context, Risks>
 
 ## Your Workflow
-1. Read the relevant files listed in Architecture Context
+1. Read the files listed in the phase (Read + Modify paths)
 2. Write a failing test that describes the target behavior
 3. Run the test — confirm it fails for the right reason (missing method, wrong behavior — not random error)
 4. Implement the minimum code to make the test pass
 5. Run all tests — confirm green
 6. Run the project build command — confirm it compiles
-7. Report completion with a summary of what you implemented
+7. Run the phase's verification step if specified
+8. Report completion with a summary of what you implemented
 
 ## If blocked
 - Design conflict with the spec → report "RESCOPE: <reason>" and stop
 - Task too large → break it down and report the subtasks
 ```
 
-Workers get the **full spec text** — not compressed metadata summaries. This is the key design choice: the spec is small enough to fit in a worker's context, and having the full "why" prevents workers from building the wrong thing.
+Workers get the **full spec text** plus their **phase details** from the plan. The spec provides the "why", the plan provides the "how". Both fit in a worker's context.
 
 ## Step 4: Spec Compliance Review
 

@@ -1,38 +1,32 @@
 ---
 name: review
-description: "Thorough adversarial code review covering correctness, security, architecture, and performance. Triggers: 'review', 'review my changes', 'check this code', 'code review'. Use --team for 3-perspective mode. Do NOT use when: investigating unknown bug — use /debugging."
-argument-hint: "[base..head | file-list | PR#] [--against <spec-path>] [--team] [--perfection] [--auto]"
+description: "Quick adversarial code review — simplify pre-pass + 2 focused reviewers. Default for everyday reviews. Triggers: 'review', 'review my changes', 'check this code', 'code review'. For deep multi-perspective review use /ultrareview."
+argument-hint: "[base..head | file-list | PR#] [--auto critical|high|medium|all]"
 user-invocable: true
 allowed-tools:
   - Agent
   - Skill
   - Read
+  - Glob
+  - Grep
   - "Bash(git diff:*)"
   - "Bash(git log:*)"
   - "Bash(git status:*)"
   - "Bash(ct tool:*)"
+  - "Bash(ct review:*)"
   - "Bash(gh pr:*)"
   - "Bash(gh api:*)"
 ---
 
-# Adversarial Review
+# Review
 
-Three modes: solo (default), file-split (auto when ≥15 files), perspective (--team). All consolidate into phase-structured output.
+Fast adversarial review: simplify pre-pass, then 2 parallel reviewers — one for correctness/security, one adversarial. Covers the highest-value dimensions without the overhead of 5-7 specialists.
 
-Solo has two sub-modes based on diff size:
-- **Solo-combined** (<500 diff lines): single agent with all lenses — avoids duplicate reads and overlapping findings on small diffs.
-- **Solo-split** (≥500 diff lines): two agents (Correctness & Security + Architecture & Performance).
+**NEVER review inline.** Always dispatch subagents via the Agent tool.
 
-**`--perfection` mode:** Zero tolerance. Loop until every finding — including nits — is resolved. No findings survive. Overrides mode selection → always uses Perspective (3 specialists) + Completeness + Codex (if available), regardless of diff size. Reviewers are additionally prompted with a `{perfection_block}` that demands: trace every code path end-to-end, verify the diff actually solves the stated problem, read production code beyond the diff to check for latent issues the change exposes. The fix loop (Step 5) runs with NO iteration cap and treats ALL severities as FIX (nothing is IGNORE). The loop continues until a review pass returns zero findings — not even nits. Use for cherry-picks, high-stakes bugfixes, or when you want the code to be immaculate.
+## Step 1: Scope
 
-**NEVER review inline.** Always dispatch at least one subagent via the Agent tool. The orchestrator reading the diff and writing a verdict directly is not a review — it's a skim. In a real session, the orchestrator did an inline "review" of a 242-line bugfix, read 80 lines of 1 of 3 files, declared PASS, and the bug was still present. Subagents read all files, cross-reference patterns, and catch what a quick skim misses.
-
-
-## Step 1: Scope + Mode
-
-Parse $ARGUMENTS: `--against <spec-file-path>` (spec adherence — read file via `ct spec read`), `--team` (perspective mode), `--no-simplify` (skip pre-pass), remaining args override BASE.
-
-Resolve BASE at runtime: `gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`. Args override this default.
+Resolve BASE: `gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`. Args override.
 
 | Input        | Diff source                       |
 | ------------ | --------------------------------- |
@@ -41,79 +35,118 @@ Resolve BASE at runtime: `gt parent 2>/dev/null || gt trunk 2>/dev/null || git s
 | file list    | `git diff HEAD -- <files>` + read |
 | `#123`       | `gh pr diff 123`                  |
 
-Mode: `--team` → Perspective (3 specialists), ≥15 files → File-Split (~8/agent), else → Solo. Solo sub-mode: count diff lines from `git diff --stat`; <500 lines → Solo-combined (1 agent, all lenses), ≥500 lines → Solo-split (2 agents by concern).
+**Bugfix detection:** If commit messages contain "fix"/"bugfix"/"hotfix", classify files as production vs test. ALL test-only → verdict **FAIL** with Critical: "Bugfix contains no production code changes."
 
-## Step 1.5: Simplify Pre-pass (mandatory)
+## Step 2: Simplify Pre-pass
 
-**ALWAYS run.** The only valid skip condition is `#<PR>` input. Do NOT invent skip reasons ("test-only changes", "already clean", "already carefully designed"). These are not valid — the assistant fabricated them in a real session and missed real duplication, naming, and reuse issues that simplify later caught.
+**ALWAYS run** unless `#<PR>` input.
 
 `Skill("simplify")`
 
-Cleans up quality and efficiency issues before the adversarial review — reduces noise so reviewers focus on real bugs, not style. Any edits simplify makes become part of the diff reviewers see.
+## Step 3: Context
 
-## Step 2: Setup + Context
+`ct tool gitcontext --base $BASE --stat` → diff-stat, changed-files, log. Fetch PR context via `gh pr view` if available.
 
-`ct tool gitcontext --base $BASE --stat --cochanges` → diff-stat, changed-files, log, cochanges (no full diff). `--against`: `ct spec read <path>` for spec content.
+## Step 4: Dispatch 2 Reviewers
 
-## Step 2.5: Bugfix Scope Validation
+Spawn both in ONE message. Pass raw diffs, not summaries.
 
-When reviewing a bugfix (commit message contains "fix", "bugfix", "hotfix", or `--against` references a bug/issue), run a scope check before dispatching reviewers:
+**Large diffs (>3000 lines):** Truncate files with >200 lines of diff to first 50 + last 50 lines.
 
-1. Classify changed files as production vs test (test files match `*test*`, `*spec*`, `*mock*`, `*fixture*`, or live under `tests/`/`test/`/`__tests__/`).
-2. If ALL changed files are test-only (zero production code changes), verdict is **FAIL** with a Critical finding: "Bugfix contains no production code changes — tests alone cannot fix the reported bug."
-3. If production files are changed, proceed normally. Reviewers should still verify the production changes actually address the reported bug (not just related code).
+### Reviewer 1 — Correctness & Security
 
-This prevents rubber-stamping test-only diffs as valid bugfixes.
+```
+You are an adversarial correctness and security reviewer.
 
-## Step 3: Dispatch Reviewers
+## Gather Context
+1. Run: `ct tool gitcontext --base {base_ref} --format json`
+2. Read all changed files from the output
+3. If `truncated_files` is non-empty, `Read` those files in full
 
-All agents, spawn in ONE message. Prompts in `${CLAUDE_SKILL_DIR}/references/reviewer-prompts.md`. `--against`: append plan adherence to every prompt.
+## Assumption Verification (do this BEFORE reviewing)
 
-- **Solo-combined** (<500 diff lines): single agent with all lenses (Correctness, Security, Architecture, Performance)
-- **Solo-split** (≥500 diff lines): Correctness & Security + Architecture & Performance
-- **File-Split**: Combined lens per ~8-file group
-- **Perspective**: Architect + Code Quality + Devil's Advocate
-- **Additional**: Completeness (if cochanges non-empty), Codex (if available AND files≥5 or lines≥200)
+1. **Boundary semantics**: When code branches on a field from an external system, verify what it actually represents by reading the source definition.
+2. **Value correctness across boundaries**: Trace every value crossing a system boundary from producer to consumer. Check tuple/struct destructuring.
+3. **Error fallback safety**: Is the default safe? Silent fallback to production URL or permissive auth can be worse than crashing.
+4. **Completeness of external interactions**: Paginated/batched APIs — verify all pages handled.
+5. **Existing pattern divergence**: Flag reimplementations of existing utilities.
+6. **Multi-driver/adapter symmetry**: Verify patterns applied consistently across all changed files.
 
-## Step 4: Consolidate
+## Focus
+- Edge cases (empty, null, overflow, concurrent access)
+- Invalid states, race conditions, resource leaks
+- Silent failures, swallowed errors, dangerous fallbacks
+- Off-by-one, logic inversions
+- Injection, auth/authz gaps, data exposure
+- Missing tests for new/changed behavior
+- Error type conflation (catch-all handlers losing specificity)
+- Input validation gaps
 
-1. **Validate**: spot-check 1-2 claims per reviewer; ALL codex claims. Codex duplicate → keep reviewer version.
-2. **Deduplicate**: same issue → highest severity.
-3. **Consensus**: critical from any reviewer survives. Non-critical needs 2+ at same tier. Solo-split: both lenses must agree. Solo-combined: single reviewer, all findings stand (no consensus filter). Single-reviewer in multi-agent mode → IGNORE "1-of-N".
-4. Sort by severity (Critical > High > Medium > Low). **Never truncate.** Judge each finding independently — one false claim doesn't taint others.
+Classify each finding:
+- FIX: correctness bugs, security issues, test gaps
+- IGNORE: style, subjective, out-of-scope tech debt
 
-Output `# Adversarial Review Summary`:
+Tier: critical | notable | nitpick
 
-- **FIX table** columns: Severity | File | Finding | Recommendation. Severity ∈ {Critical, High, Medium, Low}.
-- **IGNORE** section (collapsed): findings below consensus threshold, labeled "1-of-N".
-- **--team disagreements**: when specialists differ on severity, show attribution (e.g., "Architect: High, Code Quality: Medium → resolved: High") before the resolved row.
-- **Verdict footer**: PASS (no FIX items), CHANGES_REQUESTED (any FIX items), FAIL (any Critical).
+Output: table with Tier | Disposition | File:Line | Issue | Suggestion
+Then brief summary.
+```
 
-Store via `ct review create --topic "<topic>" --project "$(git rev-parse --show-toplevel)"`. If `--against` was used, add `--source "<spec-stem>"` to link the review to its source spec.
+### Reviewer 2 — Devil's Advocate
 
-`--auto` → fix critical+high automatically. Otherwise → AskUserQuestion: Fix all / Fix critical+high / Fix critical only / Skip fixes.
+```
+You are an adversarial devil's advocate reviewer. Try to break everything.
 
-## Step 5: Fix + Re-review Loop
+## Gather Context
+1. Run: `ct tool gitcontext --base {base_ref} --format json`
+2. Read all changed files from the output
+3. If `truncated_files` is non-empty, `Read` those files in full
 
-Spawn agent with FIX items → fix, verify, self-check (remove debug artifacts, low-value comments, unused imports), report.
+## Focus
+- **Failure modes**: What happens when dependencies fail?
+- **Bad assumptions**: What does this code assume that might not hold?
+- **Silent contract changes**: When behavior changes, check all callers.
+- **Race conditions**: Trace full execution paths for async/concurrent code.
+- **Adversarial input**: Malformed, enormous, deeply nested, special chars.
+- **Premise check**: Does the fix actually fix the stated problem?
+- **Approach risks**: Solving the right problem?
+- **Assumption inversion**: What does each filter/guard INCORRECTLY exclude?
+- **Silent data loss**: Operations suppressed during certain states.
+- **Over-engineering**: Abstractions with <3 call sites, "might need it later" scaffolding.
+- **Architecture**: Incomplete refactors, coupling, unnecessary indirection.
+- **Performance**: O(n^2) loops, unbounded growth, N+1 queries, hot-path waste.
 
-Re-run Step 3, max 4 iterations. Track fixed_issues by (file, description) — not line numbers (lines shift after edits). Skip matches when consolidating. Exit: all resolved, user stops, or iteration 4.
+Classify each finding:
+- FIX: correctness bugs, security issues, test gaps
+- IGNORE: style, subjective, out-of-scope tech debt
 
-**`--perfection` override:** No iteration cap. ALL findings are FIX (nothing is IGNORE — nits, style, naming, everything gets fixed). The loop continues until a review pass returns **zero findings of any severity**. Exit only when reviewers have nothing left to say. This can be expensive but produces immaculate code.
+Tier: critical | notable | nitpick
 
-## Step 5b: Failure Learning
+Output: table with Tier | Disposition | File:Line | Issue | Suggestion
+Then brief summary.
+```
 
-After the fix loop, check if any **Critical or High findings** revealed a codebase-specific antipattern — a mistake that could recur because nothing in the project structure prevents it. Indicators:
-- The finding stems from a non-obvious project convention (not a generic best practice)
-- The same class of issue has appeared before (check git log for similar fixes)
-- The fix required understanding something that isn't documented or enforced by types/linters
+## Step 5: Consolidate
 
-If yes: create a project rule in `<project>/.claude/rules/<topic>.md` with `paths` frontmatter. Include what went wrong, why it's non-obvious, and what to do instead. This prevents the next session from repeating the same investigation.
+1. **Validate**: Spot-check 1-2 claims per reviewer. Read actual code at file:line. Prune false positives aggressively.
+2. **Deduplicate**: Same issue → highest severity.
+3. **Consensus**: Critical from either reviewer survives. Non-critical flagged by both → keep. Flagged by one → keep if confirmed by spot-check, otherwise IGNORE.
 
-Skip if: findings were generic (null checks, missing tests), one-off (typo), or already covered by existing rules.
+Output `# Review Summary`:
 
-## Step 6: Summary + Next
+- **FIX table**: Tier | File:Line | Finding | Recommendation
+- **IGNORE** section (collapsed): findings below threshold
+- **Verdict**: PASS (no FIX items) | CHANGES_REQUESTED (any FIX) | FAIL (any Critical)
 
-Output: Fixes Applied, Ignored, Remaining. `--auto` → skip defer selection, stop. Without `--auto` → Remaining + interactive: multiSelect to defer. Next via AskUserQuestion.
+Store via `ct review create --topic "Review: $(git branch --show-current)" --project "$(git rev-parse --show-toplevel)"`.
 
-**Receiving feedback:** Verify claims by reading the file. Push back with evidence when feedback breaks functionality.
+## Step 6: Fix
+
+`--auto critical|high|medium|all` → auto-fix at or above the given severity.
+No `--auto` → ask: Fix all / Fix critical+high / Fix critical only / Skip.
+
+Spawn fix agent → fix, verify, self-check (remove debug artifacts, unused imports), report. Single pass — no re-review loop (use `/ultrareview --loop` for iterative fixing).
+
+## Step 7: Summary
+
+Output: Fixes Applied, Ignored, Remaining. Suggest `/ultrareview` if the user wants deeper analysis.
