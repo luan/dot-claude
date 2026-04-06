@@ -1,0 +1,98 @@
+---
+name: ct
+description: "Reference for the ct CLI and the ~/blueprints/ artifact system. Use this skill whenever the user mentions blueprints, artifacts, specs, plans, reviews, or reports in the context of documentation or project knowledge — even if they don't say 'ct' explicitly. Also trigger when the user wants to find, list, search, read, create, archive, or link artifacts, or asks about the blueprints vault, Obsidian integration, or artifact lifecycle. Covers correct ct command patterns, artifact metadata (tags, source links), and the blueprints directory layout."
+user-invocable: false
+allowed-tools:
+  - Bash
+  - Read
+  - Glob
+  - Grep
+---
+
+# ct — Artifact CLI
+
+`ct` manages structured artifacts in `~/blueprints/`, a separate git repo and Obsidian vault. Four artifact types share identical CRUD commands: **spec**, **plan**, **review**, **report**.
+
+Workflow skills (`/spec`, `/develop`, `/review`, `/report`, `/archive`) handle their respective lifecycle phases. This skill is the reference for direct ct operations and correct command patterns.
+
+## Quick Reference
+
+| Operation | Command |
+|-----------|---------|
+| Create | `ct <type> create --topic "..." --project "$(git rev-parse --show-toplevel)"` |
+| Read | `ct <type> read <path-or-slug>` |
+| List active | `ct <type> list` |
+| List all | `ct <type> list --all` |
+| Latest | `ct <type> latest --project "$(git rev-parse --show-toplevel)"` |
+| Archive | `ct <type> archive <path>` |
+| Prune old | `ct <type> prune [--days N]` |
+| Show by slug | `ct <type> show <slug>` |
+| Search vault | `ct blueprint search "<query>"` |
+| Find related | `ct blueprint related --project "$(git rev-parse --show-toplevel)" "<topic>"` |
+| Check links | `ct blueprint check` |
+| Project name | `ct blueprint project` |
+
+**Type aliases:** `ct p` = plan, `ct s` = spec, `ct r` = review, `ct rp` = report.
+
+## Create with Full Metadata
+
+```bash
+ct <type> create \
+  --topic "<human-readable title>" \
+  --project "$(git rev-parse --show-toplevel)" \
+  --source "<parent-artifact-stem>" \
+  --tags "domain/combat,stage/research"
+```
+
+Body piped via stdin or passed with `--body`. Output: full file path.
+
+**Auto-derived tags** (always added): `type/<kind>`, `project/<name>`.
+**User tags** (via `--tags`): `domain/<area>`, `stage/<phase>`, or freeform.
+
+`--source` adds `source: "[[stem]]"` to frontmatter — use when an artifact derives from another (plan from spec, review against spec).
+
+## Linking
+
+After creating any artifact, check for related work:
+
+```bash
+RELATED=$(ct blueprint related --project "$(git rev-parse --show-toplevel)" "<topic>")
+# If non-empty, append a ## Related section with [[wiki-links]] to the artifact
+```
+
+Link by stem (filename without extension or path) — Obsidian resolves across the vault. Keep linking shallow: don't read related files to summarize, just link by name.
+
+## Common Patterns
+
+**Find what exists for this project:**
+```bash
+ct spec list && ct plan list && ct review list && ct report list
+```
+
+**Resume from latest artifact:**
+```bash
+ct plan latest --project "$(git rev-parse --show-toplevel)"
+# Falls back to: ct spec latest --project "$(git rev-parse --show-toplevel)"
+```
+
+**Read an artifact's content:**
+```bash
+ct <type> read <path>           # body only
+ct <type> read <path> --json    # frontmatter as JSON
+```
+
+**Archive after consumption:**
+```bash
+ct <type> archive <path>
+# Moves to archive/, stores content as git note, commits+pushes
+```
+
+## Rules
+
+- Always use `ct <type> create` — never write blueprint files directly.
+- `ct` auto-commits and pushes after every write. If push fails, stop and report.
+- Never force-push the blueprints repo.
+- No absolute paths in frontmatter — use tags and project names.
+- The vault is canonical. Repos may snapshot frozen copies, but edits happen in the vault.
+
+For the full blueprints directory layout, tag system, and Obsidian integration details, read `${CLAUDE_SKILL_DIR}/references/blueprints.md`.

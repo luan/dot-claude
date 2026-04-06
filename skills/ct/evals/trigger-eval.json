@@ -1,0 +1,82 @@
+[
+  {
+    "query": "I wrote a spec for the webhook retry logic yesterday, can you find it and show me what's in it?",
+    "should_trigger": true
+  },
+  {
+    "query": "list all the blueprints we have for the mudlib project, I want to see what plans are still active",
+    "should_trigger": true
+  },
+  {
+    "query": "create a review artifact for the auth refactor we just merged — tag it domain/auth and stage/shipped",
+    "should_trigger": true
+  },
+  {
+    "query": "I need to link this plan back to the spec it came from, the spec slug is 20260401-session-tokens",
+    "should_trigger": true
+  },
+  {
+    "query": "search the blueprints vault for anything related to combat system — I think there was an old spec we never implemented",
+    "should_trigger": true
+  },
+  {
+    "query": "archive the plan for the inventory rework, we shipped that last week and it's cluttering the active list",
+    "should_trigger": true
+  },
+  {
+    "query": "what reports do we have for this project? I want to check if we wrote a post-mortem after the last deploy",
+    "should_trigger": true
+  },
+  {
+    "query": "the blueprints repo has some broken wiki-links, can you check which ones are dangling?",
+    "should_trigger": true
+  },
+  {
+    "query": "I need to store a permanent architecture doc in the blueprints vault under docs/, not as a workflow artifact",
+    "should_trigger": true
+  },
+  {
+    "query": "show me the latest plan artifact for this repo, I want to pick up where we left off",
+    "should_trigger": true
+  },
+  {
+    "query": "write a spec for adding rate limiting to the API gateway",
+    "should_trigger": false
+  },
+  {
+    "query": "review my changes before I push, I touched the auth middleware and the session handler",
+    "should_trigger": false
+  },
+  {
+    "query": "can you read the file at ~/blueprints/mudlib/docs/architecture.md and summarize it?",
+    "should_trigger": false
+  },
+  {
+    "query": "help me plan out how to refactor the database layer — I'm thinking we split reads and writes",
+    "should_trigger": false
+  },
+  {
+    "query": "implement the next phase of the plan, we approved phase 3 yesterday",
+    "should_trigger": false
+  },
+  {
+    "query": "generate a report of what we built this sprint",
+    "should_trigger": false
+  },
+  {
+    "query": "I want to archive this old branch, it's been stale for months",
+    "should_trigger": false
+  },
+  {
+    "query": "check if ct is installed and working, I just built it from source",
+    "should_trigger": false
+  },
+  {
+    "query": "what tags should I use for my git commits in this project?",
+    "should_trigger": false
+  },
+  {
+    "query": "prune the completed tasks that are older than a week",
+    "should_trigger": false
+  }
+]

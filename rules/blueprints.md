@@ -1,7 +1,4 @@
 ---
-paths:
-  - "skills/**"
-  - "rules/**"
 ---
 
 # Blueprints
