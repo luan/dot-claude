@@ -299,8 +299,14 @@ pub enum PlanAction {
         #[arg(long, help = "Custom slug (auto-generated if omitted)")]
         slug: Option<String>,
 
-        #[arg(long, help = "Filename prefix")]
-        prefix: Option<String>,
+        #[arg(long, help = "Source artifact stem for [[wiki-link]]")]
+        source: Option<String>,
+
+        #[arg(
+            long,
+            help = "Comma-separated tags (e.g. domain/combat,stage/research)"
+        )]
+        tags: Option<String>,
 
         #[arg(long, help = "Plan body content")]
         body: Option<String>,
@@ -377,8 +383,14 @@ pub enum SpecAction {
         #[arg(long, help = "Custom slug (auto-generated if omitted)")]
         slug: Option<String>,
 
-        #[arg(long, help = "Filename prefix")]
-        prefix: Option<String>,
+        #[arg(long, help = "Source artifact stem for [[wiki-link]]")]
+        source: Option<String>,
+
+        #[arg(
+            long,
+            help = "Comma-separated tags (e.g. domain/combat,stage/research)"
+        )]
+        tags: Option<String>,
 
         #[arg(long, help = "Spec body content")]
         body: Option<String>,
@@ -455,8 +467,14 @@ pub enum ReviewAction {
         #[arg(long, help = "Custom slug (auto-generated if omitted)")]
         slug: Option<String>,
 
-        #[arg(long, help = "Filename prefix")]
-        prefix: Option<String>,
+        #[arg(long, help = "Source artifact stem for [[wiki-link]]")]
+        source: Option<String>,
+
+        #[arg(
+            long,
+            help = "Comma-separated tags (e.g. domain/combat,stage/research)"
+        )]
+        tags: Option<String>,
 
         #[arg(long, help = "Review body content")]
         body: Option<String>,
@@ -533,8 +551,14 @@ pub enum ReportAction {
         #[arg(long, help = "Custom slug (auto-generated if omitted)")]
         slug: Option<String>,
 
-        #[arg(long, help = "Filename prefix")]
-        prefix: Option<String>,
+        #[arg(long, help = "Source artifact stem for [[wiki-link]]")]
+        source: Option<String>,
+
+        #[arg(
+            long,
+            help = "Comma-separated tags (e.g. domain/combat,stage/research)"
+        )]
+        tags: Option<String>,
 
         #[arg(long, help = "Report body content")]
         body: Option<String>,
@@ -593,6 +617,27 @@ pub enum BlueprintAction {
 
     #[command(about = "Print detected project name")]
     Project,
+
+    #[command(about = "Find related artifacts by topic keyword overlap")]
+    Related {
+        #[arg(long, help = "Project path")]
+        project: String,
+
+        #[arg(help = "Topic to match against")]
+        topic: String,
+    },
+
+    #[command(about = "Check for unresolved wiki-links (via Obsidian CLI)")]
+    Check,
+
+    #[command(about = "Search artifacts (via Obsidian CLI)")]
+    Search {
+        #[arg(help = "Search query")]
+        query: String,
+
+        #[arg(long, help = "Output as JSON")]
+        json: bool,
+    },
 }
 
 pub fn run_list(
@@ -1336,15 +1381,23 @@ pub fn run_artifact_create(
     topic: String,
     project: String,
     slug: Option<String>,
-    prefix: Option<String>,
+    source: Option<String>,
+    tags: Option<String>,
     body: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let tag_list: Vec<String> = tags
+        .unwrap_or_default()
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
     crate::artifact::cmd_create(
         kind,
         &topic,
         &project,
         slug.as_deref(),
-        prefix.as_deref(),
+        source.as_deref(),
+        &tag_list,
         body.unwrap_or_default(),
     );
     Ok(())

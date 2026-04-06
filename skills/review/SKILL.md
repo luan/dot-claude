@@ -89,7 +89,7 @@ Output `# Adversarial Review Summary`:
 - **--team disagreements**: when specialists differ on severity, show attribution (e.g., "Architect: High, Code Quality: Medium → resolved: High") before the resolved row.
 - **Verdict footer**: PASS (no FIX items), CHANGES_REQUESTED (any FIX items), FAIL (any Critical).
 
-Store via `ct review create --topic "<topic>" --project "$(git rev-parse --show-toplevel)"`.
+Store via `ct review create --topic "<topic>" --project "$(git rev-parse --show-toplevel)"`. If `--against` was used, add `--source "<spec-stem>"` to link the review to its source spec.
 
 `--auto` → fix critical+high automatically. Otherwise → AskUserQuestion: Fix all / Fix critical+high / Fix critical only / Skip fixes.
 

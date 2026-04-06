@@ -50,7 +50,7 @@ If `--spec` or `--plan` provided, read via `ct spec read` / `ct plan read`. Othe
 ### 4. Store
 
 ```bash
-REPORT_FILE=$(echo "<report content>" | ct report create --topic "<topic>" --project "$(git rev-parse --show-toplevel)")
+REPORT_FILE=$(echo "<report content>" | ct report create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --source "<spec-or-plan-stem-if-known>")
 ```
 
 ### 5. Output

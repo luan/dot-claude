@@ -106,9 +106,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     topic,
                     project,
                     slug,
-                    prefix,
+                    source,
+                    tags,
                     body,
-                } => cli::run_artifact_create(kind, topic, project, slug, prefix, body),
+                } => cli::run_artifact_create(kind, topic, project, slug, source, tags, body),
                 cli::PlanAction::Read { file, frontmatter } => {
                     cli::run_artifact_read(file, frontmatter)
                 }
@@ -140,9 +141,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     topic,
                     project,
                     slug,
-                    prefix,
+                    source,
+                    tags,
                     body,
-                } => cli::run_artifact_create(kind, topic, project, slug, prefix, body),
+                } => cli::run_artifact_create(kind, topic, project, slug, source, tags, body),
                 cli::SpecAction::Read { file, frontmatter } => {
                     cli::run_artifact_read(file, frontmatter)
                 }
@@ -174,9 +176,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     topic,
                     project,
                     slug,
-                    prefix,
+                    source,
+                    tags,
                     body,
-                } => cli::run_artifact_create(kind, topic, project, slug, prefix, body),
+                } => cli::run_artifact_create(kind, topic, project, slug, source, tags, body),
                 cli::ReviewAction::Read { file, frontmatter } => {
                     cli::run_artifact_read(file, frontmatter)
                 }
@@ -208,9 +211,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     topic,
                     project,
                     slug,
-                    prefix,
+                    source,
+                    tags,
                     body,
-                } => cli::run_artifact_create(kind, topic, project, slug, prefix, body),
+                } => cli::run_artifact_create(kind, topic, project, slug, source, tags, body),
                 cli::ReportAction::Read { file, frontmatter } => {
                     cli::run_artifact_read(file, frontmatter)
                 }
@@ -237,6 +241,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             cli::BlueprintAction::Project => {
                 crate::artifact::cmd_blueprint_project();
+                Ok(())
+            }
+            cli::BlueprintAction::Related { project, topic } => {
+                crate::artifact::cmd_blueprint_related(&project, &topic);
+                Ok(())
+            }
+            cli::BlueprintAction::Check => {
+                crate::artifact::cmd_blueprint_check();
+                Ok(())
+            }
+            cli::BlueprintAction::Search { query, json } => {
+                crate::artifact::cmd_blueprint_search(&query, json);
                 Ok(())
             }
         },

@@ -72,10 +72,17 @@ Build the spec from validated research. The spec is **timeless** — it describe
 ### 4. Store as file
 
 ```bash
-SPEC_FILE=$(echo "<spec content>" | ct spec create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --prefix "spec" 2>/dev/null)
+SPEC_FILE=$(echo "<spec content>" | ct spec create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" 2>/dev/null)
 ```
 
 The spec file is the durable artifact. Downstream skills (develop, vibe) read it via `ct spec read`.
+
+After writing, check for related artifacts and append wiki-links if found:
+
+```bash
+RELATED=$(ct blueprint related --project "$(git rev-parse --show-toplevel)" "<topic>")
+# If non-empty, append a ## Related section to the spec file with the links
+```
 
 ### 5. Present
 

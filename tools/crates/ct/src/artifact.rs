@@ -203,7 +203,16 @@ pub fn parse_yaml_map(yaml: &str) -> Vec<(String, String)> {
         .collect()
 }
 
-pub fn chrono_rfc3339() -> String {
+struct DateTime {
+    year: i64,
+    month: u32,
+    day: u32,
+    hours: u32,
+    minutes: u32,
+    seconds: u32,
+}
+
+fn now_utc() -> DateTime {
     let duration = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap_or_default();
@@ -211,9 +220,6 @@ pub fn chrono_rfc3339() -> String {
 
     let mut days = (secs / 86400) as i64;
     let day_secs = (secs % 86400) as u32;
-    let hours = day_secs / 3600;
-    let minutes = (day_secs % 3600) / 60;
-    let seconds = day_secs % 60;
 
     days += 719468;
     let era = if days >= 0 { days } else { days - 146096 } / 146097;
@@ -224,9 +230,29 @@ pub fn chrono_rfc3339() -> String {
     let mp = (5 * doy + 2) / 153;
     let d = doy - (153 * mp + 2) / 5 + 1;
     let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    let year = if m <= 2 { y + 1 } else { y };
 
-    format!("{year:04}-{m:02}-{d:02}T{hours:02}:{minutes:02}:{seconds:02}Z")
+    DateTime {
+        year: if m <= 2 { y + 1 } else { y },
+        month: m,
+        day: d,
+        hours: day_secs / 3600,
+        minutes: (day_secs % 3600) / 60,
+        seconds: day_secs % 60,
+    }
+}
+
+pub fn chrono_rfc3339() -> String {
+    let dt = now_utc();
+    format!(
+        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
+        dt.year, dt.month, dt.day, dt.hours, dt.minutes, dt.seconds
+    )
+}
+
+/// Compact date for filenames: YYYYMMDD
+pub fn chrono_compact() -> String {
+    let dt = now_utc();
+    format!("{:04}{:02}{:02}", dt.year, dt.month, dt.day)
 }
 
 /// Split a git note that may contain multiple appended frontmatter documents.
@@ -398,7 +424,8 @@ pub fn cmd_create(
     topic: &str,
     project: &str,
     slug_override: Option<&str>,
-    prefix: Option<&str>,
+    source: Option<&str>,
+    user_tags: &[String],
     mut body: String,
 ) {
     let s = match slug_override {
@@ -409,10 +436,8 @@ pub fn cmd_create(
         fatal("could not derive slug from topic");
     }
 
-    let filename = match prefix {
-        Some(p) if !p.is_empty() => format!("{p}-{s}.md"),
-        _ => format!("{s}.md"),
-    };
+    let ts = chrono_compact();
+    let filename = format!("{ts}-{s}.md");
 
     let dir = artifact_dir(project, kind);
     fs::create_dir_all(&dir).unwrap_or_else(|e| fatal(&format!("cannot create directory: {e}")));
@@ -431,8 +456,25 @@ pub fn cmd_create(
     let mut buf = String::new();
     buf.push_str("---\n");
     buf.push_str(&format!("topic: {}\n", yaml_quote(topic)));
-    buf.push_str(&format!("project: {}\n", yaml_quote(project)));
     buf.push_str(&format!("created: {now}\n"));
+    if let Some(src) = source {
+        buf.push_str(&format!("source: {}\n", yaml_quote(&format!("[[{src}]]"))));
+    }
+    // Tags: auto-derive type/ and project/, merge with user-supplied
+    let proj_name = project_name(project);
+    let mut tags = vec![
+        format!("type/{}", kind.dir_name()),
+        format!("project/{proj_name}"),
+    ];
+    for t in user_tags {
+        if !tags.contains(t) {
+            tags.push(t.clone());
+        }
+    }
+    buf.push_str("tags:\n");
+    for tag in &tags {
+        buf.push_str(&format!("  - {tag}\n"));
+    }
     buf.push_str("---\n");
     if !body.is_empty() {
         buf.push_str(&body);
@@ -445,7 +487,6 @@ pub fn cmd_create(
     println!("{}", full_path.display());
 
     // Commit + push
-    let proj_name = project_name(project);
     if let Ok(rel) = full_path.strip_prefix(blueprints_dir()) {
         commit_and_push(rel, &format!("{}({}): {}", kind.dir_name(), proj_name, s));
     }
@@ -553,60 +594,41 @@ pub fn cmd_archive(kind: ArtifactKind, file_path: &str) {
         fatal(&format!("file not found: {file_path}"));
     }
 
-    let content = fs::read_to_string(path).unwrap_or_else(|e| fatal(&format!("reading file: {e}")));
+    // Derive project name from file's location in ~/blueprints/<project>/<kind>/
+    let bp = blueprints_dir();
+    let rel_path = path
+        .strip_prefix(&bp)
+        .unwrap_or_else(|_| fatal("file is not inside ~/blueprints/"));
+    let proj_name = rel_path
+        .components()
+        .next()
+        .map(|c| c.as_os_str().to_string_lossy().to_string())
+        .unwrap_or_else(|| fatal("cannot determine project from file path"));
 
-    let (yaml, _) = parse_frontmatter(&content);
-    let project = yaml
-        .map(|y| {
-            parse_yaml_map(y)
-                .into_iter()
-                .find(|(k, _)| k == "project")
-                .map(|(_, v)| v)
-                .unwrap_or_default()
-        })
-        .unwrap_or_default();
-
-    if project.is_empty() {
-        fatal(&format!(
-            "{} has no project field — cannot determine git repo",
-            kind.dir_name()
-        ));
-    }
-
-    // Find the git toplevel for the project
+    // Best-effort: store as git note in the current project repo
     let git_dir = process::Command::new("git")
-        .args(["-C", &project, "rev-parse", "--show-toplevel"])
+        .args(["rev-parse", "--show-toplevel"])
         .output()
         .ok()
         .filter(|o| o.status.success())
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .unwrap_or_else(|| fatal(&format!("not a git repository: {project}")));
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
 
-    // Store content as a git note on HEAD under refs/notes/<kind>
-    let note_status = process::Command::new("git")
-        .args([
-            "-C",
-            &git_dir,
-            "notes",
-            &format!("--ref={}", kind.notes_ref()),
-            "append",
-            "-F",
-        ])
-        .arg(path)
-        .arg("HEAD")
-        .status()
-        .unwrap_or_else(|e| fatal(&format!("running git notes: {e}")));
-
-    if !note_status.success() {
-        fatal(&format!(
-            "git notes append failed — {} file preserved",
-            kind.dir_name()
-        ));
+    if let Some(ref gd) = git_dir {
+        let _ = process::Command::new("git")
+            .args([
+                "-C",
+                gd,
+                "notes",
+                &format!("--ref={}", kind.notes_ref()),
+                "append",
+                "-F",
+            ])
+            .arg(path)
+            .arg("HEAD")
+            .status();
     }
 
-    // Move to archive/ in the blueprints project dir
-    let proj_name = project_name(&project);
-    let bp = blueprints_dir();
+    // Move to archive/
     let archive_dir = bp.join(&proj_name).join("archive").join(kind.dir_name());
     fs::create_dir_all(&archive_dir)
         .unwrap_or_else(|e| fatal(&format!("cannot create archive directory: {e}")));
@@ -615,7 +637,7 @@ pub fn cmd_archive(kind: ArtifactKind, file_path: &str) {
         .unwrap_or_else(|| fatal("cannot determine file name"));
     let dest = archive_dir.join(file_name);
     fs::rename(path, &dest).unwrap_or_else(|e| fatal(&format!("archiving file: {e}")));
-    eprintln!("Archived: {file_path} → git notes + {}", dest.display());
+    eprintln!("Archived: {file_path} → {}", dest.display());
 
     // Commit + push
     if let Ok(rel) = dest.strip_prefix(&bp) {
@@ -690,19 +712,12 @@ fn collect_artifacts(base: &Path, dir: &Path, fallback_project: &str, out: &mut 
             .with_extension("")
             .to_string_lossy()
             .to_string();
-        let (title, fm_project) = extract_frontmatter(&path);
-        // Use project from frontmatter if available (preserves full paths for filtering),
-        // otherwise fall back to directory name.
-        let project = if fm_project.is_empty() {
-            fallback_project.to_string()
-        } else {
-            fm_project
-        };
+        let (title, _) = extract_frontmatter(&path);
         out.push(Artifact {
             name,
             path,
             title,
-            project,
+            project: fallback_project.to_string(),
             mod_time: info.modified().unwrap_or(SystemTime::UNIX_EPOCH),
             size: info.len(),
         });
@@ -1051,6 +1066,106 @@ pub fn cmd_blueprint_project() {
     println!("{}", project_name(&project));
 }
 
+/// Check for unresolved wiki-links via Obsidian CLI.
+pub fn cmd_blueprint_check() {
+    let bp = blueprints_dir();
+    let status = process::Command::new("obsidian")
+        .args(["unresolved"])
+        .current_dir(&bp)
+        .status();
+    match status {
+        Ok(s) if s.success() => {}
+        Ok(_) => eprintln!("obsidian unresolved reported issues"),
+        Err(e) => eprintln!("failed to run obsidian cli: {e}"),
+    }
+}
+
+/// Search artifacts via Obsidian CLI.
+pub fn cmd_blueprint_search(query: &str, json: bool) {
+    let bp = blueprints_dir();
+    let mut args = vec!["search".to_string(), format!("query={query}")];
+    if json {
+        args.push("format=json".to_string());
+    }
+    let output = process::Command::new("obsidian")
+        .args(&args)
+        .current_dir(&bp)
+        .output();
+    match output {
+        Ok(o) if o.status.success() => {
+            print!("{}", String::from_utf8_lossy(&o.stdout));
+        }
+        Ok(o) => {
+            eprint!("{}", String::from_utf8_lossy(&o.stderr));
+        }
+        Err(e) => eprintln!("failed to run obsidian cli: {e}"),
+    }
+}
+
+/// Find artifacts related to a topic by keyword overlap in slugs.
+pub fn cmd_blueprint_related(project: &str, topic: &str) {
+    let topic_words: HashSet<&str> = topic
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| w.len() >= 3)
+        .collect();
+
+    if topic_words.is_empty() {
+        return;
+    }
+
+    let bp = blueprints_dir();
+    let proj_name = project_name(project);
+    let proj_dir = bp.join(&proj_name);
+
+    if !proj_dir.is_dir() {
+        return;
+    }
+
+    let mut seen = HashSet::new();
+
+    for kind in [
+        ArtifactKind::Plan,
+        ArtifactKind::Spec,
+        ArtifactKind::Review,
+        ArtifactKind::Report,
+    ] {
+        let kind_dir = proj_dir.join(kind.dir_name());
+        let Ok(entries) = fs::read_dir(&kind_dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().is_none_or(|ext| ext != "md") {
+                continue;
+            }
+            let stem = path
+                .file_stem()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            // Strip YYYYMMDD- date prefix for keyword matching
+            let slug_part = if stem.len() > 9
+                && stem[..8].chars().all(|c| c.is_ascii_digit())
+                && stem.as_bytes()[8] == b'-'
+            {
+                &stem[9..]
+            } else {
+                &stem
+            };
+            let slug_words: HashSet<&str> = slug_part
+                .split(|c: char| !c.is_alphanumeric())
+                .filter(|w| w.len() >= 3)
+                .collect();
+            let overlap = topic_words.intersection(&slug_words).count();
+            if (overlap >= 2 || (topic_words.len() <= 2 && overlap >= 1))
+                && seen.insert(stem.clone())
+            {
+                println!("[[{stem}]]");
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1121,7 +1236,6 @@ mod tests {
         let mut buf = String::new();
         buf.push_str("---\n");
         buf.push_str(&format!("topic: {}\n", yaml_quote("Test Topic")));
-        buf.push_str(&format!("project: {}\n", yaml_quote(project_path)));
         buf.push_str(&format!("created: {now}\n"));
         buf.push_str("---\n");
         std::fs::write(&file_path, &buf).unwrap();
