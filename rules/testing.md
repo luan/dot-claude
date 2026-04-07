@@ -51,6 +51,10 @@ Unit tests stay fast. Integration tests run separately.
 
 "If I delete this test and break the code, does another test catch it?" Yes = redundant. Delete.
 
+## Failures
+
+All tests pass before committing. You own every failure you can see, regardless of who introduced it. Fix the failure, then continue.
+
 ## Pre-Commit
 
 Before writing any test:

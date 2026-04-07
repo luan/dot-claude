@@ -8,7 +8,7 @@
 8. Unrecognized artifacts are user work — ask before modifying.
 9. Skills: brainstorm → spec → develop → review → commit. Shortcut: vibe.
 10. Fix exactly what was asked. No scope creep. Fix it or push back with a reason.
-11. Test failures: investigate. `git stash` to check if failure predates your changes.
+11. All tests pass before committing. You own every failure you can see.
 12. Skill scripts: use `${CLAUDE_SKILL_DIR}` in SKILL.md.
 
 @RTK.md
