@@ -314,7 +314,7 @@ pub enum PlanAction {
 
     #[command(about = "Read plan file body or frontmatter")]
     Read {
-        #[arg(help = "Plan file path")]
+        #[arg(help = "File path or stem")]
         file: String,
 
         #[arg(long, help = "Output frontmatter as JSON")]
@@ -332,7 +332,7 @@ pub enum PlanAction {
 
     #[command(about = "Move a plan file to archive/ subfolder")]
     Archive {
-        #[arg(help = "Plan file path")]
+        #[arg(help = "File path or stem")]
         file: String,
     },
 
@@ -398,7 +398,7 @@ pub enum SpecAction {
 
     #[command(about = "Read spec file body or frontmatter")]
     Read {
-        #[arg(help = "Spec file path")]
+        #[arg(help = "File path or stem")]
         file: String,
 
         #[arg(long, help = "Output frontmatter as JSON")]
@@ -416,7 +416,7 @@ pub enum SpecAction {
 
     #[command(about = "Move a spec file to archive/ subfolder")]
     Archive {
-        #[arg(help = "Spec file path")]
+        #[arg(help = "File path or stem")]
         file: String,
     },
 
@@ -482,7 +482,7 @@ pub enum ReviewAction {
 
     #[command(about = "Read review file body or frontmatter")]
     Read {
-        #[arg(help = "Review file path")]
+        #[arg(help = "File path or stem")]
         file: String,
 
         #[arg(long, help = "Output frontmatter as JSON")]
@@ -500,7 +500,7 @@ pub enum ReviewAction {
 
     #[command(about = "Move a review file to archive/ subfolder")]
     Archive {
-        #[arg(help = "Review file path")]
+        #[arg(help = "File path or stem")]
         file: String,
     },
 
@@ -566,7 +566,7 @@ pub enum ReportAction {
 
     #[command(about = "Read report file body or frontmatter")]
     Read {
-        #[arg(help = "Report file path")]
+        #[arg(help = "File path or stem")]
         file: String,
 
         #[arg(long, help = "Output frontmatter as JSON")]
@@ -584,7 +584,7 @@ pub enum ReportAction {
 
     #[command(about = "Move a report file to archive/ subfolder")]
     Archive {
-        #[arg(help = "Report file path")]
+        #[arg(help = "File path or stem")]
         file: String,
     },
 
@@ -1404,10 +1404,11 @@ pub fn run_artifact_create(
 }
 
 pub fn run_artifact_read(
+    kind: crate::artifact::ArtifactKind,
     file: String,
     frontmatter: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    crate::artifact::cmd_read(&file, frontmatter);
+    crate::artifact::cmd_read(&file, kind, frontmatter);
     Ok(())
 }
 

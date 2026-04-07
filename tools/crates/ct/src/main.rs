@@ -111,7 +111,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     body,
                 } => cli::run_artifact_create(kind, topic, project, slug, source, tags, body),
                 cli::PlanAction::Read { file, frontmatter } => {
-                    cli::run_artifact_read(file, frontmatter)
+                    cli::run_artifact_read(kind, file, frontmatter)
                 }
                 cli::PlanAction::Latest { project, task_file } => {
                     cli::run_artifact_latest(kind, project, task_file)
@@ -146,7 +146,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     body,
                 } => cli::run_artifact_create(kind, topic, project, slug, source, tags, body),
                 cli::SpecAction::Read { file, frontmatter } => {
-                    cli::run_artifact_read(file, frontmatter)
+                    cli::run_artifact_read(kind, file, frontmatter)
                 }
                 cli::SpecAction::Latest { project, task_file } => {
                     cli::run_artifact_latest(kind, project, task_file)
@@ -181,7 +181,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     body,
                 } => cli::run_artifact_create(kind, topic, project, slug, source, tags, body),
                 cli::ReviewAction::Read { file, frontmatter } => {
-                    cli::run_artifact_read(file, frontmatter)
+                    cli::run_artifact_read(kind, file, frontmatter)
                 }
                 cli::ReviewAction::Latest { project, task_file } => {
                     cli::run_artifact_latest(kind, project, task_file)
@@ -216,7 +216,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     body,
                 } => cli::run_artifact_create(kind, topic, project, slug, source, tags, body),
                 cli::ReportAction::Read { file, frontmatter } => {
-                    cli::run_artifact_read(file, frontmatter)
+                    cli::run_artifact_read(kind, file, frontmatter)
                 }
                 cli::ReportAction::Latest { project, task_file } => {
                     cli::run_artifact_latest(kind, project, task_file)

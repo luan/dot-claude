@@ -492,9 +492,76 @@ pub fn cmd_create(
     }
 }
 
-pub fn cmd_read(file_path: &str, frontmatter_mode: bool) {
+/// Resolve an artifact file argument to a real path.
+/// Accepts: absolute/relative path, `project/kind/stem`, or bare stem.
+/// For bare stems, scans ~/blueprints/*/kind/ for a unique match.
+pub fn resolve_artifact_path(file_arg: &str, kind: ArtifactKind) -> PathBuf {
+    let p = Path::new(file_arg);
+    // Exact path (absolute or relative)
+    if p.exists() {
+        return p.to_path_buf();
+    }
+    // Try with .md extension
+    let with_ext = p.with_extension("md");
+    if with_ext.exists() {
+        return with_ext;
+    }
+
+    let bp = blueprints_dir();
+    let kind_dir = kind.dir_name();
+
+    // Try as project-relative: <project>/<kind>/stem[.md]
+    let bp_path = bp.join(file_arg);
+    if bp_path.exists() {
+        return bp_path;
+    }
+    let bp_path_ext = bp_path.with_extension("md");
+    if bp_path_ext.exists() {
+        return bp_path_ext;
+    }
+
+    // Bare stem — scan all projects for ~/blueprints/*/kind/stem.md
+    let stem = p.file_stem().unwrap_or(p.as_os_str());
+    let mut matches = Vec::new();
+    if let Ok(entries) = fs::read_dir(&bp) {
+        for entry in entries.flatten() {
+            if !entry.path().is_dir() {
+                continue;
+            }
+            let candidate = entry.path().join(kind_dir);
+            if !candidate.is_dir() {
+                continue;
+            }
+            if let Ok(files) = fs::read_dir(&candidate) {
+                for f in files.flatten() {
+                    let fp = f.path();
+                    if fp.extension().and_then(|e| e.to_str()) == Some("md")
+                        && fp.file_stem() == Some(stem)
+                    {
+                        matches.push(fp);
+                    }
+                }
+            }
+        }
+    }
+
+    match matches.len() {
+        0 => fatal(&format!("artifact not found: {file_arg}")),
+        1 => matches.remove(0),
+        _ => {
+            let list: Vec<_> = matches.iter().map(|m| m.display().to_string()).collect();
+            fatal(&format!(
+                "ambiguous stem '{file_arg}', matches:\n  {}",
+                list.join("\n  ")
+            ))
+        }
+    }
+}
+
+pub fn cmd_read(file_path: &str, kind: ArtifactKind, frontmatter_mode: bool) {
+    let resolved = resolve_artifact_path(file_path, kind);
     let content =
-        fs::read_to_string(file_path).unwrap_or_else(|e| fatal(&format!("reading file: {e}")));
+        fs::read_to_string(&resolved).unwrap_or_else(|e| fatal(&format!("reading file: {e}")));
 
     let (yaml, body) = parse_frontmatter(&content);
 
