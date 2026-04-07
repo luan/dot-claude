@@ -20,6 +20,9 @@ pub fn play(_notification_type: Option<&str>) {
     // macOS sound is handled by grrr via --sound flag in macos.rs
 }
 
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+pub fn play(_notification_type: Option<&str>) {}
+
 #[cfg(test)]
 mod tests {
     use super::*;

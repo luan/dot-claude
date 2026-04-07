@@ -11,6 +11,12 @@ fn fatal(msg: &str) -> ! {
     process::exit(1);
 }
 
+fn home_dir() -> String {
+    env::var("HOME")
+        .or_else(|_| env::var("USERPROFILE"))
+        .unwrap_or_else(|_| fatal("cannot determine home directory"))
+}
+
 // ---------------------------------------------------------------------------
 // ArtifactKind
 // ---------------------------------------------------------------------------
@@ -73,7 +79,7 @@ pub struct Artifact {
 
 /// Returns ~/blueprints/ or fatal if it doesn't exist.
 pub fn blueprints_dir() -> PathBuf {
-    let home = env::var("HOME").unwrap_or_else(|_| fatal("cannot determine home directory"));
+    let home = home_dir();
     let dir = Path::new(&home).join("blueprints");
     if !dir.is_dir() {
         fatal("~/blueprints/ does not exist. Run `ct blueprint init` first.");
@@ -83,7 +89,7 @@ pub fn blueprints_dir() -> PathBuf {
 
 /// Returns ~/blueprints/ without checking existence (for init).
 pub fn blueprints_dir_unchecked() -> PathBuf {
-    let home = env::var("HOME").unwrap_or_else(|_| fatal("cannot determine home directory"));
+    let home = home_dir();
     Path::new(&home).join("blueprints")
 }
 
@@ -1027,7 +1033,7 @@ pub fn cmd_blueprint_init() {
 
 pub fn cmd_blueprint_migrate() {
     let bp = blueprints_dir();
-    let home = env::var("HOME").unwrap_or_else(|_| fatal("cannot determine home directory"));
+    let home = home_dir();
 
     let mut migrated = 0u32;
 
