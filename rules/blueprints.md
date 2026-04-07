@@ -3,7 +3,7 @@
 
 # Blueprints
 
-All structured artifacts (specs, plans, reviews, reports) live in `~/blueprints/<project>/` via the `ct` tool. The blueprints repo is a separate git repository — `ct` handles commit+push automatically after every write.
+All structured artifacts (specs, plans, reviews, reports) live in the blueprints vault (`$CT_BLUEPRINTS_DIR`, default `~/blueprints/`) via the `ct` tool. The blueprints repo is a separate git repository — `ct` handles commit+push automatically after every write.
 
 **Principle:** The vault is canonical. Repos may snapshot frozen copies for contributor access, but edits happen in the vault.
 
@@ -70,4 +70,5 @@ All artifacts have `tags:` in frontmatter. `ct` auto-derives `type/` and `projec
 
 - Always use `ct <type> create` for artifact writes — never write blueprint files directly.
 - If push fails during commit+push, stop and report to user. Never force-push.
-- `ct blueprint init` must be run before first use. `ct` errors if `~/blueprints/` is missing.
+- `ct blueprint init` must be run before first use. `ct` errors if the vault directory is missing.
+- Set `CT_BLUEPRINTS_DIR` to override the default `~/blueprints/` location.

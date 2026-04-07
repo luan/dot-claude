@@ -77,23 +77,30 @@ pub struct Artifact {
 // Blueprints directory
 // ---------------------------------------------------------------------------
 
-/// Returns ~/blueprints/ or fatal if it doesn't exist.
+/// Returns the blueprints vault directory or fatal if it doesn't exist.
+///
+/// Resolution order: `CT_BLUEPRINTS_DIR` env var, then `~/blueprints/`.
 pub fn blueprints_dir() -> PathBuf {
-    let home = home_dir();
-    let dir = Path::new(&home).join("blueprints");
+    let dir = blueprints_dir_unchecked();
     if !dir.is_dir() {
-        fatal("~/blueprints/ does not exist. Run `ct blueprint init` first.");
+        fatal(&format!(
+            "{} does not exist. Run `ct blueprint init` first.",
+            dir.display()
+        ));
     }
     dir
 }
 
-/// Returns ~/blueprints/ without checking existence (for init).
+/// Returns the blueprints vault directory without checking existence (for init).
 pub fn blueprints_dir_unchecked() -> PathBuf {
+    if let Ok(custom) = env::var("CT_BLUEPRINTS_DIR") {
+        return PathBuf::from(custom);
+    }
     let home = home_dir();
     Path::new(&home).join("blueprints")
 }
 
-/// Returns ~/blueprints/<project>/<kind>/
+/// Returns <vault>/<project>/<kind>/
 pub fn artifact_dir(project_path: &str, kind: ArtifactKind) -> PathBuf {
     let bp = blueprints_dir();
     let name = project_name(project_path);
@@ -395,7 +402,7 @@ pub fn commit_and_push(relative_path: &Path, message: &str) {
         .is_ok_and(|s| s.success());
 
     if !add_ok {
-        eprintln!("warning: git add failed in ~/blueprints/");
+        eprintln!("warning: git add failed in {}", bp.display());
         return;
     }
 
@@ -416,7 +423,8 @@ pub fn commit_and_push(relative_path: &Path, message: &str) {
 
     if !push_ok {
         eprintln!(
-            "warning: git push failed in ~/blueprints/ — commit saved locally, push manually"
+            "warning: git push failed in {} — commit saved locally, push manually",
+            bp.display()
         );
     }
 }
@@ -667,11 +675,11 @@ pub fn cmd_archive(kind: ArtifactKind, file_path: &str) {
         fatal(&format!("file not found: {file_path}"));
     }
 
-    // Derive project name from file's location in ~/blueprints/<project>/<kind>/
+    // Derive project name from file's location in <vault>/<project>/<kind>/
     let bp = blueprints_dir();
     let rel_path = path
         .strip_prefix(&bp)
-        .unwrap_or_else(|_| fatal("file is not inside ~/blueprints/"));
+        .unwrap_or_else(|_| fatal(&format!("file is not inside {}", bp.display())));
     let proj_name = rel_path
         .components()
         .next()
@@ -1013,11 +1021,12 @@ fn extract_frontmatter(path: &Path) -> (String, String) {
 pub fn cmd_blueprint_init() {
     let bp = blueprints_dir_unchecked();
     if bp.is_dir() {
-        eprintln!("~/blueprints/ already exists");
+        eprintln!("{} already exists", bp.display());
         return;
     }
 
-    fs::create_dir_all(&bp).unwrap_or_else(|e| fatal(&format!("cannot create ~/blueprints/: {e}")));
+    fs::create_dir_all(&bp)
+        .unwrap_or_else(|e| fatal(&format!("cannot create {}: {e}", bp.display())));
 
     let init_ok = process::Command::new("git")
         .args(["-C", &bp.to_string_lossy(), "init"])
@@ -1025,10 +1034,10 @@ pub fn cmd_blueprint_init() {
         .is_ok_and(|s| s.success());
 
     if !init_ok {
-        fatal("git init failed in ~/blueprints/");
+        fatal(&format!("git init failed in {}", bp.display()));
     }
 
-    eprintln!("Initialized ~/blueprints/ as a git repository");
+    eprintln!("Initialized {} as a git repository", bp.display());
 }
 
 pub fn cmd_blueprint_migrate() {
@@ -1121,7 +1130,7 @@ pub fn cmd_blueprint_migrate() {
             .status();
     }
 
-    eprintln!("Migrated {migrated} artifact(s) to ~/blueprints/");
+    eprintln!("Migrated {migrated} artifact(s) to {}", bp.display());
 }
 
 pub fn cmd_blueprint_project() {
