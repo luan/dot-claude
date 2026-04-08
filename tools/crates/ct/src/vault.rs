@@ -116,7 +116,7 @@ pub fn cmd_migrate() {
 }
 
 pub fn cmd_project() {
-    let project = process::Command::new("git")
+    let toplevel = process::Command::new("git")
         .args(["rev-parse", "--show-toplevel"])
         .output()
         .ok()
@@ -127,6 +127,7 @@ pub fn cmd_project() {
                 .map(|p| p.to_string_lossy().to_string())
                 .unwrap_or_else(|_| fatal("cannot determine working directory"))
         });
+    let project = crate::artifact::resolve_repo_root(&toplevel);
     println!("{}", project_name(&project));
 }
 

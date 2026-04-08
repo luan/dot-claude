@@ -128,6 +128,31 @@ pub fn artifact_dir_with_base(project_path: &str, kind: &str, base: &Path) -> Pa
 }
 
 // ---------------------------------------------------------------------------
+// Worktree → main repo resolution
+// ---------------------------------------------------------------------------
+
+/// If `toplevel` is a git worktree, return the main repo root instead.
+/// Uses `git rev-parse --git-common-dir` — when running inside a worktree it
+/// returns an absolute path to the main repo's `.git` dir.
+pub fn resolve_repo_root(toplevel: &str) -> String {
+    let common = process::Command::new("git")
+        .args(["-C", toplevel, "rev-parse", "--git-common-dir"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+
+    if let Some(ref common_dir) = common {
+        let p = Path::new(common_dir);
+        // Absolute path means we're in a worktree; parent of `.git` is the main repo
+        if let Some(parent) = p.parent().filter(|_| p.is_absolute()) {
+            return parent.to_string_lossy().to_string();
+        }
+    }
+    toplevel.to_string()
+}
+
+// ---------------------------------------------------------------------------
 // Project name derivation
 // ---------------------------------------------------------------------------
 
@@ -494,6 +519,8 @@ pub fn cmd_create(
     user_tags: &[String],
     mut body: String,
 ) -> Result<(), SyncError> {
+    // Resolve worktree paths to the main repo root
+    let project = &resolve_repo_root(project);
     let s = match slug_override {
         Some(s) if !s.is_empty() => s.to_string(),
         _ => crate::slug::slug(topic),
@@ -756,7 +783,9 @@ pub fn cmd_latest(kind: ArtifactKind, project: Option<&str>, task_file: Option<&
             .output();
         match output {
             Ok(o) if o.status.success() => {
-                project = String::from_utf8_lossy(&o.stdout).trim().to_string();
+                project = resolve_repo_root(
+                    String::from_utf8_lossy(&o.stdout).trim(),
+                );
             }
             _ => {
                 project = env::current_dir()
@@ -974,13 +1003,13 @@ pub fn list_git_notes_artifacts_all(kind: ArtifactKind) -> Vec<Artifact> {
         }
     }
 
-    // Also check the current directory's git repo
+    // Also check the current directory's git repo (resolve worktrees to main)
     if let Some(cwd_project) = process::Command::new("git")
         .args(["rev-parse", "--show-toplevel"])
         .output()
         .ok()
         .filter(|o| o.status.success())
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .map(|o| resolve_repo_root(String::from_utf8_lossy(&o.stdout).trim()))
     {
         projects.insert(cwd_project);
     }
