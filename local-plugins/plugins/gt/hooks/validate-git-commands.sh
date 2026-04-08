@@ -18,9 +18,12 @@ deny() {
 trunk=$(jq -r '.trunk // "main"' "$git_dir/.graphite_repo_config" 2>/dev/null)
 current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || true)
 
-# git push — allow on trunk, block on stacked branches
+# git push/pull — allow on trunk, block on stacked branches
 [[ "$command" =~ (^|[;\&\|])\ *git\ +push ]] && [[ "$current_branch" != "$trunk" ]] && \
   deny "BLOCKED: raw 'git push' on stacked branch. Use /gt:submit instead."
+
+[[ "$command" =~ (^|[;\&\|])\ *git\ +pull ]] && [[ "$current_branch" != "$trunk" ]] && \
+  deny "BLOCKED: raw 'git pull' on stacked branch. Use /gt:restack instead."
 
 # gh pr create — use /gt:submit
 [[ "$command" =~ (^|[;\&\|])\ *gh\ +pr\ +create ]] && \
