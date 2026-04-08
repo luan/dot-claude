@@ -40,6 +40,8 @@ SPEC_CONTENT=$(ct spec read <path>)
 ```
 Decompose into tasks yourself (Step 2 fallback).
 
+**Extract reviewer annotations:** Run `ct spec comments <spec-file>` and (if plan exists) `ct plan comments <plan-file>`. If either returns comments, store them — they'll be appended to worker prompts in Step 3.
+
 If the file doesn't exist or is empty, report and stop.
 
 ## Step 2: Decompose
@@ -75,6 +77,10 @@ Implement this phase.
 6. Run the project build command — confirm it compiles
 7. Run the phase's verification step if specified
 8. Report completion with a summary of what you implemented
+
+## Reviewer Annotations
+<if spec or plan had inline comments, include them here>
+Address these in your implementation.
 
 ## If blocked
 - Design conflict with the spec → report "RESCOPE: <reason>" and stop

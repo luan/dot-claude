@@ -168,4 +168,4 @@ Next: /develop <plan-path> or /vibe
 
 Check for existing plan first: `ct plan latest --project "$(git rev-parse --show-toplevel)"`. If found, read via `ct plan read <path>`, re-present, resume from step 9.
 
-Otherwise check for spec: `ct spec latest --project "$(git rev-parse --show-toplevel)"`. If found, read via `ct spec read <path>`, re-present, resume from step 5 (spec review → plan generation).
+Otherwise check for spec: `ct spec latest --project "$(git rev-parse --show-toplevel)"`. If found, read via `ct spec read <path>`, then run `ct spec comments <path>`. If comments are non-empty, append them as `## Inline Comments` to the re-presented spec — these are user review feedback that should be addressed during refinement. Resume from step 5 (spec review → plan generation).

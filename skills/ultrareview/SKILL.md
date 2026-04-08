@@ -61,7 +61,7 @@ PROJECT=$(git rev-parse --show-toplevel)
 SPEC_FILE=$(ct vault search "$BRANCH_SLUG" --project "$PROJECT" --type spec 2>/dev/null | head -1)
 PLAN_FILE=$(ct vault search "$BRANCH_SLUG" --project "$PROJECT" --type plan 2>/dev/null | head -1)
 ```
-Set `$HAS_SPEC` = true if found. Read spec content for coherence reviewer.
+Set `$HAS_SPEC` = true if found. Read spec content for coherence reviewer. If spec found, run `ct spec comments <file>` — if non-empty, include as "Prior review annotations on the spec" in the coherence reviewer's prompt.
 
 **Detect primary language** from changed file extensions. Set `$LANG` if one dominates.
 
