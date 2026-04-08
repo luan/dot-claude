@@ -37,7 +37,8 @@
   "statusLine": {
     "type": "command",
     "command": "uv run ~/.claude/statusline.py",
-    "padding": 0
+    "padding": 0,
+    "refreshInterval": 5
   },
   "enabledPlugins": {
     "clangd-lsp@claude-plugins-official": false,
@@ -50,9 +51,9 @@
     "skill-creator@claude-plugins-official": true,
     "lua-lsp@claude-plugins-official": false,
     "codex@openai-codex": true,
-    "worktrunk@worktrunk": true,
     "linear@claude-plugins-official": true,
-    "notion@claude-plugins-official": true
+    "notion@claude-plugins-official": true,
+    "worktrunk@worktrunk": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {

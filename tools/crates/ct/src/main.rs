@@ -132,11 +132,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 cli::run_prune(&store, days, dry_run, list)
             }
         },
-        Some(cli::Command::Plan { action }) => dispatch_artifact(artifact::ArtifactKind::Plan, action),
-        Some(cli::Command::Spec { action }) => dispatch_artifact(artifact::ArtifactKind::Spec, action),
-        Some(cli::Command::Review { action }) => dispatch_artifact(artifact::ArtifactKind::Review, action),
-        Some(cli::Command::Report { action }) => dispatch_artifact(artifact::ArtifactKind::Report, action),
-        Some(cli::Command::Doc { action }) => dispatch_artifact(artifact::ArtifactKind::Doc, action),
+        Some(cli::Command::Plan { action }) => {
+            dispatch_artifact(artifact::ArtifactKind::Plan, action)
+        }
+        Some(cli::Command::Spec { action }) => {
+            dispatch_artifact(artifact::ArtifactKind::Spec, action)
+        }
+        Some(cli::Command::Review { action }) => {
+            dispatch_artifact(artifact::ArtifactKind::Review, action)
+        }
+        Some(cli::Command::Report { action }) => {
+            dispatch_artifact(artifact::ArtifactKind::Report, action)
+        }
+        Some(cli::Command::Doc { action }) => {
+            dispatch_artifact(artifact::ArtifactKind::Doc, action)
+        }
         Some(cli::Command::Vault { action }) => match action {
             cli::VaultAction::Init => {
                 vault::cmd_init();

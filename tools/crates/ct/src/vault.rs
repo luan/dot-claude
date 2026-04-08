@@ -5,7 +5,7 @@ use std::path::Path;
 use std::process;
 
 use crate::artifact::{
-    blueprints_dir, blueprints_dir_unchecked, fatal, home_dir, project_name, ALL_KINDS,
+    ALL_KINDS, blueprints_dir, blueprints_dir_unchecked, fatal, home_dir, project_name,
 };
 
 pub fn cmd_init() {
@@ -142,7 +142,8 @@ pub fn cmd_related(project: &str, topic: &str) {
     }
 
     let bp = blueprints_dir();
-    let proj_name = project_name(project);
+    let resolved = crate::artifact::resolve_repo_root(project);
+    let proj_name = project_name(&resolved);
     let proj_dir = bp.join(&proj_name);
 
     if !proj_dir.is_dir() {
@@ -223,7 +224,8 @@ pub fn cmd_search(query: &str, json: bool, kind_filter: Option<&str>, project: O
         Ok(o) if o.status.success() => {
             let text = String::from_utf8_lossy(&o.stdout);
             let proj_prefix = project.map(|p| {
-                let name = project_name(p);
+                let resolved = crate::artifact::resolve_repo_root(p);
+                let name = project_name(&resolved);
                 format!("{name}/")
             });
             let kind_dir = kind_filter.map(|k| match k {
@@ -306,11 +308,7 @@ pub fn cmd_status() {
                 continue;
             };
             for entry in entries.flatten() {
-                if entry
-                    .path()
-                    .extension()
-                    .is_some_and(|ext| ext == "md")
-                {
+                if entry.path().extension().is_some_and(|ext| ext == "md") {
                     total += 1;
                 }
             }

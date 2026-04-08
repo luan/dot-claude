@@ -479,9 +479,7 @@ pub fn commit_and_push(relative_path: &Path, message: &str) -> Result<(), SyncEr
             if stderr.contains("nothing to commit") {
                 return Ok(());
             }
-            return Err(SyncError::Commit(
-                stderr.trim().to_string(),
-            ));
+            return Err(SyncError::Commit(stderr.trim().to_string()));
         }
         Err(e) => {
             return Err(SyncError::Commit(format!(
@@ -783,9 +781,7 @@ pub fn cmd_latest(kind: ArtifactKind, project: Option<&str>, task_file: Option<&
             .output();
         match output {
             Ok(o) if o.status.success() => {
-                project = resolve_repo_root(
-                    String::from_utf8_lossy(&o.stdout).trim(),
-                );
+                project = resolve_repo_root(String::from_utf8_lossy(&o.stdout).trim());
             }
             _ => {
                 project = env::current_dir()
@@ -793,6 +789,8 @@ pub fn cmd_latest(kind: ArtifactKind, project: Option<&str>, task_file: Option<&
                     .unwrap_or_else(|_| fatal("cannot determine working directory"));
             }
         }
+    } else if !project.is_empty() {
+        project = resolve_repo_root(&project);
     }
 
     match latest_artifact(kind, task_file, &project) {
@@ -1276,7 +1274,10 @@ pub fn resolve_stem_universal(stem: &str) -> PathBuf {
     }
 
     // Same kind, different projects — ambiguous
-    let list: Vec<_> = matches.iter().map(|(_, p)| p.display().to_string()).collect();
+    let list: Vec<_> = matches
+        .iter()
+        .map(|(_, p)| p.display().to_string())
+        .collect();
     fatal(&format!(
         "ambiguous stem '{stem}', matches:\n  {}",
         list.join("\n  ")
@@ -1285,8 +1286,8 @@ pub fn resolve_stem_universal(stem: &str) -> PathBuf {
 
 /// Read and print an artifact from a resolved path (no kind needed).
 pub fn cmd_read_resolved(resolved: &Path, frontmatter_mode: bool) {
-    let content = fs::read_to_string(resolved)
-        .unwrap_or_else(|e| fatal(&format!("reading file: {e}")));
+    let content =
+        fs::read_to_string(resolved).unwrap_or_else(|e| fatal(&format!("reading file: {e}")));
 
     let (yaml, body) = parse_frontmatter(&content);
 

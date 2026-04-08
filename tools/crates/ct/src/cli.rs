@@ -893,8 +893,7 @@ pub fn run_projects(store: &Store, json: bool) -> Result<(), Box<dyn std::error:
 
     // Source 3: project subdirectories of the vault
     let bp = crate::artifact::blueprints_dir_unchecked();
-    if let Ok(entries) = std::fs::read_dir(&bp)
-    {
+    if let Ok(entries) = std::fs::read_dir(&bp) {
         for entry in entries.flatten() {
             if entry.path().is_dir()
                 && let Some(name) = entry.file_name().to_str()
@@ -1056,9 +1055,11 @@ pub fn run_artifact_list(
     items.retain(|a| !a.project.is_empty());
 
     if let Some(ref proj) = project {
-        items.retain(|a| a.project.contains(proj.as_str()));
+        let resolved = crate::artifact::resolve_repo_root(proj);
+        items.retain(|a| a.project.contains(resolved.as_str()));
     } else if !all {
-        items.retain(|a| cwd.contains(&a.project));
+        let resolved_cwd = crate::artifact::resolve_repo_root(cwd);
+        items.retain(|a| resolved_cwd.contains(&a.project));
     }
 
     let label = kind.dir_name();
@@ -1261,10 +1262,11 @@ pub fn run_artifact_prune(
         if dir_name == "archive" {
             continue;
         }
-        if let Some(ref proj) = project
-            && !dir_name.contains(proj.as_str())
-        {
-            continue;
+        if let Some(ref proj) = project {
+            let resolved = crate::artifact::project_name(&crate::artifact::resolve_repo_root(proj));
+            if !dir_name.contains(resolved.as_str()) {
+                continue;
+            }
         }
 
         let artifact_dir = dir_entry.path().join(kind_dir);
