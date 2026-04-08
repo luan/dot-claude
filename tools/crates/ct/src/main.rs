@@ -10,6 +10,7 @@ mod phases;
 mod slug;
 mod store;
 mod ui;
+mod vault;
 
 use std::io;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -25,6 +26,44 @@ use fs_notify::{RecursiveMode, Watcher};
 enum AppEvent {
     Terminal(Event),
     FsChange,
+}
+
+fn dispatch_artifact(
+    kind: artifact::ArtifactKind,
+    action: cli::ArtifactAction,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match action {
+        cli::ArtifactAction::List {
+            json,
+            all,
+            project,
+            archived,
+        } => {
+            let (_, cwd) = store_and_cwd();
+            cli::run_artifact_list(kind, &cwd, json, all, project, archived)
+        }
+        cli::ArtifactAction::Create {
+            topic,
+            project,
+            slug,
+            source,
+            tags,
+            body,
+        } => cli::run_artifact_create(kind, topic, project, slug, source, tags, body),
+        cli::ArtifactAction::Read { file, frontmatter } => {
+            cli::run_artifact_read(kind, file, frontmatter)
+        }
+        cli::ArtifactAction::Latest { project, task_file } => {
+            cli::run_artifact_latest(kind, project, task_file)
+        }
+        cli::ArtifactAction::Archive { file } => cli::run_artifact_archive(kind, file),
+        cli::ArtifactAction::Show { id } => cli::run_artifact_show(kind, &id),
+        cli::ArtifactAction::Prune {
+            days,
+            dry_run,
+            project,
+        } => cli::run_artifact_prune(kind, days, dry_run, project),
+    }
 }
 
 fn store_and_cwd() -> (store::Store, String) {
@@ -90,169 +129,43 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 cli::run_prune(&store, days, dry_run, list)
             }
         },
-        Some(cli::Command::Plan { action }) => {
-            let kind = crate::artifact::ArtifactKind::Plan;
-            match action {
-                cli::PlanAction::List {
-                    json,
-                    all,
-                    project,
-                    archived,
-                } => {
-                    let (_, cwd) = store_and_cwd();
-                    cli::run_artifact_list(kind, &cwd, json, all, project, archived)
-                }
-                cli::PlanAction::Create {
-                    topic,
-                    project,
-                    slug,
-                    source,
-                    tags,
-                    body,
-                } => cli::run_artifact_create(kind, topic, project, slug, source, tags, body),
-                cli::PlanAction::Read { file, frontmatter } => {
-                    cli::run_artifact_read(kind, file, frontmatter)
-                }
-                cli::PlanAction::Latest { project, task_file } => {
-                    cli::run_artifact_latest(kind, project, task_file)
-                }
-                cli::PlanAction::Archive { file } => cli::run_artifact_archive(kind, file),
-                cli::PlanAction::Show { id } => cli::run_artifact_show(kind, &id),
-                cli::PlanAction::Prune {
-                    days,
-                    dry_run,
-                    project,
-                } => cli::run_artifact_prune(kind, days, dry_run, project),
-            }
-        }
-        Some(cli::Command::Spec { action }) => {
-            let kind = crate::artifact::ArtifactKind::Spec;
-            match action {
-                cli::SpecAction::List {
-                    json,
-                    all,
-                    project,
-                    archived,
-                } => {
-                    let (_, cwd) = store_and_cwd();
-                    cli::run_artifact_list(kind, &cwd, json, all, project, archived)
-                }
-                cli::SpecAction::Create {
-                    topic,
-                    project,
-                    slug,
-                    source,
-                    tags,
-                    body,
-                } => cli::run_artifact_create(kind, topic, project, slug, source, tags, body),
-                cli::SpecAction::Read { file, frontmatter } => {
-                    cli::run_artifact_read(kind, file, frontmatter)
-                }
-                cli::SpecAction::Latest { project, task_file } => {
-                    cli::run_artifact_latest(kind, project, task_file)
-                }
-                cli::SpecAction::Archive { file } => cli::run_artifact_archive(kind, file),
-                cli::SpecAction::Show { id } => cli::run_artifact_show(kind, &id),
-                cli::SpecAction::Prune {
-                    days,
-                    dry_run,
-                    project,
-                } => cli::run_artifact_prune(kind, days, dry_run, project),
-            }
-        }
-        Some(cli::Command::Review { action }) => {
-            let kind = crate::artifact::ArtifactKind::Review;
-            match action {
-                cli::ReviewAction::List {
-                    json,
-                    all,
-                    project,
-                    archived,
-                } => {
-                    let (_, cwd) = store_and_cwd();
-                    cli::run_artifact_list(kind, &cwd, json, all, project, archived)
-                }
-                cli::ReviewAction::Create {
-                    topic,
-                    project,
-                    slug,
-                    source,
-                    tags,
-                    body,
-                } => cli::run_artifact_create(kind, topic, project, slug, source, tags, body),
-                cli::ReviewAction::Read { file, frontmatter } => {
-                    cli::run_artifact_read(kind, file, frontmatter)
-                }
-                cli::ReviewAction::Latest { project, task_file } => {
-                    cli::run_artifact_latest(kind, project, task_file)
-                }
-                cli::ReviewAction::Archive { file } => cli::run_artifact_archive(kind, file),
-                cli::ReviewAction::Show { id } => cli::run_artifact_show(kind, &id),
-                cli::ReviewAction::Prune {
-                    days,
-                    dry_run,
-                    project,
-                } => cli::run_artifact_prune(kind, days, dry_run, project),
-            }
-        }
-        Some(cli::Command::Report { action }) => {
-            let kind = crate::artifact::ArtifactKind::Report;
-            match action {
-                cli::ReportAction::List {
-                    json,
-                    all,
-                    project,
-                    archived,
-                } => {
-                    let (_, cwd) = store_and_cwd();
-                    cli::run_artifact_list(kind, &cwd, json, all, project, archived)
-                }
-                cli::ReportAction::Create {
-                    topic,
-                    project,
-                    slug,
-                    source,
-                    tags,
-                    body,
-                } => cli::run_artifact_create(kind, topic, project, slug, source, tags, body),
-                cli::ReportAction::Read { file, frontmatter } => {
-                    cli::run_artifact_read(kind, file, frontmatter)
-                }
-                cli::ReportAction::Latest { project, task_file } => {
-                    cli::run_artifact_latest(kind, project, task_file)
-                }
-                cli::ReportAction::Archive { file } => cli::run_artifact_archive(kind, file),
-                cli::ReportAction::Show { id } => cli::run_artifact_show(kind, &id),
-                cli::ReportAction::Prune {
-                    days,
-                    dry_run,
-                    project,
-                } => cli::run_artifact_prune(kind, days, dry_run, project),
-            }
-        }
-        Some(cli::Command::Blueprint { action }) => match action {
-            cli::BlueprintAction::Init => {
-                crate::artifact::cmd_blueprint_init();
+        Some(cli::Command::Plan { action }) => dispatch_artifact(artifact::ArtifactKind::Plan, action),
+        Some(cli::Command::Spec { action }) => dispatch_artifact(artifact::ArtifactKind::Spec, action),
+        Some(cli::Command::Review { action }) => dispatch_artifact(artifact::ArtifactKind::Review, action),
+        Some(cli::Command::Report { action }) => dispatch_artifact(artifact::ArtifactKind::Report, action),
+        Some(cli::Command::Doc { action }) => dispatch_artifact(artifact::ArtifactKind::Doc, action),
+        Some(cli::Command::Vault { action }) => match action {
+            cli::VaultAction::Init => {
+                vault::cmd_init();
                 Ok(())
             }
-            cli::BlueprintAction::Migrate => {
-                crate::artifact::cmd_blueprint_migrate();
+            cli::VaultAction::Migrate => {
+                vault::cmd_migrate();
                 Ok(())
             }
-            cli::BlueprintAction::Project => {
-                crate::artifact::cmd_blueprint_project();
+            cli::VaultAction::Project => {
+                vault::cmd_project();
                 Ok(())
             }
-            cli::BlueprintAction::Related { project, topic } => {
-                crate::artifact::cmd_blueprint_related(&project, &topic);
+            cli::VaultAction::Related { project, topic } => {
+                vault::cmd_related(&project, &topic);
                 Ok(())
             }
-            cli::BlueprintAction::Check => {
-                crate::artifact::cmd_blueprint_check();
+            cli::VaultAction::Check => {
+                vault::cmd_check();
                 Ok(())
             }
-            cli::BlueprintAction::Search { query, json } => {
-                crate::artifact::cmd_blueprint_search(&query, json);
+            cli::VaultAction::Search {
+                query,
+                json,
+                r#type,
+                project,
+            } => {
+                vault::cmd_search(&query, json, r#type.as_deref(), project.as_deref());
+                Ok(())
+            }
+            cli::VaultAction::Status => {
+                vault::cmd_status();
                 Ok(())
             }
         },
@@ -266,6 +179,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 cli::run_project_show(&store, &slug)
             }
         },
+        Some(cli::Command::Read { file, frontmatter }) => {
+            let resolved = artifact::resolve_stem_universal(&file);
+            artifact::cmd_read_resolved(&resolved, frontmatter);
+            Ok(())
+        }
         Some(cli::Command::Notify) => notify::run(),
         Some(cli::Command::Tool { action }) => match action {
             cli::ToolAction::Slug { words } => cli::run_slug(words),

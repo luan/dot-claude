@@ -6,12 +6,12 @@ use std::path::{Path, PathBuf};
 use std::process;
 use std::time::SystemTime;
 
-fn fatal(msg: &str) -> ! {
+pub(crate) fn fatal(msg: &str) -> ! {
     eprintln!("artifact: {msg}");
     process::exit(1);
 }
 
-fn home_dir() -> String {
+pub(crate) fn home_dir() -> String {
     env::var("HOME")
         .or_else(|_| env::var("USERPROFILE"))
         .unwrap_or_else(|_| fatal("cannot determine home directory"))
@@ -27,7 +27,17 @@ pub enum ArtifactKind {
     Spec,
     Review,
     Report,
+    Doc,
 }
+
+/// Priority order for universal stem resolution: Doc > Report > Review > Plan > Spec.
+pub const ALL_KINDS: [ArtifactKind; 5] = [
+    ArtifactKind::Doc,
+    ArtifactKind::Report,
+    ArtifactKind::Review,
+    ArtifactKind::Plan,
+    ArtifactKind::Spec,
+];
 
 impl ArtifactKind {
     pub fn dir_name(self) -> &'static str {
@@ -36,6 +46,7 @@ impl ArtifactKind {
             Self::Spec => "spec",
             Self::Review => "review",
             Self::Report => "report",
+            Self::Doc => "docs",
         }
     }
 
@@ -45,6 +56,7 @@ impl ArtifactKind {
             Self::Spec => "specs",
             Self::Review => "reviews",
             Self::Report => "reports",
+            Self::Doc => "docs",
         }
     }
 
@@ -55,6 +67,7 @@ impl ArtifactKind {
             Self::Spec => "specs",
             Self::Review => "reviews",
             Self::Report => "reports",
+            Self::Doc => "docs",
         }
     }
 }
@@ -84,7 +97,7 @@ pub fn blueprints_dir() -> PathBuf {
     let dir = blueprints_dir_unchecked();
     if !dir.is_dir() {
         fatal(&format!(
-            "{} does not exist. Run `ct blueprint init` first.",
+            "{} does not exist. Run `ct vault init` first.",
             dir.display()
         ));
     }
@@ -131,14 +144,17 @@ pub fn project_name(project_path: &str) -> String {
     for comp in &components {
         if comp.ends_with(".git") {
             // All worktrees of a repo share the same project name
-            return comp.strip_suffix(".git").unwrap_or(comp).to_string();
+            let name = comp.strip_suffix(".git").unwrap_or(comp);
+            return name.replace('.', "_");
         }
     }
 
-    path.file_name()
+    let name = path
+        .file_name()
         .unwrap_or_else(|| fatal("invalid project path"))
-        .to_string_lossy()
-        .to_string()
+        .to_string_lossy();
+    // Dots break Obsidian wiki-links and tag rendering
+    name.replace('.', "_")
 }
 
 // ---------------------------------------------------------------------------
@@ -262,10 +278,10 @@ pub fn chrono_rfc3339() -> String {
     )
 }
 
-/// Compact date for filenames: YYYYMMDD
+/// Compact date+hour for filenames: YYYYMMDD-HH
 pub fn chrono_compact() -> String {
     let dt = now_utc();
-    format!("{:04}{:02}{:02}", dt.year, dt.month, dt.day)
+    format!("{:04}{:02}{:02}-{:02}", dt.year, dt.month, dt.day, dt.hours)
 }
 
 /// Split a git note that may contain multiple appended frontmatter documents.
@@ -389,9 +405,28 @@ fn is_leap(y: i32) -> bool {
 // Commit + push helper
 // ---------------------------------------------------------------------------
 
+/// Git sync failure — distinguishes add/commit (hard) from push (partial success).
+#[derive(Debug)]
+pub enum SyncError {
+    Add(String),
+    Commit(String),
+    Push(String),
+}
+
+impl std::fmt::Display for SyncError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Add(msg) => write!(f, "git add failed: {msg}"),
+            Self::Commit(msg) => write!(f, "git commit failed: {msg}"),
+            Self::Push(msg) => write!(f, "git push failed: {msg}"),
+        }
+    }
+}
+
+impl std::error::Error for SyncError {}
+
 /// Commit and push a file in the blueprints repo.
-/// Failures are warnings, not fatal — the file is the source of truth.
-pub fn commit_and_push(relative_path: &Path, message: &str) {
+pub fn commit_and_push(relative_path: &Path, message: &str) -> Result<(), SyncError> {
     let bp = blueprints_dir();
     let bp_str = bp.to_string_lossy();
 
@@ -402,18 +437,33 @@ pub fn commit_and_push(relative_path: &Path, message: &str) {
         .is_ok_and(|s| s.success());
 
     if !add_ok {
-        eprintln!("warning: git add failed in {}", bp.display());
-        return;
+        return Err(SyncError::Add(format!(
+            "git add failed in {}",
+            bp.display()
+        )));
     }
 
-    let commit_ok = process::Command::new("git")
+    let commit_output = process::Command::new("git")
         .args(["-C", &bp_str, "commit", "-m", message])
-        .status()
-        .is_ok_and(|s| s.success());
+        .output();
 
-    if !commit_ok {
-        // Nothing to commit is fine (duplicate content)
-        return;
+    match commit_output {
+        Ok(o) if o.status.success() => {}
+        Ok(o) => {
+            let stderr = String::from_utf8_lossy(&o.stderr);
+            if stderr.contains("nothing to commit") {
+                return Ok(());
+            }
+            return Err(SyncError::Commit(
+                stderr.trim().to_string(),
+            ));
+        }
+        Err(e) => {
+            return Err(SyncError::Commit(format!(
+                "failed to run git commit in {}: {e}",
+                bp.display()
+            )));
+        }
     }
 
     let push_ok = process::Command::new("git")
@@ -422,11 +472,13 @@ pub fn commit_and_push(relative_path: &Path, message: &str) {
         .is_ok_and(|s| s.success());
 
     if !push_ok {
-        eprintln!(
-            "warning: git push failed in {} — commit saved locally, push manually",
+        return Err(SyncError::Push(format!(
+            "commit saved locally in {}, push manually",
             bp.display()
-        );
+        )));
     }
+
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -441,7 +493,7 @@ pub fn cmd_create(
     source: Option<&str>,
     user_tags: &[String],
     mut body: String,
-) {
+) -> Result<(), SyncError> {
     let s = match slug_override {
         Some(s) if !s.is_empty() => s.to_string(),
         _ => crate::slug::slug(topic),
@@ -471,6 +523,9 @@ pub fn cmd_create(
     buf.push_str("---\n");
     buf.push_str(&format!("topic: {}\n", yaml_quote(topic)));
     buf.push_str(&format!("created: {now}\n"));
+    let author = env::var("GIT_USERNAME")
+        .unwrap_or_else(|_| env::var("USER").unwrap_or_else(|_| "unknown".to_string()));
+    buf.push_str(&format!("author: {}\n", yaml_quote(&author)));
     if let Some(src) = source {
         buf.push_str(&format!("source: {}\n", yaml_quote(&format!("[[{src}]]"))));
     }
@@ -498,12 +553,14 @@ pub fn cmd_create(
     }
 
     fs::write(&full_path, &buf).unwrap_or_else(|e| fatal(&format!("writing file: {e}")));
+    // Print path before sync — skills capture stdout
     println!("{}", full_path.display());
 
     // Commit + push
     if let Ok(rel) = full_path.strip_prefix(blueprints_dir()) {
-        commit_and_push(rel, &format!("{}({}): {}", kind.dir_name(), proj_name, s));
+        commit_and_push(rel, &format!("{}({}): {}", kind.dir_name(), proj_name, s))?;
     }
+    Ok(())
 }
 
 /// Resolve an artifact file argument to a real path.
@@ -574,31 +631,7 @@ pub fn resolve_artifact_path(file_arg: &str, kind: ArtifactKind) -> PathBuf {
 
 pub fn cmd_read(file_path: &str, kind: ArtifactKind, frontmatter_mode: bool) {
     let resolved = resolve_artifact_path(file_path, kind);
-    let content =
-        fs::read_to_string(&resolved).unwrap_or_else(|e| fatal(&format!("reading file: {e}")));
-
-    let (yaml, body) = parse_frontmatter(&content);
-
-    if frontmatter_mode {
-        match yaml {
-            None => println!("{{}}"),
-            Some(y) => {
-                let pairs = parse_yaml_map(y);
-                print!("{{");
-                for (i, (k, v)) in pairs.iter().enumerate() {
-                    if i > 0 {
-                        print!(",");
-                    }
-                    let k_escaped = k.replace('\\', "\\\\").replace('"', "\\\"");
-                    let v_escaped = v.replace('\\', "\\\\").replace('"', "\\\"");
-                    print!("\"{k_escaped}\":\"{v_escaped}\"");
-                }
-                println!("}}");
-            }
-        }
-    } else {
-        print!("{body}");
-    }
+    cmd_read_resolved(&resolved, frontmatter_mode);
 }
 
 pub fn cmd_latest(kind: ArtifactKind, project: Option<&str>, task_file: Option<&str>) {
@@ -669,7 +702,7 @@ pub fn latest_artifact(
     latest_path.ok_or_else(|| format!("no {} files found in {}", kind.dir_name(), dir.display()))
 }
 
-pub fn cmd_archive(kind: ArtifactKind, file_path: &str) {
+pub fn cmd_archive(kind: ArtifactKind, file_path: &str) -> Result<(), SyncError> {
     let path = Path::new(file_path);
     if !path.exists() {
         fatal(&format!("file not found: {file_path}"));
@@ -720,14 +753,21 @@ pub fn cmd_archive(kind: ArtifactKind, file_path: &str) {
     fs::rename(path, &dest).unwrap_or_else(|e| fatal(&format!("archiving file: {e}")));
     eprintln!("Archived: {file_path} → {}", dest.display());
 
-    // Commit + push
-    if let Ok(rel) = dest.strip_prefix(&bp) {
+    // Stage both the deletion of the original and the new archive file
+    if let (Ok(src_rel), Ok(dest_rel)) = (path.strip_prefix(&bp), dest.strip_prefix(&bp)) {
+        let bp_str = bp.to_string_lossy();
+        // Stage the deleted original
+        let _ = process::Command::new("git")
+            .args(["-C", &bp_str, "add", "--"])
+            .arg(src_rel)
+            .status();
         let slug = path
             .file_stem()
             .map(|s| s.to_string_lossy().to_string())
             .unwrap_or_default();
-        commit_and_push(rel, &format!("archive({}): {}", proj_name, slug));
+        commit_and_push(dest_rel, &format!("archive({}): {}", proj_name, slug))?;
     }
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -1015,236 +1055,118 @@ fn extract_frontmatter(path: &Path) -> (String, String) {
 }
 
 // ---------------------------------------------------------------------------
-// Blueprint init / migrate
+// Universal stem resolution (across all artifact kinds)
 // ---------------------------------------------------------------------------
 
-pub fn cmd_blueprint_init() {
-    let bp = blueprints_dir_unchecked();
-    if bp.is_dir() {
-        eprintln!("{} already exists", bp.display());
-        return;
+/// Resolve a bare stem across ALL artifact kinds in priority order:
+/// Doc > Report > Review > Plan > Spec.
+///
+/// If the stem is an existing path (absolute or relative), returns it directly.
+/// Otherwise scans `blueprints_dir()/*/kind/` for a matching file_stem.
+pub fn resolve_stem_universal(stem: &str) -> PathBuf {
+    let p = Path::new(stem);
+    // Exact path (absolute or relative)
+    if p.exists() {
+        return p.to_path_buf();
+    }
+    let with_ext = p.with_extension("md");
+    if with_ext.exists() {
+        return with_ext;
     }
 
-    fs::create_dir_all(&bp)
-        .unwrap_or_else(|e| fatal(&format!("cannot create {}: {e}", bp.display())));
-
-    let init_ok = process::Command::new("git")
-        .args(["-C", &bp.to_string_lossy(), "init"])
-        .status()
-        .is_ok_and(|s| s.success());
-
-    if !init_ok {
-        fatal(&format!("git init failed in {}", bp.display()));
-    }
-
-    eprintln!("Initialized {} as a git repository", bp.display());
-}
-
-pub fn cmd_blueprint_migrate() {
     let bp = blueprints_dir();
-    let home = home_dir();
 
-    let mut migrated = 0u32;
+    // Try as project-relative path inside vault
+    let bp_path = bp.join(stem);
+    if bp_path.exists() {
+        return bp_path;
+    }
+    let bp_path_ext = bp_path.with_extension("md");
+    if bp_path_ext.exists() {
+        return bp_path_ext;
+    }
 
-    for kind in [
-        ArtifactKind::Plan,
-        ArtifactKind::Spec,
-        ArtifactKind::Review,
-        ArtifactKind::Report,
-    ] {
-        let legacy_base = Path::new(&home)
-            .join(".claude")
-            .join(kind.legacy_dir_name());
-        let Ok(project_dirs) = fs::read_dir(&legacy_base) else {
-            continue;
-        };
+    // Bare stem — scan all projects × all kinds in priority order
+    let file_stem = p.file_stem().unwrap_or(p.as_os_str());
+    let mut matches: Vec<(ArtifactKind, PathBuf)> = Vec::new();
 
-        for dir_entry in project_dirs.flatten() {
-            let proj_dir = dir_entry.path();
-            if !proj_dir.is_dir() {
+    if let Ok(projects) = fs::read_dir(&bp) {
+        for proj_entry in projects.flatten() {
+            if !proj_entry.path().is_dir() {
                 continue;
             }
-            let proj_name = proj_dir
-                .file_name()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .to_string();
-            if proj_name == "archive" {
-                continue;
-            }
-
-            let dest_dir = bp.join(&proj_name).join(kind.dir_name());
-            fs::create_dir_all(&dest_dir)
-                .unwrap_or_else(|e| fatal(&format!("cannot create {}: {e}", dest_dir.display())));
-
-            let Ok(files) = fs::read_dir(&proj_dir) else {
-                continue;
-            };
-            for file_entry in files.flatten() {
-                let src = file_entry.path();
-                if src.is_dir() || src.extension().is_none_or(|ext| ext != "md") {
+            for &kind in &ALL_KINDS {
+                let candidate_dir = proj_entry.path().join(kind.dir_name());
+                if !candidate_dir.is_dir() {
                     continue;
                 }
-                let file_name = src
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .to_string();
-                let dest = dest_dir.join(&file_name);
-
-                // Copy to blueprints
-                if let Err(e) = fs::copy(&src, &dest) {
-                    eprintln!("warning: failed to copy {}: {e}", src.display());
-                    continue;
+                if let Ok(files) = fs::read_dir(&candidate_dir) {
+                    for f in files.flatten() {
+                        let fp = f.path();
+                        if fp.extension().and_then(|e| e.to_str()) == Some("md")
+                            && fp.file_stem() == Some(file_stem)
+                        {
+                            matches.push((kind, fp));
+                        }
+                    }
                 }
+            }
+        }
+    }
 
-                // Archive original
-                let archive_dir = proj_dir.join("archive");
-                fs::create_dir_all(&archive_dir).ok();
-                if let Err(e) = fs::rename(&src, archive_dir.join(&file_name)) {
-                    eprintln!("warning: failed to archive original {}: {e}", src.display());
+    if matches.is_empty() {
+        fatal(&format!("artifact not found: {stem}"));
+    }
+
+    if matches.len() == 1 {
+        return matches.remove(0).1;
+    }
+
+    // Multiple matches — check if they span different kinds
+    let kinds_seen: HashSet<&str> = matches.iter().map(|(k, _)| k.dir_name()).collect();
+    if kinds_seen.len() > 1 {
+        // Return highest-priority (ALL_KINDS is already in priority order)
+        for &kind in &ALL_KINDS {
+            if let Some(pos) = matches.iter().position(|(k, _)| *k == kind) {
+                return matches.remove(pos).1;
+            }
+        }
+    }
+
+    // Same kind, different projects — ambiguous
+    let list: Vec<_> = matches.iter().map(|(_, p)| p.display().to_string()).collect();
+    fatal(&format!(
+        "ambiguous stem '{stem}', matches:\n  {}",
+        list.join("\n  ")
+    ))
+}
+
+/// Read and print an artifact from a resolved path (no kind needed).
+pub fn cmd_read_resolved(resolved: &Path, frontmatter_mode: bool) {
+    let content = fs::read_to_string(resolved)
+        .unwrap_or_else(|e| fatal(&format!("reading file: {e}")));
+
+    let (yaml, body) = parse_frontmatter(&content);
+
+    if frontmatter_mode {
+        match yaml {
+            None => println!("{{}}"),
+            Some(y) => {
+                let pairs = parse_yaml_map(y);
+                print!("{{");
+                for (i, (k, v)) in pairs.iter().enumerate() {
+                    if i > 0 {
+                        print!(",");
+                    }
+                    let k_escaped = k.replace('\\', "\\\\").replace('"', "\\\"");
+                    let v_escaped = v.replace('\\', "\\\\").replace('"', "\\\"");
+                    print!("\"{k_escaped}\":\"{v_escaped}\"");
                 }
-
-                migrated += 1;
+                println!("}}");
             }
         }
-    }
-
-    if migrated > 0 {
-        // Commit all migrated files
-        let bp_str = bp.to_string_lossy();
-        let _ = process::Command::new("git")
-            .args(["-C", &bp_str, "add", "."])
-            .status();
-        let _ = process::Command::new("git")
-            .args([
-                "-C",
-                &bp_str,
-                "commit",
-                "-m",
-                &format!("migrate: {migrated} artifacts from ~/.claude/"),
-            ])
-            .status();
-        let _ = process::Command::new("git")
-            .args(["-C", &bp_str, "push"])
-            .status();
-    }
-
-    eprintln!("Migrated {migrated} artifact(s) to {}", bp.display());
-}
-
-pub fn cmd_blueprint_project() {
-    let project = process::Command::new("git")
-        .args(["rev-parse", "--show-toplevel"])
-        .output()
-        .ok()
-        .filter(|o| o.status.success())
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .unwrap_or_else(|| {
-            env::current_dir()
-                .map(|p| p.to_string_lossy().to_string())
-                .unwrap_or_else(|_| fatal("cannot determine working directory"))
-        });
-    println!("{}", project_name(&project));
-}
-
-/// Check for unresolved wiki-links via Obsidian CLI.
-pub fn cmd_blueprint_check() {
-    let bp = blueprints_dir();
-    let status = process::Command::new("obsidian")
-        .args(["unresolved"])
-        .current_dir(&bp)
-        .status();
-    match status {
-        Ok(s) if s.success() => {}
-        Ok(_) => eprintln!("obsidian unresolved reported issues"),
-        Err(e) => eprintln!("failed to run obsidian cli: {e}"),
-    }
-}
-
-/// Search artifacts via Obsidian CLI.
-pub fn cmd_blueprint_search(query: &str, json: bool) {
-    let bp = blueprints_dir();
-    let mut args = vec!["search".to_string(), format!("query={query}")];
-    if json {
-        args.push("format=json".to_string());
-    }
-    let output = process::Command::new("obsidian")
-        .args(&args)
-        .current_dir(&bp)
-        .output();
-    match output {
-        Ok(o) if o.status.success() => {
-            print!("{}", String::from_utf8_lossy(&o.stdout));
-        }
-        Ok(o) => {
-            eprint!("{}", String::from_utf8_lossy(&o.stderr));
-        }
-        Err(e) => eprintln!("failed to run obsidian cli: {e}"),
-    }
-}
-
-/// Find artifacts related to a topic by keyword overlap in slugs.
-pub fn cmd_blueprint_related(project: &str, topic: &str) {
-    let topic_words: HashSet<&str> = topic
-        .split(|c: char| !c.is_alphanumeric())
-        .filter(|w| w.len() >= 3)
-        .collect();
-
-    if topic_words.is_empty() {
-        return;
-    }
-
-    let bp = blueprints_dir();
-    let proj_name = project_name(project);
-    let proj_dir = bp.join(&proj_name);
-
-    if !proj_dir.is_dir() {
-        return;
-    }
-
-    let mut seen = HashSet::new();
-
-    for kind in [
-        ArtifactKind::Plan,
-        ArtifactKind::Spec,
-        ArtifactKind::Review,
-        ArtifactKind::Report,
-    ] {
-        let kind_dir = proj_dir.join(kind.dir_name());
-        let Ok(entries) = fs::read_dir(&kind_dir) else {
-            continue;
-        };
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.extension().is_none_or(|ext| ext != "md") {
-                continue;
-            }
-            let stem = path
-                .file_stem()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .to_string();
-            // Strip YYYYMMDD- date prefix for keyword matching
-            let slug_part = if stem.len() > 9
-                && stem[..8].chars().all(|c| c.is_ascii_digit())
-                && stem.as_bytes()[8] == b'-'
-            {
-                &stem[9..]
-            } else {
-                &stem
-            };
-            let slug_words: HashSet<&str> = slug_part
-                .split(|c: char| !c.is_alphanumeric())
-                .filter(|w| w.len() >= 3)
-                .collect();
-            let overlap = topic_words.intersection(&slug_words).count();
-            if (overlap >= 2 || (topic_words.len() <= 2 && overlap >= 1))
-                && seen.insert(stem.clone())
-            {
-                println!("[[{stem}]]");
-            }
-        }
+    } else {
+        print!("{body}");
     }
 }
 
@@ -1271,6 +1193,12 @@ mod tests {
     #[test]
     fn normal_path_uses_last_component() {
         assert_eq!(project_name("/Users/me/src/myapp/src/core"), "core");
+    }
+
+    #[test]
+    fn dots_replaced_with_underscores() {
+        assert_eq!(project_name("/Users/me/src/.claude"), "_claude");
+        assert_eq!(project_name("/Users/me/src/my.project"), "my_project");
     }
 
     #[test]
@@ -1332,6 +1260,76 @@ mod tests {
             "frontmatter must not contain a 'status' field, got keys: {keys:?}"
         );
 
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    fn create_artifact_file(base: &Path, project: &str, kind: ArtifactKind, stem: &str) -> PathBuf {
+        let dir = base.join(project).join(kind.dir_name());
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join(format!("{stem}.md"));
+        std::fs::write(&file, "# test\n").unwrap();
+        file
+    }
+
+    #[test]
+    fn universal_resolve_picks_highest_priority_kind() {
+        let tmp = std::env::temp_dir().join(format!("ct-univ-prio-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let _spec = create_artifact_file(&tmp, "myproj", ArtifactKind::Spec, "widget");
+        let doc = create_artifact_file(&tmp, "myproj", ArtifactKind::Doc, "widget");
+
+        let prev = env::var("CT_BLUEPRINTS_DIR").ok();
+        unsafe { env::set_var("CT_BLUEPRINTS_DIR", &tmp) };
+
+        let result = resolve_stem_universal("widget");
+        assert_eq!(result, doc, "Doc should take priority over Spec");
+
+        match prev {
+            Some(v) => unsafe { env::set_var("CT_BLUEPRINTS_DIR", v) },
+            None => unsafe { env::remove_var("CT_BLUEPRINTS_DIR") },
+        }
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn universal_resolve_single_match() {
+        let tmp = std::env::temp_dir().join(format!("ct-univ-single-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let plan = create_artifact_file(&tmp, "myproj", ArtifactKind::Plan, "deploy");
+
+        let prev = env::var("CT_BLUEPRINTS_DIR").ok();
+        unsafe { env::set_var("CT_BLUEPRINTS_DIR", &tmp) };
+
+        let result = resolve_stem_universal("deploy");
+        assert_eq!(result, plan);
+
+        match prev {
+            Some(v) => unsafe { env::set_var("CT_BLUEPRINTS_DIR", v) },
+            None => unsafe { env::remove_var("CT_BLUEPRINTS_DIR") },
+        }
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn universal_resolve_report_over_plan() {
+        let tmp = std::env::temp_dir().join(format!("ct-univ-rp-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let _plan = create_artifact_file(&tmp, "myproj", ArtifactKind::Plan, "auth");
+        let report = create_artifact_file(&tmp, "myproj", ArtifactKind::Report, "auth");
+
+        let prev = env::var("CT_BLUEPRINTS_DIR").ok();
+        unsafe { env::set_var("CT_BLUEPRINTS_DIR", &tmp) };
+
+        let result = resolve_stem_universal("auth");
+        assert_eq!(result, report, "Report should take priority over Plan");
+
+        match prev {
+            Some(v) => unsafe { env::set_var("CT_BLUEPRINTS_DIR", v) },
+            None => unsafe { env::remove_var("CT_BLUEPRINTS_DIR") },
+        }
         std::fs::remove_dir_all(&tmp).ok();
     }
 }

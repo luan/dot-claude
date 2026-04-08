@@ -27,10 +27,10 @@ Workflow skills (`/spec`, `/develop`, `/review`, `/report`, `/archive`) handle t
 | Archive | `ct <type> archive <path>` |
 | Prune old | `ct <type> prune [--days N]` |
 | Show by slug | `ct <type> show <slug>` |
-| Search vault | `ct blueprint search "<query>"` |
-| Find related | `ct blueprint related --project "$(git rev-parse --show-toplevel)" "<topic>"` |
-| Check links | `ct blueprint check` |
-| Project name | `ct blueprint project` |
+| Search vault | `ct vault search "<query>"` |
+| Find related | `ct vault related --project "$(git rev-parse --show-toplevel)" "<topic>"` |
+| Check links | `ct vault check` |
+| Project name | `ct vault project` |
 
 **Type aliases:** `ct p` = plan, `ct s` = spec, `ct r` = review, `ct rp` = report.
 
@@ -56,7 +56,7 @@ Body piped via stdin or passed with `--body`. Output: full file path.
 After creating any artifact, check for related work:
 
 ```bash
-RELATED=$(ct blueprint related --project "$(git rev-parse --show-toplevel)" "<topic>")
+RELATED=$(ct vault related --project "$(git rev-parse --show-toplevel)" "<topic>")
 # If non-empty, append a ## Related section with [[wiki-links]] to the artifact
 ```
 

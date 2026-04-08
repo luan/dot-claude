@@ -16,7 +16,7 @@ for AI-assisted development.
 
 3. **Set up the blueprints vault**
    ```bash
-   ct blueprint init
+   ct vault init
    ```
    Creates `~/blueprints/` as a git repo for specs, plans, reviews, and reports. Override the location with `CT_BLUEPRINTS_DIR`. The vault is an [Obsidian](https://obsidian.md) vault — open it in Obsidian for graph navigation, search, and wiki-link resolution. The [Note Annotations](obsidian://show-plugin?id=note-annotations) plugin is worth grabbing for inline highlights on artifacts.
 

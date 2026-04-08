@@ -87,7 +87,7 @@ SPEC_FILE=$(echo "<spec content>" | ct spec create --topic "<topic>" --project "
 The spec file is the durable artifact. After writing, check for related artifacts and append wiki-links if found:
 
 ```bash
-RELATED=$(ct blueprint related --project "$(git rev-parse --show-toplevel)" "<topic>")
+RELATED=$(ct vault related --project "$(git rev-parse --show-toplevel)" "<topic>")
 # If non-empty, append a ## Related section to the spec file with the links
 ```
 

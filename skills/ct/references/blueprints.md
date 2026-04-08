@@ -73,7 +73,7 @@ The blueprints repo is an Obsidian vault. Cross-reference artifacts using wiki-l
 ### Finding Related Artifacts
 
 ```bash
-ct blueprint related --project "$(git rev-parse --show-toplevel)" "<topic>"
+ct vault related --project "$(git rev-parse --show-toplevel)" "<topic>"
 ```
 
 Returns artifacts with overlapping keywords. If non-empty, append a `## Related` section to your artifact:
@@ -88,8 +88,8 @@ Returns artifacts with overlapping keywords. If non-empty, append a `## Related`
 ### Vault Operations
 
 ```bash
-ct blueprint check              # Find unresolved wiki-links (Obsidian CLI)
-ct blueprint search "<query>"   # Full-text search (Obsidian CLI)
+ct vault check              # Find unresolved wiki-links (Obsidian CLI)
+ct vault search "<query>"   # Full-text search (Obsidian CLI)
 ```
 
 ## Lifecycle
@@ -106,6 +106,6 @@ ct blueprint search "<query>"   # Full-text search (Obsidian CLI)
 ct tool slug "Some Topic"           # → some-topic (URL-safe)
 ct tool phases <plan-file>          # Parse **Phase N:** markers
 ct tool gitcontext                  # Summarized git context for artifacts
-ct blueprint init                   # Initialize ~/blueprints/ repo
-ct blueprint migrate                # Migrate from legacy ~/.claude/ locations
+ct vault init                   # Initialize ~/blueprints/ repo
+ct vault migrate                # Migrate from legacy ~/.claude/ locations
 ```

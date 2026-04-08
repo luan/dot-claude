@@ -16,7 +16,7 @@ allowed-tools:
   - "Bash(ct review:*)"
   - "Bash(ct spec:*)"
   - "Bash(ct plan:*)"
-  - "Bash(ct blueprint:*)"
+  - "Bash(ct vault:*)"
   - "Bash(gh pr:*)"
   - "Bash(gh api:*)"
 ---
@@ -58,8 +58,8 @@ Resolve BASE: `gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref
 ```bash
 BRANCH_SLUG=$(git branch --show-current | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/-*$//')
 PROJECT=$(git rev-parse --show-toplevel)
-SPEC_FILE=$(ct blueprint search "$BRANCH_SLUG" --project "$PROJECT" --type spec 2>/dev/null | head -1)
-PLAN_FILE=$(ct blueprint search "$BRANCH_SLUG" --project "$PROJECT" --type plan 2>/dev/null | head -1)
+SPEC_FILE=$(ct vault search "$BRANCH_SLUG" --project "$PROJECT" --type spec 2>/dev/null | head -1)
+PLAN_FILE=$(ct vault search "$BRANCH_SLUG" --project "$PROJECT" --type plan 2>/dev/null | head -1)
 ```
 Set `$HAS_SPEC` = true if found. Read spec content for coherence reviewer.
 

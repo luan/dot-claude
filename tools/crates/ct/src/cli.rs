@@ -13,6 +13,15 @@ pub struct Cli {
     pub command: Option<Command>,
 }
 
+/// Handle a SyncError from commit_and_push: push failures exit 2, others exit 1.
+fn handle_sync_error(e: crate::artifact::SyncError) -> ! {
+    eprintln!("{e}");
+    match e {
+        crate::artifact::SyncError::Push(_) => std::process::exit(2),
+        _ => std::process::exit(1),
+    }
+}
+
 fn require_lists(store: &Store, cwd: &str) -> Result<Vec<TaskList>, Box<dyn std::error::Error>> {
     let lists = store.discover_lists(cwd);
     if lists.is_empty() {
@@ -55,37 +64,52 @@ pub enum Command {
     #[command(visible_alias = "p", about = "Plan file operations")]
     Plan {
         #[command(subcommand)]
-        action: PlanAction,
+        action: ArtifactAction,
     },
 
     #[command(visible_alias = "s", about = "Spec file operations")]
     Spec {
         #[command(subcommand)]
-        action: SpecAction,
+        action: ArtifactAction,
     },
 
     #[command(visible_alias = "r", about = "Review file operations")]
     Review {
         #[command(subcommand)]
-        action: ReviewAction,
+        action: ArtifactAction,
     },
 
     #[command(visible_alias = "rp", about = "Report file operations")]
     Report {
         #[command(subcommand)]
-        action: ReportAction,
+        action: ArtifactAction,
     },
 
-    #[command(visible_alias = "bp", about = "Blueprint repository management")]
-    Blueprint {
+    #[command(visible_alias = "d", about = "Doc file operations")]
+    Doc {
         #[command(subcommand)]
-        action: BlueprintAction,
+        action: ArtifactAction,
+    },
+
+    #[command(visible_alias = "v", about = "Vault repository management")]
+    Vault {
+        #[command(subcommand)]
+        action: VaultAction,
     },
 
     #[command(visible_alias = "j", about = "Project operations")]
     Project {
         #[command(subcommand)]
         action: ProjectAction,
+    },
+
+    #[command(about = "Read artifact by stem (resolves across all types)")]
+    Read {
+        #[arg(help = "File path or stem")]
+        file: String,
+
+        #[arg(long, help = "Output frontmatter as JSON")]
+        frontmatter: bool,
     },
 
     #[command(visible_alias = "n", about = "Handle notification hooks")]
@@ -272,25 +296,25 @@ pub enum ProjectAction {
 }
 
 #[derive(Subcommand)]
-pub enum PlanAction {
-    #[command(about = "List execution plans for the current project")]
+pub enum ArtifactAction {
+    #[command(about = "List artifacts for the current project")]
     List {
         #[arg(long, help = "Output as JSON")]
         json: bool,
 
-        #[arg(long, help = "Show plans from all projects")]
+        #[arg(long, help = "Show artifacts from all projects")]
         all: bool,
 
         #[arg(short, long, help = "Filter by project path")]
         project: Option<String>,
 
-        #[arg(long, help = "Show archived plans instead of active")]
+        #[arg(long, help = "Show archived artifacts instead of active")]
         archived: bool,
     },
 
-    #[command(about = "Create a new plan file")]
+    #[command(about = "Create a new artifact file")]
     Create {
-        #[arg(long, help = "Plan topic")]
+        #[arg(long, help = "Artifact topic")]
         topic: String,
 
         #[arg(long, help = "Project path")]
@@ -308,11 +332,11 @@ pub enum PlanAction {
         )]
         tags: Option<String>,
 
-        #[arg(long, help = "Plan body content")]
+        #[arg(long, help = "Artifact body content")]
         body: Option<String>,
     },
 
-    #[command(about = "Read plan file body or frontmatter")]
+    #[command(about = "Read artifact file body or frontmatter")]
     Read {
         #[arg(help = "File path or stem")]
         file: String,
@@ -321,7 +345,7 @@ pub enum PlanAction {
         frontmatter: bool,
     },
 
-    #[command(about = "Find most recently modified plan file")]
+    #[command(about = "Find most recently modified artifact file")]
     Latest {
         #[arg(long, help = "Project path (defaults to git root or cwd)")]
         project: Option<String>,
@@ -330,19 +354,19 @@ pub enum PlanAction {
         task_file: Option<String>,
     },
 
-    #[command(about = "Move a plan file to archive/ subfolder")]
+    #[command(about = "Move an artifact file to archive/ subfolder")]
     Archive {
         #[arg(help = "File path or stem")]
         file: String,
     },
 
-    #[command(about = "Show plan content by ID")]
+    #[command(about = "Show artifact content by ID")]
     Show {
-        #[arg(help = "Plan ID or name")]
+        #[arg(help = "Artifact ID or name")]
         id: String,
     },
 
-    #[command(about = "Archive plan files older than N days")]
+    #[command(about = "Archive artifact files older than N days")]
     Prune {
         #[arg(long, default_value_t = 30, help = "Age threshold in days")]
         days: u64,
@@ -356,259 +380,7 @@ pub enum PlanAction {
 }
 
 #[derive(Subcommand)]
-pub enum SpecAction {
-    #[command(about = "List specs for the current project")]
-    List {
-        #[arg(long, help = "Output as JSON")]
-        json: bool,
-
-        #[arg(long, help = "Show specs from all projects")]
-        all: bool,
-
-        #[arg(short, long, help = "Filter by project path")]
-        project: Option<String>,
-
-        #[arg(long, help = "Show archived specs instead of active")]
-        archived: bool,
-    },
-
-    #[command(about = "Create a new spec file")]
-    Create {
-        #[arg(long, help = "Spec topic")]
-        topic: String,
-
-        #[arg(long, help = "Project path")]
-        project: String,
-
-        #[arg(long, help = "Custom slug (auto-generated if omitted)")]
-        slug: Option<String>,
-
-        #[arg(long, help = "Source artifact stem for [[wiki-link]]")]
-        source: Option<String>,
-
-        #[arg(
-            long,
-            help = "Comma-separated tags (e.g. domain/combat,stage/research)"
-        )]
-        tags: Option<String>,
-
-        #[arg(long, help = "Spec body content")]
-        body: Option<String>,
-    },
-
-    #[command(about = "Read spec file body or frontmatter")]
-    Read {
-        #[arg(help = "File path or stem")]
-        file: String,
-
-        #[arg(long, help = "Output frontmatter as JSON")]
-        frontmatter: bool,
-    },
-
-    #[command(about = "Find most recently modified spec file")]
-    Latest {
-        #[arg(long, help = "Project path (defaults to git root or cwd)")]
-        project: Option<String>,
-
-        #[arg(long, help = "Resolve this file directly instead of mtime heuristic")]
-        task_file: Option<String>,
-    },
-
-    #[command(about = "Move a spec file to archive/ subfolder")]
-    Archive {
-        #[arg(help = "File path or stem")]
-        file: String,
-    },
-
-    #[command(about = "Show spec content by ID")]
-    Show {
-        #[arg(help = "Spec ID or name")]
-        id: String,
-    },
-
-    #[command(about = "Archive spec files older than N days")]
-    Prune {
-        #[arg(long, default_value_t = 30, help = "Age threshold in days")]
-        days: u64,
-
-        #[arg(long, help = "Dry run — print what would be archived")]
-        dry_run: bool,
-
-        #[arg(short, long, help = "Filter by project path")]
-        project: Option<String>,
-    },
-}
-
-#[derive(Subcommand)]
-pub enum ReviewAction {
-    #[command(about = "List reviews for the current project")]
-    List {
-        #[arg(long, help = "Output as JSON")]
-        json: bool,
-
-        #[arg(long, help = "Show reviews from all projects")]
-        all: bool,
-
-        #[arg(short, long, help = "Filter by project path")]
-        project: Option<String>,
-
-        #[arg(long, help = "Show archived reviews instead of active")]
-        archived: bool,
-    },
-
-    #[command(about = "Create a new review file")]
-    Create {
-        #[arg(long, help = "Review topic")]
-        topic: String,
-
-        #[arg(long, help = "Project path")]
-        project: String,
-
-        #[arg(long, help = "Custom slug (auto-generated if omitted)")]
-        slug: Option<String>,
-
-        #[arg(long, help = "Source artifact stem for [[wiki-link]]")]
-        source: Option<String>,
-
-        #[arg(
-            long,
-            help = "Comma-separated tags (e.g. domain/combat,stage/research)"
-        )]
-        tags: Option<String>,
-
-        #[arg(long, help = "Review body content")]
-        body: Option<String>,
-    },
-
-    #[command(about = "Read review file body or frontmatter")]
-    Read {
-        #[arg(help = "File path or stem")]
-        file: String,
-
-        #[arg(long, help = "Output frontmatter as JSON")]
-        frontmatter: bool,
-    },
-
-    #[command(about = "Find most recently modified review file")]
-    Latest {
-        #[arg(long, help = "Project path (defaults to git root or cwd)")]
-        project: Option<String>,
-
-        #[arg(long, help = "Resolve this file directly instead of mtime heuristic")]
-        task_file: Option<String>,
-    },
-
-    #[command(about = "Move a review file to archive/ subfolder")]
-    Archive {
-        #[arg(help = "File path or stem")]
-        file: String,
-    },
-
-    #[command(about = "Show review content by ID")]
-    Show {
-        #[arg(help = "Review ID or name")]
-        id: String,
-    },
-
-    #[command(about = "Archive review files older than N days")]
-    Prune {
-        #[arg(long, default_value_t = 30, help = "Age threshold in days")]
-        days: u64,
-
-        #[arg(long, help = "Dry run — print what would be archived")]
-        dry_run: bool,
-
-        #[arg(short, long, help = "Filter by project path")]
-        project: Option<String>,
-    },
-}
-
-#[derive(Subcommand)]
-pub enum ReportAction {
-    #[command(about = "List reports for the current project")]
-    List {
-        #[arg(long, help = "Output as JSON")]
-        json: bool,
-
-        #[arg(long, help = "Show reports from all projects")]
-        all: bool,
-
-        #[arg(short, long, help = "Filter by project path")]
-        project: Option<String>,
-
-        #[arg(long, help = "Show archived reports instead of active")]
-        archived: bool,
-    },
-
-    #[command(about = "Create a new report file")]
-    Create {
-        #[arg(long, help = "Report topic")]
-        topic: String,
-
-        #[arg(long, help = "Project path")]
-        project: String,
-
-        #[arg(long, help = "Custom slug (auto-generated if omitted)")]
-        slug: Option<String>,
-
-        #[arg(long, help = "Source artifact stem for [[wiki-link]]")]
-        source: Option<String>,
-
-        #[arg(
-            long,
-            help = "Comma-separated tags (e.g. domain/combat,stage/research)"
-        )]
-        tags: Option<String>,
-
-        #[arg(long, help = "Report body content")]
-        body: Option<String>,
-    },
-
-    #[command(about = "Read report file body or frontmatter")]
-    Read {
-        #[arg(help = "File path or stem")]
-        file: String,
-
-        #[arg(long, help = "Output frontmatter as JSON")]
-        frontmatter: bool,
-    },
-
-    #[command(about = "Find most recently modified report file")]
-    Latest {
-        #[arg(long, help = "Project path (defaults to git root or cwd)")]
-        project: Option<String>,
-
-        #[arg(long, help = "Resolve this file directly instead of mtime heuristic")]
-        task_file: Option<String>,
-    },
-
-    #[command(about = "Move a report file to archive/ subfolder")]
-    Archive {
-        #[arg(help = "File path or stem")]
-        file: String,
-    },
-
-    #[command(about = "Show report content by ID")]
-    Show {
-        #[arg(help = "Report ID or name")]
-        id: String,
-    },
-
-    #[command(about = "Archive report files older than N days")]
-    Prune {
-        #[arg(long, default_value_t = 30, help = "Age threshold in days")]
-        days: u64,
-
-        #[arg(long, help = "Dry run — print what would be archived")]
-        dry_run: bool,
-
-        #[arg(short, long, help = "Filter by project path")]
-        project: Option<String>,
-    },
-}
-
-#[derive(Subcommand)]
-pub enum BlueprintAction {
+pub enum VaultAction {
     #[command(about = "Initialize ~/blueprints/ repository")]
     Init,
 
@@ -637,7 +409,16 @@ pub enum BlueprintAction {
 
         #[arg(long, help = "Output as JSON")]
         json: bool,
+
+        #[arg(long, help = "Filter by artifact type (spec, plan, review, report, doc)", value_parser = ["spec", "plan", "review", "report", "doc"])]
+        r#type: Option<String>,
+
+        #[arg(short, long, help = "Filter by project path")]
+        project: Option<String>,
     },
+
+    #[command(about = "Show vault status (git state, artifact count)")]
+    Status,
 }
 
 pub fn run_list(
@@ -1101,9 +882,9 @@ pub fn run_projects(store: &Store, json: bool) -> Result<(), Box<dyn std::error:
         }
     }
 
-    // Source 3: project subdirectories of ~/blueprints/
-    if let Ok(bp) = std::env::var("HOME").map(|h| std::path::PathBuf::from(h).join("blueprints"))
-        && let Ok(entries) = std::fs::read_dir(&bp)
+    // Source 3: project subdirectories of the vault
+    let bp = crate::artifact::blueprints_dir_unchecked();
+    if let Ok(entries) = std::fs::read_dir(&bp)
     {
         for entry in entries.flatten() {
             if entry.path().is_dir()
@@ -1391,7 +1172,7 @@ pub fn run_artifact_create(
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .collect();
-    crate::artifact::cmd_create(
+    if let Err(e) = crate::artifact::cmd_create(
         kind,
         &topic,
         &project,
@@ -1399,7 +1180,9 @@ pub fn run_artifact_create(
         source.as_deref(),
         &tag_list,
         body.unwrap_or_default(),
-    );
+    ) {
+        handle_sync_error(e);
+    }
     Ok(())
 }
 
@@ -1425,7 +1208,9 @@ pub fn run_artifact_archive(
     kind: crate::artifact::ArtifactKind,
     file: String,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    crate::artifact::cmd_archive(kind, &file);
+    if let Err(e) = crate::artifact::cmd_archive(kind, &file) {
+        handle_sync_error(e);
+    }
     Ok(())
 }
 
@@ -1440,6 +1225,7 @@ pub fn run_artifact_prune(
     let threshold = std::time::Duration::from_secs(days * 86400);
     let now = std::time::SystemTime::now();
     let mut archived_count = 0u32;
+    let mut sync_errors = 0u32;
 
     let Ok(project_dirs) = std::fs::read_dir(&bp) else {
         eprintln!(
@@ -1489,14 +1275,23 @@ pub fn run_artifact_prune(
             if dry_run {
                 println!("would archive: {path_str}");
             } else {
-                crate::artifact::cmd_archive(kind, &path_str);
-                archived_count += 1;
+                match crate::artifact::cmd_archive(kind, &path_str) {
+                    Ok(()) => archived_count += 1,
+                    Err(e) => {
+                        eprintln!("{e}");
+                        sync_errors += 1;
+                    }
+                }
             }
         }
     }
 
     if !dry_run && archived_count > 0 {
         println!("Archived {archived_count} {} file(s)", kind.dir_name());
+    }
+    if sync_errors > 0 {
+        eprintln!("{sync_errors} file(s) failed to sync");
+        std::process::exit(2);
     }
 
     Ok(())
