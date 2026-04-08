@@ -64,7 +64,7 @@ Build the spec from validated research. The spec is **timeless** — it describe
 
 - **Recommendation**: Target behavior in present tense, strategy-level. "Webhook delivery uses exponential backoff via BullMQ" — describes the system, not the change.
 
-- **Architecture Context**: The code landscape post-implementation. Module roles, patterns, key file paths, and how components interact. Include enough detail that a developer reading only this section understands where to work and why things are structured this way.
+- **Architecture Context**: The code landscape post-implementation. Module roles, patterns, key file paths, and how components interact. Include enough detail that a developer reading only this section understands where to work and why things are structured this way. Use Mermaid diagrams (flowchart, sequence, class) when relationships between components would be clearer visually than in prose.
 
 - **Risks**: Edge cases, failure modes, constraints.
 
