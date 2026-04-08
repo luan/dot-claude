@@ -3,7 +3,7 @@
 
 # Blueprints
 
-All structured artifacts (specs, plans, reviews, reports) live in the blueprints vault (`$CT_BLUEPRINTS_DIR`, default `~/blueprints/`) via the `ct` tool. The blueprints repo is a separate git repository — `ct` handles commit+push automatically after every write.
+All structured artifacts (specs, plans, reviews, reports, docs) live in the blueprints vault (`$CT_BLUEPRINTS_DIR`, default `~/blueprints/`) via the `ct` tool. The blueprints repo is a separate git repository — `ct` handles commit+push automatically after every write.
 
 **Principle:** The vault is canonical. Repos may snapshot frozen copies for contributor access, but edits happen in the vault.
 
@@ -33,7 +33,7 @@ All structured artifacts (specs, plans, reviews, reports) live in the blueprints
 | Archive | `ct <type> archive <file>` |
 | Prune | `ct <type> prune [--days N]` |
 
-Where `<type>` is `spec`, `plan`, `review`, or `report`.
+Where `<type>` is `spec`, `plan`, `review`, `report`, or `doc`.
 
 ## Linking (Obsidian)
 
@@ -56,7 +56,7 @@ The blueprints repo is an Obsidian vault. Use `[[wiki-links]]` to connect relate
 All artifacts have `tags:` in frontmatter. `ct` auto-derives `type/` and `project/` tags; add domain/stage tags via `--tags`.
 
 **Auto-derived** (always added by `ct create`):
-- `type/spec`, `type/plan`, `type/review`, `type/report`
+- `type/spec`, `type/plan`, `type/review`, `type/report`, `type/doc`
 - `project/<name>` (from project path)
 
 **User-supplied** (via `--tags "domain/combat,stage/research"`):

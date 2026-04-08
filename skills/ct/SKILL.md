@@ -1,6 +1,6 @@
 ---
 name: ct
-description: "Reference for the ct CLI and the ~/blueprints/ artifact system. Use this skill whenever the user mentions blueprints, artifacts, specs, plans, reviews, or reports in the context of documentation or project knowledge — even if they don't say 'ct' explicitly. Also trigger when the user wants to find, list, search, read, create, archive, or link artifacts, or asks about the blueprints vault, Obsidian integration, or artifact lifecycle. Covers correct ct command patterns, artifact metadata (tags, source links), and the blueprints directory layout."
+description: "Reference for the ct CLI and the ~/blueprints/ artifact system. Use this skill whenever the user mentions blueprints, artifacts, specs, plans, reviews, reports, or docs in the context of documentation or project knowledge — even if they don't say 'ct' explicitly. Also trigger when the user wants to find, list, search, read, create, archive, or link artifacts, or asks about the blueprints vault, Obsidian integration, or artifact lifecycle. Covers correct ct command patterns, artifact metadata (tags, source links), and the blueprints directory layout."
 user-invocable: false
 allowed-tools:
   - Bash
@@ -11,7 +11,7 @@ allowed-tools:
 
 # ct — Artifact CLI
 
-`ct` manages structured artifacts in `~/blueprints/`, a separate git repo and Obsidian vault. Four artifact types share identical CRUD commands: **spec**, **plan**, **review**, **report**.
+`ct` manages structured artifacts in `~/blueprints/`, a separate git repo and Obsidian vault. Five artifact types share identical CRUD commands: **spec**, **plan**, **review**, **report**, **doc**.
 
 Workflow skills (`/spec`, `/develop`, `/review`, `/report`, `/archive`) handle their respective lifecycle phases. This skill is the reference for direct ct operations and correct command patterns.
 
@@ -32,7 +32,7 @@ Workflow skills (`/spec`, `/develop`, `/review`, `/report`, `/archive`) handle t
 | Check links | `ct vault check` |
 | Project name | `ct vault project` |
 
-**Type aliases:** `ct p` = plan, `ct s` = spec, `ct r` = review, `ct rp` = report.
+**Type aliases:** `ct p` = plan, `ct s` = spec, `ct r` = review, `ct rp` = report, `ct d` = doc.
 
 ## Create with Full Metadata
 
@@ -66,7 +66,7 @@ Link by stem (filename without extension or path) — Obsidian resolves across t
 
 **Find what exists for this project:**
 ```bash
-ct spec list && ct plan list && ct review list && ct report list
+ct spec list && ct plan list && ct review list && ct report list && ct doc list
 ```
 
 **Resume from latest artifact:**
