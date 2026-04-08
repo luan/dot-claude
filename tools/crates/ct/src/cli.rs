@@ -377,6 +377,15 @@ pub enum ArtifactAction {
         #[arg(short, long, help = "Filter by project path")]
         project: Option<String>,
     },
+
+    #[command(about = "Extract inline HTML comments from an artifact")]
+    Comments {
+        #[arg(help = "File path or stem")]
+        file: String,
+
+        #[arg(long, help = "Output as JSON")]
+        json: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -1192,6 +1201,15 @@ pub fn run_artifact_read(
     frontmatter: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     crate::artifact::cmd_read(&file, kind, frontmatter);
+    Ok(())
+}
+
+pub fn run_artifact_comments(
+    kind: crate::artifact::ArtifactKind,
+    file: String,
+    json: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    crate::artifact::cmd_comments(&file, kind, json);
     Ok(())
 }
 

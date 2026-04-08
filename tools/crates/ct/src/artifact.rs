@@ -634,6 +634,119 @@ pub fn cmd_read(file_path: &str, kind: ArtifactKind, frontmatter_mode: bool) {
     cmd_read_resolved(&resolved, frontmatter_mode);
 }
 
+// ---------------------------------------------------------------------------
+// Inline comment extraction
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct Comment {
+    pub line: usize,
+    pub highlight: Option<String>,
+    #[serde(rename = "comment")]
+    pub text: String,
+}
+
+/// Extract all single-line HTML comments from a markdown body.
+/// Returns `Comment` entries with 1-based line numbers relative to the body.
+pub fn parse_comments(body: &str) -> Vec<Comment> {
+    let mut out = Vec::new();
+    for (idx, line) in body.lines().enumerate() {
+        let line_no = idx + 1;
+        let mut rest = line;
+        while let Some(start) = rest.find("<!--") {
+            let before = &rest[..start];
+            let after_open = &rest[start + 4..];
+            let Some(end) = after_open.find("-->") else {
+                break;
+            };
+            let comment_text = after_open[..end].trim().to_string();
+
+            // Check for ==highlight== immediately before the comment
+            let highlight = extract_highlight(before);
+
+            out.push(Comment {
+                line: line_no,
+                highlight,
+                text: comment_text,
+            });
+
+            rest = &after_open[end + 3..];
+        }
+    }
+    out
+}
+
+/// Look for a trailing `==...==` in the text immediately before a comment marker.
+fn extract_highlight(before: &str) -> Option<String> {
+    let trimmed = before.trim_end();
+    if !trimmed.ends_with("==") {
+        return None;
+    }
+    let inner = &trimmed[..trimmed.len() - 2];
+    let start = inner.rfind("==")?;
+    let text = &inner[start + 2..];
+    if text.is_empty() {
+        return None;
+    }
+    Some(text.to_string())
+}
+
+/// Count how many lines the frontmatter occupies (including delimiters).
+fn frontmatter_line_count(content: &str) -> usize {
+    match parse_frontmatter(content) {
+        (None, _) => 0,
+        // 2 delimiter lines + yaml content lines
+        (Some(yaml), _) => yaml.lines().count() + 2,
+    }
+}
+
+pub fn cmd_comments(file_path: &str, kind: ArtifactKind, json: bool) {
+    let resolved = resolve_artifact_path(file_path, kind);
+    let content = fs::read_to_string(&resolved)
+        .unwrap_or_else(|e| fatal(&format!("cannot read {}: {e}", resolved.display())));
+
+    let fm_lines = frontmatter_line_count(&content);
+    let (_, body) = parse_frontmatter(&content);
+    let mut comments = parse_comments(body);
+
+    let file_display = resolved
+        .file_name()
+        .unwrap_or(resolved.as_os_str())
+        .to_string_lossy();
+
+    // Adjust line numbers to be absolute (account for frontmatter)
+    for c in &mut comments {
+        c.line += fm_lines;
+    }
+
+    if json {
+        #[derive(serde::Serialize)]
+        struct JsonComment<'a> {
+            file: &'a str,
+            #[serde(flatten)]
+            comment: &'a Comment,
+        }
+        let entries: Vec<_> = comments
+            .iter()
+            .map(|c| JsonComment {
+                file: &file_display,
+                comment: c,
+            })
+            .collect();
+        println!(
+            "{}",
+            serde_json::to_string(&entries).unwrap_or_else(|e| fatal(&format!("json: {e}")))
+        );
+    } else {
+        for c in &comments {
+            match &c.highlight {
+                Some(h) => println!("{file_display}:{}: [{h}] {}", c.line, c.text),
+                None => println!("{file_display}:{}: {}", c.line, c.text),
+            }
+        }
+    }
+}
+
 pub fn cmd_latest(kind: ArtifactKind, project: Option<&str>, task_file: Option<&str>) {
     let mut project = project.unwrap_or("").to_string();
 
@@ -1331,5 +1444,53 @@ mod tests {
             None => unsafe { env::remove_var("CT_BLUEPRINTS_DIR") },
         }
         std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn parse_comments_with_highlight() {
+        let comments = parse_comments("==foo==<!--bar-->");
+        assert_eq!(comments.len(), 1);
+        assert_eq!(comments[0].line, 1);
+        assert_eq!(comments[0].highlight.as_deref(), Some("foo"));
+        assert_eq!(comments[0].text, "bar");
+    }
+
+    #[test]
+    fn parse_comments_without_highlight() {
+        let comments = parse_comments("<!--bar-->");
+        assert_eq!(comments.len(), 1);
+        assert_eq!(comments[0].line, 1);
+        assert_eq!(comments[0].highlight, None);
+        assert_eq!(comments[0].text, "bar");
+    }
+
+    #[test]
+    fn parse_comments_multiple_on_one_line() {
+        let comments = parse_comments("<!--a--> <!--b-->");
+        assert_eq!(comments.len(), 2);
+        assert_eq!(comments[0].line, 1);
+        assert_eq!(comments[0].text, "a");
+        assert_eq!(comments[1].line, 1);
+        assert_eq!(comments[1].text, "b");
+    }
+
+    #[test]
+    fn parse_comments_no_comments() {
+        let comments = parse_comments("just text");
+        assert!(comments.is_empty());
+    }
+
+    #[test]
+    fn parse_comments_highlight_without_comment() {
+        let comments = parse_comments("==foo==");
+        assert!(comments.is_empty());
+    }
+
+    #[test]
+    fn parse_comments_on_later_line() {
+        let comments = parse_comments("line1\nline2\n<!--here-->");
+        assert_eq!(comments.len(), 1);
+        assert_eq!(comments[0].line, 3);
+        assert_eq!(comments[0].text, "here");
     }
 }

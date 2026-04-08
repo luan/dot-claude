@@ -63,6 +63,9 @@ fn dispatch_artifact(
             dry_run,
             project,
         } => cli::run_artifact_prune(kind, days, dry_run, project),
+        cli::ArtifactAction::Comments { file, json } => {
+            cli::run_artifact_comments(kind, file, json)
+        }
     }
 }
 
