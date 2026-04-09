@@ -1,7 +1,11 @@
 #!/usr/bin/env uv run
 """Two-line Claude Code statusline with dot progress bars and quota tracking."""
 
-import json, os, re, sys, subprocess, tempfile, time
+import io, json, os, re, sys, subprocess, tempfile, time
+
+# Force UTF-8 stdout on Windows
+if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -433,7 +437,8 @@ def main():
         sys.stdout.write(f"{DIM}statusline: waiting{RESET}")
         return
 
-    model_raw = (data.get("model") or {}).get("display_name", "")
+    model_field = data.get("model") or ""
+    model_raw = model_field.get("display_name", "") if isinstance(model_field, dict) else str(model_field)
     model_name = re.sub(r"\s*\((\d+\w*)\s+context\)", r" \1", model_raw)
     cw = data.get("context_window") or {}
     pct = int(cw.get("used_percentage") or 0)
