@@ -4,9 +4,9 @@ use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Paragraph, Wrap};
 
-use crate::plan;
-use crate::planfile;
-use crate::spec::{self, Spec};
+use crate::artifact::{self, Artifact, ArtifactKind};
+
+type Spec = Artifact;
 use crate::store::Task;
 use crate::ui::theme;
 
@@ -19,7 +19,7 @@ pub struct SpecDetailState {
 
 impl SpecDetailState {
     pub fn new(spec: Spec, tasks: &[Task]) -> Self {
-        let content = spec::load_content(&spec.path);
+        let content = artifact::load_content(ArtifactKind::Spec, &spec.path);
         let spec_path = spec.path.to_string_lossy();
         let linked_tasks: Vec<Task> = tasks
             .iter()
@@ -68,7 +68,7 @@ pub fn render_spec_detail(f: &mut Frame, area: Rect, state: &SpecDetailState) {
     if !s.project.is_empty() {
         lines.push(field(
             "Project",
-            &planfile::project_name(&s.project),
+            &artifact::project_name(&s.project),
             theme::value_style(),
         ));
     }
@@ -77,7 +77,7 @@ pub fn render_spec_detail(f: &mut Frame, area: Rect, state: &SpecDetailState) {
     }
     lines.push(field(
         "Date",
-        &plan::format_date(s.mod_time),
+        &artifact::format_date(s.mod_time),
         theme::muted_style(),
     ));
 

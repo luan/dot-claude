@@ -7,13 +7,10 @@ mod editor;
 mod gitcontext;
 mod notify;
 mod phases;
-mod plan;
-mod planfile;
 mod slug;
-mod spec;
-mod specfile;
 mod store;
 mod ui;
+mod vault;
 
 use std::io;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -29,6 +26,47 @@ use fs_notify::{RecursiveMode, Watcher};
 enum AppEvent {
     Terminal(Event),
     FsChange,
+}
+
+fn dispatch_artifact(
+    kind: artifact::ArtifactKind,
+    action: cli::ArtifactAction,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match action {
+        cli::ArtifactAction::List {
+            json,
+            all,
+            project,
+            archived,
+        } => {
+            let (_, cwd) = store_and_cwd();
+            cli::run_artifact_list(kind, &cwd, json, all, project, archived)
+        }
+        cli::ArtifactAction::Create {
+            topic,
+            project,
+            slug,
+            source,
+            tags,
+            body,
+        } => cli::run_artifact_create(kind, topic, project, slug, source, tags, body),
+        cli::ArtifactAction::Read { file, frontmatter } => {
+            cli::run_artifact_read(kind, file, frontmatter)
+        }
+        cli::ArtifactAction::Latest { project, task_file } => {
+            cli::run_artifact_latest(kind, project, task_file)
+        }
+        cli::ArtifactAction::Archive { file } => cli::run_artifact_archive(kind, file),
+        cli::ArtifactAction::Show { id } => cli::run_artifact_show(kind, &id),
+        cli::ArtifactAction::Prune {
+            days,
+            dry_run,
+            project,
+        } => cli::run_artifact_prune(kind, days, dry_run, project),
+        cli::ArtifactAction::Comments { file, json } => {
+            cli::run_artifact_comments(kind, file, json)
+        }
+    }
 }
 
 fn store_and_cwd() -> (store::Store, String) {
@@ -94,63 +132,55 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 cli::run_prune(&store, days, dry_run, list)
             }
         },
-        Some(cli::Command::Plan { action }) => match action {
-            cli::PlanAction::List {
+        Some(cli::Command::Plan { action }) => {
+            dispatch_artifact(artifact::ArtifactKind::Plan, action)
+        }
+        Some(cli::Command::Spec { action }) => {
+            dispatch_artifact(artifact::ArtifactKind::Spec, action)
+        }
+        Some(cli::Command::Review { action }) => {
+            dispatch_artifact(artifact::ArtifactKind::Review, action)
+        }
+        Some(cli::Command::Report { action }) => {
+            dispatch_artifact(artifact::ArtifactKind::Report, action)
+        }
+        Some(cli::Command::Doc { action }) => {
+            dispatch_artifact(artifact::ArtifactKind::Doc, action)
+        }
+        Some(cli::Command::Vault { action }) => match action {
+            cli::VaultAction::Init => {
+                vault::cmd_init();
+                Ok(())
+            }
+            cli::VaultAction::Migrate => {
+                vault::cmd_migrate();
+                Ok(())
+            }
+            cli::VaultAction::Project => {
+                vault::cmd_project();
+                Ok(())
+            }
+            cli::VaultAction::Related { project, topic } => {
+                vault::cmd_related(&project, &topic);
+                Ok(())
+            }
+            cli::VaultAction::Check => {
+                vault::cmd_check();
+                Ok(())
+            }
+            cli::VaultAction::Search {
+                query,
                 json,
-                all,
+                r#type,
                 project,
-                archived,
             } => {
-                let (_, cwd) = store_and_cwd();
-                cli::run_plans(&cwd, json, all, project, archived)
+                vault::cmd_search(&query, json, r#type.as_deref(), project.as_deref());
+                Ok(())
             }
-            cli::PlanAction::Create {
-                topic,
-                project,
-                slug,
-                prefix,
-                body,
-            } => cli::run_plan_create(topic, project, slug, prefix, body),
-            cli::PlanAction::Read { file, frontmatter } => cli::run_plan_read(file, frontmatter),
-            cli::PlanAction::Latest { project, task_file } => {
-                cli::run_plan_latest(project, task_file)
+            cli::VaultAction::Status => {
+                vault::cmd_status();
+                Ok(())
             }
-            cli::PlanAction::Archive { file } => cli::run_plan_archive(file),
-            cli::PlanAction::Show { id } => cli::run_plan_show(&id),
-            cli::PlanAction::Prune {
-                days,
-                dry_run,
-                project,
-            } => cli::run_plan_prune(days, dry_run, project),
-        },
-        Some(cli::Command::Spec { action }) => match action {
-            cli::SpecAction::List {
-                json,
-                all,
-                project,
-                archived,
-            } => {
-                let (_, cwd) = store_and_cwd();
-                cli::run_specs(&cwd, json, all, project, archived)
-            }
-            cli::SpecAction::Create {
-                topic,
-                project,
-                slug,
-                prefix,
-                body,
-            } => cli::run_spec_create(topic, project, slug, prefix, body),
-            cli::SpecAction::Read { file, frontmatter } => cli::run_spec_read(file, frontmatter),
-            cli::SpecAction::Latest { project, task_file } => {
-                cli::run_spec_latest(project, task_file)
-            }
-            cli::SpecAction::Archive { file } => cli::run_spec_archive(file),
-            cli::SpecAction::Show { id } => cli::run_spec_show(&id),
-            cli::SpecAction::Prune {
-                days,
-                dry_run,
-                project,
-            } => cli::run_spec_prune(days, dry_run, project),
         },
         Some(cli::Command::Project { action }) => match action {
             cli::ProjectAction::List { json } => {
@@ -162,6 +192,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 cli::run_project_show(&store, &slug)
             }
         },
+        Some(cli::Command::Read { file, frontmatter }) => {
+            let resolved = artifact::resolve_stem_universal(&file);
+            artifact::cmd_read_resolved(&resolved, frontmatter);
+            Ok(())
+        }
         Some(cli::Command::Notify) => notify::run(),
         Some(cli::Command::Tool { action }) => match action {
             cli::ToolAction::Slug { words } => cli::run_slug(words),
@@ -175,7 +210,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 stat,
                 cochanges,
             } => gitcontext::run(base, format, max_total, max_file, stat, cochanges),
-            cli::ToolAction::CompactionRecovery => cli::run_compaction_recovery(),
             cli::ToolAction::Cochanges {
                 base,
                 threshold,

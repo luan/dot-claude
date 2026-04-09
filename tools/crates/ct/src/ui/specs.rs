@@ -6,10 +6,10 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Cell, Row, Table, TableState};
 
-use crate::plan;
-use crate::planfile;
-use crate::spec::{self, Spec};
+use crate::artifact::{self, Artifact, ArtifactKind};
 use crate::ui::theme;
+
+type Spec = Artifact;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SpecSource {
@@ -64,8 +64,8 @@ impl SpecsState {
 
     pub fn reload_specs(&mut self) {
         self.specs = match self.source {
-            SpecSource::Active => spec::list_specs(),
-            SpecSource::Archived => spec::list_archived_specs(),
+            SpecSource::Active => artifact::list_artifacts(ArtifactKind::Spec),
+            SpecSource::Archived => artifact::list_archived_artifacts(ArtifactKind::Spec),
         };
         self.filter();
     }
@@ -86,7 +86,7 @@ impl SpecsState {
                 .filter(|s| {
                     s.title.to_lowercase().contains(&q)
                         || s.name.to_lowercase().contains(&q)
-                        || planfile::project_name(&s.project)
+                        || artifact::project_name(&s.project)
                             .to_lowercase()
                             .contains(&q)
                 })
@@ -163,7 +163,7 @@ pub fn render_specs(f: &mut Frame, area: Rect, state: &mut SpecsState) {
             } else {
                 &s.title
             };
-            let proj = planfile::project_name(&s.project);
+            let proj = artifact::project_name(&s.project);
             let path_key = s.path.to_string_lossy();
             let task_count = state
                 .link_counts
@@ -178,11 +178,11 @@ pub fn render_specs(f: &mut Frame, area: Rect, state: &mut SpecsState) {
             Row::new(vec![
                 Cell::from(Span::styled(proj, theme::muted_style())),
                 Cell::from(Span::styled(
-                    plan::format_date(s.mod_time),
+                    artifact::format_date(s.mod_time),
                     theme::muted_style(),
                 )),
                 Cell::from(Span::styled(
-                    plan::format_size(s.size),
+                    artifact::format_size(s.size),
                     theme::muted_style(),
                 )),
                 Cell::from(Span::styled(task_label, theme::muted_style())),

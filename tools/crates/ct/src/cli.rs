@@ -1,18 +1,25 @@
 use std::collections::BTreeMap;
 
 use crate::ansi;
-use crate::plan;
-use crate::spec;
 use crate::store::{Priority, SortOrder, Status, StatusFilter, Store, Task, TaskList};
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::{Shell, generate};
 
 #[derive(Parser)]
-#[command(name = "ck")]
+#[command(name = "ct")]
 #[command(about = "Task management CLI and TUI", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Option<Command>,
+}
+
+/// Handle a SyncError from commit_and_push: push failures exit 2, others exit 1.
+fn handle_sync_error(e: crate::artifact::SyncError) -> ! {
+    eprintln!("{e}");
+    match e {
+        crate::artifact::SyncError::Push(_) => std::process::exit(2),
+        _ => std::process::exit(1),
+    }
 }
 
 fn require_lists(store: &Store, cwd: &str) -> Result<Vec<TaskList>, Box<dyn std::error::Error>> {
@@ -57,19 +64,52 @@ pub enum Command {
     #[command(visible_alias = "p", about = "Plan file operations")]
     Plan {
         #[command(subcommand)]
-        action: PlanAction,
+        action: ArtifactAction,
     },
 
     #[command(visible_alias = "s", about = "Spec file operations")]
     Spec {
         #[command(subcommand)]
-        action: SpecAction,
+        action: ArtifactAction,
+    },
+
+    #[command(visible_alias = "r", about = "Review file operations")]
+    Review {
+        #[command(subcommand)]
+        action: ArtifactAction,
+    },
+
+    #[command(visible_alias = "rp", about = "Report file operations")]
+    Report {
+        #[command(subcommand)]
+        action: ArtifactAction,
+    },
+
+    #[command(visible_alias = "d", about = "Doc file operations")]
+    Doc {
+        #[command(subcommand)]
+        action: ArtifactAction,
+    },
+
+    #[command(visible_alias = "v", about = "Vault repository management")]
+    Vault {
+        #[command(subcommand)]
+        action: VaultAction,
     },
 
     #[command(visible_alias = "j", about = "Project operations")]
     Project {
         #[command(subcommand)]
         action: ProjectAction,
+    },
+
+    #[command(about = "Read artifact by stem (resolves across all types)")]
+    Read {
+        #[arg(help = "File path or stem")]
+        file: String,
+
+        #[arg(long, help = "Output frontmatter as JSON")]
+        frontmatter: bool,
     },
 
     #[command(visible_alias = "n", about = "Handle notification hooks")]
@@ -209,9 +249,6 @@ pub enum ToolAction {
         cochanges: bool,
     },
 
-    #[command(about = "Emit compaction-recovery context for SessionStart hooks")]
-    CompactionRecovery,
-
     #[command(about = "Find files frequently changed together with current changes")]
     Cochanges {
         #[arg(
@@ -259,25 +296,25 @@ pub enum ProjectAction {
 }
 
 #[derive(Subcommand)]
-pub enum PlanAction {
-    #[command(about = "List execution plans for the current project")]
+pub enum ArtifactAction {
+    #[command(about = "List artifacts for the current project")]
     List {
         #[arg(long, help = "Output as JSON")]
         json: bool,
 
-        #[arg(long, help = "Show plans from all projects")]
+        #[arg(long, help = "Show artifacts from all projects")]
         all: bool,
 
         #[arg(short, long, help = "Filter by project path")]
         project: Option<String>,
 
-        #[arg(long, help = "Show archived plans instead of active")]
+        #[arg(long, help = "Show archived artifacts instead of active")]
         archived: bool,
     },
 
-    #[command(about = "Create a new plan file")]
+    #[command(about = "Create a new artifact file")]
     Create {
-        #[arg(long, help = "Plan topic")]
+        #[arg(long, help = "Artifact topic")]
         topic: String,
 
         #[arg(long, help = "Project path")]
@@ -286,23 +323,29 @@ pub enum PlanAction {
         #[arg(long, help = "Custom slug (auto-generated if omitted)")]
         slug: Option<String>,
 
-        #[arg(long, help = "Filename prefix")]
-        prefix: Option<String>,
+        #[arg(long, help = "Source artifact stem for [[wiki-link]]")]
+        source: Option<String>,
 
-        #[arg(long, help = "Plan body content")]
+        #[arg(
+            long,
+            help = "Comma-separated tags (e.g. domain/combat,stage/research)"
+        )]
+        tags: Option<String>,
+
+        #[arg(long, help = "Artifact body content")]
         body: Option<String>,
     },
 
-    #[command(about = "Read plan file body or frontmatter")]
+    #[command(about = "Read artifact file body or frontmatter")]
     Read {
-        #[arg(help = "Plan file path")]
+        #[arg(help = "File path or stem")]
         file: String,
 
         #[arg(long, help = "Output frontmatter as JSON")]
         frontmatter: bool,
     },
 
-    #[command(about = "Find most recently modified plan file")]
+    #[command(about = "Find most recently modified artifact file")]
     Latest {
         #[arg(long, help = "Project path (defaults to git root or cwd)")]
         project: Option<String>,
@@ -311,19 +354,19 @@ pub enum PlanAction {
         task_file: Option<String>,
     },
 
-    #[command(about = "Move a plan file to archive/ subfolder")]
+    #[command(about = "Move an artifact file to archive/ subfolder")]
     Archive {
-        #[arg(help = "Plan file path")]
+        #[arg(help = "File path or stem")]
         file: String,
     },
 
-    #[command(about = "Show plan content by ID")]
+    #[command(about = "Show artifact content by ID")]
     Show {
-        #[arg(help = "Plan ID or name")]
+        #[arg(help = "Artifact ID or name")]
         id: String,
     },
 
-    #[command(about = "Archive plan files older than N days")]
+    #[command(about = "Archive artifact files older than N days")]
     Prune {
         #[arg(long, default_value_t = 30, help = "Age threshold in days")]
         days: u64,
@@ -333,85 +376,58 @@ pub enum PlanAction {
 
         #[arg(short, long, help = "Filter by project path")]
         project: Option<String>,
+    },
+
+    #[command(about = "Extract inline HTML comments from an artifact")]
+    Comments {
+        #[arg(help = "File path or stem")]
+        file: String,
+
+        #[arg(long, help = "Output as JSON")]
+        json: bool,
     },
 }
 
 #[derive(Subcommand)]
-pub enum SpecAction {
-    #[command(about = "List specs for the current project")]
-    List {
-        #[arg(long, help = "Output as JSON")]
-        json: bool,
+pub enum VaultAction {
+    #[command(about = "Initialize ~/blueprints/ repository")]
+    Init,
 
-        #[arg(long, help = "Show specs from all projects")]
-        all: bool,
+    #[command(about = "Migrate artifacts from ~/.claude/ to ~/blueprints/")]
+    Migrate,
 
-        #[arg(short, long, help = "Filter by project path")]
-        project: Option<String>,
+    #[command(about = "Print detected project name")]
+    Project,
 
-        #[arg(long, help = "Show archived specs instead of active")]
-        archived: bool,
-    },
-
-    #[command(about = "Create a new spec file")]
-    Create {
-        #[arg(long, help = "Spec topic")]
-        topic: String,
-
+    #[command(about = "Find related artifacts by topic keyword overlap")]
+    Related {
         #[arg(long, help = "Project path")]
         project: String,
 
-        #[arg(long, help = "Custom slug (auto-generated if omitted)")]
-        slug: Option<String>,
-
-        #[arg(long, help = "Filename prefix")]
-        prefix: Option<String>,
-
-        #[arg(long, help = "Spec body content")]
-        body: Option<String>,
+        #[arg(help = "Topic to match against")]
+        topic: String,
     },
 
-    #[command(about = "Read spec file body or frontmatter")]
-    Read {
-        #[arg(help = "Spec file path")]
-        file: String,
+    #[command(about = "Check for unresolved wiki-links (via Obsidian CLI)")]
+    Check,
 
-        #[arg(long, help = "Output frontmatter as JSON")]
-        frontmatter: bool,
-    },
+    #[command(about = "Search artifacts (via Obsidian CLI)")]
+    Search {
+        #[arg(help = "Search query")]
+        query: String,
 
-    #[command(about = "Find most recently modified spec file")]
-    Latest {
-        #[arg(long, help = "Project path (defaults to git root or cwd)")]
-        project: Option<String>,
+        #[arg(long, help = "Output as JSON")]
+        json: bool,
 
-        #[arg(long, help = "Resolve this file directly instead of mtime heuristic")]
-        task_file: Option<String>,
-    },
-
-    #[command(about = "Move a spec file to archive/ subfolder")]
-    Archive {
-        #[arg(help = "Spec file path")]
-        file: String,
-    },
-
-    #[command(about = "Show spec content by ID")]
-    Show {
-        #[arg(help = "Spec ID or name")]
-        id: String,
-    },
-
-    #[command(about = "Archive spec files older than N days")]
-    Prune {
-        #[arg(long, default_value_t = 30, help = "Age threshold in days")]
-        days: u64,
-
-        #[arg(long, help = "Dry run — print what would be archived")]
-        dry_run: bool,
+        #[arg(long, help = "Filter by artifact type (spec, plan, review, report, doc)", value_parser = ["spec", "plan", "review", "report", "doc"])]
+        r#type: Option<String>,
 
         #[arg(short, long, help = "Filter by project path")]
         project: Option<String>,
     },
+
+    #[command(about = "Show vault status (git state, artifact count)")]
+    Status,
 }
 
 pub fn run_list(
@@ -841,184 +857,6 @@ pub fn run_prune(
     Ok(())
 }
 
-pub fn run_plans(
-    cwd: &str,
-    json: bool,
-    all: bool,
-    project: Option<String>,
-    archived: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let mut plans = if archived {
-        plan::list_archived_plans()
-    } else {
-        plan::list_plans()
-    };
-
-    // Always exclude plans without a project
-    plans.retain(|p| !p.project.is_empty());
-
-    if let Some(ref proj) = project {
-        plans.retain(|p| p.project.contains(proj.as_str()));
-    } else if !all {
-        plans.retain(|p| cwd.contains(&p.project));
-    }
-
-    if plans.is_empty() {
-        if all {
-            eprintln!("{}", ansi::dim("No plans found in ~/.claude/plans/"));
-        } else {
-            eprintln!(
-                "{}",
-                ansi::dim("No plans found for current project. Use --all to show all plans.")
-            );
-        }
-        return Ok(());
-    }
-
-    if json {
-        let json_plans: Vec<_> = plans
-            .iter()
-            .map(|p| {
-                serde_json::json!({
-                    "name": p.name,
-                    "title": p.title,
-                    "project": crate::planfile::project_name(&p.project),
-                    "modified": plan::format_date(p.mod_time),
-                    "size": plan::format_size(p.size),
-                })
-            })
-            .collect();
-        println!("{}", serde_json::to_string_pretty(&json_plans)?);
-    } else {
-        println!(
-            "{}",
-            ansi::bold(&format!(
-                "{:<12} {:<30} {:<42} {:<12} SIZE",
-                "PROJECT", "NAME", "TITLE", "MODIFIED"
-            ))
-        );
-        println!("{}", ansi::dim(&"-".repeat(100)));
-
-        for p in &plans {
-            let proj = crate::planfile::project_name(&p.project);
-
-            let name = if p.name.len() > 28 {
-                format!("{}...", truncate_at_char_boundary(&p.name, 25))
-            } else {
-                p.name.clone()
-            };
-
-            let title = if p.title.len() > 40 {
-                format!("{}...", truncate_at_char_boundary(&p.title, 37))
-            } else {
-                p.title.clone()
-            };
-
-            let title_col = format!("{:<42}", title);
-            println!(
-                "{} {} {} {} {}",
-                ansi::id(&format!("{:<12}", proj)),
-                ansi::dim(&format!("{:<30}", name)),
-                title_col,
-                ansi::dim(&format!("{:<12}", plan::format_date(p.mod_time))),
-                ansi::dim(&plan::format_size(p.size))
-            );
-        }
-    }
-
-    Ok(())
-}
-
-pub fn run_plan(id: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let plans = plan::list_plans();
-
-    if plans.is_empty() {
-        eprintln!("{}", ansi::dim("No plans found in ~/.claude/plans/"));
-        return Ok(());
-    }
-
-    let normalized_id = id.strip_suffix(".md").unwrap_or(id);
-
-    let found = plans.iter().find(|p| {
-        p.name == normalized_id || p.name == id || p.path.file_name().is_some_and(|f| f == id)
-    });
-
-    let Some(plan_ref) = found else {
-        eprintln!("Plan not found: {id}");
-        return Ok(());
-    };
-
-    let content = plan::load_content(&plan_ref.path);
-    println!("{content}");
-
-    Ok(())
-}
-
-pub fn run_compaction_recovery() -> Result<(), Box<dyn std::error::Error>> {
-    let input: serde_json::Value =
-        serde_json::from_reader(std::io::stdin().lock()).unwrap_or_else(|_| serde_json::json!({}));
-    let output = compaction_recovery_output(&input);
-    println!("{}", serde_json::to_string(&output)?);
-    Ok(())
-}
-
-fn compaction_recovery_output(input: &serde_json::Value) -> serde_json::Value {
-    let session_id = input
-        .get("session_id")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
-
-    serde_json::json!({
-        "hookSpecificOutput": {
-            "hookEventName": "SessionStart",
-            "additionalContext": format!(
-                "COMPACTION RECOVERY — session_id: {session_id}. \
-                 Check TaskList for in_progress pipeline trackers where \
-                 metadata.session_id === '{session_id}'. If found, resume \
-                 with the appropriate --continue flag (/vibe --continue, \
-                 /super-vibe --continue, or /develop). Ignore trackers \
-                 from other sessions."
-            )
-        }
-    })
-}
-
-#[cfg(test)]
-mod compaction_recovery_tests {
-    use super::*;
-
-    #[test]
-    fn extracts_session_id() {
-        let input = serde_json::json!({"session_id": "abc-123", "source": "compact"});
-        let output = compaction_recovery_output(&input);
-        let ctx = output["hookSpecificOutput"]["additionalContext"]
-            .as_str()
-            .unwrap();
-        assert!(ctx.contains("abc-123"));
-        assert!(ctx.contains("metadata.session_id === 'abc-123'"));
-    }
-
-    #[test]
-    fn missing_session_id_falls_back() {
-        let input = serde_json::json!({"source": "compact"});
-        let output = compaction_recovery_output(&input);
-        let ctx = output["hookSpecificOutput"]["additionalContext"]
-            .as_str()
-            .unwrap();
-        assert!(ctx.contains("unknown"));
-    }
-
-    #[test]
-    fn empty_input() {
-        let input = serde_json::json!({});
-        let output = compaction_recovery_output(&input);
-        assert_eq!(
-            output["hookSpecificOutput"]["hookEventName"],
-            "SessionStart"
-        );
-    }
-}
-
 pub fn run_slug(words: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     if words.is_empty() {
         return Ok(());
@@ -1031,70 +869,6 @@ pub fn run_slug(words: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-pub fn run_plan_create(
-    topic: String,
-    project: String,
-    slug: Option<String>,
-    prefix: Option<String>,
-    body: Option<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let mut args = vec![
-        "--topic".to_string(),
-        topic,
-        "--project".to_string(),
-        project,
-    ];
-    if let Some(s) = slug {
-        args.push("--slug".to_string());
-        args.push(s);
-    }
-    if let Some(p) = prefix {
-        args.push("--prefix".to_string());
-        args.push(p);
-    }
-    if let Some(b) = body {
-        args.push("--body".to_string());
-        args.push(b);
-    }
-    crate::planfile::cmd_create(&args);
-    Ok(())
-}
-
-pub fn run_plan_read(file: String, frontmatter: bool) -> Result<(), Box<dyn std::error::Error>> {
-    let mut args = vec![file];
-    if frontmatter {
-        args.insert(0, "--frontmatter".to_string());
-    }
-    crate::planfile::cmd_read(&args);
-    Ok(())
-}
-
-pub fn run_plan_latest(
-    project: Option<String>,
-    task_file: Option<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let mut args = vec![];
-    if let Some(p) = project {
-        args.push("--project".to_string());
-        args.push(p);
-    }
-    if let Some(tf) = task_file {
-        args.push("--task-file".to_string());
-        args.push(tf);
-    }
-    crate::planfile::cmd_latest(&args);
-    Ok(())
-}
-
-pub fn run_plan_archive(file: String) -> Result<(), Box<dyn std::error::Error>> {
-    crate::planfile::cmd_archive(&[file]);
-    Ok(())
-}
-
-pub fn run_plan_show(id: &str) -> Result<(), Box<dyn std::error::Error>> {
-    run_plan(id)
-}
-
 pub fn run_projects(store: &Store, json: bool) -> Result<(), Box<dyn std::error::Error>> {
     // slug -> path (empty string for plan-subdir-only entries)
     let mut projects: BTreeMap<String, String> = BTreeMap::new();
@@ -1103,31 +877,29 @@ pub fn run_projects(store: &Store, json: bool) -> Result<(), Box<dyn std::error:
     for list in store.list_task_lists() {
         for task in store.list_tasks(&list.id) {
             if !task.project.is_empty() {
-                let slug = crate::planfile::project_name(&task.project);
+                let slug = crate::artifact::project_name(&task.project);
                 projects.entry(slug).or_insert(task.project);
             }
         }
     }
 
     // Source 2: plans with a non-empty project field
-    for plan in plan::list_plans() {
+    for plan in crate::artifact::list_artifacts(crate::artifact::ArtifactKind::Plan) {
         if !plan.project.is_empty() {
-            let slug = crate::planfile::project_name(&plan.project);
+            let slug = crate::artifact::project_name(&plan.project);
             projects.entry(slug).or_insert(plan.project);
         }
     }
 
-    // Source 3: subdirectories of ~/.claude/plans/ (excluding "archive")
-    if let Ok(home) = std::env::var("HOME") {
-        let plans_base = std::path::PathBuf::from(home).join(".claude").join("plans");
-        if let Ok(entries) = std::fs::read_dir(&plans_base) {
-            for entry in entries.flatten() {
-                if entry.path().is_dir()
-                    && let Some(name) = entry.file_name().to_str()
-                    && name != "archive"
-                {
-                    projects.entry(name.to_string()).or_default();
-                }
+    // Source 3: project subdirectories of the vault
+    let bp = crate::artifact::blueprints_dir_unchecked();
+    if let Ok(entries) = std::fs::read_dir(&bp) {
+        for entry in entries.flatten() {
+            if entry.path().is_dir()
+                && let Some(name) = entry.file_name().to_str()
+                && name != "archive"
+            {
+                projects.entry(name.to_string()).or_default();
             }
         }
     }
@@ -1165,7 +937,7 @@ pub fn run_project_show(store: &Store, slug: &str) -> Result<(), Box<dyn std::er
     let mut project_path = String::new();
     for list in store.list_task_lists() {
         for task in store.list_tasks(&list.id) {
-            if !task.project.is_empty() && crate::planfile::project_name(&task.project) == slug {
+            if !task.project.is_empty() && crate::artifact::project_name(&task.project) == slug {
                 project_path = task.project.clone();
                 break;
             }
@@ -1175,8 +947,8 @@ pub fn run_project_show(store: &Store, slug: &str) -> Result<(), Box<dyn std::er
         }
     }
     if project_path.is_empty() {
-        for p in plan::list_plans() {
-            if !p.project.is_empty() && crate::planfile::project_name(&p.project) == slug {
+        for p in crate::artifact::list_artifacts(crate::artifact::ArtifactKind::Plan) {
+            if !p.project.is_empty() && crate::artifact::project_name(&p.project) == slug {
                 project_path = p.project.clone();
                 break;
             }
@@ -1247,11 +1019,12 @@ pub fn run_project_show(store: &Store, slug: &str) -> Result<(), Box<dyn std::er
     }
 
     // Recent plans
-    let project_plans: Vec<_> = plan::list_plans()
-        .into_iter()
-        .filter(|p| p.project == project_path)
-        .take(5)
-        .collect();
+    let project_plans: Vec<_> =
+        crate::artifact::list_artifacts(crate::artifact::ArtifactKind::Plan)
+            .into_iter()
+            .filter(|p| p.project == project_path)
+            .take(5)
+            .collect();
 
     if !project_plans.is_empty() {
         println!("{}", ansi::section("Recent Plans"));
@@ -1263,55 +1036,65 @@ pub fn run_project_show(store: &Store, slug: &str) -> Result<(), Box<dyn std::er
     Ok(())
 }
 
-// ── Spec operations ──────────────────────────────────────────────────────────
+// ── Generic artifact operations (for Review, Report, and future types) ──────
 
-pub fn run_specs(
+pub fn run_artifact_list(
+    kind: crate::artifact::ArtifactKind,
     cwd: &str,
     json: bool,
     all: bool,
     project: Option<String>,
     archived: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut specs = if archived {
-        spec::list_archived_specs()
+    let mut items = if archived {
+        crate::artifact::list_archived_artifacts(kind)
     } else {
-        spec::list_specs()
+        crate::artifact::list_artifacts(kind)
     };
 
-    specs.retain(|s| !s.project.is_empty());
+    items.retain(|a| !a.project.is_empty());
 
     if let Some(ref proj) = project {
-        specs.retain(|s| s.project.contains(proj.as_str()));
+        let resolved = crate::artifact::resolve_repo_root(proj);
+        items.retain(|a| a.project.contains(resolved.as_str()));
     } else if !all {
-        specs.retain(|s| cwd.contains(&s.project));
+        let resolved_cwd = crate::artifact::resolve_repo_root(cwd);
+        items.retain(|a| resolved_cwd.contains(&a.project));
     }
 
-    if specs.is_empty() {
+    let label = kind.dir_name();
+
+    if items.is_empty() {
         if all {
-            eprintln!("{}", ansi::dim("No specs found in ~/.claude/specs/"));
+            eprintln!(
+                "{}",
+                ansi::dim(&format!("No {label}s found in ~/blueprints/"))
+            );
         } else {
             eprintln!(
                 "{}",
-                ansi::dim("No specs found for current project. Use --all to show all specs.")
+                ansi::dim(&format!(
+                    "No {label}s found for current project. Use --all to show all {label}s."
+                ))
             );
         }
         return Ok(());
     }
 
     if json {
-        let json_specs: Vec<_> = specs
+        let json_items: Vec<_> = items
             .iter()
-            .map(|s| {
+            .map(|a| {
                 serde_json::json!({
-                    "name": s.name,
-                    "title": s.title,
-                    "project": crate::planfile::project_name(&s.project),
-                    "modified": plan::format_date(s.mod_time),
-                    "size": plan::format_size(s.size),
+                    "name": a.name,
+                    "title": a.title,
+                    "project": crate::artifact::project_name(&a.project),
+                    "modified": crate::artifact::format_date(a.mod_time),
+                    "size": crate::artifact::format_size(a.size),
                 })
             })
             .collect();
-        println!("{}", serde_json::to_string_pretty(&json_specs)?);
+        println!("{}", serde_json::to_string_pretty(&json_items)?);
     } else {
         println!(
             "{}",
@@ -1322,19 +1105,19 @@ pub fn run_specs(
         );
         println!("{}", ansi::dim(&"-".repeat(100)));
 
-        for s in &specs {
-            let proj = crate::planfile::project_name(&s.project);
+        for a in &items {
+            let proj = crate::artifact::project_name(&a.project);
 
-            let name = if s.name.len() > 28 {
-                format!("{}...", truncate_at_char_boundary(&s.name, 25))
+            let name = if a.name.len() > 28 {
+                format!("{}...", truncate_at_char_boundary(&a.name, 25))
             } else {
-                s.name.clone()
+                a.name.clone()
             };
 
-            let title = if s.title.len() > 40 {
-                format!("{}...", truncate_at_char_boundary(&s.title, 37))
+            let title = if a.title.len() > 40 {
+                format!("{}...", truncate_at_char_boundary(&a.title, 37))
             } else {
-                s.title.clone()
+                a.title.clone()
             };
 
             let title_col = format!("{:<42}", title);
@@ -1343,8 +1126,8 @@ pub fn run_specs(
                 ansi::id(&format!("{:<12}", proj)),
                 ansi::dim(&format!("{:<30}", name)),
                 title_col,
-                ansi::dim(&format!("{:<12}", plan::format_date(s.mod_time))),
-                ansi::dim(&plan::format_size(s.size))
+                ansi::dim(&format!("{:<12}", crate::artifact::format_date(a.mod_time))),
+                ansi::dim(&crate::artifact::format_size(a.size))
             );
         }
     }
@@ -1352,132 +1135,121 @@ pub fn run_specs(
     Ok(())
 }
 
-pub fn run_spec(id: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let specs = spec::list_specs();
+pub fn run_artifact_show(
+    kind: crate::artifact::ArtifactKind,
+    id: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let items = crate::artifact::list_artifacts(kind);
+    let label = kind.dir_name();
 
-    if specs.is_empty() {
-        eprintln!("{}", ansi::dim("No specs found in ~/.claude/specs/"));
+    if items.is_empty() {
+        eprintln!(
+            "{}",
+            ansi::dim(&format!("No {label}s found in ~/blueprints/"))
+        );
         return Ok(());
     }
 
     let normalized_id = id.strip_suffix(".md").unwrap_or(id);
 
-    let found = specs.iter().find(|s| {
-        s.name == normalized_id || s.name == id || s.path.file_name().is_some_and(|f| f == id)
+    let found = items.iter().find(|a| {
+        a.name == normalized_id || a.name == id || a.path.file_name().is_some_and(|f| f == id)
     });
 
-    let Some(spec_ref) = found else {
-        eprintln!("Spec not found: {id}");
+    let Some(artifact_ref) = found else {
+        eprintln!("{label} not found: {id}");
         return Ok(());
     };
 
-    let content = spec::load_content(&spec_ref.path);
+    let content = crate::artifact::load_content(kind, &artifact_ref.path);
     println!("{content}");
 
     Ok(())
 }
 
-pub fn run_spec_create(
+pub fn run_artifact_create(
+    kind: crate::artifact::ArtifactKind,
     topic: String,
     project: String,
     slug: Option<String>,
-    prefix: Option<String>,
+    source: Option<String>,
+    tags: Option<String>,
     body: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut args = vec![
-        "--topic".to_string(),
-        topic,
-        "--project".to_string(),
-        project,
-    ];
-    if let Some(s) = slug {
-        args.push("--slug".to_string());
-        args.push(s);
+    let tag_list: Vec<String> = tags
+        .unwrap_or_default()
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    if let Err(e) = crate::artifact::cmd_create(
+        kind,
+        &topic,
+        &project,
+        slug.as_deref(),
+        source.as_deref(),
+        &tag_list,
+        body.unwrap_or_default(),
+    ) {
+        handle_sync_error(e);
     }
-    if let Some(p) = prefix {
-        args.push("--prefix".to_string());
-        args.push(p);
-    }
-    if let Some(b) = body {
-        args.push("--body".to_string());
-        args.push(b);
-    }
-    crate::specfile::cmd_create(&args);
     Ok(())
 }
 
-pub fn run_spec_read(file: String, frontmatter: bool) -> Result<(), Box<dyn std::error::Error>> {
-    let mut args = vec![file];
-    if frontmatter {
-        args.insert(0, "--frontmatter".to_string());
-    }
-    crate::specfile::cmd_read(&args);
+pub fn run_artifact_read(
+    kind: crate::artifact::ArtifactKind,
+    file: String,
+    frontmatter: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    crate::artifact::cmd_read(&file, kind, frontmatter);
     Ok(())
 }
 
-pub fn run_spec_latest(
+pub fn run_artifact_comments(
+    kind: crate::artifact::ArtifactKind,
+    file: String,
+    json: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    crate::artifact::cmd_comments(&file, kind, json);
+    Ok(())
+}
+
+pub fn run_artifact_latest(
+    kind: crate::artifact::ArtifactKind,
     project: Option<String>,
     task_file: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut args = vec![];
-    if let Some(p) = project {
-        args.push("--project".to_string());
-        args.push(p);
-    }
-    if let Some(tf) = task_file {
-        args.push("--task-file".to_string());
-        args.push(tf);
-    }
-    crate::specfile::cmd_latest(&args);
+    crate::artifact::cmd_latest(kind, project.as_deref(), task_file.as_deref());
     Ok(())
 }
 
-pub fn run_spec_archive(file: String) -> Result<(), Box<dyn std::error::Error>> {
-    crate::specfile::cmd_archive(&[file]);
+pub fn run_artifact_archive(
+    kind: crate::artifact::ArtifactKind,
+    file: String,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if let Err(e) = crate::artifact::cmd_archive(kind, &file) {
+        handle_sync_error(e);
+    }
     Ok(())
 }
 
-pub fn run_spec_show(id: &str) -> Result<(), Box<dyn std::error::Error>> {
-    run_spec(id)
-}
-
-// ── Prune operations ─────────────────────────────────────────────────────────
-
-pub fn run_plan_prune(
+pub fn run_artifact_prune(
+    kind: crate::artifact::ArtifactKind,
     days: u64,
     dry_run: bool,
     project: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    run_artifact_prune("plans", days, dry_run, project)
-}
-
-pub fn run_spec_prune(
-    days: u64,
-    dry_run: bool,
-    project: Option<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    run_artifact_prune("specs", days, dry_run, project)
-}
-
-fn run_artifact_prune(
-    kind: &str,
-    days: u64,
-    dry_run: bool,
-    project: Option<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let Some(home) = dirs::home_dir() else {
-        eprintln!("Cannot determine home directory");
-        return Ok(());
-    };
-    let base = home.join(".claude").join(kind);
+    let bp = crate::artifact::blueprints_dir();
+    let kind_dir = kind.dir_name();
     let threshold = std::time::Duration::from_secs(days * 86400);
     let now = std::time::SystemTime::now();
     let mut archived_count = 0u32;
+    let mut sync_errors = 0u32;
 
-    let Ok(project_dirs) = std::fs::read_dir(&base) else {
+    let Ok(project_dirs) = std::fs::read_dir(&bp) else {
         eprintln!(
             "{}",
-            ansi::dim(&format!("No {kind} found in ~/.claude/{kind}/"))
+            ansi::dim(&format!("No {kind_dir} found in ~/blueprints/"))
         );
         return Ok(());
     };
@@ -1490,13 +1262,15 @@ fn run_artifact_prune(
         if dir_name == "archive" {
             continue;
         }
-        if let Some(ref proj) = project
-            && !dir_name.contains(proj.as_str())
-        {
-            continue;
+        if let Some(ref proj) = project {
+            let resolved = crate::artifact::project_name(&crate::artifact::resolve_repo_root(proj));
+            if !dir_name.contains(resolved.as_str()) {
+                continue;
+            }
         }
 
-        let Ok(files) = std::fs::read_dir(dir_entry.path()) else {
+        let artifact_dir = dir_entry.path().join(kind_dir);
+        let Ok(files) = std::fs::read_dir(&artifact_dir) else {
             continue;
         };
         for file_entry in files.flatten() {
@@ -1521,26 +1295,30 @@ fn run_artifact_prune(
             if dry_run {
                 println!("would archive: {path_str}");
             } else {
-                let args = [path_str.clone()];
-                if kind == "plans" {
-                    crate::planfile::cmd_archive(&args);
-                } else {
-                    crate::specfile::cmd_archive(&args);
+                match crate::artifact::cmd_archive(kind, &path_str) {
+                    Ok(()) => archived_count += 1,
+                    Err(e) => {
+                        eprintln!("{e}");
+                        sync_errors += 1;
+                    }
                 }
-                archived_count += 1;
             }
         }
     }
 
     if !dry_run && archived_count > 0 {
-        println!("Archived {archived_count} {kind} file(s)");
+        println!("Archived {archived_count} {} file(s)", kind.dir_name());
+    }
+    if sync_errors > 0 {
+        eprintln!("{sync_errors} file(s) failed to sync");
+        std::process::exit(2);
     }
 
     Ok(())
 }
 
 pub fn run_completion(shell: Shell) -> Result<(), Box<dyn std::error::Error>> {
-    generate(shell, &mut Cli::command(), "ck", &mut std::io::stdout());
+    generate(shell, &mut Cli::command(), "ct", &mut std::io::stdout());
     Ok(())
 }
 

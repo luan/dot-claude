@@ -154,6 +154,8 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     };
     #[cfg(target_os = "macos")]
     let terminal_focused = false; // macOS handles this inside macos::notify
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    let terminal_focused = false;
 
     // Skip bell and sound if terminal is focused and viewing this session
     let skip_for_focus = terminal_focused
@@ -165,6 +167,11 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             #[cfg(target_os = "macos")]
             {
                 macos::is_session_active(s)
+            }
+            #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+            {
+                let _ = s;
+                false
             }
         });
 

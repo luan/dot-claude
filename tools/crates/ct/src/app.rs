@@ -7,9 +7,8 @@ use ratatui::text::{Line, Span};
 use std::collections::HashSet;
 use std::path::Path;
 
+use crate::artifact::{self, ArtifactKind};
 use crate::editor;
-use crate::plan;
-use crate::spec;
 use crate::store::{self, Status, Store, Task, TaskList};
 use crate::ui::{
     confirm, create, detail, help, list, plan_detail, plans, spec_detail, specs, status, theme,
@@ -93,7 +92,7 @@ impl App {
             .iter()
             .position(|l| l.id == active_list)
             .unwrap_or(0);
-        let all_plans: Vec<_> = plan::list_plans()
+        let all_plans: Vec<_> = artifact::list_artifacts(ArtifactKind::Plan)
             .into_iter()
             .filter(|p| !p.project.is_empty())
             .collect();
@@ -119,7 +118,10 @@ impl App {
             create_form: None,
             plans_state: Some(plans::PlansState::new(all_plans, plan_counts)),
             plan_detail: None,
-            specs_state: Some(specs::SpecsState::new(spec::list_specs(), spec_counts)),
+            specs_state: Some(specs::SpecsState::new(
+                artifact::list_artifacts(ArtifactKind::Spec),
+                spec_counts,
+            )),
             spec_detail: None,
             vibe_state: Some(vibe_state),
             vibe_detail: None,
