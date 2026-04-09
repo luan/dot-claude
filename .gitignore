@@ -28,25 +28,7 @@ tools/target
 target
 
 # Claude Code runtime — project-level .claude/ dir
-.claude/settings.local.json
-.claude/agent-memory/
-.claude/session-env/
-.claude/shell-snapshots/
-.claude/debug/
-.claude/plans/
-.claude/todos/
-.claude/projects/
-.claude/tasks/
-.claude/teams/
-.claude/history.jsonl
-.claude/file-history/
-.claude/paste-cache/
-.claude/backups/
-.claude/cache/
-.claude/stats-cache.json
-.claude/mcp-needs-auth-cache.json
-.claude/usage-data/
-.claude/telemetry/
+.claude/
 
 # Claude Code runtime — root-level (leftover from old ~/.claude structure)
 todos/

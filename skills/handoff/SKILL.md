@@ -20,9 +20,9 @@ Snapshot session state (git context + active tasks) into a structured handoff ta
 
 ## Context
 
-Branch: !`git branch --show-current 2>/dev/null || echo "(detached)"`
-Status: !`git status -sb 2>/dev/null | head -20`
-Recent: !`git log --oneline -5 2>/dev/null`
+Branch: !`git branch --show-current 2>/dev/null || echo "(not a git repo)"`
+Status: !`git status -sb 2>/dev/null || echo "(not a git repo)"`
+Recent: !`git log --oneline -5 2>/dev/null || echo "(no git history)"`
 
 ## Arguments
 
