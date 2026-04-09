@@ -3,7 +3,6 @@ name: pr-descr
 description: "Update PR title and description from branch context. Triggers: 'pr description', 'update PR', 'PR title', 'describe PR'."
 argument-hint: "[--auto]"
 user-invocable: true
-model: sonnet
 disable-model-invocation: false
 allowed-tools:
   - "Bash(git status:*)"
@@ -26,15 +25,16 @@ Update an existing PR's title and description from branch context.
 
 ## Context
 
-PR: !`gh pr view --json number,title,body,headRefName -q '{number,title,headRefName}' 2>/dev/null`
 Log: !`git log --oneline -10 2>/dev/null`
 Status: !`git status -sb 2>/dev/null`
 Template: !`cat .github/PULL_REQUEST_TEMPLATE.md 2>/dev/null`
-BASE: !`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||' || echo main`
 
 ## Step 1: Check State
 
-Use injected context above. If PR is empty, tell user and stop.
+Resolve at runtime:
+
+- **PR**: `gh pr view --json number,title,body,headRefName -q '{number,title,headRefName}'`. If empty, tell user and stop.
+- **BASE**: `gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||' || echo main`
 
 `--auto` → skip edge case questions, assume committed changes only. Without `--auto`:
 

@@ -97,4 +97,4 @@ For **bugfixes**: include original reproduction steps + edge cases around fix bo
 
 ## Step 4: Output
 
-Present the plan. `$CLAUDE_NON_INTERACTIVE` → output and stop. Otherwise present and stop.
+Present the plan and stop.

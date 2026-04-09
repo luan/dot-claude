@@ -218,13 +218,13 @@
       "eval_ids": []
     },
     {
-      "rule_id": "git-push",
-      "name": "Git Push Authorization",
-      "description": "Git push is one-shot authorization; do not push subsequent commits without explicit re-authorization",
-      "source": "rules/git-push.md",
+      "rule_id": "git-workflow",
+      "name": "Git Workflow",
+      "description": "Push only when explicitly requested, no push announcements, accumulate changes during refinement, use gt on gt-managed branches",
+      "source": "rules/git-workflow.md",
       "toggle_type": "file",
-      "toggle_text": "After every git commit, state whether you are pushing or not and why:\n- \"Committed abc123. Not pushing (not requested).\"\n- \"Committed abc123. Pushing (user asked to push).\"\n\nPush only when the current message explicitly asks for it. A previous push does not authorize future pushes.",
-      "eval_ids": [5, 6, 7]
+      "toggle_text": "Push only when the user explicitly requests it. Do not announce push decisions. During iterative refinement, accumulate changes as unstaged edits — commit only when asked. If on a Graphite-managed branch, use gt commands exclusively.",
+      "eval_ids": ["git-workflow-no-push-silent", "git-workflow-yes-push", "git-workflow-no-tiny-commits"]
     },
     {
       "rule_id": "bash-tools",

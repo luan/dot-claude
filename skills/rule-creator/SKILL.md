@@ -1,7 +1,7 @@
 ---
 name: rule-creator
 description: "Create, evaluate, and iterate on CLAUDE.md rules. Drafts rules from behavioral intent, tests whether they actually change Claude's behavior via isolated baselines, and produces benchmark reports with an interactive HTML viewer. Supports project-scoped evals that live alongside the rules they test. Triggers: /rule-creator, 'test this rule', 'does this rule work', 'evaluate rule', 'benchmark rule', 'rule effectiveness', 'create a rule', 'new rule', 'write a rule'. Use whenever someone wants to create, evaluate, or iterate on rules in CLAUDE.md or .claude/rules/."
-allowed-tools: Agent, Bash, Read, Glob, Grep, Write, Edit
+allowed-tools: Agent, Bash, Read, Glob, Grep
 argument-hint: "<rule-id-or-path | --new 'intent'> [--runs N] [--naked] [--init]"
 user-invocable: true
 ---
@@ -19,7 +19,7 @@ Create and test CLAUDE.md rules. Two modes:
 - `--new "intent"` — create a new rule from a behavioral description
 - `--runs N` — runs per eval for variance reduction (default: 1)
 - `--naked` — baseline uses fully stripped config (all rules + CLAUDE.md disabled, not just the target rule)
-- `--init` — scaffold `.rule-creator/` eval infrastructure for the current project
+- `--init` — scaffold `rule-creator/` eval infrastructure for the current project
 
 ## Creating Rules (`--new`)
 
@@ -74,7 +74,7 @@ The evaluation pipeline answers: "Does this rule actually change how Claude beha
 ### Project-Scoped Evals
 
 Evals belong where the rules live:
-1. `<project>/.rule-creator/evals.json` — project-specific evals (preferred)
+1. `<project>/rule-creator/evals.json` — project-specific evals (preferred)
 2. `${CLAUDE_SKILL_DIR}/evals/evals.json` — bundled evals for global rules
 
 ### Eval Schema
@@ -221,7 +221,7 @@ Verdict: RULE IS EFFECTIVE
 Scaffold eval infrastructure for the current project:
 
 1. Scan `CLAUDE.md` and `.claude/rules/` for rules
-2. Create `.rule-creator/evals.json` with eval stubs referencing actual project paths and patterns
+2. Create `rule-creator/evals.json` with eval stubs referencing actual project paths and patterns
 3. Present discovered rules and generated evals for user review
 
 ## Eval Writing Guide

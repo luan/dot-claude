@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "/brainstorm i want to add dark mode to my app. it should look good and work on mobile.",
-      "expected_output": "Starts the interview because the prompt lacks scope boundaries (no non-goals), measurable constraints, and testable success criteria. Asks ONE question via AskUserQuestion. Does not propose approaches or write code yet.",
+      "expected_output": "Starts the interview because the prompt lacks scope boundaries (no non-goals), measurable constraints, and testable success criteria. Asks ONE question via AskUserQuestion.",
       "expectations": [
         "Does NOT skip interview — prompt lacks all three skip criteria (scope boundaries, constraints, success criteria)",
         "Asks exactly ONE question per turn via AskUserQuestion",
@@ -14,27 +14,27 @@
     {
       "id": 2,
       "prompt": "/brainstorm build a rate limiter for our API. non-goals: no distributed rate limiting, no Redis — in-memory only. constraints: p99 latency under 1ms, max 100 RPS per client IP. success: rate-limited responses return 429 with Retry-After header, passes load test at 200 RPS showing 50% rejection.",
-      "expected_output": "Recognizes the prompt has scope boundaries (non-goals stated), measurable constraints (latency, RPS), and testable success criteria (429 + header, load test). May skip interview. If skipping, cites 2+ concrete details from the spec. Still goes through propose-approaches and present-design steps.",
+      "expected_output": "Recognizes the prompt has scope boundaries, measurable constraints, and testable success criteria. May skip interview. If skipping, cites 2+ concrete details from the spec.",
       "expectations": [
         "Recognizes all three skip criteria are met — may skip interview",
-        "If skipping, acknowledges by citing 2+ concrete details from the spec (not generic paraphrasing)",
+        "If skipping, acknowledges by citing 2+ concrete details (not generic paraphrasing)",
         "Still goes through design steps (propose approaches, present design) before any implementation"
       ]
     },
     {
       "id": 3,
       "prompt": "/brainstorm --auto i need a plugin system for our CLI tool. users should be able to write plugins in JS or TS that hook into command lifecycle events.",
-      "expected_output": "With --auto, skips interview entirely and infers purpose/scope/constraints from prompt + project scan. Proposes 2-3 approaches with a clear recommendation. Auto-selects the recommended approach. Presents design sections without per-section confirmations. Stores final design in metadata.design.",
+      "expected_output": "With --auto, skips interview. Proposes approaches, auto-selects recommendation. Presents design. Does NOT create tasks or store in metadata.",
       "expectations": [
         "Skips interview due to --auto flag — infers from prompt and project context",
         "Proposes 2-3 approaches with a clear recommendation and justification",
-        "Auto-selects recommended approach and presents design without per-section user confirmations"
+        "Does NOT call TaskCreate — brainstorm produces no stored artifacts, just conversation"
       ]
     },
     {
       "id": 4,
       "prompt": "/brainstorm i'm thinking about adding real-time collaboration to our markdown editor. like google docs but for markdown. users type and see each other's cursors.\n\nafter 2 interview questions, the user says: 'actually forget collab editing, i just want a share-via-link feature where others can view (read-only) the doc'",
-      "expected_output": "Recognizes the fundamental pivot from real-time collaboration to read-only sharing. Discards stale context about CRDTs/OT/cursors. Restarts from the relevant interview question for the new, much simpler scope.",
+      "expected_output": "Recognizes the fundamental pivot from real-time collaboration to read-only sharing. Discards stale context. Restarts from relevant question for the simpler scope.",
       "expectations": [
         "Acknowledges the pivot and discards stale context about real-time editing",
         "Restarts from a relevant question for the new scope (read-only sharing)",
@@ -43,30 +43,12 @@
     },
     {
       "id": 5,
-      "prompt": "/brainstorm build a Slack bot for deployments.",
-      "expected_output": "Challenges the solution-shaped prompt by asking what problem the bot solves. Does NOT accept and start designing. Asks exactly ONE reframing question. Does not propose approaches or architecture before the problem is established.",
+      "prompt": "brainstorm just finished designing a new auth system. what should i do next?",
+      "expected_output": "Suggests /spec as the next step. Does not suggest /scope (it no longer exists).",
       "expectations": [
-        "Asks what problem the bot solves — does NOT accept and start designing",
-        "Asks exactly ONE reframing question, not multiple",
-        "Does not propose approaches or architecture before problem is established"
-      ]
-    },
-    {
-      "id": 6,
-      "prompt": "/brainstorm engineers hate our CI pipeline, so we need to replace it.",
-      "expected_output": "Flags 'engineers hate our CI' as an unvalidated assumption and asks for evidence or data. Does NOT treat the replacement decision as settled before the assumption is validated.",
-      "expectations": [
-        "Explicitly identifies 'engineers hate our CI' as unvalidated, asks for evidence or data",
-        "Does NOT treat the replacement decision as settled before the assumption is validated"
-      ]
-    },
-    {
-      "id": 7,
-      "prompt": "/brainstorm deploys take 45 minutes, blocking 12 engineers 3x/day. we need to get under 10 minutes.",
-      "expected_output": "Recognizes this as a well-framed, quantified problem statement. Does NOT trigger the problem-framing gate. Proceeds with interview or design normally.",
-      "expectations": [
-        "Does NOT trigger the problem-framing gate — proceeds with interview or design",
-        "Does not ask 'what problem does this solve?' when the problem is already clear and quantified"
+        "Suggests /spec as the next step to formalize the design",
+        "Does NOT suggest /scope as an option",
+        "Does NOT suggest /vibe directly — spec comes first to create the durable artifact"
       ]
     }
   ]

@@ -3,32 +3,86 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "/spec fix sync not updating on secondary devices\n\ntriage found: sync debug logs from /dia-inspect-data show zero update events for entity X on device B. Server get-updates returns empty changeset. Local database shows entity X with position=0 and timestamp from 3 days ago. Device A (source) shows the entity was edited 2 hours ago.\n\nresearch subagent came back saying: 'the observation chain is broken — SyncObserver.swift doesn't register for changes on the relevant entity type, so edits are never detected and never queued for upload.' hypothesis: observation chain is the root cause.",
-      "expected_output": "Does NOT accept the observation-chain hypothesis at face value. The production data (zero update events) is ambiguous — it could be caused by the observation chain not detecting changes OR by the recording/position-encoding path failing to produce update events even when changes are detected. The spec must list the concrete production observations, map each to possible code paths, and flag that 'zero update events' has multiple explanations before locking in a root cause.",
+      "prompt": "/spec fix sync not updating on secondary devices\n\ntriage found: sync debug logs show zero update events for entity X on device B. Server get-updates returns empty changeset. Local database shows entity X with position=0 and timestamp from 3 days ago. Device A (source) shows the entity was edited 2 hours ago.\n\nresearch subagent came back saying: 'the observation chain is broken — SyncObserver.swift doesn't register for changes on the relevant entity type, so edits are never detected and never queued for upload.' hypothesis: observation chain is the root cause.",
+      "expected_output": "Validates the hypothesis against ALL production observations. Flags ambiguity where multiple code paths could explain 'zero update events'. Does not accept hypothesis at face value.",
       "expectations": [
-        "Lists the specific production observations from triage data: zero update events, empty server changeset, stale local timestamp/position, edit visible on device A but not device B.",
-        "For 'zero update events', identifies that MULTIPLE code paths could produce this observation — not just the observation chain. At minimum: (1) observation chain doesn't detect the change, (2) change is detected but recording/encoding fails to produce an update event, (3) update event is produced but not uploaded. Flags this ambiguity explicitly.",
-        "Does NOT present the observation-chain hypothesis as confirmed root cause without ruling out alternatives. Either dispatches follow-up investigation or states confidence as MEDIUM/LOW with 'not yet ruled out' alternatives."
+        "Lists the specific production observations from triage data",
+        "For 'zero update events', identifies that MULTIPLE code paths could produce this — not just the observation chain",
+        "Does NOT present the observation-chain hypothesis as confirmed without ruling out alternatives"
       ]
     },
     {
       "id": 2,
-      "prompt": "/spec fix webhook delivery reliability\n\nresearch subagent investigated the code and found: 'sender.ts is fire-and-forget, no retry logic exists, WebhookDeliveryStatus enum only has pending/delivered/failed with no retrying state.' No production data was provided — this is a greenfield improvement, not a bug investigation.",
-      "expected_output": "Since no production data exists and this is a greenfield improvement (not a bug with ambiguous root cause), the spec skips the production data correlation step and proceeds with HIGH confidence. The confidence gate reflects that this is a well-understood gap (missing feature) rather than a diagnostic hypothesis.",
+      "prompt": "/spec fix webhook delivery reliability\n\nresearch subagent investigated: 'sender.ts is fire-and-forget, no retry logic, WebhookDeliveryStatus enum only has pending/delivered/failed.' No production data — this is a greenfield improvement.",
+      "expected_output": "Skips production data correlation (none exists). HIGH confidence — this is a missing capability, not a contested hypothesis. Normal target-state spec.",
       "expectations": [
-        "Does NOT artificially apply production-data-correlation or root-cause-validation steps when there is no production data and no diagnostic ambiguity — these steps are for bug investigations with production evidence.",
-        "Confidence gate shows HIGH confidence with clear reasoning: this is a missing capability, not a contested hypothesis.",
-        "Produces a normal target-state spec with Problem/Recommendation/Architecture Context/Risks sections."
+        "Does NOT artificially apply production-data-correlation when there is no production data",
+        "Confidence gate shows HIGH confidence — missing capability, not a contested hypothesis",
+        "Produces a target-state spec with Problem/Recommendation/Architecture Context/Risks"
       ]
     },
     {
       "id": 3,
-      "prompt": "/spec fix memory leak in background sync\n\ntriage data from /dia-inspect-data: memory usage grows 50MB/hour during idle. Instruments trace shows SyncScheduler.scheduleNextSync() allocating Timer objects. Database shows 847 pending sync operations queued but never executed. Sync log shows 'sync paused: conflict detected' repeating every 30 seconds.\n\nresearch subagent says: 'SyncScheduler creates a new Timer each cycle without invalidating the previous one — classic retain cycle. The timer accumulates because scheduleNextSync is called on every sync-pause event, and the conflict causes continuous pause events.'",
-      "expected_output": "Validates the hypothesis against ALL production observations, not just the timer accumulation. Specifically: the hypothesis explains timer growth (new timer per pause event) and the repeating log message (conflict triggers pause loop), but must also explain the 847 pending operations — are they a symptom of the same bug, or an independent issue? The spec should trace the code path from conflict detection through pause-event firing through timer scheduling, confirming each link with the production data.",
+      "prompt": "/spec add rate limiting to the API. the spec should describe the system as if already built.",
+      "expected_output": "Produces a spec file via ct spec create and then a plan file via ct plan create with --source linking back to the spec. Both are durable artifacts.",
       "expectations": [
-        "Maps EACH production observation to the hypothesis: memory growth (timer accumulation), repeating log (conflict-pause loop), AND the 847 pending operations. Does not ignore observations that don't obviously fit.",
-        "For the 847 pending operations: either explains how they relate to the timer/conflict bug (e.g., sync never completes because of the pause loop, so operations queue indefinitely) or flags them as potentially independent — requiring separate investigation.",
-        "Confidence gate appears in the presentation with supporting evidence, alternatives not yet ruled out, and what would increase confidence. Does not present the spec as if the root cause is proven without addressing all observations."
+        "Stores the spec as a file via ct spec create (not inline in task metadata)",
+        "The spec file contains Problem, Recommendation, Architecture Context, and Risks sections",
+        "After spec approval, generates a plan with phased implementation",
+        "Stores the plan via ct plan create with --source linking to the spec stem",
+        "Plan phases include file paths (Read/Modify/Create), approach, steps, and verification"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "/spec --auto add caching layer to the database queries",
+      "expected_output": "With --auto, skips both approval gates. Returns the plan file path silently.",
+      "expectations": [
+        "Skips both spec and plan approval gates due to --auto flag",
+        "Returns the plan file path (not task metadata) for the caller to read",
+        "Does NOT call TaskCreate or TaskUpdate — no task system involvement",
+        "Both spec and plan files are created"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "after spec is complete, what does it suggest as next steps?",
+      "expected_output": "Suggests /develop with the plan file path, or /vibe. Does NOT suggest /scope (it no longer exists).",
+      "expectations": [
+        "Suggests /develop with the plan file path",
+        "Does NOT suggest /scope as a next step",
+        "References both spec and plan file paths"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "/spec --spec-only add authentication middleware",
+      "expected_output": "Stops after spec approval. Does not generate a plan. Outputs spec file path only.",
+      "expectations": [
+        "Produces a spec with Problem/Recommendation/Architecture Context/Risks",
+        "Stops after spec approval — does NOT proceed to plan generation",
+        "Suggests /spec --continue to resume and generate the plan later"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "/spec --depth max redesign the event processing pipeline",
+      "expected_output": "Exhaustive research with 7+ plan phases, sub-steps, and verification criteria per phase.",
+      "expectations": [
+        "Research is thorough — multiple subagents for complex domain",
+        "Plan has 7+ phases (matching --depth max)",
+        "Each phase includes verification steps",
+        "Phase dependencies are explicit"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "/spec add rate limiting. spec has 8 bullets in Recommendation and 4 subsections in Architecture Context.",
+      "expected_output": "Fires the simplifier quality gate (>5 bullets in Recommendation, >3 subsections in Architecture Context). Devil's advocate also runs.",
+      "expectations": [
+        "Simplifier fires due to exceeding thresholds (>5 bullets, >3 subsections)",
+        "Devil's advocate challenge runs in parallel",
+        "Both quality gate results are presented to the user before spec approval"
       ]
     }
   ]

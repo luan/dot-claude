@@ -2,99 +2,64 @@
   "skill_name": "supervibe",
   "evals": [
     {
-      "id": 1,
-      "prompt": "/supervibe 'rewrite the entire rendering pipeline from C++ to Rust — we need memory safety guarantees, async support via tokio, and the existing OpenGL bindings need to be replaced with wgpu. The codebase is ~80k lines across src/render/, src/gpu/, and src/compositor/ with heavy use of raw pointers and manual memory management.'\n\nexecute the superscope step — read the reference files, then show exactly what you'd call and what you'd store on the tracker.",
-      "expected_output": "Reads references/superscope.md via Read tool. Calls scope with a multi-phase-aware prompt that instructs vertical slices, ≤5 phases, per-phase file lists + dependencies + verification. After scope completes, extracts end_state, structured phases array, and distilled research findings. Stores all on tracker.",
+      "id": "setup-task-and-spec",
+      "prompt": "/supervibe 'build a plugin system for the CLI — dynamic loading of .so/.dylib plugins, a stable C ABI with versioned vtables, hot-reload support, and a sandbox via seccomp/pledge per plugin. The CLI is ~30k lines in src/cli/, src/core/, and src/commands/.'\n\nShow me exactly what you'd do in the Setup and Initial Research steps — what TaskCreate call, what metadata, and how you invoke spec.",
+      "expected_output": "Creates a task with type: 'epic', super_vibe: true, goal, goal_met: false, and empty iterations array. Sets status to in_progress. Then calls Skill('spec', args='<goal> --auto') and stores end_state and research on the epic metadata. Does NOT plan phases or decompose into a fixed number of steps.",
       "expectations": [
-        "Reads references/superscope.md (evidence: Read tool call in transcript or explicit file content in response)",
-        "Scope prompt instructs: vertical slices, ≤5 phases, per-phase file plans with Read/Modify/Create, explicit dependencies, verification criteria",
-        "Stores metadata.end_state, metadata.phases (structured array), and metadata.superscope_findings on the tracker",
-        "Validates: phases cover end-state, each is vertical, count ≤5, roughly balanced"
+        "TaskCreate includes metadata with type: 'epic', super_vibe: true, goal (full text), goal_met: false, iterations: []",
+        "TaskUpdate sets status to 'in_progress' with owner 'supervibe'",
+        "Calls Skill('spec') with --auto flag for initial research",
+        "Stores metadata.end_state (present-tense description of done) and metadata.research after spec completes",
+        "Does NOT create phases, phase arrays, or a fixed decomposition — the loop discovers shape iteratively"
       ]
     },
     {
-      "id": 2,
-      "prompt": "/supervibe 'build cross-device syncing for the note-taking app — real-time CRDT-based sync via WebSocket, offline queue with IndexedDB, conflict resolution UI, and sync status indicators across mobile and desktop clients. Backend needs a sync service, presence tracking, and operational transform history.'\n\nsuperscope produced 2 phases: Phase 1 (CRDT data model + sync service) and Phase 2 (WebSocket real-time delivery). metadata.end_state mentions real-time sync, offline queue, conflict resolution UI, AND sync status indicators across clients.\n\noffline queue, conflict resolution UI, and sync status indicators have no corresponding phases. what do you do?",
-      "expected_output": "Identifies the coverage gap — offline queue, conflict resolution UI, and sync status indicators are in end_state but no phase delivers them. Re-invokes scope with specific feedback about the missing capabilities. Does not proceed to execution.",
+      "id": "loop-iteration-assess-plan-vibe-record",
+      "prompt": "/supervibe 'migrate the data layer from raw SQL to an ORM across src/db/, src/api/, and src/services/'. Setup and spec are done. metadata.end_state: 'All database calls use the ORM with type-safe queries and transaction wrappers.' metadata.iterations has one entry: iteration 1 migrated src/db/users.ts (20 queries).\n\nWalk through one full loop iteration — Steps A through E.",
+      "expected_output": "Step A: TaskGet to read goal and iterations. Step B: Assess codebase state (git log, git diff, read key files) against end_state — check which capabilities exist vs missing. Step C: Pick the single most valuable next increment based on what's done and what's missing. Step D: Skill('vibe', args='<increment prompt>'). Step E: After vibe returns, read git log/diff for what changed, push an iteration record to metadata.iterations, TaskUpdate.",
       "expectations": [
-        "Identifies all three missing capabilities (offline queue, conflict resolution UI, sync status indicators) as unrealized across phases",
-        "Re-invokes scope with specific feedback about the gaps",
-        "Does NOT start phase execution with an incomplete plan"
+        "Step A: Calls TaskGet to re-read goal, end_state, and iterations from epic metadata",
+        "Step B: Inspects actual codebase state (git log, git diff, reading files) — does not guess from conversation context",
+        "Step B: Checks each capability in end_state against what exists now",
+        "Step C: Decides a single focused increment, not the entire remaining plan",
+        "Step D: Calls Skill('vibe') with the increment prompt",
+        "Step E: Records iteration with n, prompt, commits, files_changed, summary, deviations — then goes back to Step A"
       ]
     },
     {
-      "id": 3,
-      "prompt": "/supervibe 'migrate the entire data access layer from raw SQL queries to Prisma ORM across 200+ database calls in src/db/, src/api/, and src/services/ — includes schema migration, type generation, transaction handling, and connection pooling changes.'\n\nsuperscope done, starting phase 1. demonstrate how you dispatch the phase agent and what you pass to /vibe.",
-      "expected_output": "Spawns an Agent with isolation='worktree'. The agent runs /vibe with the phase plan, prior results (none for phase 1), end-state vision, and superscope findings. Uses --no-branch --no-review flags.",
+      "id": "goal-met-teardown",
+      "prompt": "/supervibe 'add comprehensive error handling to the HTTP server — structured error types, middleware error boundaries, client-facing error responses with request IDs, and error logging with tracing spans.'\n\nYou're at Step B (assess). metadata.end_state: 'The HTTP server has structured error types in src/errors/, middleware boundaries catch panics and return 500s with request IDs, all handlers return Result<Response, AppError>, and errors are logged with tracing spans including request ID correlation.' metadata.iterations has 3 entries covering error types, middleware boundaries, and handler migration.\n\nYou inspect the codebase and find all four capabilities are fully implemented. What do you do?",
+      "expected_output": "Sets metadata.goal_met to true via TaskUpdate. Exits the loop and enters Teardown: commits if uncommitted changes, reports goal/iteration count/files changed, marks epic completed with completedAt timestamp. Does NOT start another iteration.",
       "expectations": [
-        "Dispatches Agent with isolation: 'worktree' for filesystem isolation",
-        "Agent's prompt includes: phase plan (title, goal, files), end-state vision, superscope findings",
-        "Vibe flags include --no-branch and --no-review",
-        "Agent prompt includes prior phase results (empty for phase 1, populated for later phases)"
+        "Sets metadata.goal_met: true via TaskUpdate",
+        "Exits the loop — does NOT plan or execute another vibe iteration",
+        "Commits uncommitted changes if any exist (via Skill('commit'))",
+        "Reports: goal achieved, iteration count, files changed",
+        "TaskUpdate sets status: 'completed' with metadata.completedAt timestamp"
       ]
     },
     {
-      "id": 4,
-      "prompt": "/supervibe 'rewrite the entire rendering pipeline from C++ to Rust'. phase 1 agent just returned successfully with worktree path /tmp/wt-abc and branch sv-render-p1. what do you do before starting phase 2?",
-      "expected_output": "Merges the worktree branch into main with a descriptive commit message. Records phase_results[1] with commit SHA, files changed, summary, deviations. Cleans up worktree and branch. Updates vibe_stage to 'phase-1'.",
+      "id": "continue-resume",
+      "prompt": "/supervibe --continue\n\nTaskList shows one epic with super_vibe: true, status: 'in_progress'. Its metadata: goal: 'rewrite rendering pipeline to Rust with wgpu and tokio', end_state: 'Rendering pipeline uses Rust with wgpu for GPU, tokio for async, safe abstractions replacing raw pointers', research: 'src/render/ has 40 files, src/gpu/ has 15...', iterations: [{n:1, summary: 'scaffolded Rust crate with wgpu deps'}, {n:2, summary: 'ported vertex buffer management'}].\n\nWhat do you do?",
+      "expected_output": "Finds the in_progress epic with super_vibe: true. Reads goal, end_state, research, and iterations from metadata. Enters the loop at Step A — does NOT re-run setup or spec. Assesses current codebase state against end_state considering the 2 completed iterations.",
       "expectations": [
-        "Merges worktree branch to main: git merge with --no-ff and descriptive message",
-        "Records metadata.phase_results[1] with: status, commit SHA, files_changed, summary",
-        "Cleans up: git worktree remove + git branch -d",
-        "Updates vibe_stage to 'phase-1' AFTER successful merge"
+        "Finds epic via TaskList filtering for super_vibe: true and status: 'in_progress'",
+        "Reads goal, end_state, research, and iterations from the existing epic metadata",
+        "Does NOT re-run TaskCreate or Skill('spec') — setup is already done",
+        "Enters the loop at Step A (read goal), not at setup",
+        "Uses metadata.iterations to understand what's already been done"
       ]
     },
     {
-      "id": 5,
-      "prompt": "/supervibe 'migrate the entire data access layer from raw SQL to Prisma ORM across 200+ database calls'. phase 2 agent failed during develop step with error 'PrismaClientKnownRequestError: Foreign key constraint failed on field `userId` in src/services/user-relations.ts:187'. what do you do?",
-      "expected_output": "Does NOT merge the worktree — discards it so main stays clean. Records phase_results[2] with failed status, step='develop', and the error. Does NOT update vibe_stage (stays at 'phase-1'). Reports failure and suggests --continue.",
+      "id": "failed-vibe-recovery",
+      "prompt": "/supervibe 'add real-time WebSocket sync with CRDT conflict resolution'. You're at Step E (record) after Step D's vibe call. Vibe failed during its develop step — the CRDT library had breaking API changes and compilation failed. The branch has no new commits from this iteration.\n\nWhat do you do?",
+      "expected_output": "Records the failed iteration in metadata.iterations with what happened and why it failed (deviations field). Does NOT mark the epic as failed or stop. Returns to Step A to re-assess, then plans an adjusted increment at Step C that accounts for the failure (e.g., fix the API incompatibility first, then retry the CRDT integration).",
       "expectations": [
-        "Discards the failed worktree explicitly — does not attempt to merge or fix in place",
-        "Records metadata.phase_results[2] with status: 'failed', step: 'develop', and the full error details",
-        "Does NOT update vibe_stage — explicitly states it stays at 'phase-1' for correct resume",
-        "Suggests /supervibe --continue as the recovery path"
-      ]
-    },
-    {
-      "id": 6,
-      "prompt": "/supervibe --continue. tracker: super_vibe=true, status='in_progress', vibe_stage='phase-2', phase_results has phases 1-2 completed (phase 1: Prisma schema + client setup, phase 2: user service migration), phases array has 4 total, end_state: 'All 200+ database calls use Prisma ORM with type-safe queries, connection pooling via PgBouncer, and transaction wrappers for multi-table operations', superscope_findings populated with file locations and patterns.\n\nwhat do you do?",
-      "expected_output": "Resumes at phase 3. Reads phase plan from metadata.phases[2], prior results from metadata.phase_results (phases 1-2), end_state, and superscope_findings. Assembles rich context prompt and dispatches phase 3 agent with worktree isolation.",
-      "expectations": [
-        "Resumes at phase 3 (next after vibe_stage='phase-2')",
-        "Reads phases, phase_results, end_state, superscope_findings from task metadata — does not re-run superscope",
-        "Phase 3 agent prompt includes prior results from phases 1-2 (summaries, files changed, deviations)",
-        "Dispatches agent with worktree isolation"
-      ]
-    },
-    {
-      "id": 7,
-      "prompt": "/supervibe --continue. tracker: super_vibe=true, status='in_progress', vibe_stage='phase-1', phase_results[2] has status='failed', step='develop', error='PrismaClientKnownRequestError: Foreign key constraint failed on field `userId` in src/services/user-relations.ts:187'. phases array has 4 total.\n\nwhat do you do?",
-      "expected_output": "Retries phase 2 (the failed phase). The phase agent gets the error context from phase_results[2].error so scope/develop can account for the prior failure. Does not skip to phase 3.",
-      "expectations": [
-        "Retries phase 2 (failed phase), does not skip to phase 3",
-        "Phase agent prompt includes the error from the prior failure about the foreign key constraint",
-        "Prior phase results from phase 1 (completed) are included for context"
-      ]
-    },
-    {
-      "id": 8,
-      "prompt": "/supervibe 'rewrite the entire rendering pipeline from C++ to Rust with wgpu, tokio async, and memory safety'. all 4 phases completed. metadata.end_state: 'The rendering pipeline uses Rust with wgpu for GPU access, tokio for async operations, safe abstractions replacing raw pointers, and a compatibility shim for existing C++ plugins via FFI'. phase_results show wgpu integration, tokio async, and safe abstractions implemented but the C++ plugin FFI compatibility shim was never built.\n\nwhat happens at teardown?",
-      "expected_output": "End-state coverage check catches that the C++ plugin FFI compatibility shim is unrealized. Does NOT complete the tracker. Reports the gap and suggests adding phases.",
-      "expectations": [
-        "Identifies the C++ plugin FFI compatibility shim from end-state was never realized across completed phases",
-        "Does NOT mark tracker as completed",
-        "Reports the specific gap and suggests additional phases"
-      ]
-    },
-    {
-      "id": 9,
-      "prompt": "/supervibe --dry-run 'decompose the monolithic Express API into microservices — extract user-service, billing-service, and notification-service into separate deployable units with gRPC inter-service communication, shared protobuf definitions, distributed tracing via OpenTelemetry, and a service mesh for routing. The monolith is ~120k lines across src/routes/, src/services/, src/models/ with heavy cross-service dependencies.'",
-      "expected_output": "Runs superscope (full research + phase decomposition) but stops before phase execution. Reports the end-state vision, phase plan with per-phase file lists and dependencies, and sizing estimate. Suggests /supervibe --continue to start execution.",
-      "expectations": [
-        "Runs superscope (reads references/superscope.md, calls scope with multi-phase prompt)",
-        "Stops after superscope — does NOT start phase execution",
-        "Reports phase plan with enough detail for the user to evaluate",
-        "Suggests /supervibe --continue to begin execution"
+        "Records the failure in metadata.iterations — includes what was attempted and why it failed in deviations",
+        "Does NOT mark the epic as completed or failed — the goal is not met",
+        "Does NOT stop or suggest --continue — continues the loop immediately",
+        "Returns to Step A to re-read goal and all iterations including the failure",
+        "Next increment (Step C) accounts for the failure — adjusts approach rather than blindly retrying the same thing"
       ]
     }
   ]

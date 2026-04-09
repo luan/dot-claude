@@ -16,7 +16,6 @@ allowed-tools:
   - "Bash(git push:*)"
   - Skill
   - Read
-  - Edit
   - Glob
   - Grep
 ---

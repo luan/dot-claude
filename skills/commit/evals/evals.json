@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "ok commit this, i've got the auth token refresh stuff staged already. recent commits are like feat(auth): add login flow, fix(api): rate limit headers, etc.",
-      "expected_output": "Reads git diff --cached to understand the staged changes, composes a conventional commit message matching the repo style (e.g. feat(auth): add token refresh logic), and executes git commit via HEREDOC without asking the user to confirm the message first. After commit, attempts to archive plans and suggests push.",
+      "expected_output": "Reads git diff --cached to understand the staged changes, composes a conventional commit message matching the repo style (e.g. feat(auth): add token refresh logic), and executes git commit via HEREDOC without asking the user to confirm the message first. After commit, attempts to archive plans.",
       "expectations": [
         "Does NOT ask the user to confirm or approve the commit message — proceeds directly from analysis to git commit",
         "Generates a conventional commit message (type(scope): description) that matches the repo's existing style",
@@ -29,6 +29,16 @@
         "Stages tracked changes with git add -u (not git add -A which would include untracked files)",
         "Does not ask what to stage because --auto was specified",
         "Reads the diff to compose a meaningful commit message rather than a generic one"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "i just finished some auth refactoring, everything's staged. /commit",
+      "expected_output": "Analyzes the staged diff, generates a conventional commit message, and commits. Post-commit output archives plans if applicable. Does NOT suggest pushing (no '/gt:submit' or 'git push' suggestion).",
+      "expectations": [
+        "Commits successfully with a well-formed message",
+        "Post-commit does NOT suggest /gt:submit, git push, or any push action",
+        "Post-commit focuses on plan archiving or simply reports the commit — no push guidance"
       ]
     }
   ]

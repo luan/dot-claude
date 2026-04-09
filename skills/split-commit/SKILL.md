@@ -4,7 +4,6 @@ description: "Repackage branch into clean, tested, vertical commits. Triggers: '
 argument-hint: "[base-branch] [--test='command'] [--auto]"
 user-invocable: true
 allowed-tools:
-  - Agent
   - Bash
 ---
 
@@ -14,7 +13,7 @@ Repackage branch changes into clean vertical commits. Each commit compiles + pas
 
 ## Phase 1: Analyze
 
-Parse: `<base-branch>` (default: !`gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`), optional `--test='command'`.
+Parse: `<base-branch>`, optional `--test='command'`. If no base-branch arg, resolve at runtime: `gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`.
 
 **Noop check** — `git log --oneline <base>..HEAD | wc -l`. If ≤1 → stop: "Nothing to repackage — use /commit."
 

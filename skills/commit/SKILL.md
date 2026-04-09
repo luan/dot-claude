@@ -17,8 +17,6 @@ allowed-tools:
   - Read
   - Glob
   - Grep
-  - TaskList
-  - TaskGet
   - "Bash(ct plan archive:*)"
   - "Bash(ct plan list:*)"
 ---
@@ -49,7 +47,7 @@ Workers never commit — they lack branch context for meaningful messages.
    )"
    ```
 
-4. **Post-commit**: archive active plans (`ct plan list --json`, then `ct plan archive <path>` each). Skip silently if ct unavailable. Suggest `/gt:submit` if gt loaded, else `git push`.
+4. **Post-commit**: archive active plans (`ct plan list --json`, then `ct plan archive <path>` each). Skip silently if ct unavailable.
 
 ## Hook Failures
 

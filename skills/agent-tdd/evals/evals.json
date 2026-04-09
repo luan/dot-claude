@@ -1,0 +1,20 @@
+{
+  "skill_name": "agent-tdd",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "claude keeps creating branches when i ask it to fix bugs. i want to make a rule that stops this. can you prove the rule actually works before we commit to it?",
+      "expected_output": "Extracts eval prompts from the problem (e.g., 'fix this bug' scenarios). Runs them against current baseline first to confirm Claude DOES create branches (RED). Only then drafts the rule. After drafting, re-runs evals to confirm Claude no longer creates branches (GREEN). Reports the RED→GREEN delta."
+    },
+    {
+      "id": 2,
+      "prompt": "i added a line to CLAUDE.md that says 'investigate test failures instead of dismissing them as pre-existing'. does it actually change anything? test it.",
+      "expected_output": "Writes eval prompts where a test fails during work. Runs against baseline (--bare, without the CLAUDE.md line) to see if Claude dismisses failures. Then runs with the line present to see if behavior changes. Reports whether the line has a measurable behavioral effect."
+    },
+    {
+      "id": 3,
+      "prompt": "the commit skill suggests pushing after every commit and it's annoying. i want to remove that suggestion. /agent-tdd",
+      "expected_output": "Writes eval prompts that invoke /commit behavior. Runs against current skill to confirm push suggestion appears (RED). Routes to skill-creator to modify the skill. Re-runs to confirm suggestion is gone (GREEN). Checks regression evals for the commit skill."
+    }
+  ]
+}
