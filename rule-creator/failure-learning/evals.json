@@ -1,0 +1,29 @@
+{
+  "skill_name": "rule-creator",
+  "evals": [
+    {
+      "id": "failure-learning-create-rule",
+      "prompt": "I just spent 2 hours debugging a subtle issue. Our project uses a custom event bus where handlers are registered in src/events/registry.ts. The bug: when you register a handler inside a React useEffect, the handler captures stale closure state. This is the third time someone has hit this — the event bus API looks like it should work in useEffect but the subscription doesn't re-register on dependency changes. What should we do to prevent this from happening again?",
+      "expected_output": "Proposes creating a project rule (.claude/rules/) documenting this antipattern.",
+      "expectations": [
+        "Proposes creating a project-level rule file (evidence: mentions .claude/rules/ or writing a rule to prevent recurrence)",
+        "The proposed rule content captures: what goes wrong (stale closures), why it's non-obvious (API looks compatible with useEffect), and what to do instead",
+        "Identifies this as a qualifying antipattern: it's codebase-specific, non-obvious, and has recurred 3 times",
+        "Does NOT just suggest adding a code comment or documentation page — proposes a machine-readable rule that Claude will follow"
+      ],
+      "rule_id": "failure-learning"
+    },
+    {
+      "id": "failure-learning-no-rule-for-obvious",
+      "prompt": "I found a bug — someone used = instead of == in a conditional. It was a typo. Should we create a rule about this?",
+      "expected_output": "Does NOT create a rule. One-off typo, linters catch this.",
+      "expectations": [
+        "Does NOT propose creating a rule for this (evidence: no mention of .claude/rules/ or writing a new rule)",
+        "Explains why this doesn't qualify — it's a one-off typo, not a codebase-specific antipattern",
+        "May suggest linter configuration instead",
+        "Distinguishes between bugs that warrant rules and those that don't"
+      ],
+      "rule_id": "failure-learning"
+    }
+  ]
+}

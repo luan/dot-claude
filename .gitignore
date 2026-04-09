@@ -19,20 +19,38 @@
 .tmp/
 .temp/
 
+# Cache
+.cache/
+cache/
+
+# Node
+node_modules/
+
 # Python
 __pycache__/
 *.py[cod]
+
+# IDE lock files
+ide/*.lock
 
 # Rust build artifacts
 tools/target
 target
 
-# Claude Code runtime — project-level .claude/ dir
-.claude/
+# Generated
+shell-snapshots/
 
-# Claude Code runtime — root-level (leftover from old ~/.claude structure)
+# Analytics / tracking
+statsig/
+
+# AI local context
+.ai.local/
+
+# Claude Code runtime
+.claude/
 todos/
 projects/
+local/
 history.jsonl
 file-history
 debug
@@ -42,23 +60,27 @@ specs/
 telemetry
 stats-cache.json
 tasks
+chrome
+.agents/
+image-cache
 teams
-shell-snapshots/
-backups
-cache/
-mcp-needs-auth-cache.json
 usage-data
+backups
+mcp-needs-auth-cache.json
+channels/
+session-env/
 
 # Plugins (track config + bootstrap only)
 plugins/*
 !plugins/config.json
 !plugins/bootstrap/
-tools/target
-target
-backups
+
+# Skills
 /icons
 /skills/**/*-workspace/
+rule-creator-workspace/
+
+# Credentials / sessions
 .credentials.json
 policy-limits.json
 sessions/
-rule-creator-workspace/
