@@ -77,7 +77,7 @@
     }
   },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "medium",
+  "effortLevel": "high",
   "promptSuggestionEnabled": true,
   "voiceEnabled": true,
   "autoDreamEnabled": true,

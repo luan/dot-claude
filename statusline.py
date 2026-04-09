@@ -5,7 +5,9 @@ import io, json, os, re, sys, subprocess, tempfile, time
 
 # Force UTF-8 stdout on Windows
 if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stdout = io.TextIOWrapper(
+        sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True
+    )
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -28,10 +30,7 @@ ANSI_RE = re.compile(r"\033\[[^m]*m|\033\]8;;[^\a]*\a")
 
 def term_width():
     try:
-        fd = os.open("/dev/tty", os.O_RDONLY)
-        w = os.get_terminal_size(fd).columns
-        os.close(fd)
-        return w
+        return os.get_terminal_size().columns
     except OSError:
         return 120
 
