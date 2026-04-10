@@ -33,10 +33,6 @@ __pycache__/
 # IDE lock files
 ide/*.lock
 
-# Rust build artifacts
-tools/target
-target
-
 # Generated
 shell-snapshots/
 
@@ -46,10 +42,10 @@ statsig/
 # AI local context
 .ai.local/
 
-# Claude Code runtime
-.claude/
+# Claude Code session data
 todos/
 projects/
+.claude/settings.local.json
 local/
 history.jsonl
 file-history
@@ -65,22 +61,21 @@ chrome
 image-cache
 teams
 usage-data
-backups
-mcp-needs-auth-cache.json
-channels/
-session-env/
 
 # Plugins (track config + bootstrap only)
 plugins/*
 !plugins/config.json
 !plugins/bootstrap/
-
-# Skills
+tools/target
+target
+backups
+mcp-needs-auth-cache.json
 /icons
 /skills/**/*-workspace/
-rule-creator-workspace/
-
-# Credentials / sessions
 .credentials.json
 policy-limits.json
 sessions/
+rule-creator-workspace/
+channels/
+.claude/worktrees/
+session-env/

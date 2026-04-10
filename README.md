@@ -1,17 +1,16 @@
-# commons
+# ~/.claude
 
-Claude Code plugin: skills, rules, hooks, and Rust tools for AI-assisted development.
+Claude Code configuration. Skills, rules, and workflows
+for AI-assisted development.
 
-## Setup
+## New User Setup
 
-1. **Install the plugin**
-   ```bash
-   claude plugin install ~/AI/commons@local
-   ```
+1. **Set your username**
+   Add `"GIT_USERNAME": "<your-handle>"` to the `env` block in `settings.json` or `settings.local.json`. This controls branch prefixes and other user-specific behaviour.
 
 2. **Install the `ct` CLI**
    ```bash
-   cd ~/AI/commons/tools && cargo install --path crates/ct
+   cd ~/.claude/tools && cargo install --path crates/ct
    ```
    Requires Rust (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`).
 
@@ -19,9 +18,10 @@ Claude Code plugin: skills, rules, hooks, and Rust tools for AI-assisted develop
    ```bash
    ct vault init
    ```
-   Creates `~/blueprints/` as a git repo for specs, plans, reviews, and reports.
-   Override the location with `CT_BLUEPRINTS_DIR`.
-   The vault is an [Obsidian](https://obsidian.md) vault for graph navigation, search, and wiki-link resolution.
+   Creates `~/blueprints/` as a git repo for specs, plans, reviews, and reports. Override the location with `CT_BLUEPRINTS_DIR`. The vault is an [Obsidian](https://obsidian.md) vault — open it in Obsidian for graph navigation, search, and wiki-link resolution. The [Note Annotations](obsidian://show-plugin?id=note-annotations) plugin is worth grabbing for inline highlights on artifacts.
+
+4. **Reinstall plugins**
+   Plugin state is not committed. Open Claude Code and reinstall plugins via the plugin manager.
 
 ## Quick Start
 
