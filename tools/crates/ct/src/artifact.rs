@@ -144,9 +144,15 @@ pub fn resolve_repo_root(toplevel: &str) -> String {
 
     if let Some(ref common_dir) = common {
         let p = Path::new(common_dir);
-        // Absolute path means we're in a worktree; parent of `.git` is the main repo
-        if let Some(parent) = p.parent().filter(|_| p.is_absolute()) {
-            return parent.to_string_lossy().to_string();
+        if p.is_absolute() {
+            // Bare repo (e.g. arc.git): common-dir IS the repo, not a .git subdir
+            let fname = p.file_name().unwrap_or_default().to_string_lossy();
+            if fname == ".git" {
+                // Normal repo: parent of `.git` is the repo root
+                return p.parent().unwrap().to_string_lossy().to_string();
+            }
+            // Bare repo or non-standard: common-dir itself is the root
+            return p.to_string_lossy().to_string();
         }
     }
     toplevel.to_string()
