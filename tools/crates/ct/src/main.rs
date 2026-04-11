@@ -38,9 +38,10 @@ fn dispatch_artifact(
             all,
             project,
             archived,
+            include_dives,
         } => {
             let (_, cwd) = store_and_cwd();
-            cli::run_artifact_list(kind, &cwd, json, all, project, archived)
+            cli::run_artifact_list(kind, &cwd, json, all, project, archived, include_dives)
         }
         cli::ArtifactAction::Create {
             topic,
@@ -49,13 +50,25 @@ fn dispatch_artifact(
             source,
             tags,
             body,
-        } => cli::run_artifact_create(kind, topic, project, slug, source, tags, body),
+            dive,
+        } => cli::run_artifact_create(cli::ArtifactCreateArgs {
+            kind,
+            topic,
+            project,
+            slug,
+            source,
+            tags,
+            body,
+            dive,
+        }),
         cli::ArtifactAction::Read { file, frontmatter } => {
             cli::run_artifact_read(kind, file, frontmatter)
         }
-        cli::ArtifactAction::Latest { project, task_file } => {
-            cli::run_artifact_latest(kind, project, task_file)
-        }
+        cli::ArtifactAction::Latest {
+            project,
+            task_file,
+            include_dives,
+        } => cli::run_artifact_latest(kind, project, task_file, include_dives),
         cli::ArtifactAction::Archive { file } => cli::run_artifact_archive(kind, file),
         cli::ArtifactAction::Show { id } => cli::run_artifact_show(kind, &id),
         cli::ArtifactAction::Prune {

@@ -23,13 +23,13 @@ impl DetailState {
         // Phase 3: If task has a linked plan_file, show that plan specifically.
         // Otherwise fall back to project-wide matching.
         let related_plans: Vec<Plan> = if !task.plan_file.is_empty() {
-            artifact::list_artifacts(ArtifactKind::Plan)
+            artifact::list_artifacts(ArtifactKind::Plan, false)
                 .into_iter()
                 .filter(|p| p.path.to_string_lossy() == task.plan_file)
                 .take(1)
                 .collect()
         } else if !task.project.is_empty() {
-            artifact::list_artifacts(ArtifactKind::Plan)
+            artifact::list_artifacts(ArtifactKind::Plan, false)
                 .into_iter()
                 .filter(|p| !p.project.is_empty() && p.project == task.project)
                 .take(3)
@@ -39,13 +39,13 @@ impl DetailState {
         };
 
         let related_specs: Vec<Spec> = if !task.spec_file.is_empty() {
-            artifact::list_artifacts(ArtifactKind::Spec)
+            artifact::list_artifacts(ArtifactKind::Spec, false)
                 .into_iter()
                 .filter(|s| s.path.to_string_lossy() == task.spec_file)
                 .take(1)
                 .collect()
         } else if !task.project.is_empty() {
-            artifact::list_artifacts(ArtifactKind::Spec)
+            artifact::list_artifacts(ArtifactKind::Spec, false)
                 .into_iter()
                 .filter(|s| !s.project.is_empty() && s.project == task.project)
                 .take(3)
