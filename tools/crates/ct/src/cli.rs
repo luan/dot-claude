@@ -310,6 +310,9 @@ pub enum ArtifactAction {
 
         #[arg(long, help = "Show archived artifacts instead of active")]
         archived: bool,
+
+        #[arg(long, help = "Also show dive/ files (spec only)")]
+        include_dives: bool,
     },
 
     #[command(about = "Create a new artifact file")]
@@ -334,6 +337,12 @@ pub enum ArtifactAction {
 
         #[arg(long, help = "Artifact body content")]
         body: Option<String>,
+
+        #[arg(
+            long,
+            help = "Route to dive/ instead of spec/ (requires --source; spec only)"
+        )]
+        dive: bool,
     },
 
     #[command(about = "Read artifact file body or frontmatter")]
@@ -884,7 +893,7 @@ pub fn run_projects(store: &Store, json: bool) -> Result<(), Box<dyn std::error:
     }
 
     // Source 2: plans with a non-empty project field
-    for plan in crate::artifact::list_artifacts(crate::artifact::ArtifactKind::Plan) {
+    for plan in crate::artifact::list_artifacts(crate::artifact::ArtifactKind::Plan, false) {
         if !plan.project.is_empty() {
             let slug = crate::artifact::project_name(&plan.project);
             projects.entry(slug).or_insert(plan.project);
@@ -947,7 +956,7 @@ pub fn run_project_show(store: &Store, slug: &str) -> Result<(), Box<dyn std::er
         }
     }
     if project_path.is_empty() {
-        for p in crate::artifact::list_artifacts(crate::artifact::ArtifactKind::Plan) {
+        for p in crate::artifact::list_artifacts(crate::artifact::ArtifactKind::Plan, false) {
             if !p.project.is_empty() && crate::artifact::project_name(&p.project) == slug {
                 project_path = p.project.clone();
                 break;
@@ -1020,7 +1029,7 @@ pub fn run_project_show(store: &Store, slug: &str) -> Result<(), Box<dyn std::er
 
     // Recent plans
     let project_plans: Vec<_> =
-        crate::artifact::list_artifacts(crate::artifact::ArtifactKind::Plan)
+        crate::artifact::list_artifacts(crate::artifact::ArtifactKind::Plan, false)
             .into_iter()
             .filter(|p| p.project == project_path)
             .take(5)
@@ -1045,11 +1054,12 @@ pub fn run_artifact_list(
     all: bool,
     project: Option<String>,
     archived: bool,
+    include_dives: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut items = if archived {
         crate::artifact::list_archived_artifacts(kind)
     } else {
-        crate::artifact::list_artifacts(kind)
+        crate::artifact::list_artifacts(kind, include_dives)
     };
 
     items.retain(|a| !a.project.is_empty());
@@ -1139,7 +1149,8 @@ pub fn run_artifact_show(
     kind: crate::artifact::ArtifactKind,
     id: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let items = crate::artifact::list_artifacts(kind);
+    // Always include dives for show-by-name so dive files are findable by stem.
+    let items = crate::artifact::list_artifacts(kind, true);
     let label = kind.dir_name();
 
     if items.is_empty() {
@@ -1167,6 +1178,7 @@ pub fn run_artifact_show(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn run_artifact_create(
     kind: crate::artifact::ArtifactKind,
     topic: String,
@@ -1175,7 +1187,12 @@ pub fn run_artifact_create(
     source: Option<String>,
     tags: Option<String>,
     body: Option<String>,
+    dive: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    if dive && source.is_none() {
+        eprintln!("error: --dive requires --source (a dive without a hub link is meaningless)");
+        std::process::exit(1);
+    }
     let tag_list: Vec<String> = tags
         .unwrap_or_default()
         .split(',')
@@ -1190,6 +1207,7 @@ pub fn run_artifact_create(
         source.as_deref(),
         &tag_list,
         body.unwrap_or_default(),
+        dive,
     ) {
         handle_sync_error(e);
     }

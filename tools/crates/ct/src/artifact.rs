@@ -508,6 +508,7 @@ pub fn commit_and_push(relative_path: &Path, message: &str) -> Result<(), SyncEr
 // Generic CRUD (replaces planfile.rs / specfile.rs)
 // ---------------------------------------------------------------------------
 
+#[allow(clippy::too_many_arguments)]
 pub fn cmd_create(
     kind: ArtifactKind,
     topic: &str,
@@ -516,6 +517,7 @@ pub fn cmd_create(
     source: Option<&str>,
     user_tags: &[String],
     mut body: String,
+    dive: bool,
 ) -> Result<(), SyncError> {
     // Resolve worktree paths to the main repo root
     let project = &resolve_repo_root(project);
@@ -530,7 +532,13 @@ pub fn cmd_create(
     let ts = chrono_compact();
     let filename = format!("{ts}-{s}.md");
 
-    let dir = artifact_dir(project, kind);
+    let bp = blueprints_dir();
+    let proj_name_for_dir = project_name(project);
+    let dir = if dive && kind == ArtifactKind::Spec {
+        bp.join(&proj_name_for_dir).join("dive")
+    } else {
+        artifact_dir(project, kind)
+    };
     fs::create_dir_all(&dir).unwrap_or_else(|e| fatal(&format!("cannot create directory: {e}")));
 
     let full_path = dir.join(&filename);
@@ -617,6 +625,7 @@ pub fn resolve_artifact_path(file_arg: &str, kind: ArtifactKind) -> PathBuf {
     }
 
     // Bare stem — scan all projects for ~/blueprints/*/kind/stem.md
+    // For Spec, also scan dive/ so dive files are findable by bare stem.
     let stem = p.file_stem().unwrap_or(p.as_os_str());
     let mut matches = Vec::new();
     if let Ok(entries) = fs::read_dir(&bp) {
@@ -624,17 +633,23 @@ pub fn resolve_artifact_path(file_arg: &str, kind: ArtifactKind) -> PathBuf {
             if !entry.path().is_dir() {
                 continue;
             }
-            let candidate = entry.path().join(kind_dir);
-            if !candidate.is_dir() {
-                continue;
-            }
-            if let Ok(files) = fs::read_dir(&candidate) {
-                for f in files.flatten() {
-                    let fp = f.path();
-                    if fp.extension().and_then(|e| e.to_str()) == Some("md")
-                        && fp.file_stem() == Some(stem)
-                    {
-                        matches.push(fp);
+            let scan_dirs: Vec<PathBuf> = if kind == ArtifactKind::Spec {
+                vec![entry.path().join(kind_dir), entry.path().join("dive")]
+            } else {
+                vec![entry.path().join(kind_dir)]
+            };
+            for candidate in scan_dirs {
+                if !candidate.is_dir() {
+                    continue;
+                }
+                if let Ok(files) = fs::read_dir(&candidate) {
+                    for f in files.flatten() {
+                        let fp = f.path();
+                        if fp.extension().and_then(|e| e.to_str()) == Some("md")
+                            && fp.file_stem() == Some(stem)
+                        {
+                            matches.push(fp);
+                        }
                     }
                 }
             }
@@ -848,16 +863,21 @@ pub fn cmd_archive(kind: ArtifactKind, file_path: &str) -> Result<(), SyncError>
         fatal(&format!("file not found: {file_path}"));
     }
 
-    // Derive project name from file's location in <vault>/<project>/<kind>/
+    // Derive project name and source subfolder from <vault>/<project>/<subfolder>/file
     let bp = blueprints_dir();
     let rel_path = path
         .strip_prefix(&bp)
         .unwrap_or_else(|_| fatal(&format!("file is not inside {}", bp.display())));
-    let proj_name = rel_path
-        .components()
+    let mut components = rel_path.components();
+    let proj_name = components
         .next()
         .map(|c| c.as_os_str().to_string_lossy().to_string())
         .unwrap_or_else(|| fatal("cannot determine project from file path"));
+    // Use the actual subfolder (spec/ or dive/) to preserve it in archive/
+    let source_subfolder = components
+        .next()
+        .map(|c| c.as_os_str().to_string_lossy().to_string())
+        .unwrap_or_else(|| kind.dir_name().to_string());
 
     // Best-effort: store as git note in the current project repo
     let git_dir = process::Command::new("git")
@@ -882,8 +902,8 @@ pub fn cmd_archive(kind: ArtifactKind, file_path: &str) -> Result<(), SyncError>
             .status();
     }
 
-    // Move to archive/
-    let archive_dir = bp.join(&proj_name).join("archive").join(kind.dir_name());
+    // Move to archive/, preserving the source subfolder (spec/ or dive/)
+    let archive_dir = bp.join(&proj_name).join("archive").join(&source_subfolder);
     fs::create_dir_all(&archive_dir)
         .unwrap_or_else(|e| fatal(&format!("cannot create archive directory: {e}")));
     let file_name = path
@@ -914,15 +934,15 @@ pub fn cmd_archive(kind: ArtifactKind, file_path: &str) -> Result<(), SyncError>
 // Generic listing (replaces plan.rs / spec.rs listing)
 // ---------------------------------------------------------------------------
 
-pub fn list_artifacts(kind: ArtifactKind) -> Vec<Artifact> {
-    list_artifacts_filtered(kind, false)
+pub fn list_artifacts(kind: ArtifactKind, include_dives: bool) -> Vec<Artifact> {
+    list_artifacts_filtered(kind, false, include_dives)
 }
 
 pub fn list_archived_artifacts(kind: ArtifactKind) -> Vec<Artifact> {
-    list_artifacts_filtered(kind, true)
+    list_artifacts_filtered(kind, true, false)
 }
 
-fn list_artifacts_filtered(kind: ArtifactKind, archived: bool) -> Vec<Artifact> {
+fn list_artifacts_filtered(kind: ArtifactKind, archived: bool, include_dives: bool) -> Vec<Artifact> {
     let bp = blueprints_dir();
     // Walk all project subdirs in ~/blueprints/
     let mut artifacts = Vec::new();
@@ -946,6 +966,10 @@ fn list_artifacts_filtered(kind: ArtifactKind, archived: bool) -> Vec<Artifact> 
         } else {
             let kind_dir = proj_path.join(kind.dir_name());
             collect_artifacts(&bp, &kind_dir, &proj_name, &mut artifacts);
+            if include_dives && kind == ArtifactKind::Spec {
+                let dive_dir = proj_path.join("dive");
+                collect_artifacts(&bp, &dive_dir, &proj_name, &mut artifacts);
+            }
         }
     }
     artifacts.sort_by_key(|a| std::cmp::Reverse(a.mod_time));
@@ -1316,6 +1340,10 @@ pub fn cmd_read_resolved(resolved: &Path, frontmatter_mode: bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    // Serialize all tests that mutate CT_BLUEPRINTS_DIR to prevent env-var races.
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn worktrees_share_repo_name() {
@@ -1422,16 +1450,10 @@ mod tests {
         let _spec = create_artifact_file(&tmp, "myproj", ArtifactKind::Spec, "widget");
         let doc = create_artifact_file(&tmp, "myproj", ArtifactKind::Doc, "widget");
 
-        let prev = env::var("CT_BLUEPRINTS_DIR").ok();
-        unsafe { env::set_var("CT_BLUEPRINTS_DIR", &tmp) };
-
-        let result = resolve_stem_universal("widget");
-        assert_eq!(result, doc, "Doc should take priority over Spec");
-
-        match prev {
-            Some(v) => unsafe { env::set_var("CT_BLUEPRINTS_DIR", v) },
-            None => unsafe { env::remove_var("CT_BLUEPRINTS_DIR") },
-        }
+        with_blueprints_dir(&tmp, || {
+            let result = resolve_stem_universal("widget");
+            assert_eq!(result, doc, "Doc should take priority over Spec");
+        });
         std::fs::remove_dir_all(&tmp).ok();
     }
 
@@ -1442,16 +1464,10 @@ mod tests {
 
         let plan = create_artifact_file(&tmp, "myproj", ArtifactKind::Plan, "deploy");
 
-        let prev = env::var("CT_BLUEPRINTS_DIR").ok();
-        unsafe { env::set_var("CT_BLUEPRINTS_DIR", &tmp) };
-
-        let result = resolve_stem_universal("deploy");
-        assert_eq!(result, plan);
-
-        match prev {
-            Some(v) => unsafe { env::set_var("CT_BLUEPRINTS_DIR", v) },
-            None => unsafe { env::remove_var("CT_BLUEPRINTS_DIR") },
-        }
+        with_blueprints_dir(&tmp, || {
+            let result = resolve_stem_universal("deploy");
+            assert_eq!(result, plan);
+        });
         std::fs::remove_dir_all(&tmp).ok();
     }
 
@@ -1463,16 +1479,10 @@ mod tests {
         let _plan = create_artifact_file(&tmp, "myproj", ArtifactKind::Plan, "auth");
         let report = create_artifact_file(&tmp, "myproj", ArtifactKind::Report, "auth");
 
-        let prev = env::var("CT_BLUEPRINTS_DIR").ok();
-        unsafe { env::set_var("CT_BLUEPRINTS_DIR", &tmp) };
-
-        let result = resolve_stem_universal("auth");
-        assert_eq!(result, report, "Report should take priority over Plan");
-
-        match prev {
-            Some(v) => unsafe { env::set_var("CT_BLUEPRINTS_DIR", v) },
-            None => unsafe { env::remove_var("CT_BLUEPRINTS_DIR") },
-        }
+        with_blueprints_dir(&tmp, || {
+            let result = resolve_stem_universal("auth");
+            assert_eq!(result, report, "Report should take priority over Plan");
+        });
         std::fs::remove_dir_all(&tmp).ok();
     }
 
@@ -1522,5 +1532,108 @@ mod tests {
         assert_eq!(comments.len(), 1);
         assert_eq!(comments[0].line, 3);
         assert_eq!(comments[0].text, "here");
+    }
+
+    // ── dive flag tests ─────────────────────────────────────────────────────
+
+    fn with_blueprints_dir<F: FnOnce()>(tmp: &std::path::Path, f: F) {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let prev = env::var("CT_BLUEPRINTS_DIR").ok();
+        unsafe { env::set_var("CT_BLUEPRINTS_DIR", tmp) };
+        f();
+        match prev {
+            Some(v) => unsafe { env::set_var("CT_BLUEPRINTS_DIR", v) },
+            None => unsafe { env::remove_var("CT_BLUEPRINTS_DIR") },
+        }
+    }
+
+    #[test]
+    fn dive_create_routes_to_dive_folder_with_spec_tag() {
+        let tmp = std::env::temp_dir().join(format!("ct-dive-create-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let project = tmp.join("myproj");
+        std::fs::create_dir_all(&project).unwrap();
+
+        with_blueprints_dir(&tmp, || {
+            // cmd_create with dive=true should write to dive/, not spec/
+            // git commit/push will fail (no repo) — we ignore SyncError.
+            let _ = cmd_create(
+                ArtifactKind::Spec,
+                "Sub Topic A",
+                project.to_str().unwrap(),
+                Some("hub-sub-topic-a"),
+                Some("[[20260411-hub]]"),
+                &[],
+                String::new(),
+                true,
+            );
+
+            let dive_dir = tmp.join("myproj").join("dive");
+            let spec_dir = tmp.join("myproj").join("spec");
+
+            let dive_files: Vec<_> = fs::read_dir(&dive_dir)
+                .expect("dive/ directory must exist")
+                .flatten()
+                .filter(|e| e.path().extension().and_then(|x| x.to_str()) == Some("md"))
+                .collect();
+            assert_eq!(dive_files.len(), 1, "exactly one file in dive/");
+
+            let spec_has_files = fs::read_dir(&spec_dir)
+                .map(|d| d.flatten().any(|e| e.path().extension().and_then(|x| x.to_str()) == Some("md")))
+                .unwrap_or(false);
+            assert!(!spec_has_files, "spec/ must not contain the dive file");
+
+            let content = fs::read_to_string(dive_files[0].path()).unwrap();
+            assert!(content.contains("type/spec"), "dive file must have type/spec tag");
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn include_dives_flag_toggles_list_visibility() {
+        let tmp = std::env::temp_dir().join(format!("ct-dive-list-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let spec_dir = tmp.join("myproj").join("spec");
+        std::fs::create_dir_all(&spec_dir).unwrap();
+        std::fs::write(spec_dir.join("20260411-hub.md"), "---\ntopic: Hub\n---\n").unwrap();
+
+        let dive_dir = tmp.join("myproj").join("dive");
+        std::fs::create_dir_all(&dive_dir).unwrap();
+        std::fs::write(dive_dir.join("20260411-hub-sub.md"), "---\ntopic: Sub\n---\n").unwrap();
+
+        with_blueprints_dir(&tmp, || {
+            let without = list_artifacts(ArtifactKind::Spec, false);
+            assert_eq!(without.len(), 1, "list without --include-dives should show 1 artifact");
+            assert!(without[0].path.to_string_lossy().contains("spec/"), "should be the spec hub");
+
+            let with_dives = list_artifacts(ArtifactKind::Spec, true);
+            assert_eq!(with_dives.len(), 2, "list with --include-dives should show 2 artifacts");
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn archive_dive_lands_in_archive_dive_not_archive_spec() {
+        let tmp = std::env::temp_dir().join(format!("ct-dive-archive-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let dive_dir = tmp.join("myproj").join("dive");
+        std::fs::create_dir_all(&dive_dir).unwrap();
+        let dive_file = dive_dir.join("20260411-hub-sub.md");
+        std::fs::write(&dive_file, "---\ntopic: Sub\n---\n").unwrap();
+
+        with_blueprints_dir(&tmp, || {
+            // cmd_archive will fail git note/push steps — we only check the file move.
+            let _ = cmd_archive(ArtifactKind::Spec, dive_file.to_str().unwrap());
+
+            let expected = tmp.join("myproj").join("archive").join("dive").join("20260411-hub-sub.md");
+            let wrong = tmp.join("myproj").join("archive").join("spec").join("20260411-hub-sub.md");
+
+            assert!(expected.exists(), "archived dive must be at archive/dive/");
+            assert!(!wrong.exists(), "archived dive must NOT be at archive/spec/");
+        });
+        std::fs::remove_dir_all(&tmp).ok();
     }
 }

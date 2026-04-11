@@ -118,25 +118,71 @@ The design lives in this conversation. When ready to formalize, run `/spec`.
 When the conversation has matured and the user is satisfied with the direction, offer to write structured output to the project's shared vault.
 
 **Output structure:**
-- **Hub document** — one-pager: problem, thesis/principles (brief), current position, actionable direction, `[[wiki-links]]` to deep dives
-- **Linked deep dives** — one per major concept, independently readable, linked back to hub with `Part of [[hub-name]]`
+- **Hub document** (lands in `spec/`) — one-pager: problem, thesis/principles (brief),
+  current position, actionable direction, `[[wiki-links]]` to deep dives
+- **Linked deep dives** (land in `dive/`) — one per major concept, independently readable,
+  linked back to hub via `source: "[[hub-stem]]"` frontmatter and `Part of [[hub-name]]` in body
 
-**Location:** Project's shared vault or documentation directory. Ask the user where to write if not obvious from project context. Use `ct` if the project uses the blueprints system.
+**Writing to the vault.**
+For projects using the blueprints system, write via `ct` — the hub as a regular spec,
+each deep dive as a spec routed to `dive/` via the `--dive` flag. For other vaults, write
+files directly to the shared documentation directory using the same sibling-folder layout.
 
-**Naming:** `YYYYMMDD-<issue>-<slug>.md` for hub, `<slug>-<subtopic>.md` for deep dives.
+```bash
+# Hub (vision-level spec)
+ct spec create \
+  --topic "<hub topic>" \
+  --project "$(git rev-parse --show-toplevel)" \
+  --tags "domain/<area>,stage/research,status/needs-review" \
+  --body "<hub body>"
+# → ~/blueprints/<project>/spec/YYYYMMDD-<hub-slug>.md
 
-**Frontmatter:** Each file gets:
+# Each deep dive (spec, routed to dive/ via --dive, linked via --source)
+ct spec create --dive \
+  --topic "<dive subtopic>" \
+  --slug "<hub-slug>-<dive-subtopic-slug>" \
+  --source "[[<hub-stem>]]" \
+  --project "$(git rev-parse --show-toplevel)" \
+  --tags "domain/<area>,stage/research,status/needs-review" \
+  --body "<dive body>"
+# → ~/blueprints/<project>/dive/YYYYMMDD-<hub-slug>-<dive-subtopic>.md
+```
+
+**Dive slug composition.**
+The dive slug must be explicitly composed as `<hub-slug>-<dive-subtopic-slug>` and passed via
+`--slug`. This is the skill's responsibility, not ct's. The hub prefix prevents collisions
+across brainstorms and groups dives from the same hub together in alphabetical sort.
+Do not rely on ct's auto-slug for dives — it would derive from `--topic` alone and lose the
+hub prefix.
+
+**`ct spec list` defaults.**
+By default, `ct spec list` hides dives so the top-level list stays scannable as "major specs
+only." Use `ct spec list --include-dives` to see dives alongside hubs.
+
+**Frontmatter** (every hub and every dive gets the same rich shape — Obsidian needs it for
+queries, tag filters, and backlinks):
+
 ```yaml
 ---
-topic: <topic>
-created: <date>
-author: <user>
+topic: <topic>                         # ct: from --topic
+created: <date>                        # ct: auto
+author: <user>                         # skill-supplied (ct does not add this)
+source: "[[<hub-stem>]]"               # ct: from --source (dives only)
 tags:
-  - type/spec
-  - status/needs-review
-  - project/<project>
+  - type/spec                          # ct: auto-derived
+  - project/<project>                  # ct: auto-derived
+  - domain/<area>                      # skill-supplied via --tags
+  - stage/research                     # skill-supplied via --tags
+  - status/needs-review                # skill-supplied via --tags
 ---
 ```
+
+`ct` writes the `topic`, `created`, `type/spec`, `project/<name>`, and (for dives) `source`
+fields automatically. The brainstorm skill is responsible for passing `--tags
+"domain/<area>,stage/research,status/needs-review"` on every `ct spec create` invocation
+and for appending an `author: <user>` line to the frontmatter after ct writes the file
+(or whatever convention the project uses). Keep hub and dive frontmatter identical in shape
+so Obsidian queries work uniformly across both folders.
 
 **Actionable direction section** (in the hub):
 - **Now** — concrete actionables with ticket-ready titles, not vague TODOs

@@ -92,7 +92,7 @@ impl App {
             .iter()
             .position(|l| l.id == active_list)
             .unwrap_or(0);
-        let all_plans: Vec<_> = artifact::list_artifacts(ArtifactKind::Plan)
+        let all_plans: Vec<_> = artifact::list_artifacts(ArtifactKind::Plan, false)
             .into_iter()
             .filter(|p| !p.project.is_empty())
             .collect();
@@ -119,7 +119,7 @@ impl App {
             plans_state: Some(plans::PlansState::new(all_plans, plan_counts)),
             plan_detail: None,
             specs_state: Some(specs::SpecsState::new(
-                artifact::list_artifacts(ArtifactKind::Spec),
+                artifact::list_artifacts(ArtifactKind::Spec, false),
                 spec_counts,
             )),
             spec_detail: None,
