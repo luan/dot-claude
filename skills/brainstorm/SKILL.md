@@ -138,10 +138,11 @@ ct spec create \
 # → ~/blueprints/<project>/spec/YYYYMMDD-<hub-slug>.md
 
 # Each deep dive (spec, routed to dive/ via --dive, linked via --source)
+# Pass source as a bare stem — ct wraps it in [[...]] automatically.
 ct spec create --dive \
   --topic "<dive subtopic>" \
   --slug "<hub-slug>-<dive-subtopic-slug>" \
-  --source "[[<hub-stem>]]" \
+  --source "<hub-stem>" \
   --project "$(git rev-parse --show-toplevel)" \
   --tags "domain/<area>,stage/research,status/needs-review" \
   --body "<dive body>"

@@ -361,6 +361,9 @@ pub enum ArtifactAction {
 
         #[arg(long, help = "Resolve this file directly instead of mtime heuristic")]
         task_file: Option<String>,
+
+        #[arg(long, help = "Also scan dive/ files when finding latest (spec only)")]
+        include_dives: bool,
     },
 
     #[command(about = "Move an artifact file to archive/ subfolder")]
@@ -1178,19 +1181,25 @@ pub fn run_artifact_show(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn run_artifact_create(
-    kind: crate::artifact::ArtifactKind,
-    topic: String,
-    project: String,
-    slug: Option<String>,
-    source: Option<String>,
-    tags: Option<String>,
-    body: Option<String>,
-    dive: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub struct ArtifactCreateArgs {
+    pub kind: crate::artifact::ArtifactKind,
+    pub topic: String,
+    pub project: String,
+    pub slug: Option<String>,
+    pub source: Option<String>,
+    pub tags: Option<String>,
+    pub body: Option<String>,
+    pub dive: bool,
+}
+
+pub fn run_artifact_create(args: ArtifactCreateArgs) -> Result<(), Box<dyn std::error::Error>> {
+    let ArtifactCreateArgs { kind, topic, project, slug, source, tags, body, dive } = args;
     if dive && source.is_none() {
         eprintln!("error: --dive requires --source (a dive without a hub link is meaningless)");
+        std::process::exit(1);
+    }
+    if dive && kind != crate::artifact::ArtifactKind::Spec {
+        eprintln!("error: --dive is only valid for spec artifacts");
         std::process::exit(1);
     }
     let tag_list: Vec<String> = tags
@@ -1199,16 +1208,16 @@ pub fn run_artifact_create(
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .collect();
-    if let Err(e) = crate::artifact::cmd_create(
+    if let Err(e) = crate::artifact::cmd_create(crate::artifact::CreateOpts {
         kind,
-        &topic,
-        &project,
-        slug.as_deref(),
-        source.as_deref(),
-        &tag_list,
-        body.unwrap_or_default(),
+        topic: &topic,
+        project: &project,
+        slug_override: slug.as_deref(),
+        source: source.as_deref(),
+        user_tags: &tag_list,
+        body: body.unwrap_or_default(),
         dive,
-    ) {
+    }) {
         handle_sync_error(e);
     }
     Ok(())
@@ -1236,8 +1245,9 @@ pub fn run_artifact_latest(
     kind: crate::artifact::ArtifactKind,
     project: Option<String>,
     task_file: Option<String>,
+    include_dives: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    crate::artifact::cmd_latest(kind, project.as_deref(), task_file.as_deref());
+    crate::artifact::cmd_latest(kind, project.as_deref(), task_file.as_deref(), include_dives);
     Ok(())
 }
 
@@ -1287,37 +1297,42 @@ pub fn run_artifact_prune(
             }
         }
 
-        let artifact_dir = dir_entry.path().join(kind_dir);
-        let Ok(files) = std::fs::read_dir(&artifact_dir) else {
-            continue;
-        };
-        for file_entry in files.flatten() {
-            let path = file_entry.path();
-            if path.is_dir() || path.extension().is_none_or(|ext| ext != "md") {
-                continue;
-            }
-            let Ok(meta) = file_entry.metadata() else {
+        let mut scan_dirs = vec![dir_entry.path().join(kind_dir)];
+        if kind == crate::artifact::ArtifactKind::Spec {
+            scan_dirs.push(dir_entry.path().join("dive"));
+        }
+        for artifact_dir in scan_dirs {
+            let Ok(files) = std::fs::read_dir(&artifact_dir) else {
                 continue;
             };
-            let Ok(modified) = meta.modified() else {
-                continue;
-            };
-            let Ok(age) = now.duration_since(modified) else {
-                continue;
-            };
-            if age < threshold {
-                continue;
-            }
+            for file_entry in files.flatten() {
+                let path = file_entry.path();
+                if path.is_dir() || path.extension().is_none_or(|ext| ext != "md") {
+                    continue;
+                }
+                let Ok(meta) = file_entry.metadata() else {
+                    continue;
+                };
+                let Ok(modified) = meta.modified() else {
+                    continue;
+                };
+                let Ok(age) = now.duration_since(modified) else {
+                    continue;
+                };
+                if age < threshold {
+                    continue;
+                }
 
-            let path_str = path.to_string_lossy().to_string();
-            if dry_run {
-                println!("would archive: {path_str}");
-            } else {
-                match crate::artifact::cmd_archive(kind, &path_str) {
-                    Ok(()) => archived_count += 1,
-                    Err(e) => {
-                        eprintln!("{e}");
-                        sync_errors += 1;
+                let path_str = path.to_string_lossy().to_string();
+                if dry_run {
+                    println!("would archive: {path_str}");
+                } else {
+                    match crate::artifact::cmd_archive(kind, &path_str) {
+                        Ok(()) => archived_count += 1,
+                        Err(e) => {
+                            eprintln!("{e}");
+                            sync_errors += 1;
+                        }
                     }
                 }
             }
