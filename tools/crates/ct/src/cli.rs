@@ -470,10 +470,16 @@ pub enum VaultAction {
 
         #[arg(help = "Topic to match against")]
         topic: String,
+
+        #[arg(long, help = "Include archived artifacts")]
+        archive: bool,
     },
 
     #[command(about = "Check for unresolved wiki-links (via Obsidian CLI)")]
-    Check,
+    Check {
+        #[arg(long, help = "Include archived artifacts")]
+        archive: bool,
+    },
 
     #[command(about = "Search artifacts (via Obsidian CLI)")]
     Search {
@@ -488,6 +494,9 @@ pub enum VaultAction {
 
         #[arg(short, long, help = "Filter by project path")]
         project: Option<String>,
+
+        #[arg(long, help = "Include archived artifacts")]
+        archive: bool,
     },
 
     #[command(about = "Show vault status (git state, artifact count)")]

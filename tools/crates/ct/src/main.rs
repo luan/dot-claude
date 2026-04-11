@@ -183,12 +183,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 vault::cmd_project();
                 Ok(())
             }
-            cli::VaultAction::Related { project, topic } => {
-                vault::cmd_related(&project, &topic);
+            cli::VaultAction::Related {
+                project,
+                topic,
+                archive,
+            } => {
+                vault::cmd_related(&project, &topic, archive);
                 Ok(())
             }
-            cli::VaultAction::Check => {
-                vault::cmd_check();
+            cli::VaultAction::Check { archive } => {
+                vault::cmd_check(archive);
                 Ok(())
             }
             cli::VaultAction::Search {
@@ -196,8 +200,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 json,
                 r#type,
                 project,
+                archive,
             } => {
-                vault::cmd_search(&query, json, r#type.as_deref(), project.as_deref());
+                vault::cmd_search(&query, json, r#type.as_deref(), project.as_deref(), archive);
                 Ok(())
             }
             cli::VaultAction::Status => {
