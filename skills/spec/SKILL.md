@@ -87,8 +87,11 @@ Build the spec from validated research. The spec defines the **target state** â€
 
 ### 4. Store spec
 
+Write the spec content to a temp file using the Write tool (never heredocs â€” backticks and special characters get escaped and corrupt the markdown). Then pipe it to ct:
+
 ```bash
-SPEC_FILE=$(echo "<spec content>" | ct spec create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" 2>/dev/null)
+SPEC_FILE=$(cat /tmp/spec-body.md | ct spec create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" 2>/dev/null)
+rm /tmp/spec-body.md
 ```
 
 The spec file is the durable artifact. After writing, check for related artifacts and append wiki-links if found:
@@ -151,9 +154,12 @@ Add **gates** (build/test/review checkpoints) between phases when the next phase
 
 ### 8. Store plan
 
+Write the plan content to a temp file using the Write tool, then pipe it:
+
 ```bash
 SPEC_STEM=$(basename "$SPEC_FILE" .md)
-PLAN_FILE=$(echo "<plan content>" | ct plan create --topic "<topic>" --source "$SPEC_STEM" --project "$(git rev-parse --show-toplevel)" 2>/dev/null)
+PLAN_FILE=$(cat /tmp/plan-body.md | ct plan create --topic "<topic>" --source "$SPEC_STEM" --project "$(git rev-parse --show-toplevel)" 2>/dev/null)
+rm /tmp/plan-body.md
 ```
 
 The plan links back to its source spec via `--source`.

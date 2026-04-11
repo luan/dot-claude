@@ -257,8 +257,11 @@ Output the doc body only (no frontmatter — ct adds that).
 
 Store with a clean topic name (no timestamps for docs):
 
+Write the doc content to a temp file using the Write tool (never heredocs — backticks get escaped and corrupt markdown), then pipe it:
+
 ```bash
-echo "<doc content>" | ct doc create --topic "<clean-topic-name>" --project "$PROJECT_ROOT" --tags "<domain-tags>"
+cat /tmp/doc-body.md | ct doc create --topic "<clean-topic-name>" --project "$PROJECT_ROOT" --tags "<domain-tags>"
+rm /tmp/doc-body.md
 ```
 
 Link related artifacts after creation:
