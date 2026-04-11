@@ -1,6 +1,6 @@
 ---
 name: ct
-description: "Reference for the ct CLI and the ~/blueprints/ artifact system. Use this skill whenever the user mentions blueprints, artifacts, specs, plans, reviews, reports, or docs in the context of documentation or project knowledge — even if they don't say 'ct' explicitly. Also trigger when the user wants to find, list, search, read, create, archive, or link artifacts, or asks about the blueprints vault, Obsidian integration, or artifact lifecycle. Covers correct ct command patterns, artifact metadata (tags, source links), and the blueprints directory layout."
+description: "Reference for the ct CLI and the ~/blueprints/ artifact system. Use this skill whenever the user mentions ct, blueprints, vault, artifacts, specs, plans, reviews, reports, or docs in the context of documentation or project knowledge — even if they don't say 'ct' explicitly. Also trigger when the user wants to find, list, search, read, create, archive, or link artifacts, or asks about the blueprints vault, Obsidian integration, or artifact lifecycle. Covers correct ct command patterns, artifact metadata (tags, source links), and the blueprints directory layout."
 user-invocable: false
 allowed-tools:
   - Bash
@@ -27,6 +27,8 @@ Workflow skills (`/spec`, `/develop`, `/review`, `/report`, `/archive`) handle t
 | List all | `ct <type> list --all` |
 | Latest | `ct <type> latest --project "$(git rev-parse --show-toplevel)"` |
 | Archive | `ct <type> archive <path>` |
+| Archive batch | `ct <type> archive --batch <f1> <f2> ...` |
+| Archive preview | `ct <type> archive --dry-run [--batch ...] <path>` |
 | Prune old | `ct <type> prune [--days N]` |
 | Show by slug | `ct <type> show <slug>` |
 | Search vault | `ct vault search "<query>"` |
@@ -89,26 +91,50 @@ Link by stem (filename without extension or path) — Obsidian resolves across t
 ## Common Patterns
 
 **Find what exists for this project:**
+
 ```bash
 ct spec list && ct plan list && ct review list && ct report list && ct doc list
 ```
 
 **Resume from latest artifact:**
+
 ```bash
 ct plan latest --project "$(git rev-parse --show-toplevel)"
 # Falls back to: ct spec latest --project "$(git rev-parse --show-toplevel)"
 ```
 
 **Read an artifact's content:**
+
 ```bash
 ct <type> read <path>           # body only
 ct <type> read <path> --json    # frontmatter as JSON
 ```
 
 **Archive after consumption:**
+
 ```bash
 ct <type> archive <path>
 # Moves to archive/, stores content as git note, commits+pushes
+
+# Batch archive (single commit for all files):
+ct <type> archive --batch <file1> <file2> <file3>
+
+# Preview what would be archived:
+ct <type> archive --dry-run --batch <file1> <file2>
+```
+
+**Check doc staleness:**
+
+```bash
+ct tool check-refs <doc-path> --project-root "$PROJECT_ROOT"
+# Outputs JSON: {doc, total_refs, valid, missing, staleness (0.0-1.0)}
+```
+
+**Module stability analysis:**
+
+```bash
+ct tool churn --project-root "$PROJECT_ROOT" --since 2w --min-loc 500
+# Outputs JSON array: [{module, loc, commits, last_change}, ...]
 ```
 
 ## Rules

@@ -1,12 +1,14 @@
 mod ansi;
 mod app;
 mod artifact;
+mod churn;
 mod cli;
 mod cochanges;
 mod editor;
 mod gitcontext;
 mod notify;
 mod phases;
+mod refs;
 mod slug;
 mod store;
 mod ui;
@@ -69,7 +71,11 @@ fn dispatch_artifact(
             task_file,
             include_dives,
         } => cli::run_artifact_latest(kind, project, task_file, include_dives),
-        cli::ArtifactAction::Archive { file } => cli::run_artifact_archive(kind, file),
+        cli::ArtifactAction::Archive {
+            file,
+            batch,
+            dry_run,
+        } => cli::run_artifact_archive(kind, file, batch, dry_run),
         cli::ArtifactAction::Show { id } => cli::run_artifact_show(kind, &id),
         cli::ArtifactAction::Prune {
             days,
@@ -79,6 +85,10 @@ fn dispatch_artifact(
         cli::ArtifactAction::Comments { file, json } => {
             cli::run_artifact_comments(kind, file, json)
         }
+        cli::ArtifactAction::Rename { old, new_slug } => {
+            cli::run_artifact_rename(kind, old, new_slug)
+        }
+        cli::ArtifactAction::Retag { file } => cli::run_artifact_retag(kind, file),
     }
 }
 
@@ -223,6 +233,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 stat,
                 cochanges,
             } => gitcontext::run(base, format, max_total, max_file, stat, cochanges),
+            cli::ToolAction::CheckRefs { file, project_root } => refs::run(file, project_root),
             cli::ToolAction::Cochanges {
                 base,
                 threshold,
@@ -230,6 +241,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 max_files,
                 num_commits,
             } => cli::run_cochanges(base, threshold, min_commits, max_files, num_commits),
+            cli::ToolAction::Churn {
+                project_root,
+                since,
+                min_loc,
+            } => churn::run(project_root, since, min_loc),
         },
     }
 }

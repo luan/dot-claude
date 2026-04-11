@@ -167,22 +167,7 @@ pub fn cmd_related(project: &str, topic: &str) {
                 .unwrap_or_default()
                 .to_string_lossy()
                 .to_string();
-            // Strip YYYYMMDD-HH- or legacy YYYYMMDD- date prefix for keyword matching
-            let slug_part = if stem.len() > 12
-                && stem[..8].chars().all(|c| c.is_ascii_digit())
-                && stem.as_bytes()[8] == b'-'
-                && stem[9..11].chars().all(|c| c.is_ascii_digit())
-                && stem.as_bytes()[11] == b'-'
-            {
-                &stem[12..]
-            } else if stem.len() > 9
-                && stem[..8].chars().all(|c| c.is_ascii_digit())
-                && stem.as_bytes()[8] == b'-'
-            {
-                &stem[9..]
-            } else {
-                &stem
-            };
+            let slug_part = crate::artifact::strip_date_prefix(&stem);
             let slug_words: HashSet<&str> = slug_part
                 .split(|c: char| !c.is_alphanumeric())
                 .filter(|w| w.len() >= 3)

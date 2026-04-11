@@ -517,6 +517,7 @@ dependencies = [
  "image",
  "notify",
  "ratatui",
+ "regex",
  "serde",
  "serde_json",
  "tempfile",

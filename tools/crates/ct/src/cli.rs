@@ -7,7 +7,7 @@ use clap_complete::{Shell, generate};
 
 #[derive(Parser)]
 #[command(name = "ct")]
-#[command(about = "Task management CLI and TUI", long_about = None)]
+#[command(about = "Claude Tool CLI", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Option<Command>,
@@ -249,6 +249,18 @@ pub enum ToolAction {
         cochanges: bool,
     },
 
+    #[command(about = "Check doc references against project filesystem")]
+    CheckRefs {
+        #[arg(help = "Doc file path or stem")]
+        file: String,
+
+        #[arg(
+            long,
+            help = "Project root path (default: git rev-parse --show-toplevel)"
+        )]
+        project_root: Option<String>,
+    },
+
     #[command(about = "Find files frequently changed together with current changes")]
     Cochanges {
         #[arg(
@@ -277,6 +289,25 @@ pub enum ToolAction {
             help = "How many recent commits to analyze"
         )]
         num_commits: usize,
+    },
+
+    #[command(about = "Report per-module LOC and recent git churn")]
+    Churn {
+        #[arg(
+            long,
+            help = "Project root path (default: git rev-parse --show-toplevel)"
+        )]
+        project_root: Option<String>,
+
+        #[arg(
+            long,
+            default_value = "2w",
+            help = "Git log time window (e.g. 2w, 30d, 3m)"
+        )]
+        since: String,
+
+        #[arg(long, default_value_t = 0, help = "Minimum LOC to include in output")]
+        min_loc: usize,
     },
 }
 
@@ -369,7 +400,13 @@ pub enum ArtifactAction {
     #[command(about = "Move an artifact file to archive/ subfolder")]
     Archive {
         #[arg(help = "File path or stem")]
-        file: String,
+        file: Option<String>,
+
+        #[arg(long, num_args = 1.., help = "Batch archive multiple files")]
+        batch: Vec<String>,
+
+        #[arg(long, help = "Preview what would be archived without acting")]
+        dry_run: bool,
     },
 
     #[command(about = "Show artifact content by ID")]
@@ -397,6 +434,21 @@ pub enum ArtifactAction {
 
         #[arg(long, help = "Output as JSON")]
         json: bool,
+    },
+
+    #[command(about = "Rename an artifact file and update its frontmatter")]
+    Rename {
+        #[arg(help = "Current file path or stem")]
+        old: String,
+
+        #[arg(help = "New slug for the file")]
+        new_slug: String,
+    },
+
+    #[command(about = "Fix auto-derived tags (type/*, project/*) in frontmatter")]
+    Retag {
+        #[arg(help = "File path or stem")]
+        file: String,
     },
 }
 
@@ -1104,6 +1156,10 @@ pub fn run_artifact_list(
                     "project": crate::artifact::project_name(&a.project),
                     "modified": crate::artifact::format_date(a.mod_time),
                     "size": crate::artifact::format_size(a.size),
+                    "created": a.created,
+                    "source": a.source,
+                    "tags": a.tags,
+                    "author": a.author,
                 })
             })
             .collect();
@@ -1193,7 +1249,16 @@ pub struct ArtifactCreateArgs {
 }
 
 pub fn run_artifact_create(args: ArtifactCreateArgs) -> Result<(), Box<dyn std::error::Error>> {
-    let ArtifactCreateArgs { kind, topic, project, slug, source, tags, body, dive } = args;
+    let ArtifactCreateArgs {
+        kind,
+        topic,
+        project,
+        slug,
+        source,
+        tags,
+        body,
+        dive,
+    } = args;
     if dive && source.is_none() {
         eprintln!("error: --dive requires --source (a dive without a hub link is meaningless)");
         std::process::exit(1);
@@ -1247,16 +1312,34 @@ pub fn run_artifact_latest(
     task_file: Option<String>,
     include_dives: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    crate::artifact::cmd_latest(kind, project.as_deref(), task_file.as_deref(), include_dives);
+    crate::artifact::cmd_latest(
+        kind,
+        project.as_deref(),
+        task_file.as_deref(),
+        include_dives,
+    );
     Ok(())
 }
 
 pub fn run_artifact_archive(
     kind: crate::artifact::ArtifactKind,
-    file: String,
+    file: Option<String>,
+    batch: Vec<String>,
+    dry_run: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    if let Err(e) = crate::artifact::cmd_archive(kind, &file) {
-        handle_sync_error(e);
+    if !batch.is_empty() {
+        if let Err(e) = crate::artifact::cmd_archive_batch(kind, &batch, dry_run) {
+            handle_sync_error(e);
+        }
+    } else if let Some(f) = file {
+        if let Err(e) = crate::artifact::cmd_archive(kind, &f, dry_run) {
+            handle_sync_error(e);
+        }
+    } else {
+        eprintln!(
+            "Usage: ct <type> archive <file> or ct <type> archive --batch <file1> <file2> ..."
+        );
+        std::process::exit(1);
     }
     Ok(())
 }
@@ -1327,7 +1410,7 @@ pub fn run_artifact_prune(
                 if dry_run {
                     println!("would archive: {path_str}");
                 } else {
-                    match crate::artifact::cmd_archive(kind, &path_str) {
+                    match crate::artifact::cmd_archive(kind, &path_str, false) {
                         Ok(()) => archived_count += 1,
                         Err(e) => {
                             eprintln!("{e}");
@@ -1347,6 +1430,27 @@ pub fn run_artifact_prune(
         std::process::exit(2);
     }
 
+    Ok(())
+}
+
+pub fn run_artifact_rename(
+    kind: crate::artifact::ArtifactKind,
+    old: String,
+    new_slug: String,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if let Err(e) = crate::artifact::cmd_rename(kind, &old, &new_slug) {
+        handle_sync_error(e);
+    }
+    Ok(())
+}
+
+pub fn run_artifact_retag(
+    kind: crate::artifact::ArtifactKind,
+    file: String,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if let Err(e) = crate::artifact::cmd_retag(kind, &file) {
+        handle_sync_error(e);
+    }
     Ok(())
 }
 
