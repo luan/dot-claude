@@ -227,6 +227,43 @@ def fmt_reset(resets_at):
         return "", 0
 
 
+USAGE_LOG = str(_TMPDIR / "claude-usage-log.tsv")
+USAGE_LOG_MAX_BYTES = 512 * 1024
+USAGE_LOG_MAX_AGE = 8 * 86400
+
+
+def _to_ts(v):
+    if v is None:
+        return 0
+    if isinstance(v, (int, float)):
+        return int(v)
+    try:
+        return int(datetime.fromisoformat(v).timestamp())
+    except Exception:
+        return 0
+
+
+def log_usage(fh_used, fh_resets, sd_used, sd_resets):
+    now = int(time.time())
+    try:
+        with open(USAGE_LOG, "a") as f:
+            f.write(f"{now}\t{fh_used}\t{_to_ts(fh_resets)}\t{sd_used}\t{_to_ts(sd_resets)}\n")
+    except OSError:
+        return
+    try:
+        if os.path.getsize(USAGE_LOG) > USAGE_LOG_MAX_BYTES:
+            cutoff = now - USAGE_LOG_MAX_AGE
+            with open(USAGE_LOG) as f:
+                kept = [
+                    ln for ln in f
+                    if ln[:10].isdigit() and int(ln.split("\t", 1)[0]) >= cutoff
+                ]
+            with open(USAGE_LOG, "w") as f:
+                f.writelines(kept)
+    except OSError:
+        pass
+
+
 def pace_balance_secs(used, remaining_secs, window_secs):
     """Surplus/deficit in seconds vs even pace. Positive = ahead."""
     elapsed = window_secs - remaining_secs
@@ -525,6 +562,8 @@ def main():
             if sd.get("resets_at")
             else None
         )
+
+        log_usage(fh_used, fh.get("resets_at"), sd_used, sd.get("resets_at"))
 
         usage_seg = ""
         for bw in range(12, 3, -1):
