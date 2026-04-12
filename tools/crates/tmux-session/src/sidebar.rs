@@ -794,11 +794,16 @@ impl SidebarState {
     fn switch_to_selected(&self) {
         if let Some(item) = self.items.get(self.selected) {
             if let Some(ref session) = item.session_id {
+                let same_session = *session == self.current;
                 if let Some(win_idx) = item.window_index {
-                    let target = format!("{session}:{win_idx}");
-                    tmux(&["switch-client", "-t", &target]);
-                    tmux(&["select-window", "-t", &target]);
-                } else {
+                    if same_session {
+                        // Same session: just switch the window tab, sidebar stays
+                        tmux(&["select-window", "-t", &format!("{session}:{win_idx}")]);
+                    } else {
+                        // Different session: switch client to session:window
+                        tmux(&["switch-client", "-t", &format!("{session}:{win_idx}")]);
+                    }
+                } else if !same_session {
                     tmux(&["switch-client", "-t", session]);
                 }
             }
@@ -1162,8 +1167,23 @@ pub fn cmd_sidebar() {
                         | (KeyCode::Up, _)
                         | (KeyCode::Char('p'), KeyModifiers::CONTROL) => state.move_sel(-1),
                         (KeyCode::Enter, _) => {
+                            let switching_session = state.items.get(state.selected)
+                                .and_then(|i| i.session_id.as_ref())
+                                .is_some_and(|s| *s != state.current);
                             state.switch_to_selected();
-                            focus_main_pane();
+                            // Only focus main pane when switching sessions,
+                            // not when switching tabs (so you can keep browsing)
+                            if switching_session {
+                                focus_main_pane();
+                            }
+                        }
+                        (KeyCode::Tab, _) => {
+                            // Cycle to next window tab in current session
+                            tmux(&["next-window"]);
+                        }
+                        (KeyCode::BackTab, _) => {
+                            // Cycle to previous window tab
+                            tmux(&["previous-window"]);
                         }
                         (KeyCode::Char('n'), m)
                             if !m.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) =>
