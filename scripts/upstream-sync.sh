@@ -39,6 +39,24 @@ fi
 info "Fetching upstream..."
 git fetch upstream
 
+UPSTREAM_SHA="$(git rev-parse upstream/main)"
+UPSTREAM_SHORT="$(git rev-parse --short upstream/main)"
+LAST_SYNC_TAG="$(git tag -l 'upstream-sync/*' --sort=-version:refname | head -1)"
+if [[ -n "$LAST_SYNC_TAG" ]]; then
+  LAST_SYNC_SHA="$(echo "$LAST_SYNC_TAG" | sed 's|upstream-sync/||')"
+  LAST_SYNC_DATE="$(git log -1 --format=%ai "$LAST_SYNC_TAG" 2>/dev/null | cut -d' ' -f1)"
+  info "Last sync: $LAST_SYNC_TAG ($LAST_SYNC_DATE)"
+  NEW_COMMITS="$(git log --oneline "${LAST_SYNC_SHA}..upstream/main" 2>/dev/null | wc -l)"
+  info "New upstream commits since last sync: $NEW_COMMITS"
+  if [[ "$NEW_COMMITS" -eq 0 ]]; then
+    info "Already up to date with upstream/main ($UPSTREAM_SHORT)."
+    exit 0
+  fi
+else
+  info "No previous sync tag found. Performing full sync."
+fi
+info "Syncing to upstream/main ($UPSTREAM_SHORT)"
+
 # --- Step 2: Discover what each side has -------------------------------------
 info "Discovering skills and rules..."
 
@@ -123,6 +141,11 @@ echo "                hooks/, plugins/config.json, rule-creator/, README.md, .gi
 echo ""
 
 if $DRY_RUN; then
+  if [[ -n "$LAST_SYNC_TAG" ]]; then
+    echo "  New upstream commits:"
+    git log --oneline "${LAST_SYNC_SHA}..upstream/main" 2>/dev/null | sed 's/^/    /'
+    echo ""
+  fi
   info "Dry run -- stopping here."
   exit 0
 fi
@@ -184,6 +207,10 @@ info "Installing ct..."
 # --- Step 7: Refresh plugin cache --------------------------------------------
 info "Refreshing plugin cache..."
 claude plugin install commons@local
+
+# --- Step 8: Record sync point -----------------------------------------------
+git tag -f "upstream-sync/$UPSTREAM_SHA" -m "Synced to upstream/main at $UPSTREAM_SHORT"
+info "Tagged sync point: upstream-sync/$UPSTREAM_SHA"
 
 # --- Done --------------------------------------------------------------------
 echo ""
