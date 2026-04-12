@@ -1152,6 +1152,9 @@ pub fn cmd_sidebar() {
                             state.selected = idx;
                             state.switch_to_selected();
                             if is_window && !switching_session {
+                                // Brief delay so tmux processes the window switch
+                                // before we re-capture pane content
+                                std::thread::sleep(Duration::from_millis(150));
                                 state.last_meta_refresh = Instant::now() - Duration::from_secs(60);
                                 state.refresh();
                             }
@@ -1191,19 +1194,21 @@ pub fn cmd_sidebar() {
                             if switching_session {
                                 focus_main_pane();
                             } else {
-                                // Same session tab switch: refresh to update active marker
+                                std::thread::sleep(Duration::from_millis(150));
                                 state.last_meta_refresh = Instant::now() - Duration::from_secs(60);
                                 state.refresh();
                             }
                         }
                         (KeyCode::Tab, _) => {
                             tmux(&["next-window"]);
+                            std::thread::sleep(Duration::from_millis(150));
                             state.last_meta_refresh = Instant::now() - Duration::from_secs(60);
                             state.refresh();
                             state.snap_to_active_window();
                         }
                         (KeyCode::BackTab, _) => {
                             tmux(&["previous-window"]);
+                            std::thread::sleep(Duration::from_millis(150));
                             state.last_meta_refresh = Instant::now() - Duration::from_secs(60);
                             state.refresh();
                             state.snap_to_active_window();
