@@ -662,6 +662,7 @@ struct Item {
     dim_color: Color,
     selectable: bool,
     session_id: Option<String>,
+    window_index: Option<usize>,
     kind: ItemKind,
 }
 
@@ -791,8 +792,16 @@ impl SidebarState {
     }
 
     fn switch_to_selected(&self) {
-        if let Some(id) = self.selected_session_id() {
-            tmux(&["switch-client", "-t", &id]);
+        if let Some(item) = self.items.get(self.selected) {
+            if let Some(ref session) = item.session_id {
+                if let Some(win_idx) = item.window_index {
+                    let target = format!("{session}:{win_idx}");
+                    tmux(&["switch-client", "-t", &target]);
+                    tmux(&["select-window", "-t", &target]);
+                } else {
+                    tmux(&["switch-client", "-t", session]);
+                }
+            }
         }
     }
 
@@ -896,6 +905,7 @@ fn build_items(sessions: &[String], cur: &str, meta: &HashMap<String, SessionMet
                     dim_color,
                     selectable: false,
                     session_id: None,
+                window_index: None,
                     kind: ItemKind::Group,
                 });
             }
@@ -930,6 +940,7 @@ fn build_items(sessions: &[String], cur: &str, meta: &HashMap<String, SessionMet
             dim_color,
             selectable: true,
             session_id: Some(name.clone()),
+                window_index: None,
             kind: ItemKind::Session {
                 attention: sm.attention,
             },
@@ -946,6 +957,7 @@ fn build_items(sessions: &[String], cur: &str, meta: &HashMap<String, SessionMet
                 dim_color,
                 selectable: false,
                 session_id: Some(name.clone()),
+                window_index: None,
                 kind: ItemKind::Agent {
                     name: sm.agent.clone(),
                     age: sm.claude_age,
@@ -962,6 +974,7 @@ fn build_items(sessions: &[String], cur: &str, meta: &HashMap<String, SessionMet
                     dim_color,
                     selectable: false,
                     session_id: Some(name.clone()),
+                window_index: None,
                     kind: ItemKind::Activity(act.clone()),
                 });
             }
@@ -976,6 +989,7 @@ fn build_items(sessions: &[String], cur: &str, meta: &HashMap<String, SessionMet
                     dim_color,
                     selectable: false,
                     session_id: Some(name.clone()),
+                window_index: None,
                     kind: ItemKind::ContextBar {
                         pct: ctx.pct,
                         tokens: ctx.tokens.clone(),
@@ -993,6 +1007,7 @@ fn build_items(sessions: &[String], cur: &str, meta: &HashMap<String, SessionMet
                 dim_color,
                 selectable: false,
                 session_id: Some(name.clone()),
+                window_index: None,
                 kind: ItemKind::Branch,
             });
         }
@@ -1006,6 +1021,7 @@ fn build_items(sessions: &[String], cur: &str, meta: &HashMap<String, SessionMet
                 dim_color,
                 selectable: false,
                 session_id: Some(name.clone()),
+                window_index: None,
                 kind: ItemKind::Ports(sm.ports.clone()),
             });
         }
@@ -1019,6 +1035,7 @@ fn build_items(sessions: &[String], cur: &str, meta: &HashMap<String, SessionMet
                 dim_color,
                 selectable: false,
                 session_id: Some(name.clone()),
+                window_index: None,
                 kind: ItemKind::Status,
             });
         }
@@ -1032,6 +1049,7 @@ fn build_items(sessions: &[String], cur: &str, meta: &HashMap<String, SessionMet
                 dim_color,
                 selectable: false,
                 session_id: Some(name.clone()),
+                window_index: None,
                 kind: ItemKind::Progress(pct),
             });
         }
@@ -1049,8 +1067,9 @@ fn build_items(sessions: &[String], cur: &str, meta: &HashMap<String, SessionMet
                 tree: detail_tree,
                 color,
                 dim_color,
-                selectable: false,
+                selectable: true,
                 session_id: Some(name.clone()),
+                window_index: Some(win.index),
                 kind: ItemKind::Window {
                     index: win.index,
                     active: win.active,
