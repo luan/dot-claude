@@ -202,10 +202,19 @@ struct ClaudeScrape {
     activity: Option<String>,
 }
 
-fn query_claude_scrapes(claude_sessions: &[String]) -> HashMap<String, ClaudeScrape> {
+fn query_claude_scrapes(
+    claude_sessions: &[String],
+    active_windows: &HashMap<String, String>,
+) -> HashMap<String, ClaudeScrape> {
     let mut result = HashMap::new();
     for session in claude_sessions {
-        let raw = tmux(&["capture-pane", "-t", session, "-p", "-S", "-30"]);
+        // Target the specific active window, not just the session (which may
+        // resolve to a different pane from the server's perspective).
+        let target = match active_windows.get(session) {
+            Some(win) => format!("{session}:{win}"),
+            None => session.clone(),
+        };
+        let raw = tmux(&["capture-pane", "-t", &target, "-p", "-S", "-30"]);
         let scrape = ClaudeScrape {
             ctx: parse_context(&raw),
             activity: parse_activity(&raw),
@@ -522,17 +531,20 @@ fn query_session_meta(sessions: &[String]) -> HashMap<String, SessionMeta> {
         "list-panes",
         "-a",
         "-F",
-        "#{session_name}\t#{window_active}\t#{pane_active}\t#{pane_current_path}\t#{pane_pid}",
+        "#{session_name}\t#{window_active}\t#{pane_active}\t#{pane_current_path}\t#{pane_pid}\t#{window_index}",
     ]);
     let mut cwds: HashMap<String, String> = HashMap::new();
     let mut pane_pids: HashMap<String, u32> = HashMap::new();
+    let mut active_windows: HashMap<String, String> = HashMap::new();
     for line in pane_raw.lines() {
         let parts: Vec<&str> = line.split('\t').collect();
-        if parts.len() == 5 && parts[1] == "1" && parts[2] == "1" {
-            cwds.insert(parts[0].to_string(), parts[3].to_string());
+        if parts.len() >= 6 && parts[1] == "1" && parts[2] == "1" {
+            let session = parts[0].to_string();
+            cwds.insert(session.clone(), parts[3].to_string());
             if let Ok(pid) = parts[4].parse::<u32>() {
-                pane_pids.insert(parts[0].to_string(), pid);
+                pane_pids.insert(session.clone(), pid);
             }
+            active_windows.insert(session, parts[5].to_string());
         }
     }
 
@@ -576,7 +588,7 @@ fn query_session_meta(sessions: &[String]) -> HashMap<String, SessionMeta> {
         .filter(|(_, name)| name.as_str() == "claude")
         .map(|(s, _)| s.clone())
         .collect();
-    let claude_scrape_map = query_claude_scrapes(&claude_sessions);
+    let claude_scrape_map = query_claude_scrapes(&claude_sessions, &active_windows);
     let claude_age_map = query_claude_ages(&claude_sessions, &cwds);
 
     // Git branches (one call per unique cwd)
