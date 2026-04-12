@@ -760,6 +760,16 @@ impl SidebarState {
             .unwrap_or(0);
     }
 
+    fn snap_to_active_window(&mut self) {
+        // Find the active window item for the current session
+        if let Some(pos) = self.items.iter().position(|i| {
+            i.session_id.as_ref().is_some_and(|s| *s == self.current)
+                && matches!(i.kind, ItemKind::Window { active: true, .. })
+        }) {
+            self.selected = pos;
+        }
+    }
+
     fn move_sel(&mut self, dir: i32) {
         let len = self.items.len();
         if len == 0 {
@@ -1171,19 +1181,25 @@ pub fn cmd_sidebar() {
                                 .and_then(|i| i.session_id.as_ref())
                                 .is_some_and(|s| *s != state.current);
                             state.switch_to_selected();
-                            // Only focus main pane when switching sessions,
-                            // not when switching tabs (so you can keep browsing)
                             if switching_session {
                                 focus_main_pane();
+                            } else {
+                                // Same session tab switch: refresh to update active marker
+                                state.last_meta_refresh = Instant::now() - Duration::from_secs(60);
+                                state.refresh();
                             }
                         }
                         (KeyCode::Tab, _) => {
-                            // Cycle to next window tab in current session
                             tmux(&["next-window"]);
+                            state.last_meta_refresh = Instant::now() - Duration::from_secs(60);
+                            state.refresh();
+                            state.snap_to_active_window();
                         }
                         (KeyCode::BackTab, _) => {
-                            // Cycle to previous window tab
                             tmux(&["previous-window"]);
+                            state.last_meta_refresh = Instant::now() - Duration::from_secs(60);
+                            state.refresh();
+                            state.snap_to_active_window();
                         }
                         (KeyCode::Char('n'), m)
                             if !m.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) =>
