@@ -49,8 +49,11 @@ If `--spec` or `--plan` provided, read via `ct spec read` / `ct plan read`. Othe
 
 ### 4. Store
 
+Write the report content to a temp file using the Write tool (never heredocs — backticks get escaped), then pipe it:
+
 ```bash
-REPORT_FILE=$(echo "<report content>" | ct report create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --source "<spec-or-plan-stem-if-known>")
+REPORT_FILE=$(cat /tmp/report-body.md | ct report create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" --source "<spec-or-plan-stem-if-known>")
+rm /tmp/report-body.md
 ```
 
 ### 5. Output

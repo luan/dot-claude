@@ -9,6 +9,9 @@ allowed-tools:
   - Read
   - Glob
   - Grep
+  - TaskCreate
+  - TaskUpdate
+  - TaskList
 ---
 
 # Develop
@@ -46,12 +49,14 @@ If the file doesn't exist or is empty, report and stop.
 
 ## Step 2: Decompose
 
-**From plan file:** Parse `**Phase N:**` markers directly into tasks. Each phase becomes one task. The plan already specifies files, approach, steps, and dependencies — use them as-is.
+**From plan file:** Parse phase markers directly into tasks. Each phase becomes one task. The plan already specifies files, approach, steps, and dependencies — use them as-is.
 
 **From spec file (fallback):** Break the spec into implementation tasks. Use the Architecture Context to determine natural boundaries (files, modules, layers). For each task, note:
 - What to build
 - Relevant spec excerpts, file paths, and approach
 - Dependencies on other tasks (which must complete first)
+
+**Create a task list:** After decomposing, create a TaskCreate entry for each phase/task. This gives the user visible progress tracking throughout execution. Set dependencies between tasks using `addBlockedBy` to reflect the plan's dependency graph. Mark each task `in_progress` when its worker starts and `completed` when it passes spec compliance.
 
 ## Step 3: Dispatch Workers
 
@@ -69,7 +74,7 @@ Implement this phase.
 <entire spec content — Problem, Recommendation, Architecture Context, Risks>
 
 ## Your Workflow
-1. Read the files listed in the phase (Read + Modify paths)
+1. Read the files listed in the phase (Modify + Create paths)
 2. Write a failing test that describes the target behavior
 3. Run the test — confirm it fails for the right reason (missing method, wrong behavior — not random error)
 4. Implement the minimum code to make the test pass

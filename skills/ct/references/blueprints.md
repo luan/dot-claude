@@ -5,8 +5,10 @@
 ```
 ~/blueprints/                    # Separate git repo + Obsidian vault
 └── <project>/                   # One dir per project (derived from git root)
-    ├── spec/                    # Target-state specifications
+    ├── spec/                    # Target-state specifications (hubs)
     │   └── YYYYMMDD-<slug>.md
+    ├── dive/                    # Vision-level specs linked to hubs via --source
+    │   └── YYYYMMDD-<hub-slug>-<subtopic>.md
     ├── plan/                    # Implementation plans (linked to specs)
     │   └── YYYYMMDD-<slug>.md
     ├── review/                  # Code review findings
@@ -14,7 +16,7 @@
     ├── report/                  # Post-implementation summaries
     │   └── YYYYMMDD-<slug>.md
     ├── docs/                    # Permanent reference docs (architecture, guides)
-    └── archive/                 # Consumed artifacts from all types
+    └── archive/                 # Consumed artifacts from all types (subfolder preserved)
 ```
 
 ## Artifact Frontmatter
@@ -50,6 +52,20 @@ Pass via `--tags "domain/webhooks,stage/research"`:
 ### Permanent Docs
 
 Files in `docs/` use `type/doc` tag. These are reference documents (architecture guides, API docs) — not workflow artifacts. They don't follow the artifact lifecycle.
+
+### Dives
+
+Files in `dive/` use `type/spec` tag — same as hub specs. A dive is a vision-level solution
+design linked to a hub spec via `source: "[[hub-stem]]"` frontmatter. ct routes them to `dive/`
+via the `--dive` flag on `ct spec create`, keeping the top-level `spec/` list scannable as
+"major things we're building."
+
+- Listed only via `ct spec list --include-dives` (hidden by default in both CLI and TUI).
+- Found by bare stem via `ct spec read <stem>` and `ct spec show <stem>` with no extra flag.
+- Archived to `archive/<project>/dive/` — the subfolder is preserved by `ct spec archive`.
+- Filename convention: `YYYYMMDD-<hub-slug>-<subtopic>.md`. The calling skill (e.g. brainstorm)
+  composes the slug with a hub prefix before passing it to ct via `--slug`.
+- `--dive` requires `--source` — a dive without a hub link is rejected at create time.
 
 ## Project Name Derivation
 

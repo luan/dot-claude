@@ -67,12 +67,12 @@
     {
       "id": 7,
       "prompt": "/spec --depth max redesign the event processing pipeline",
-      "expected_output": "Exhaustive research with 7+ plan phases, sub-steps, and verification criteria per phase.",
+      "expected_output": "Exhaustive research with full execution model, agent allocation, dependency graph, and spec compliance verification.",
       "expectations": [
         "Research is thorough — multiple subagents for complex domain",
-        "Plan has 7+ phases (matching --depth max)",
-        "Each phase includes verification steps",
-        "Phase dependencies are explicit"
+        "Plan includes Mermaid dependency graph showing phase relationships",
+        "Each phase has exact behavioral changes and spec compliance verification",
+        "Phase dependencies are explicit and agent allocation is justified"
       ]
     },
     {

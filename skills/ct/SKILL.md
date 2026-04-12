@@ -1,6 +1,6 @@
 ---
 name: ct
-description: "Reference for the ct CLI and the ~/blueprints/ artifact system. Use this skill whenever the user mentions blueprints, artifacts, specs, plans, reviews, reports, or docs in the context of documentation or project knowledge — even if they don't say 'ct' explicitly. Also trigger when the user wants to find, list, search, read, create, archive, or link artifacts, or asks about the blueprints vault, Obsidian integration, or artifact lifecycle. Covers correct ct command patterns, artifact metadata (tags, source links), and the blueprints directory layout."
+description: "Reference for the ct CLI and the ~/blueprints/ artifact system. Use this skill whenever the user mentions ct, blueprints, vault, artifacts, specs, plans, reviews, reports, or docs in the context of documentation or project knowledge — even if they don't say 'ct' explicitly. Also trigger when the user wants to find, list, search, read, create, archive, or link artifacts, or asks about the blueprints vault, Obsidian integration, or artifact lifecycle. Covers correct ct command patterns, artifact metadata (tags, source links), and the blueprints directory layout."
 user-invocable: false
 allowed-tools:
   - Bash
@@ -20,11 +20,15 @@ Workflow skills (`/spec`, `/develop`, `/review`, `/report`, `/archive`) handle t
 | Operation | Command |
 |-----------|---------|
 | Create | `ct <type> create --topic "..." --project "$(git rev-parse --show-toplevel)"` |
+| Create dive | `ct spec create --dive --source "<hub-stem>" --slug "<hub-slug>-<subtopic>" --topic "..." --project "$(git rev-parse --show-toplevel)"` |
 | Read | `ct <type> read <path-or-slug>` |
 | List active | `ct <type> list` |
+| List with dives | `ct spec list --include-dives` |
 | List all | `ct <type> list --all` |
 | Latest | `ct <type> latest --project "$(git rev-parse --show-toplevel)"` |
 | Archive | `ct <type> archive <path>` |
+| Archive batch | `ct <type> archive --batch <f1> <f2> ...` |
+| Archive preview | `ct <type> archive --dry-run [--batch ...] <path>` |
 | Prune old | `ct <type> prune [--days N]` |
 | Show by slug | `ct <type> show <slug>` |
 | Search vault | `ct vault search "<query>"` |
@@ -51,6 +55,28 @@ Body piped via stdin or passed with `--body`. Output: full file path.
 
 `--source` adds `source: "[[stem]]"` to frontmatter — use when an artifact derives from another (plan from spec, review against spec).
 
+## Dives: vision-level specs in `dive/`
+
+A dive is a spec at vision/architecture altitude — the broader context or high-level solution design that a hub spec links to. Dives are semantically specs (same `type/spec` tag, same ct machinery) but live in a sibling `dive/` folder so the top-level `spec/` list stays scannable as "major things we're building."
+
+```bash
+ct spec create --dive \
+  --topic "<dive subtopic>" \
+  --slug "<hub-slug>-<dive-subtopic-slug>" \
+  --source "<hub-stem>" \
+  --project "$(git rev-parse --show-toplevel)" \
+  --tags "domain/<area>,stage/research"
+```
+
+Rules for dives:
+- `--dive` requires `--source` — a dive without a hub link is rejected.
+- `--dive` is only valid for `spec` artifacts; `ct plan create --dive` is rejected.
+- Pass `--source` as a bare stem (e.g. `20260411-protocol-hub`); ct wraps it in `[[...]]` automatically when writing the frontmatter. Passing `[[...]]` yourself results in `[[[[...]]]]`.
+- Always pass an explicit `--slug` composed as `<hub-slug>-<dive-subtopic-slug>`. The hub prefix prevents collisions across brainstorms and groups dives from the same hub in alphabetical sort.
+- `ct spec list` hides dives by default. Use `ct spec list --include-dives` to see them.
+- `ct spec read <stem>` and `ct spec show <stem>` find dives by bare stem without a flag.
+- Archiving a dive preserves the subfolder: `ct spec archive <path-to-dive>` moves to `archive/<project>/dive/`, not `archive/<project>/spec/`.
+
 ## Linking
 
 After creating any artifact, check for related work:
@@ -65,26 +91,50 @@ Link by stem (filename without extension or path) — Obsidian resolves across t
 ## Common Patterns
 
 **Find what exists for this project:**
+
 ```bash
 ct spec list && ct plan list && ct review list && ct report list && ct doc list
 ```
 
 **Resume from latest artifact:**
+
 ```bash
 ct plan latest --project "$(git rev-parse --show-toplevel)"
 # Falls back to: ct spec latest --project "$(git rev-parse --show-toplevel)"
 ```
 
 **Read an artifact's content:**
+
 ```bash
 ct <type> read <path>           # body only
 ct <type> read <path> --json    # frontmatter as JSON
 ```
 
 **Archive after consumption:**
+
 ```bash
 ct <type> archive <path>
 # Moves to archive/, stores content as git note, commits+pushes
+
+# Batch archive (single commit for all files):
+ct <type> archive --batch <file1> <file2> <file3>
+
+# Preview what would be archived:
+ct <type> archive --dry-run --batch <file1> <file2>
+```
+
+**Check doc staleness:**
+
+```bash
+ct tool check-refs <doc-path> --project-root "$PROJECT_ROOT"
+# Outputs JSON: {doc, total_refs, valid, missing, staleness (0.0-1.0)}
+```
+
+**Module stability analysis:**
+
+```bash
+ct tool churn --project-root "$PROJECT_ROOT" --since 2w --min-loc 500
+# Outputs JSON array: [{module, loc, commits, last_change}, ...]
 ```
 
 ## Rules
