@@ -1146,8 +1146,15 @@ pub fn cmd_sidebar() {
                     {
                         let idx = state.offset + (me.row - last_list_y) as usize;
                         if idx < state.items.len() && state.items[idx].selectable {
+                            let is_window = matches!(state.items[idx].kind, ItemKind::Window { .. });
+                            let switching_session = state.items[idx].session_id.as_ref()
+                                .is_some_and(|s| *s != state.current);
                             state.selected = idx;
                             state.switch_to_selected();
+                            if is_window && !switching_session {
+                                state.last_meta_refresh = Instant::now() - Duration::from_secs(60);
+                                state.refresh();
+                            }
                         }
                     }
                     MouseEventKind::Moved => {
