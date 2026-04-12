@@ -169,6 +169,10 @@ mod tests {
             project: "/Users/me/project".to_string(),
             mod_time: SystemTime::UNIX_EPOCH,
             size: 100,
+            created: None,
+            source: None,
+            tags: Vec::new(),
+            author: None,
         }
     }
 

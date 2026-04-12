@@ -131,7 +131,7 @@ pub fn cmd_project() {
     println!("{}", project_name(&project));
 }
 
-pub fn cmd_related(project: &str, topic: &str) {
+pub fn cmd_related(project: &str, topic: &str, include_archive: bool) {
     let topic_words: HashSet<&str> = topic
         .split(|c: char| !c.is_alphanumeric())
         .filter(|w| w.len() >= 3)
@@ -153,64 +153,76 @@ pub fn cmd_related(project: &str, topic: &str) {
     let mut seen = HashSet::new();
 
     for kind in ALL_KINDS {
-        let kind_dir = proj_dir.join(kind.dir_name());
-        let Ok(entries) = fs::read_dir(&kind_dir) else {
-            continue;
-        };
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.extension().is_none_or(|ext| ext != "md") {
+        let mut dirs_to_scan = vec![proj_dir.join(kind.dir_name())];
+        if include_archive {
+            dirs_to_scan.push(proj_dir.join("archive").join(kind.dir_name()));
+        }
+        for scan_dir in dirs_to_scan {
+            let Ok(entries) = fs::read_dir(&scan_dir) else {
                 continue;
-            }
-            let stem = path
-                .file_stem()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .to_string();
-            // Strip YYYYMMDD-HH- or legacy YYYYMMDD- date prefix for keyword matching
-            let slug_part = if stem.len() > 12
-                && stem[..8].chars().all(|c| c.is_ascii_digit())
-                && stem.as_bytes()[8] == b'-'
-                && stem[9..11].chars().all(|c| c.is_ascii_digit())
-                && stem.as_bytes()[11] == b'-'
-            {
-                &stem[12..]
-            } else if stem.len() > 9
-                && stem[..8].chars().all(|c| c.is_ascii_digit())
-                && stem.as_bytes()[8] == b'-'
-            {
-                &stem[9..]
-            } else {
-                &stem
             };
-            let slug_words: HashSet<&str> = slug_part
-                .split(|c: char| !c.is_alphanumeric())
-                .filter(|w| w.len() >= 3)
-                .collect();
-            let overlap = topic_words.intersection(&slug_words).count();
-            if (overlap >= 2 || (topic_words.len() <= 2 && overlap >= 1))
-                && seen.insert(stem.clone())
-            {
-                println!("[[{stem}]]");
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().is_none_or(|ext| ext != "md") {
+                    continue;
+                }
+                let stem = path
+                    .file_stem()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
+                let slug_part = crate::artifact::strip_date_prefix(&stem);
+                let slug_words: HashSet<&str> = slug_part
+                    .split(|c: char| !c.is_alphanumeric())
+                    .filter(|w| w.len() >= 3)
+                    .collect();
+                let overlap = topic_words.intersection(&slug_words).count();
+                if (overlap >= 2 || (topic_words.len() <= 2 && overlap >= 1))
+                    && seen.insert(stem.clone())
+                {
+                    println!("[[{stem}]]");
+                }
             }
         }
     }
 }
 
-pub fn cmd_check() {
+pub fn cmd_check(include_archive: bool) {
     let bp = blueprints_dir();
-    let status = process::Command::new("obsidian")
+    let output = process::Command::new("obsidian")
         .args(["unresolved"])
         .current_dir(&bp)
-        .status();
-    match status {
-        Ok(s) if s.success() => {}
-        Ok(_) => eprintln!("obsidian unresolved reported issues"),
+        .output();
+    match output {
+        Ok(o) if o.status.success() => {
+            let text = String::from_utf8_lossy(&o.stdout);
+            for line in text.lines() {
+                if !include_archive && line.contains("archive/") {
+                    continue;
+                }
+                println!("{line}");
+            }
+        }
+        Ok(o) => {
+            let text = String::from_utf8_lossy(&o.stdout);
+            for line in text.lines() {
+                if !include_archive && line.contains("archive/") {
+                    continue;
+                }
+                println!("{line}");
+            }
+        }
         Err(e) => eprintln!("failed to run obsidian cli: {e}"),
     }
 }
 
-pub fn cmd_search(query: &str, json: bool, kind_filter: Option<&str>, project: Option<&str>) {
+pub fn cmd_search(
+    query: &str,
+    json: bool,
+    kind_filter: Option<&str>,
+    project: Option<&str>,
+    include_archive: bool,
+) {
     let bp = blueprints_dir();
     let mut args = vec!["search".to_string(), format!("query={query}")];
     if json {
@@ -233,6 +245,9 @@ pub fn cmd_search(query: &str, json: bool, kind_filter: Option<&str>, project: O
                 other => format!("{other}/"),
             });
             for line in text.lines() {
+                if !include_archive && line.contains("archive/") {
+                    continue;
+                }
                 let matches_kind = kind_dir.as_deref().is_none_or(|d| line.contains(d));
                 let matches_proj = proj_prefix.as_deref().is_none_or(|p| line.contains(p));
                 if matches_kind && matches_proj {

@@ -64,7 +64,7 @@ impl SpecsState {
 
     pub fn reload_specs(&mut self) {
         self.specs = match self.source {
-            SpecSource::Active => artifact::list_artifacts(ArtifactKind::Spec),
+            SpecSource::Active => artifact::list_artifacts(ArtifactKind::Spec, false),
             SpecSource::Archived => artifact::list_archived_artifacts(ArtifactKind::Spec),
         };
         self.filter();

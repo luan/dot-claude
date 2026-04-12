@@ -69,7 +69,7 @@ impl PlansState {
 
     pub fn reload_plans(&mut self) {
         let raw = match self.source {
-            PlanSource::Active => artifact::list_artifacts(ArtifactKind::Plan),
+            PlanSource::Active => artifact::list_artifacts(ArtifactKind::Plan, false),
             PlanSource::Archived => artifact::list_archived_artifacts(ArtifactKind::Plan),
             PlanSource::GitNotes => artifact::list_git_notes_artifacts_all(ArtifactKind::Plan),
         };

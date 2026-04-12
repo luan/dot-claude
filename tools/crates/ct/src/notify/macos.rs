@@ -182,6 +182,14 @@ pub fn notify(
         return Ok(());
     }
 
+    // Set @attention on the session so sidebar/status bar highlight it.
+    // Cleared when the session becomes current (see tmux-session update).
+    if let Some(sess) = session {
+        let _ = Command::new("tmux")
+            .args(["set-option", "-t", sess, "@attention", "1"])
+            .output();
+    }
+
     ensure_app_registered();
 
     let title = session.unwrap_or("Claude Code");

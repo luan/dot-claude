@@ -1,12 +1,14 @@
 mod ansi;
 mod app;
 mod artifact;
+mod churn;
 mod cli;
 mod cochanges;
 mod editor;
 mod gitcontext;
 mod notify;
 mod phases;
+mod refs;
 mod slug;
 mod store;
 mod ui;
@@ -38,9 +40,10 @@ fn dispatch_artifact(
             all,
             project,
             archived,
+            include_dives,
         } => {
             let (_, cwd) = store_and_cwd();
-            cli::run_artifact_list(kind, &cwd, json, all, project, archived)
+            cli::run_artifact_list(kind, &cwd, json, all, project, archived, include_dives)
         }
         cli::ArtifactAction::Create {
             topic,
@@ -49,14 +52,30 @@ fn dispatch_artifact(
             source,
             tags,
             body,
-        } => cli::run_artifact_create(kind, topic, project, slug, source, tags, body),
+            dive,
+        } => cli::run_artifact_create(cli::ArtifactCreateArgs {
+            kind,
+            topic,
+            project,
+            slug,
+            source,
+            tags,
+            body,
+            dive,
+        }),
         cli::ArtifactAction::Read { file, frontmatter } => {
             cli::run_artifact_read(kind, file, frontmatter)
         }
-        cli::ArtifactAction::Latest { project, task_file } => {
-            cli::run_artifact_latest(kind, project, task_file)
-        }
-        cli::ArtifactAction::Archive { file } => cli::run_artifact_archive(kind, file),
+        cli::ArtifactAction::Latest {
+            project,
+            task_file,
+            include_dives,
+        } => cli::run_artifact_latest(kind, project, task_file, include_dives),
+        cli::ArtifactAction::Archive {
+            file,
+            batch,
+            dry_run,
+        } => cli::run_artifact_archive(kind, file, batch, dry_run),
         cli::ArtifactAction::Show { id } => cli::run_artifact_show(kind, &id),
         cli::ArtifactAction::Prune {
             days,
@@ -66,6 +85,10 @@ fn dispatch_artifact(
         cli::ArtifactAction::Comments { file, json } => {
             cli::run_artifact_comments(kind, file, json)
         }
+        cli::ArtifactAction::Rename { old, new_slug } => {
+            cli::run_artifact_rename(kind, old, new_slug)
+        }
+        cli::ArtifactAction::Retag { file } => cli::run_artifact_retag(kind, file),
     }
 }
 
@@ -160,12 +183,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 vault::cmd_project();
                 Ok(())
             }
-            cli::VaultAction::Related { project, topic } => {
-                vault::cmd_related(&project, &topic);
+            cli::VaultAction::Related {
+                project,
+                topic,
+                archive,
+            } => {
+                vault::cmd_related(&project, &topic, archive);
                 Ok(())
             }
-            cli::VaultAction::Check => {
-                vault::cmd_check();
+            cli::VaultAction::Check { archive } => {
+                vault::cmd_check(archive);
                 Ok(())
             }
             cli::VaultAction::Search {
@@ -173,8 +200,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 json,
                 r#type,
                 project,
+                archive,
             } => {
-                vault::cmd_search(&query, json, r#type.as_deref(), project.as_deref());
+                vault::cmd_search(&query, json, r#type.as_deref(), project.as_deref(), archive);
                 Ok(())
             }
             cli::VaultAction::Status => {
@@ -210,6 +238,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 stat,
                 cochanges,
             } => gitcontext::run(base, format, max_total, max_file, stat, cochanges),
+            cli::ToolAction::CheckRefs { file, project_root } => refs::run(file, project_root),
             cli::ToolAction::Cochanges {
                 base,
                 threshold,
@@ -217,6 +246,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 max_files,
                 num_commits,
             } => cli::run_cochanges(base, threshold, min_commits, max_files, num_commits),
+            cli::ToolAction::Churn {
+                project_root,
+                since,
+                min_loc,
+            } => churn::run(project_root, since, min_loc),
         },
     }
 }

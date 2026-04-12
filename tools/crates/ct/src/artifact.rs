@@ -84,6 +84,10 @@ pub struct Artifact {
     pub project: String,
     pub mod_time: SystemTime,
     pub size: u64,
+    pub created: Option<String>,
+    pub source: Option<String>,
+    pub tags: Vec<String>,
+    pub author: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -128,6 +132,29 @@ pub fn artifact_dir_with_base(project_path: &str, kind: &str, base: &Path) -> Pa
 }
 
 // ---------------------------------------------------------------------------
+// Date-prefix stripping
+// ---------------------------------------------------------------------------
+
+/// Strip YYYYMMDD-HH- or legacy YYYYMMDD- date prefix from an artifact stem.
+pub fn strip_date_prefix(stem: &str) -> &str {
+    if stem.len() > 12
+        && stem.as_bytes()[..8].iter().all(|b| b.is_ascii_digit())
+        && stem.as_bytes()[8] == b'-'
+        && stem.as_bytes()[9..11].iter().all(|b| b.is_ascii_digit())
+        && stem.as_bytes()[11] == b'-'
+    {
+        &stem[12..]
+    } else if stem.len() > 9
+        && stem.as_bytes()[..8].iter().all(|b| b.is_ascii_digit())
+        && stem.as_bytes()[8] == b'-'
+    {
+        &stem[9..]
+    } else {
+        stem
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Worktree → main repo resolution
 // ---------------------------------------------------------------------------
 
@@ -144,9 +171,15 @@ pub fn resolve_repo_root(toplevel: &str) -> String {
 
     if let Some(ref common_dir) = common {
         let p = Path::new(common_dir);
-        // Absolute path means we're in a worktree; parent of `.git` is the main repo
-        if let Some(parent) = p.parent().filter(|_| p.is_absolute()) {
-            return parent.to_string_lossy().to_string();
+        if p.is_absolute() {
+            // Bare repo (e.g. arc.git): common-dir IS the repo, not a .git subdir
+            let fname = p.file_name().unwrap_or_default().to_string_lossy();
+            if fname == ".git" {
+                // Normal repo: parent of `.git` is the repo root
+                return p.parent().unwrap().to_string_lossy().to_string();
+            }
+            // Bare repo or non-standard: common-dir itself is the root
+            return p.to_string_lossy().to_string();
         }
     }
     toplevel.to_string()
@@ -436,6 +469,7 @@ pub enum SyncError {
     Add(String),
     Commit(String),
     Push(String),
+    Other(String),
 }
 
 impl std::fmt::Display for SyncError {
@@ -444,6 +478,7 @@ impl std::fmt::Display for SyncError {
             Self::Add(msg) => write!(f, "git add failed: {msg}"),
             Self::Commit(msg) => write!(f, "git commit failed: {msg}"),
             Self::Push(msg) => write!(f, "git push failed: {msg}"),
+            Self::Other(msg) => write!(f, "{msg}"),
         }
     }
 }
@@ -508,15 +543,33 @@ pub fn commit_and_push(relative_path: &Path, message: &str) -> Result<(), SyncEr
 // Generic CRUD (replaces planfile.rs / specfile.rs)
 // ---------------------------------------------------------------------------
 
-pub fn cmd_create(
-    kind: ArtifactKind,
-    topic: &str,
-    project: &str,
-    slug_override: Option<&str>,
-    source: Option<&str>,
-    user_tags: &[String],
-    mut body: String,
-) -> Result<(), SyncError> {
+pub struct CreateOpts<'a> {
+    pub kind: ArtifactKind,
+    pub topic: &'a str,
+    pub project: &'a str,
+    pub slug_override: Option<&'a str>,
+    pub source: Option<&'a str>,
+    pub user_tags: &'a [String],
+    pub body: String,
+    pub dive: bool,
+}
+
+pub fn cmd_create(opts: CreateOpts<'_>) -> Result<(), SyncError> {
+    let CreateOpts {
+        kind,
+        topic,
+        project,
+        slug_override,
+        source,
+        user_tags,
+        mut body,
+        dive,
+    } = opts;
+    if dive && kind != ArtifactKind::Spec {
+        return Err(SyncError::Other(
+            "error: --dive is only valid for spec artifacts".to_string(),
+        ));
+    }
     // Resolve worktree paths to the main repo root
     let project = &resolve_repo_root(project);
     let s = match slug_override {
@@ -527,13 +580,26 @@ pub fn cmd_create(
         fatal("could not derive slug from topic");
     }
 
-    let ts = chrono_compact();
-    let filename = format!("{ts}-{s}.md");
+    let filename = if kind == ArtifactKind::Doc {
+        format!("{s}.md")
+    } else {
+        let ts = chrono_compact();
+        format!("{ts}-{s}.md")
+    };
 
-    let dir = artifact_dir(project, kind);
+    let bp = blueprints_dir();
+    let proj_name_for_dir = project_name(project);
+    let dir = if dive && kind == ArtifactKind::Spec {
+        bp.join(&proj_name_for_dir).join("dive")
+    } else {
+        artifact_dir(project, kind)
+    };
     fs::create_dir_all(&dir).unwrap_or_else(|e| fatal(&format!("cannot create directory: {e}")));
 
     let full_path = dir.join(&filename);
+    if kind == ArtifactKind::Doc && full_path.exists() {
+        fatal(&format!("doc already exists: {}", full_path.display()));
+    }
 
     // Read body from stdin if not provided and stdin is piped
     if body.is_empty() && !io::stdin().is_terminal() {
@@ -617,35 +683,61 @@ pub fn resolve_artifact_path(file_arg: &str, kind: ArtifactKind) -> PathBuf {
     }
 
     // Bare stem — scan all projects for ~/blueprints/*/kind/stem.md
+    // For Spec, also scan dive/ so dive files are findable by bare stem.
     let stem = p.file_stem().unwrap_or(p.as_os_str());
+    let query_slug = stem.to_str().map(strip_date_prefix);
     let mut matches = Vec::new();
+    let mut fuzzy_matches = Vec::new();
     if let Ok(entries) = fs::read_dir(&bp) {
         for entry in entries.flatten() {
             if !entry.path().is_dir() {
                 continue;
             }
-            let candidate = entry.path().join(kind_dir);
-            if !candidate.is_dir() {
-                continue;
-            }
-            if let Ok(files) = fs::read_dir(&candidate) {
-                for f in files.flatten() {
-                    let fp = f.path();
-                    if fp.extension().and_then(|e| e.to_str()) == Some("md")
-                        && fp.file_stem() == Some(stem)
-                    {
-                        matches.push(fp);
+            let scan_dirs: Vec<PathBuf> = if kind == ArtifactKind::Spec {
+                vec![entry.path().join(kind_dir), entry.path().join("dive")]
+            } else {
+                vec![entry.path().join(kind_dir)]
+            };
+            for candidate in scan_dirs {
+                if !candidate.is_dir() {
+                    continue;
+                }
+                if let Ok(files) = fs::read_dir(&candidate) {
+                    for f in files.flatten() {
+                        let fp = f.path();
+                        if fp.extension().and_then(|e| e.to_str()) != Some("md") {
+                            continue;
+                        }
+                        if fp.file_stem() == Some(stem) {
+                            matches.push(fp);
+                            continue;
+                        }
+                        // Fuzzy: strip date prefix from candidate and/or query
+                        if let Some(candidate_stem) = fp.file_stem().and_then(|s| s.to_str()) {
+                            let candidate_slug = strip_date_prefix(candidate_stem);
+                            let stem_str = stem.to_str().unwrap_or("");
+                            if candidate_slug == stem_str
+                                || query_slug.is_some_and(|qs| qs == candidate_stem)
+                            {
+                                fuzzy_matches.push(fp);
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-    match matches.len() {
+    let resolved = if matches.is_empty() {
+        &mut fuzzy_matches
+    } else {
+        &mut matches
+    };
+    match resolved.len() {
         0 => fatal(&format!("artifact not found: {file_arg}")),
-        1 => matches.remove(0),
+        1 => resolved.remove(0),
         _ => {
-            let list: Vec<_> = matches.iter().map(|m| m.display().to_string()).collect();
+            let list: Vec<_> = resolved.iter().map(|m| m.display().to_string()).collect();
             fatal(&format!(
                 "ambiguous stem '{file_arg}', matches:\n  {}",
                 list.join("\n  ")
@@ -772,7 +864,12 @@ pub fn cmd_comments(file_path: &str, kind: ArtifactKind, json: bool) {
     }
 }
 
-pub fn cmd_latest(kind: ArtifactKind, project: Option<&str>, task_file: Option<&str>) {
+pub fn cmd_latest(
+    kind: ArtifactKind,
+    project: Option<&str>,
+    task_file: Option<&str>,
+    include_dives: bool,
+) {
     let mut project = project.unwrap_or("").to_string();
 
     if project.is_empty() && task_file.is_none() {
@@ -793,7 +890,7 @@ pub fn cmd_latest(kind: ArtifactKind, project: Option<&str>, task_file: Option<&
         project = resolve_repo_root(&project);
     }
 
-    match latest_artifact(kind, task_file, &project) {
+    match latest_artifact(kind, task_file, &project, include_dives) {
         Ok(p) => println!("{}", p.display()),
         Err(e) => fatal(&e),
     }
@@ -804,6 +901,7 @@ pub fn latest_artifact(
     kind: ArtifactKind,
     task_file: Option<&str>,
     project: &str,
+    include_dives: bool,
 ) -> Result<PathBuf, String> {
     if let Some(tf) = task_file {
         let p = PathBuf::from(tf);
@@ -813,52 +911,81 @@ pub fn latest_artifact(
         return Err(format!("task-file not found: {tf}"));
     }
 
-    let dir = artifact_dir(project, kind);
-    let entries = fs::read_dir(&dir).map_err(|e| {
-        format!(
-            "cannot read {} directory {}: {e}",
-            kind.dir_name(),
-            dir.display()
-        )
-    })?;
-
     let mut latest_path: Option<PathBuf> = None;
     let mut latest_time = SystemTime::UNIX_EPOCH;
 
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_dir() || path.extension().and_then(|e| e.to_str()) != Some("md") {
+    let dirs_to_scan: Vec<PathBuf> = if include_dives && kind == ArtifactKind::Spec {
+        let bp = blueprints_dir();
+        let proj_name = project_name(project);
+        vec![
+            artifact_dir(project, kind),
+            bp.join(&proj_name).join("dive"),
+        ]
+    } else {
+        vec![artifact_dir(project, kind)]
+    };
+
+    let mut any_dir_readable = false;
+    for dir in &dirs_to_scan {
+        let Ok(entries) = fs::read_dir(dir) else {
             continue;
-        }
-        if let Ok(meta) = entry.metadata()
-            && let Ok(modified) = meta.modified()
-            && modified > latest_time
-        {
-            latest_time = modified;
-            latest_path = Some(path);
+        };
+        any_dir_readable = true;
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() || path.extension().and_then(|e| e.to_str()) != Some("md") {
+                continue;
+            }
+            if let Ok(meta) = entry.metadata()
+                && let Ok(modified) = meta.modified()
+                && modified > latest_time
+            {
+                latest_time = modified;
+                latest_path = Some(path);
+            }
         }
     }
 
-    latest_path.ok_or_else(|| format!("no {} files found in {}", kind.dir_name(), dir.display()))
+    if latest_path.is_none() && !any_dir_readable {
+        let dir = &dirs_to_scan[0];
+        return Err(format!(
+            "cannot read {} directory {}: directory not found",
+            kind.dir_name(),
+            dir.display()
+        ));
+    }
+
+    latest_path.ok_or_else(|| {
+        format!(
+            "no {} files found in {}",
+            kind.dir_name(),
+            dirs_to_scan[0].display()
+        )
+    })
 }
 
-pub fn cmd_archive(kind: ArtifactKind, file_path: &str) -> Result<(), SyncError> {
-    let path = Path::new(file_path);
-    if !path.exists() {
-        fatal(&format!("file not found: {file_path}"));
-    }
-
-    // Derive project name from file's location in <vault>/<project>/<kind>/
-    let bp = blueprints_dir();
-    let rel_path = path
-        .strip_prefix(&bp)
-        .unwrap_or_else(|_| fatal(&format!("file is not inside {}", bp.display())));
-    let proj_name = rel_path
-        .components()
-        .next()
+/// Detect the source subfolder (spec/, dive/, plan/, etc.) from a vault path.
+/// Falls back to `kind.dir_name()` if the subfolder isn't recognized.
+fn detect_subfolder(path: &Path, bp: &Path, kind: ArtifactKind) -> String {
+    const VALID_SUBFOLDERS: &[&str] = &["spec", "dive", "plan", "review", "report", "docs"];
+    path.strip_prefix(bp)
+        .ok()
+        .and_then(|rel| rel.components().nth(1)) // skip project component
         .map(|c| c.as_os_str().to_string_lossy().to_string())
-        .unwrap_or_else(|| fatal("cannot determine project from file path"));
+        .filter(|s| VALID_SUBFOLDERS.contains(&s.as_str()))
+        .unwrap_or_else(|| kind.dir_name().to_string())
+}
 
+/// Core archive logic for a single file: git notes, move, stage deletion.
+/// Returns the destination path. Does NOT commit or push.
+/// Preserves the source subfolder (spec/ or dive/) in the archive path.
+fn archive_single(
+    kind: ArtifactKind,
+    path: &Path,
+    bp: &Path,
+    proj_name: &str,
+) -> Result<PathBuf, String> {
+    let source_subfolder = detect_subfolder(path, bp, kind);
     // Best-effort: store as git note in the current project repo
     let git_dir = process::Command::new("git")
         .args(["rev-parse", "--show-toplevel"])
@@ -882,25 +1009,158 @@ pub fn cmd_archive(kind: ArtifactKind, file_path: &str) -> Result<(), SyncError>
             .status();
     }
 
-    // Move to archive/
-    let archive_dir = bp.join(&proj_name).join("archive").join(kind.dir_name());
+    // Move to archive/, preserving the source subfolder (spec/ or dive/)
+    let archive_dir = bp.join(proj_name).join("archive").join(&source_subfolder);
     fs::create_dir_all(&archive_dir)
-        .unwrap_or_else(|e| fatal(&format!("cannot create archive directory: {e}")));
+        .map_err(|e| format!("cannot create archive directory: {e}"))?;
     let file_name = path
         .file_name()
-        .unwrap_or_else(|| fatal("cannot determine file name"));
+        .ok_or_else(|| "cannot determine file name".to_string())?;
     let dest = archive_dir.join(file_name);
-    fs::rename(path, &dest).unwrap_or_else(|e| fatal(&format!("archiving file: {e}")));
-    eprintln!("Archived: {file_path} → {}", dest.display());
+    fs::rename(path, &dest).map_err(|e| format!("archiving file: {e}"))?;
+    eprintln!("Archived: {} → {}", path.display(), dest.display());
 
-    // Stage both the deletion of the original and the new archive file
-    if let (Ok(src_rel), Ok(dest_rel)) = (path.strip_prefix(&bp), dest.strip_prefix(&bp)) {
+    // Stage the deletion of the original
+    if let Ok(src_rel) = path.strip_prefix(bp) {
         let bp_str = bp.to_string_lossy();
-        // Stage the deleted original
         let _ = process::Command::new("git")
             .args(["-C", &bp_str, "add", "--"])
             .arg(src_rel)
             .status();
+    }
+
+    Ok(dest)
+}
+
+/// Compute where a file would land in the archive without moving it.
+fn archive_dest(path: &Path, bp: &Path, proj_name: &str, kind: ArtifactKind) -> PathBuf {
+    let subfolder = detect_subfolder(path, bp, kind);
+    let archive_dir = bp.join(proj_name).join("archive").join(subfolder);
+    let file_name = path.file_name().unwrap_or_default();
+    archive_dir.join(file_name)
+}
+
+/// Validate a file path for archiving: must exist and live inside the vault.
+/// Returns (canonical path, project name).
+fn validate_archive_path(file_path: &str, bp: &Path) -> (PathBuf, String) {
+    let path = Path::new(file_path);
+    if !path.exists() {
+        fatal(&format!("file not found: {file_path}"));
+    }
+    let rel_path = path
+        .strip_prefix(bp)
+        .unwrap_or_else(|_| fatal(&format!("file is not inside {}", bp.display())));
+    let proj_name = rel_path
+        .components()
+        .next()
+        .map(|c| c.as_os_str().to_string_lossy().to_string())
+        .unwrap_or_else(|| fatal("cannot determine project from file path"));
+    (path.to_path_buf(), proj_name)
+}
+
+pub fn cmd_retag(kind: ArtifactKind, file_arg: &str) -> Result<(), SyncError> {
+    let bp = blueprints_dir();
+    let resolved = resolve_artifact_path(file_arg, kind);
+    let resolved_str = resolved.to_string_lossy();
+
+    let content = fs::read_to_string(&resolved)
+        .unwrap_or_else(|_| fatal(&format!("cannot read: {resolved_str}")));
+
+    let (yaml, _) = parse_frontmatter(&content);
+    if yaml.is_none() {
+        fatal("no frontmatter found");
+    }
+
+    // Derive project name from vault path (same pattern as validate_archive_path)
+    let rel_path = resolved
+        .strip_prefix(&bp)
+        .unwrap_or_else(|_| fatal(&format!("file is not inside {}", bp.display())));
+    let proj_name = rel_path
+        .components()
+        .next()
+        .map(|c| c.as_os_str().to_string_lossy().to_string())
+        .unwrap_or_else(|| fatal("cannot determine project from file path"));
+
+    let correct_type_tag = format!("type/{}", kind.dir_name());
+    let correct_project_tag = format!("project/{proj_name}");
+
+    // Process frontmatter lines, replacing auto-derived tags
+    let mut changed = false;
+    let mut in_frontmatter = false;
+    let mut past_first_delim = false;
+    let mut result_lines: Vec<String> = Vec::new();
+
+    for line in content.lines() {
+        if line == "---" {
+            if !past_first_delim {
+                past_first_delim = true;
+                in_frontmatter = true;
+            } else {
+                in_frontmatter = false;
+            }
+            result_lines.push(line.to_string());
+            continue;
+        }
+
+        if in_frontmatter {
+            if let Some(rest) = line.strip_prefix("  - type/") {
+                let new_line = format!("  - {correct_type_tag}");
+                if rest != kind.dir_name() {
+                    changed = true;
+                }
+                result_lines.push(new_line);
+                continue;
+            }
+            if line.starts_with("  - project/") {
+                let new_line = format!("  - {correct_project_tag}");
+                if line != format!("  - {correct_project_tag}") {
+                    changed = true;
+                }
+                result_lines.push(new_line);
+                continue;
+            }
+        }
+
+        result_lines.push(line.to_string());
+    }
+
+    if !changed {
+        eprintln!("tags already correct");
+        return Ok(());
+    }
+
+    // Preserve trailing newline if original had one
+    let mut output = result_lines.join("\n");
+    if content.ends_with('\n') {
+        output.push('\n');
+    }
+
+    fs::write(&resolved, &output)
+        .unwrap_or_else(|e| fatal(&format!("cannot write {resolved_str}: {e}")));
+
+    let stem = resolved.file_stem().unwrap_or_default().to_string_lossy();
+    let rel = resolved.strip_prefix(&bp).unwrap_or(resolved.as_path());
+    commit_and_push(rel, &format!("retag({proj_name}): {stem}"))?;
+
+    Ok(())
+}
+
+pub fn cmd_archive(kind: ArtifactKind, file_path: &str, dry_run: bool) -> Result<(), SyncError> {
+    let bp = blueprints_dir();
+    let resolved = resolve_artifact_path(file_path, kind);
+    let resolved_str = resolved.to_string_lossy();
+    let (path, proj_name) = validate_archive_path(&resolved_str, &bp);
+
+    if dry_run {
+        let dest = archive_dest(&path, &bp, &proj_name, kind);
+        println!("Would archive: {} → {}", path.display(), dest.display());
+        println!("Total: 1 artifact");
+        return Ok(());
+    }
+
+    let dest = archive_single(kind, &path, &bp, &proj_name).map_err(SyncError::Add)?;
+
+    if let Ok(dest_rel) = dest.strip_prefix(&bp) {
         let slug = path
             .file_stem()
             .map(|s| s.to_string_lossy().to_string())
@@ -910,19 +1170,143 @@ pub fn cmd_archive(kind: ArtifactKind, file_path: &str) -> Result<(), SyncError>
     Ok(())
 }
 
+pub fn cmd_archive_batch(
+    kind: ArtifactKind,
+    file_paths: &[String],
+    dry_run: bool,
+) -> Result<(), SyncError> {
+    let bp = blueprints_dir();
+
+    // Validate all files up front before moving any
+    let validated: Vec<(PathBuf, String)> = file_paths
+        .iter()
+        .map(|fp| {
+            let resolved = resolve_artifact_path(fp, kind);
+            let resolved_str = resolved.to_string_lossy();
+            validate_archive_path(&resolved_str, &bp)
+        })
+        .collect();
+
+    if validated.is_empty() {
+        return Ok(());
+    }
+
+    // All files must belong to the same project
+    let proj_name = &validated[0].1;
+    for (path, proj) in &validated {
+        if proj != proj_name {
+            fatal(&format!(
+                "mixed projects in batch: expected {proj_name}, got {proj} for {}",
+                path.display()
+            ));
+        }
+    }
+
+    if dry_run {
+        for (path, _) in &validated {
+            let dest = archive_dest(path, &bp, proj_name, kind);
+            println!("Would archive: {} → {}", path.display(), dest.display());
+        }
+        println!("Total: {} artifacts", validated.len());
+        return Ok(());
+    }
+
+    // Archive all files, collecting destinations.
+    // If one fails mid-batch, commit what succeeded so files aren't orphaned.
+    let mut dests: Vec<PathBuf> = Vec::with_capacity(validated.len());
+    let mut batch_err: Option<String> = None;
+    for (path, _) in &validated {
+        match archive_single(kind, path, &bp, proj_name) {
+            Ok(dest) => dests.push(dest),
+            Err(e) => {
+                eprintln!("archive failed for {}: {e}", path.display());
+                batch_err = Some(e);
+                break;
+            }
+        }
+    }
+
+    if dests.is_empty() {
+        if let Some(e) = batch_err {
+            return Err(SyncError::Add(e));
+        }
+        return Ok(());
+    }
+
+    // Stage all archive destinations and commit once
+    let bp_str = bp.to_string_lossy();
+    for dest in &dests {
+        if let Ok(dest_rel) = dest.strip_prefix(&bp) {
+            let _ = process::Command::new("git")
+                .args(["-C", &bp_str, "add"])
+                .arg(dest_rel)
+                .status();
+        }
+    }
+
+    let n = dests.len();
+    let commit_ok = process::Command::new("git")
+        .args([
+            "-C",
+            &bp_str,
+            "commit",
+            "-m",
+            &format!("archive({proj_name}): {n} artifacts"),
+        ])
+        .output();
+
+    match commit_ok {
+        Ok(o) if o.status.success() => {}
+        Ok(o) => {
+            let stderr = String::from_utf8_lossy(&o.stderr);
+            if !stderr.contains("nothing to commit") {
+                return Err(SyncError::Commit(stderr.trim().to_string()));
+            }
+        }
+        Err(e) => {
+            return Err(SyncError::Commit(format!(
+                "failed to run git commit in {}: {e}",
+                bp.display()
+            )));
+        }
+    }
+
+    let push_ok = process::Command::new("git")
+        .args(["-C", &bp_str, "push"])
+        .status()
+        .is_ok_and(|s| s.success());
+
+    if !push_ok {
+        return Err(SyncError::Push(format!(
+            "commit saved locally in {}, push manually",
+            bp.display()
+        )));
+    }
+
+    if let Some(e) = batch_err {
+        eprintln!("committed {n} successful archives, but batch had an error: {e}");
+    }
+
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // Generic listing (replaces plan.rs / spec.rs listing)
 // ---------------------------------------------------------------------------
 
-pub fn list_artifacts(kind: ArtifactKind) -> Vec<Artifact> {
-    list_artifacts_filtered(kind, false)
+pub fn list_artifacts(kind: ArtifactKind, include_dives: bool) -> Vec<Artifact> {
+    list_artifacts_filtered(kind, false, include_dives)
 }
 
 pub fn list_archived_artifacts(kind: ArtifactKind) -> Vec<Artifact> {
-    list_artifacts_filtered(kind, true)
+    list_artifacts_filtered(kind, true, false)
 }
 
-fn list_artifacts_filtered(kind: ArtifactKind, archived: bool) -> Vec<Artifact> {
+fn list_artifacts_filtered(
+    kind: ArtifactKind,
+    archived: bool,
+    include_dives: bool,
+) -> Vec<Artifact> {
     let bp = blueprints_dir();
     // Walk all project subdirs in ~/blueprints/
     let mut artifacts = Vec::new();
@@ -943,9 +1327,17 @@ fn list_artifacts_filtered(kind: ArtifactKind, archived: bool) -> Vec<Artifact> 
         if archived {
             let archive_dir = proj_path.join("archive").join(kind.dir_name());
             collect_artifacts(&bp, &archive_dir, &proj_name, &mut artifacts);
+            if kind == ArtifactKind::Spec {
+                let archive_dive_dir = proj_path.join("archive").join("dive");
+                collect_artifacts(&bp, &archive_dive_dir, &proj_name, &mut artifacts);
+            }
         } else {
             let kind_dir = proj_path.join(kind.dir_name());
             collect_artifacts(&bp, &kind_dir, &proj_name, &mut artifacts);
+            if include_dives && kind == ArtifactKind::Spec {
+                let dive_dir = proj_path.join("dive");
+                collect_artifacts(&bp, &dive_dir, &proj_name, &mut artifacts);
+            }
         }
     }
     artifacts.sort_by_key(|a| std::cmp::Reverse(a.mod_time));
@@ -973,7 +1365,7 @@ fn collect_artifacts(base: &Path, dir: &Path, fallback_project: &str, out: &mut 
             .with_extension("")
             .to_string_lossy()
             .to_string();
-        let (title, _) = extract_frontmatter(&path);
+        let (title, _, created, source, tags, author) = extract_frontmatter_full(&path);
         out.push(Artifact {
             name,
             path,
@@ -981,6 +1373,10 @@ fn collect_artifacts(base: &Path, dir: &Path, fallback_project: &str, out: &mut 
             project: fallback_project.to_string(),
             mod_time: info.modified().unwrap_or(SystemTime::UNIX_EPOCH),
             size: info.len(),
+            created,
+            source,
+            tags,
+            author,
         });
     }
 }
@@ -1089,7 +1485,8 @@ fn list_git_notes_artifacts(kind: ArtifactKind, project: &str) -> Vec<Artifact> 
 
         let short_sha = &commit_sha[..7.min(commit_sha.len())];
         for (idx, chunk) in split_notes(&content).into_iter().enumerate() {
-            let (title, proj) = extract_frontmatter_from_str(&chunk);
+            let (title, proj, created, source, tags, author) =
+                extract_frontmatter_full_from_str(&chunk);
             let label = if title.is_empty() {
                 format!("note:{short_sha}#{idx}")
             } else {
@@ -1106,6 +1503,10 @@ fn list_git_notes_artifacts(kind: ArtifactKind, project: &str) -> Vec<Artifact> 
                 },
                 mod_time: commit_time,
                 size: chunk.len() as u64,
+                created,
+                source,
+                tags,
+                author,
             });
         }
     }
@@ -1159,10 +1560,25 @@ fn strip_yaml_quotes(s: &str) -> String {
     }
 }
 
-fn extract_frontmatter_from_str(content: &str) -> (String, String) {
+/// Full frontmatter extraction: title, project, created, source, tags, author.
+fn extract_frontmatter_full_from_str(
+    content: &str,
+) -> (
+    String,
+    String,
+    Option<String>,
+    Option<String>,
+    Vec<String>,
+    Option<String>,
+) {
     let mut title = String::new();
     let mut project = String::new();
+    let mut created = None;
+    let mut source = None;
+    let mut tags = Vec::new();
+    let mut author = None;
     let mut in_frontmatter = false;
+    let mut in_tags = false;
 
     for line in content.lines() {
         let trimmed = line.trim();
@@ -1173,25 +1589,71 @@ fn extract_frontmatter_from_str(content: &str) -> (String, String) {
             in_frontmatter = true;
             continue;
         }
-        if in_frontmatter {
-            if let Some(val) = trimmed.strip_prefix("topic:") {
-                title = strip_yaml_quotes(val);
-            } else if let Some(val) = trimmed.strip_prefix("project:") {
-                project = strip_yaml_quotes(val);
+        if !in_frontmatter {
+            if let Some(t) = trimmed.strip_prefix("# ") {
+                title = t.to_string();
+                break;
             }
-        } else if let Some(t) = trimmed.strip_prefix("# ") {
-            title = t.to_string();
-            break;
+            continue;
+        }
+
+        // Inside frontmatter: detect YAML list items under `tags:`
+        if in_tags {
+            if let Some(item) = trimmed.strip_prefix("- ") {
+                tags.push(strip_yaml_quotes(item));
+                continue;
+            }
+            // No longer a list item — stop collecting tags
+            in_tags = false;
+        }
+
+        if let Some(val) = trimmed.strip_prefix("topic:") {
+            title = strip_yaml_quotes(val);
+        } else if let Some(val) = trimmed.strip_prefix("project:") {
+            project = strip_yaml_quotes(val);
+        } else if let Some(val) = trimmed.strip_prefix("created:") {
+            let v = strip_yaml_quotes(val);
+            if !v.is_empty() {
+                created = Some(v);
+            }
+        } else if let Some(val) = trimmed.strip_prefix("source:") {
+            let v = strip_yaml_quotes(val);
+            if !v.is_empty() {
+                // Strip wiki-link brackets: [[stem]] -> stem
+                let stripped = v.trim_start_matches("[[").trim_end_matches("]]");
+                source = Some(stripped.to_string());
+            }
+        } else if let Some(val) = trimmed.strip_prefix("tags:") {
+            let v = val.trim();
+            if v.is_empty() {
+                // Tags on following lines as YAML list
+                in_tags = true;
+            }
+            // Inline tags (e.g. `tags: [a, b]`) not used by ct — skip
+        } else if let Some(val) = trimmed.strip_prefix("author:") {
+            let v = strip_yaml_quotes(val);
+            if !v.is_empty() {
+                author = Some(v);
+            }
         }
     }
-    (title, project)
+    (title, project, created, source, tags, author)
 }
 
-fn extract_frontmatter(path: &Path) -> (String, String) {
+fn extract_frontmatter_full(
+    path: &Path,
+) -> (
+    String,
+    String,
+    Option<String>,
+    Option<String>,
+    Vec<String>,
+    Option<String>,
+) {
     let Ok(content) = fs::read_to_string(path) else {
-        return (String::new(), String::new());
+        return (String::new(), String::new(), None, None, Vec::new(), None);
     };
-    extract_frontmatter_from_str(&content)
+    extract_frontmatter_full_from_str(&content)
 }
 
 // ---------------------------------------------------------------------------
@@ -1228,7 +1690,9 @@ pub fn resolve_stem_universal(stem: &str) -> PathBuf {
 
     // Bare stem — scan all projects × all kinds in priority order
     let file_stem = p.file_stem().unwrap_or(p.as_os_str());
+    let query_slug = file_stem.to_str().map(strip_date_prefix);
     let mut matches: Vec<(ArtifactKind, PathBuf)> = Vec::new();
+    let mut fuzzy_matches: Vec<(ArtifactKind, PathBuf)> = Vec::new();
 
     if let Ok(projects) = fs::read_dir(&bp) {
         for proj_entry in projects.flatten() {
@@ -1243,10 +1707,22 @@ pub fn resolve_stem_universal(stem: &str) -> PathBuf {
                 if let Ok(files) = fs::read_dir(&candidate_dir) {
                     for f in files.flatten() {
                         let fp = f.path();
-                        if fp.extension().and_then(|e| e.to_str()) == Some("md")
-                            && fp.file_stem() == Some(file_stem)
-                        {
+                        if fp.extension().and_then(|e| e.to_str()) != Some("md") {
+                            continue;
+                        }
+                        if fp.file_stem() == Some(file_stem) {
                             matches.push((kind, fp));
+                            continue;
+                        }
+                        // Fuzzy: strip date prefix from candidate and/or query
+                        if let Some(candidate_stem) = fp.file_stem().and_then(|s| s.to_str()) {
+                            let candidate_slug = strip_date_prefix(candidate_stem);
+                            let stem_str = file_stem.to_str().unwrap_or("");
+                            if candidate_slug == stem_str
+                                || query_slug.is_some_and(|qs| qs == candidate_stem)
+                            {
+                                fuzzy_matches.push((kind, fp));
+                            }
                         }
                     }
                 }
@@ -1254,27 +1730,33 @@ pub fn resolve_stem_universal(stem: &str) -> PathBuf {
         }
     }
 
-    if matches.is_empty() {
+    let resolved = if matches.is_empty() {
+        &mut fuzzy_matches
+    } else {
+        &mut matches
+    };
+
+    if resolved.is_empty() {
         fatal(&format!("artifact not found: {stem}"));
     }
 
-    if matches.len() == 1 {
-        return matches.remove(0).1;
+    if resolved.len() == 1 {
+        return resolved.remove(0).1;
     }
 
     // Multiple matches — check if they span different kinds
-    let kinds_seen: HashSet<&str> = matches.iter().map(|(k, _)| k.dir_name()).collect();
+    let kinds_seen: HashSet<&str> = resolved.iter().map(|(k, _)| k.dir_name()).collect();
     if kinds_seen.len() > 1 {
         // Return highest-priority (ALL_KINDS is already in priority order)
         for &kind in &ALL_KINDS {
-            if let Some(pos) = matches.iter().position(|(k, _)| *k == kind) {
-                return matches.remove(pos).1;
+            if let Some(pos) = resolved.iter().position(|(k, _)| *k == kind) {
+                return resolved.remove(pos).1;
             }
         }
     }
 
     // Same kind, different projects — ambiguous
-    let list: Vec<_> = matches
+    let list: Vec<_> = resolved
         .iter()
         .map(|(_, p)| p.display().to_string())
         .collect();
@@ -1313,9 +1795,192 @@ pub fn cmd_read_resolved(resolved: &Path, frontmatter_mode: bool) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Rename
+// ---------------------------------------------------------------------------
+
+pub fn cmd_rename(kind: ArtifactKind, old_arg: &str, new_slug: &str) -> Result<(), SyncError> {
+    let old_path = resolve_artifact_path(old_arg, kind);
+    let bp = blueprints_dir();
+
+    // Derive project name (same pattern as validate_archive_path)
+    let rel_path = old_path
+        .strip_prefix(&bp)
+        .unwrap_or_else(|_| fatal(&format!("file is not inside {}", bp.display())));
+    let proj_name = rel_path
+        .components()
+        .next()
+        .map(|c| c.as_os_str().to_string_lossy().to_string())
+        .unwrap_or_else(|| fatal("cannot determine project from file path"));
+
+    if new_slug.contains('/') || new_slug.contains('\\') || new_slug.contains("..") {
+        fatal("new slug must not contain path separators or '..'");
+    }
+
+    let old_stem = old_path
+        .file_stem()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
+
+    // Compute new filename — Doc kind has no timestamp prefix
+    let new_filename = if kind == ArtifactKind::Doc {
+        format!("{new_slug}.md")
+    } else {
+        let stripped = strip_date_prefix(&old_stem);
+        if stripped.len() < old_stem.len() {
+            let prefix = &old_stem[..old_stem.len() - stripped.len()];
+            format!("{prefix}{new_slug}.md")
+        } else {
+            format!("{new_slug}.md")
+        }
+    };
+
+    let new_path = old_path.parent().unwrap().join(&new_filename);
+
+    if new_path.exists() {
+        fatal(&format!("target already exists: {}", new_path.display()));
+    }
+
+    // Warn about incoming wiki-links to old stem
+    let bp_str = bp.to_string_lossy();
+    let link_pattern = format!("[[{old_stem}]]");
+    if let Ok(output) = process::Command::new("rg")
+        .args(["-lF", &link_pattern])
+        .arg(bp.as_os_str())
+        .output()
+        && output.status.success()
+    {
+        let hits = String::from_utf8_lossy(&output.stdout);
+        let hits = hits.trim();
+        if !hits.is_empty() {
+            eprintln!("warning: incoming wiki-links to [[{old_stem}]] found in:");
+            for line in hits.lines() {
+                eprintln!("  {line}");
+            }
+        }
+    }
+
+    // Read and update content
+    let content =
+        fs::read_to_string(&old_path).unwrap_or_else(|e| fatal(&format!("reading file: {e}")));
+    let (yaml, _body) = parse_frontmatter(&content);
+
+    let updated = if let Some(yaml_str) = yaml {
+        // Frontmatter boundaries: "---\n" + yaml + "\n---\n"
+        let fm_start = 4; // "---\n"
+        let fm_end = fm_start + yaml_str.len();
+        let raw_yaml = &content[fm_start..fm_end];
+
+        let mut new_yaml = String::with_capacity(raw_yaml.len() + 64);
+        let kind_tag_prefix = "type/";
+        let proj_tag_prefix = "project/";
+        let new_kind_tag = format!("type/{}", kind.dir_name());
+        let new_proj_tag = format!("project/{proj_name}");
+
+        for line in raw_yaml.lines() {
+            let trimmed = line.trim_start();
+            if trimmed.starts_with("topic:") {
+                new_yaml.push_str(&format!("topic: {}", yaml_quote(new_slug)));
+            } else if trimmed.starts_with("- type/") || trimmed.starts_with("- project/") {
+                // Inside tags list — replace type/* and project/* tags
+                let tag = trimmed.strip_prefix("- ").unwrap_or(trimmed);
+                let indent = &line[..line.len() - trimmed.len()];
+                if tag.starts_with(kind_tag_prefix) {
+                    new_yaml.push_str(&format!("{indent}- {new_kind_tag}"));
+                } else if tag.starts_with(proj_tag_prefix) {
+                    new_yaml.push_str(&format!("{indent}- {new_proj_tag}"));
+                } else {
+                    new_yaml.push_str(line);
+                }
+            } else {
+                new_yaml.push_str(line);
+            }
+            new_yaml.push('\n');
+        }
+
+        // Remove trailing newline since the original yaml doesn't include it
+        if new_yaml.ends_with('\n') {
+            new_yaml.pop();
+        }
+
+        format!("---\n{new_yaml}{}", &content[fm_end..])
+    } else {
+        content.clone()
+    };
+
+    // Write new file, delete old
+    fs::write(&new_path, &updated).unwrap_or_else(|e| fatal(&format!("writing new file: {e}")));
+    fs::remove_file(&old_path).unwrap_or_else(|e| fatal(&format!("removing old file: {e}")));
+
+    // Stage both old (deletion) and new path
+    let old_rel = old_path
+        .strip_prefix(&bp)
+        .unwrap_or_else(|_| fatal("cannot compute relative path for old file"));
+    let new_rel = new_path
+        .strip_prefix(&bp)
+        .unwrap_or_else(|_| fatal("cannot compute relative path for new file"));
+
+    let add_ok = process::Command::new("git")
+        .args(["-C", &bp_str, "add", "--"])
+        .arg(old_rel)
+        .arg(new_rel)
+        .status()
+        .is_ok_and(|s| s.success());
+
+    if !add_ok {
+        return Err(SyncError::Add(format!(
+            "git add failed in {}",
+            bp.display()
+        )));
+    }
+
+    let new_stem = new_path.file_stem().unwrap_or_default().to_string_lossy();
+    let message = format!("rename({proj_name}): {old_stem} → {new_stem}");
+
+    let commit_output = process::Command::new("git")
+        .args(["-C", &bp_str, "commit", "-m", &message])
+        .output();
+
+    match commit_output {
+        Ok(o) if o.status.success() => {}
+        Ok(o) => {
+            let stderr = String::from_utf8_lossy(&o.stderr);
+            if stderr.contains("nothing to commit") {
+                return Ok(());
+            }
+            return Err(SyncError::Commit(stderr.trim().to_string()));
+        }
+        Err(e) => {
+            return Err(SyncError::Commit(format!(
+                "failed to run git commit in {}: {e}",
+                bp.display()
+            )));
+        }
+    }
+
+    let push_ok = process::Command::new("git")
+        .args(["-C", &bp_str, "push"])
+        .status()
+        .is_ok_and(|s| s.success());
+
+    if !push_ok {
+        return Err(SyncError::Push(format!(
+            "commit saved locally in {}, push manually",
+            bp.display()
+        )));
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    // Serialize all tests that mutate CT_BLUEPRINTS_DIR to prevent env-var races.
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn worktrees_share_repo_name() {
@@ -1352,7 +2017,7 @@ mod tests {
         let plan = tmp.join("my-plan.md");
         std::fs::write(&plan, "# plan\n").unwrap();
 
-        let result = latest_artifact(ArtifactKind::Plan, Some(plan.to_str().unwrap()), "");
+        let result = latest_artifact(ArtifactKind::Plan, Some(plan.to_str().unwrap()), "", false);
         assert!(result.is_ok(), "expected Ok, got {result:?}");
         assert_eq!(
             result.unwrap().canonicalize().unwrap(),
@@ -1365,7 +2030,12 @@ mod tests {
 
     #[test]
     fn task_file_flag_errors_when_file_missing() {
-        let result = latest_artifact(ArtifactKind::Plan, Some("/nonexistent/path/plan.md"), "");
+        let result = latest_artifact(
+            ArtifactKind::Plan,
+            Some("/nonexistent/path/plan.md"),
+            "",
+            false,
+        );
         assert!(result.is_err(), "expected Err for missing task-file");
         let msg = result.unwrap_err();
         assert!(
@@ -1422,16 +2092,10 @@ mod tests {
         let _spec = create_artifact_file(&tmp, "myproj", ArtifactKind::Spec, "widget");
         let doc = create_artifact_file(&tmp, "myproj", ArtifactKind::Doc, "widget");
 
-        let prev = env::var("CT_BLUEPRINTS_DIR").ok();
-        unsafe { env::set_var("CT_BLUEPRINTS_DIR", &tmp) };
-
-        let result = resolve_stem_universal("widget");
-        assert_eq!(result, doc, "Doc should take priority over Spec");
-
-        match prev {
-            Some(v) => unsafe { env::set_var("CT_BLUEPRINTS_DIR", v) },
-            None => unsafe { env::remove_var("CT_BLUEPRINTS_DIR") },
-        }
+        with_blueprints_dir(&tmp, || {
+            let result = resolve_stem_universal("widget");
+            assert_eq!(result, doc, "Doc should take priority over Spec");
+        });
         std::fs::remove_dir_all(&tmp).ok();
     }
 
@@ -1442,16 +2106,10 @@ mod tests {
 
         let plan = create_artifact_file(&tmp, "myproj", ArtifactKind::Plan, "deploy");
 
-        let prev = env::var("CT_BLUEPRINTS_DIR").ok();
-        unsafe { env::set_var("CT_BLUEPRINTS_DIR", &tmp) };
-
-        let result = resolve_stem_universal("deploy");
-        assert_eq!(result, plan);
-
-        match prev {
-            Some(v) => unsafe { env::set_var("CT_BLUEPRINTS_DIR", v) },
-            None => unsafe { env::remove_var("CT_BLUEPRINTS_DIR") },
-        }
+        with_blueprints_dir(&tmp, || {
+            let result = resolve_stem_universal("deploy");
+            assert_eq!(result, plan);
+        });
         std::fs::remove_dir_all(&tmp).ok();
     }
 
@@ -1463,17 +2121,113 @@ mod tests {
         let _plan = create_artifact_file(&tmp, "myproj", ArtifactKind::Plan, "auth");
         let report = create_artifact_file(&tmp, "myproj", ArtifactKind::Report, "auth");
 
-        let prev = env::var("CT_BLUEPRINTS_DIR").ok();
-        unsafe { env::set_var("CT_BLUEPRINTS_DIR", &tmp) };
-
-        let result = resolve_stem_universal("auth");
-        assert_eq!(result, report, "Report should take priority over Plan");
-
-        match prev {
-            Some(v) => unsafe { env::set_var("CT_BLUEPRINTS_DIR", v) },
-            None => unsafe { env::remove_var("CT_BLUEPRINTS_DIR") },
-        }
+        with_blueprints_dir(&tmp, || {
+            let result = resolve_stem_universal("auth");
+            assert_eq!(result, report, "Report should take priority over Plan");
+        });
         std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn frontmatter_full_all_fields() {
+        let content = "\
+---
+topic: \"My Widget\"
+project: myproj
+created: 2026-01-15T10:30:00Z
+source: \"[[some-spec]]\"
+tags:
+  - type/plan
+  - domain/combat
+  - stage/implementing
+author: \"Luan\"
+---
+# Body
+";
+        let (title, project, created, source, tags, author) =
+            extract_frontmatter_full_from_str(content);
+        assert_eq!(title, "My Widget");
+        assert_eq!(project, "myproj");
+        assert_eq!(created.as_deref(), Some("2026-01-15T10:30:00Z"));
+        assert_eq!(source.as_deref(), Some("some-spec"));
+        assert_eq!(
+            tags,
+            vec!["type/plan", "domain/combat", "stage/implementing"]
+        );
+        assert_eq!(author.as_deref(), Some("Luan"));
+    }
+
+    #[test]
+    fn frontmatter_full_optional_fields_missing() {
+        let content = "\
+---
+topic: Minimal
+project: proj
+---
+";
+        let (title, project, created, source, tags, author) =
+            extract_frontmatter_full_from_str(content);
+        assert_eq!(title, "Minimal");
+        assert_eq!(project, "proj");
+        assert!(created.is_none());
+        assert!(source.is_none());
+        assert!(tags.is_empty());
+        assert!(author.is_none());
+    }
+
+    #[test]
+    fn frontmatter_full_tags_list() {
+        let content = "\
+---
+topic: Tags
+project: p
+tags:
+  - alpha
+  - \"beta\"
+  - 'gamma'
+---
+";
+        let (_, _, _, _, tags, _) = extract_frontmatter_full_from_str(content);
+        assert_eq!(tags, vec!["alpha", "beta", "gamma"]);
+    }
+
+    #[test]
+    fn frontmatter_full_source_wiki_link_brackets() {
+        let content = "\
+---
+topic: Linked
+project: p
+source: \"[[my-source-spec]]\"
+---
+";
+        let (_, _, _, source, _, _) = extract_frontmatter_full_from_str(content);
+        assert_eq!(source.as_deref(), Some("my-source-spec"));
+    }
+
+    #[test]
+    fn frontmatter_full_source_without_brackets() {
+        let content = "\
+---
+topic: Plain
+project: p
+source: plain-ref
+---
+";
+        let (_, _, _, source, _, _) = extract_frontmatter_full_from_str(content);
+        assert_eq!(source.as_deref(), Some("plain-ref"));
+    }
+
+    #[test]
+    fn frontmatter_full_falls_back_to_h1() {
+        let content = "# Heading Title\nsome body\n";
+        let (title, project, created, source, tags, author) =
+            extract_frontmatter_full_from_str(content);
+        assert_eq!(title, "Heading Title");
+        assert!(project.is_empty());
+        assert!(created.is_none());
+        assert!(source.is_none());
+        assert!(tags.is_empty());
+        assert!(author.is_none());
     }
 
     #[test]
@@ -1522,5 +2276,438 @@ mod tests {
         assert_eq!(comments.len(), 1);
         assert_eq!(comments[0].line, 3);
         assert_eq!(comments[0].text, "here");
+    }
+
+    // ── dive flag tests ─────────────────────────────────────────────────────
+
+    fn with_blueprints_dir<F: FnOnce()>(tmp: &std::path::Path, f: F) {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let prev = env::var("CT_BLUEPRINTS_DIR").ok();
+        unsafe { env::set_var("CT_BLUEPRINTS_DIR", tmp) };
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
+        match prev {
+            Some(v) => unsafe { env::set_var("CT_BLUEPRINTS_DIR", v) },
+            None => unsafe { env::remove_var("CT_BLUEPRINTS_DIR") },
+        }
+        if let Err(payload) = result {
+            std::panic::resume_unwind(payload);
+        }
+    }
+
+    #[test]
+    fn dive_create_routes_to_dive_folder_with_spec_tag() {
+        let tmp = std::env::temp_dir().join(format!("ct-dive-create-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let project = tmp.join("myproj");
+        std::fs::create_dir_all(&project).unwrap();
+
+        with_blueprints_dir(&tmp, || {
+            // cmd_create with dive=true should write to dive/, not spec/
+            // git commit/push will fail (no repo) — we ignore SyncError.
+            // Pass bare stem (no [[...]] wrapping) — cmd_create wraps it automatically.
+            let _ = cmd_create(CreateOpts {
+                kind: ArtifactKind::Spec,
+                topic: "Sub Topic A",
+                project: project.to_str().unwrap(),
+                slug_override: Some("hub-sub-topic-a"),
+                source: Some("20260411-hub"),
+                user_tags: &[],
+                body: String::new(),
+                dive: true,
+            });
+
+            let dive_dir = tmp.join("myproj").join("dive");
+            let spec_dir = tmp.join("myproj").join("spec");
+
+            let dive_files: Vec<_> = fs::read_dir(&dive_dir)
+                .expect("dive/ directory must exist")
+                .flatten()
+                .filter(|e| e.path().extension().and_then(|x| x.to_str()) == Some("md"))
+                .collect();
+            assert_eq!(dive_files.len(), 1, "exactly one file in dive/");
+
+            let spec_has_files = fs::read_dir(&spec_dir)
+                .map(|d| {
+                    d.flatten()
+                        .any(|e| e.path().extension().and_then(|x| x.to_str()) == Some("md"))
+                })
+                .unwrap_or(false);
+            assert!(!spec_has_files, "spec/ must not contain the dive file");
+
+            let content = fs::read_to_string(dive_files[0].path()).unwrap();
+            assert!(
+                content.contains("type/spec"),
+                "dive file must have type/spec tag"
+            );
+            // Confirm source is singly wrapped — not double-wrapped.
+            assert!(
+                content.contains("source: \"[[20260411-hub]]\""),
+                "source must be singly wrapped: got\n{content}"
+            );
+            assert!(
+                !content.contains("[[[["),
+                "source must not be double-wrapped: got\n{content}"
+            );
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn include_dives_flag_toggles_list_visibility() {
+        let tmp = std::env::temp_dir().join(format!("ct-dive-list-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let spec_dir = tmp.join("myproj").join("spec");
+        std::fs::create_dir_all(&spec_dir).unwrap();
+        std::fs::write(spec_dir.join("20260411-hub.md"), "---\ntopic: Hub\n---\n").unwrap();
+
+        let dive_dir = tmp.join("myproj").join("dive");
+        std::fs::create_dir_all(&dive_dir).unwrap();
+        std::fs::write(
+            dive_dir.join("20260411-hub-sub.md"),
+            "---\ntopic: Sub\n---\n",
+        )
+        .unwrap();
+
+        with_blueprints_dir(&tmp, || {
+            let without = list_artifacts(ArtifactKind::Spec, false);
+            assert_eq!(
+                without.len(),
+                1,
+                "list without --include-dives should show 1 artifact"
+            );
+            assert!(
+                without[0].path.to_string_lossy().contains("spec/"),
+                "should be the spec hub"
+            );
+
+            let with_dives = list_artifacts(ArtifactKind::Spec, true);
+            assert_eq!(
+                with_dives.len(),
+                2,
+                "list with --include-dives should show 2 artifacts"
+            );
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn archive_dive_lands_in_archive_dive_not_archive_spec() {
+        let tmp = std::env::temp_dir().join(format!("ct-dive-archive-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let dive_dir = tmp.join("myproj").join("dive");
+        std::fs::create_dir_all(&dive_dir).unwrap();
+        let dive_file = dive_dir.join("20260411-hub-sub.md");
+        std::fs::write(&dive_file, "---\ntopic: Sub\n---\n").unwrap();
+
+        with_blueprints_dir(&tmp, || {
+            // cmd_archive will fail git note/push steps — we only check the file move.
+            let _ = cmd_archive(ArtifactKind::Spec, dive_file.to_str().unwrap(), false);
+
+            let expected = tmp
+                .join("myproj")
+                .join("archive")
+                .join("dive")
+                .join("20260411-hub-sub.md");
+            let wrong = tmp
+                .join("myproj")
+                .join("archive")
+                .join("spec")
+                .join("20260411-hub-sub.md");
+
+            assert!(expected.exists(), "archived dive must be at archive/dive/");
+            assert!(
+                !wrong.exists(),
+                "archived dive must NOT be at archive/spec/"
+            );
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    // C.1 — --dive on non-Spec kind is rejected at the library level.
+    #[test]
+    fn dive_rejected_on_non_spec_kinds() {
+        let tmp = std::env::temp_dir().join(format!("ct-dive-nonspec-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let project = tmp.join("myproj");
+        std::fs::create_dir_all(&project).unwrap();
+
+        with_blueprints_dir(&tmp, || {
+            let result = cmd_create(CreateOpts {
+                kind: ArtifactKind::Plan,
+                topic: "Some Plan",
+                project: project.to_str().unwrap(),
+                slug_override: None,
+                source: Some("foo"),
+                user_tags: &[],
+                body: String::new(),
+                dive: true,
+            });
+            assert!(
+                result.is_err(),
+                "cmd_create with dive=true on a non-Spec kind must return Err"
+            );
+            let msg = result.unwrap_err().to_string();
+            assert!(
+                msg.contains("--dive is only valid for spec artifacts"),
+                "error message must mention --dive restriction; got: {msg}"
+            );
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    // C.2 — Archived dives must appear in list_archived_artifacts.
+    #[test]
+    fn archived_dive_is_listable() {
+        let tmp =
+            std::env::temp_dir().join(format!("ct-dive-archived-list-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let project = tmp.join("myproj");
+        std::fs::create_dir_all(&project).unwrap();
+
+        with_blueprints_dir(&tmp, || {
+            // Create the dive file directly (cmd_create would need a git repo for commit).
+            let dive_dir = tmp.join("myproj").join("dive");
+            std::fs::create_dir_all(&dive_dir).unwrap();
+            let dive_file = dive_dir.join("20260411-hub-sub.md");
+            std::fs::write(&dive_file, "---\ntopic: Sub\ntags:\n  - type/spec\n---\n").unwrap();
+
+            // Archive it — file moves to archive/dive/.
+            let _ = cmd_archive(ArtifactKind::Spec, dive_file.to_str().unwrap(), false);
+
+            // Now list archived artifacts — the dive must appear.
+            let archived = list_archived_artifacts(ArtifactKind::Spec);
+            assert!(
+                archived
+                    .iter()
+                    .any(|a| a.path.to_string_lossy().contains("archive/dive")),
+                "archived dive must be visible in list_archived_artifacts; got: {:?}",
+                archived
+                    .iter()
+                    .map(|a| a.path.display().to_string())
+                    .collect::<Vec<_>>()
+            );
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    // C.3 — resolve_artifact_path finds a dive file by its bare stem.
+    #[test]
+    fn resolve_artifact_path_finds_dive_by_bare_stem() {
+        let tmp = std::env::temp_dir().join(format!("ct-dive-resolve-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let dive_dir = tmp.join("myproj").join("dive");
+        std::fs::create_dir_all(&dive_dir).unwrap();
+        let dive_file = dive_dir.join("20260411-hub-detail.md");
+        std::fs::write(&dive_file, "---\ntopic: Detail\n---\n").unwrap();
+
+        with_blueprints_dir(&tmp, || {
+            let resolved = resolve_artifact_path("20260411-hub-detail", ArtifactKind::Spec);
+            assert!(
+                resolved.to_string_lossy().contains("dive/"),
+                "resolved path must be inside dive/; got: {}",
+                resolved.display()
+            );
+            assert_eq!(
+                resolved.canonicalize().unwrap(),
+                dive_file.canonicalize().unwrap(),
+                "resolved path must match the dive file"
+            );
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    // ── strip_date_prefix tests ─────────────────────────────────────────────
+
+    #[test]
+    fn strip_date_prefix_current_format() {
+        assert_eq!(
+            strip_date_prefix("20260411-07-kdl-derive-reference"),
+            "kdl-derive-reference"
+        );
+    }
+
+    #[test]
+    fn strip_date_prefix_legacy_format() {
+        assert_eq!(strip_date_prefix("20260408-foo"), "foo");
+    }
+
+    #[test]
+    fn strip_date_prefix_no_prefix() {
+        assert_eq!(strip_date_prefix("no-prefix-here"), "no-prefix-here");
+    }
+
+    #[test]
+    fn strip_date_prefix_short() {
+        assert_eq!(strip_date_prefix("short"), "short");
+    }
+
+    #[test]
+    fn strip_date_prefix_empty() {
+        assert_eq!(strip_date_prefix(""), "");
+    }
+
+    // ── fuzzy stem matching tests ──────────────────────────────────────────
+
+    #[test]
+    fn resolve_artifact_path_fuzzy_strips_candidate_prefix() {
+        let tmp = std::env::temp_dir().join(format!("ct-fuzzy-cand-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let file = create_artifact_file(
+            &tmp,
+            "myproj",
+            ArtifactKind::Doc,
+            "20260411-07-kdl-derive-reference",
+        );
+
+        with_blueprints_dir(&tmp, || {
+            let result = resolve_artifact_path("kdl-derive-reference", ArtifactKind::Doc);
+            assert_eq!(result, file);
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn resolve_artifact_path_exact_takes_priority_over_fuzzy() {
+        let tmp = std::env::temp_dir().join(format!("ct-fuzzy-exact-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let exact = create_artifact_file(
+            &tmp,
+            "myproj",
+            ArtifactKind::Doc,
+            "20260411-07-kdl-derive-reference",
+        );
+        // Another file whose slug also matches — should not cause ambiguity
+        let _other = create_artifact_file(
+            &tmp,
+            "other",
+            ArtifactKind::Doc,
+            "20260412-07-kdl-derive-reference",
+        );
+
+        with_blueprints_dir(&tmp, || {
+            let result =
+                resolve_artifact_path("20260411-07-kdl-derive-reference", ArtifactKind::Doc);
+            assert_eq!(result, exact);
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn resolve_artifact_path_fuzzy_strips_query_prefix() {
+        let tmp = std::env::temp_dir().join(format!("ct-fuzzy-query-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let file = create_artifact_file(&tmp, "myproj", ArtifactKind::Doc, "foo");
+
+        with_blueprints_dir(&tmp, || {
+            let result = resolve_artifact_path("20260411-07-foo", ArtifactKind::Doc);
+            assert_eq!(result, file);
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn universal_resolve_fuzzy_strips_candidate_prefix() {
+        let tmp = std::env::temp_dir().join(format!("ct-univ-fuzzy-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let file = create_artifact_file(
+            &tmp,
+            "myproj",
+            ArtifactKind::Doc,
+            "20260411-07-kdl-derive-reference",
+        );
+
+        with_blueprints_dir(&tmp, || {
+            let result = resolve_stem_universal("kdl-derive-reference");
+            assert_eq!(result, file);
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn universal_resolve_fuzzy_strips_query_prefix() {
+        let tmp = std::env::temp_dir().join(format!("ct-univ-fuzzy-q-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let file = create_artifact_file(&tmp, "myproj", ArtifactKind::Plan, "bar");
+
+        with_blueprints_dir(&tmp, || {
+            let result = resolve_stem_universal("20260411-07-bar");
+            assert_eq!(result, file);
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn retag_fixes_wrong_auto_derived_tags() {
+        let tmp = std::env::temp_dir().join(format!("ct-retag-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let docs_dir = tmp.join("myproj").join("docs");
+        std::fs::create_dir_all(&docs_dir).unwrap();
+
+        let file = docs_dir.join("widget.md");
+        let content = "---\ntopic: Widget Guide\ntags:\n  - type/spec\n  - project/wrong\n  - domain/ui\n---\n# Widget\n";
+        std::fs::write(&file, content).unwrap();
+
+        with_blueprints_dir(&tmp, || {
+            // cmd_retag calls commit_and_push which fails in test (no git repo),
+            // but the file is already rewritten before that call.
+            let _ = cmd_retag(ArtifactKind::Doc, file.to_str().unwrap());
+
+            let result = std::fs::read_to_string(&file).unwrap();
+            assert!(
+                result.contains("  - type/docs"),
+                "type tag should be corrected to type/docs; got:\n{result}"
+            );
+            assert!(
+                result.contains("  - project/myproj"),
+                "project tag should be corrected to project/myproj; got:\n{result}"
+            );
+            assert!(
+                result.contains("  - domain/ui"),
+                "non-auto-derived tags should be preserved; got:\n{result}"
+            );
+            assert!(
+                !result.contains("  - type/spec"),
+                "old type tag should be removed; got:\n{result}"
+            );
+            assert!(
+                !result.contains("  - project/wrong"),
+                "old project tag should be removed; got:\n{result}"
+            );
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn retag_noop_when_tags_correct() {
+        let tmp = std::env::temp_dir().join(format!("ct-retag-noop-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let docs_dir = tmp.join("myproj").join("docs");
+        std::fs::create_dir_all(&docs_dir).unwrap();
+
+        let file = docs_dir.join("correct.md");
+        let content = "---\ntopic: Already Correct\ntags:\n  - type/docs\n  - project/myproj\n---\n# Correct\n";
+        std::fs::write(&file, content).unwrap();
+
+        with_blueprints_dir(&tmp, || {
+            let result = cmd_retag(ArtifactKind::Doc, file.to_str().unwrap());
+            assert!(result.is_ok(), "should return Ok when no changes needed");
+
+            let after = std::fs::read_to_string(&file).unwrap();
+            assert_eq!(after, content, "file should be unchanged");
+        });
+        std::fs::remove_dir_all(&tmp).ok();
     }
 }

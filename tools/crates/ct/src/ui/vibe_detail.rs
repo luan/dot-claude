@@ -72,17 +72,9 @@ fn build_pipeline_line(current_index: usize) -> Line<'static> {
 
 fn build_progress_line(current_index: usize, total: usize) -> Line<'static> {
     let completed = current_index.min(total);
-    let filled = if total == 0 {
-        0
-    } else {
-        (completed * BAR_WIDTH) / total
-    };
+    let filled = (completed * BAR_WIDTH).checked_div(total).unwrap_or(0);
     let empty = BAR_WIDTH - filled;
-    let pct = if total == 0 {
-        0
-    } else {
-        (completed * 100) / total
-    };
+    let pct = (completed * 100).checked_div(total).unwrap_or(0);
 
     let bar = format!("{}{}", "█".repeat(filled), "░".repeat(empty),);
 
