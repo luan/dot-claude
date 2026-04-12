@@ -1130,14 +1130,8 @@ pub fn cmd_sidebar() {
                         if me.row >= last_list_y && me.row < last_list_y + last_list_h =>
                     {
                         let idx = state.offset + (me.row - last_list_y) as usize;
-                        if let Some(sid) =
-                            state.items.get(idx).and_then(|i| i.session_id.clone())
-                            && let Some(row_idx) = state
-                                .items
-                                .iter()
-                                .position(|i| i.selectable && i.session_id.as_ref() == Some(&sid))
-                        {
-                            state.selected = row_idx;
+                        if idx < state.items.len() && state.items[idx].selectable {
+                            state.selected = idx;
                             state.switch_to_selected();
                         }
                     }
