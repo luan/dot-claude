@@ -227,10 +227,6 @@ def fmt_reset(resets_at):
         return "", 0
 
 
-USAGE_LOG = str(_TMPDIR / "claude-usage-log.tsv")
-USAGE_LOG_MAX_BYTES = 512 * 1024
-USAGE_LOG_MAX_AGE = 8 * 86400
-
 _STATE_DIR = Path(
     os.environ.get("XDG_STATE_HOME") or (Path.home() / ".local" / "state")
 ) / "claude-statusline"
@@ -274,6 +270,14 @@ CREATE TABLE IF NOT EXISTS windows (
   reset_ts INTEGER NOT NULL,
   overage  REAL NOT NULL DEFAULT 0,
   PRIMARY KEY (kind, reset_ts)
+);
+
+CREATE TABLE IF NOT EXISTS usage_samples (
+  ts       INTEGER PRIMARY KEY,
+  fh_used  INTEGER NOT NULL,
+  fh_reset INTEGER NOT NULL,
+  sd_used  INTEGER NOT NULL,
+  sd_reset INTEGER NOT NULL
 );
 """
 
@@ -357,13 +361,15 @@ def _maybe_prune(conn):
     """Keep DB under MAX_DB_BYTES by dropping oldest events. Freed pages get reused."""
     if _db_footprint() <= MAX_DB_BYTES:
         return
-    n = conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
-    if n < 100:
-        return
-    conn.execute(
-        "DELETE FROM events WHERE rowid IN (SELECT rowid FROM events ORDER BY ts LIMIT ?)",
-        (n // 5,),
-    )
+    # Drop oldest 20% from both high-volume tables
+    for tbl in ("events", "usage_samples"):
+        n = conn.execute(f"SELECT COUNT(*) FROM {tbl}").fetchone()[0]
+        if n < 100:
+            continue
+        conn.execute(
+            f"DELETE FROM {tbl} WHERE rowid IN (SELECT rowid FROM {tbl} ORDER BY ts LIMIT ?)",
+            (n // 5,),
+        )
     # Reclaim freelist pages so the file actually shrinks on disk
     try:
         conn.execute("VACUUM")
@@ -433,6 +439,16 @@ def record_tick(data):
                 (sid, now, now, cost, cost, overage_delta, model or None, cwd or None),
             )
 
+        last = conn.execute(
+            "SELECT fh_used, fh_reset, sd_used, sd_reset FROM usage_samples ORDER BY ts DESC LIMIT 1"
+        ).fetchone()
+        if last != (fh_used, fh_reset, sd_used, sd_reset):
+            conn.execute(
+                """INSERT OR REPLACE INTO usage_samples(ts, fh_used, fh_reset, sd_used, sd_reset)
+                   VALUES(?,?,?,?,?)""",
+                (now, fh_used, fh_reset, sd_used, sd_reset),
+            )
+
         if delta > 0:
             conn.execute(
                 """INSERT OR REPLACE INTO events
@@ -488,27 +504,6 @@ def _to_ts(v):
         return int(datetime.fromisoformat(v).timestamp())
     except Exception:
         return 0
-
-
-def log_usage(fh_used, fh_resets, sd_used, sd_resets):
-    now = int(time.time())
-    try:
-        with open(USAGE_LOG, "a") as f:
-            f.write(f"{now}\t{fh_used}\t{_to_ts(fh_resets)}\t{sd_used}\t{_to_ts(sd_resets)}\n")
-    except OSError:
-        return
-    try:
-        if os.path.getsize(USAGE_LOG) > USAGE_LOG_MAX_BYTES:
-            cutoff = now - USAGE_LOG_MAX_AGE
-            with open(USAGE_LOG) as f:
-                kept = [
-                    ln for ln in f
-                    if ln[:10].isdigit() and int(ln.split("\t", 1)[0]) >= cutoff
-                ]
-            with open(USAGE_LOG, "w") as f:
-                f.writelines(kept)
-    except OSError:
-        pass
 
 
 def pace_balance_secs(used, remaining_secs, window_secs):
@@ -816,8 +811,6 @@ def main():
             if sd.get("resets_at")
             else None
         )
-
-        log_usage(fh_used, fh.get("resets_at"), sd_used, sd.get("resets_at"))
 
         usage_seg = ""
         for bw in range(12, 3, -1):
