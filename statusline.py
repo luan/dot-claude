@@ -1,7 +1,7 @@
 #!/usr/bin/env uv run
 """Two-line Claude Code statusline with dot progress bars and quota tracking."""
 
-import io, json, os, re, sys, subprocess, tempfile, time
+import io, json, os, re, sqlite3, sys, subprocess, tempfile, time
 
 # Force UTF-8 stdout on Windows
 if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
@@ -230,6 +230,253 @@ def fmt_reset(resets_at):
 USAGE_LOG = str(_TMPDIR / "claude-usage-log.tsv")
 USAGE_LOG_MAX_BYTES = 512 * 1024
 USAGE_LOG_MAX_AGE = 8 * 86400
+
+_STATE_DIR = Path(
+    os.environ.get("XDG_STATE_HOME") or (Path.home() / ".local" / "state")
+) / "claude-statusline"
+USAGE_DB = str(_STATE_DIR / "usage.db")
+OVERAGE_JSON_LEGACY = str(_STATE_DIR / "overage.json")
+MAX_DB_BYTES = 10 * 1024 * 1024
+
+_SCHEMA = """
+CREATE TABLE IF NOT EXISTS events (
+  ts            INTEGER NOT NULL,
+  sid           TEXT    NOT NULL,
+  model         TEXT,
+  cost          REAL    NOT NULL,
+  cost_delta    REAL    NOT NULL,
+  overage_delta REAL    NOT NULL,
+  fh_used       INTEGER NOT NULL,
+  sd_used       INTEGER NOT NULL,
+  ctx_pct       INTEGER,
+  input_tokens  INTEGER,
+  duration_ms   INTEGER,
+  cwd           TEXT,
+  agent         TEXT,
+  PRIMARY KEY (ts, sid)
+);
+CREATE INDEX IF NOT EXISTS events_sid_ts ON events(sid, ts);
+CREATE INDEX IF NOT EXISTS events_ts     ON events(ts);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  sid           TEXT PRIMARY KEY,
+  first_seen    INTEGER NOT NULL,
+  last_seen     INTEGER NOT NULL,
+  last_cost     REAL    NOT NULL,
+  total_cost    REAL    NOT NULL,
+  total_overage REAL    NOT NULL DEFAULT 0,
+  model         TEXT,
+  cwd           TEXT
+);
+
+CREATE TABLE IF NOT EXISTS windows (
+  kind     TEXT NOT NULL,
+  reset_ts INTEGER NOT NULL,
+  overage  REAL NOT NULL DEFAULT 0,
+  PRIMARY KEY (kind, reset_ts)
+);
+"""
+
+
+def _db():
+    _STATE_DIR.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(USAGE_DB, timeout=5.0, isolation_level=None)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    conn.execute("PRAGMA busy_timeout=3000")
+    conn.executescript(_SCHEMA)
+    _migrate_json(conn)
+    return conn
+
+
+def _migrate_json(conn):
+    """One-shot import of overage.json if present. Renames to .migrated after."""
+    src = Path(OVERAGE_JSON_LEGACY)
+    if not src.exists():
+        return
+    try:
+        state = json.loads(src.read_text())
+    except (OSError, ValueError):
+        return
+    now = int(time.time())
+    for sid, sess in (state.get("sessions") or {}).items():
+        if isinstance(sess, dict):
+            last_cost = float(sess.get("last_cost", 0))
+            overage = float(sess.get("overage", 0))
+        else:
+            last_cost = float(sess or 0)
+            overage = 0.0
+        conn.execute(
+            """INSERT OR IGNORE INTO sessions(sid, first_seen, last_seen, last_cost, total_cost, total_overage)
+               VALUES(?,?,?,?,?,?)""",
+            (sid, now, now, last_cost, last_cost, overage),
+        )
+    for kind, reset_key in (("5h", "window_5h_reset"), ("7d", "window_7d_reset")):
+        reset = int(state.get(reset_key) or 0)
+        overage = float(state.get(f"overage_{kind}") or 0)
+        if overage > 0:
+            conn.execute(
+                """INSERT OR IGNORE INTO windows(kind, reset_ts, overage) VALUES(?,?,?)""",
+                (kind, reset, overage),
+            )
+    month_key = state.get("month")
+    month_overage = float(state.get("overage_month") or 0)
+    if month_key and month_overage > 0:
+        try:
+            month_reset = int(datetime.strptime(month_key + "-01", "%Y-%m-%d").timestamp())
+            conn.execute(
+                """INSERT OR IGNORE INTO windows(kind, reset_ts, overage) VALUES(?,?,?)""",
+                ("month", month_reset, month_overage),
+            )
+        except ValueError:
+            pass
+    total_overage = float(state.get("overage_total") or 0)
+    if total_overage > 0:
+        conn.execute(
+            """INSERT OR IGNORE INTO windows(kind, reset_ts, overage) VALUES(?,?,?)""",
+            ("total", 0, total_overage),
+        )
+    try:
+        src.rename(str(src) + ".migrated")
+    except OSError:
+        pass
+
+
+def _db_footprint():
+    """Total disk footprint including WAL + SHM sidecars."""
+    total = 0
+    for suffix in ("", "-wal", "-shm"):
+        try:
+            total += os.path.getsize(USAGE_DB + suffix)
+        except OSError:
+            pass
+    return total
+
+
+def _maybe_prune(conn):
+    """Keep DB under MAX_DB_BYTES by dropping oldest events. Freed pages get reused."""
+    if _db_footprint() <= MAX_DB_BYTES:
+        return
+    n = conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+    if n < 100:
+        return
+    conn.execute(
+        "DELETE FROM events WHERE rowid IN (SELECT rowid FROM events ORDER BY ts LIMIT ?)",
+        (n // 5,),
+    )
+    # Reclaim freelist pages so the file actually shrinks on disk
+    try:
+        conn.execute("VACUUM")
+    except sqlite3.OperationalError:
+        pass
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+
+
+def _month_reset_ts():
+    now = datetime.now()
+    return int(datetime(now.year, now.month, 1).timestamp())
+
+
+def record_tick(data):
+    """Record one statusline tick. Returns dict of overage buckets + session overage."""
+    empty = {"overage_5h": 0.0, "overage_7d": 0.0, "overage_month": 0.0, "overage_total": 0.0, "overage_session": 0.0}
+    sid = data.get("session_id") or ""
+    cost_data = data.get("cost") or {}
+    cost = cost_data.get("total_cost_usd")
+    if not sid or cost is None:
+        return empty
+
+    quota = data.get("rate_limits") or {}
+    fh = quota.get("five_hour") or {}
+    sd = quota.get("seven_day") or {}
+    fh_used = int(fh.get("used_percentage") or 0)
+    sd_used = int(sd.get("used_percentage") or 0)
+    fh_reset = _to_ts(fh.get("resets_at"))
+    sd_reset = _to_ts(sd.get("resets_at"))
+    month_reset = _month_reset_ts()
+
+    model_field = data.get("model") or ""
+    model = model_field.get("display_name") if isinstance(model_field, dict) else str(model_field)
+    cw = data.get("context_window") or {}
+    ctx_pct = int(cw.get("used_percentage") or 0)
+    usage = cw.get("current_usage") or {}
+    input_tokens = (
+        (usage.get("input_tokens") or 0)
+        + (usage.get("cache_creation_input_tokens") or 0)
+        + (usage.get("cache_read_input_tokens") or 0)
+    )
+    duration_ms = int(cost_data.get("total_duration_ms") or 0)
+    cwd = (data.get("workspace") or {}).get("current_dir", "")
+    agent_name = (data.get("agent") or {}).get("name") if isinstance(data.get("agent"), dict) else None
+    capped = fh_used >= 100 or sd_used >= 100
+    now = int(time.time())
+
+    conn = _db()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute("SELECT last_cost FROM sessions WHERE sid=?", (sid,)).fetchone()
+        last_cost = row[0] if row else cost
+        delta = max(0.0, cost - last_cost)
+        overage_delta = delta if capped else 0.0
+
+        if row:
+            conn.execute(
+                """UPDATE sessions SET last_seen=?, last_cost=?, total_cost=?,
+                   total_overage=total_overage+?, model=COALESCE(?, model), cwd=COALESCE(?, cwd)
+                   WHERE sid=?""",
+                (now, cost, cost, overage_delta, model or None, cwd or None, sid),
+            )
+        else:
+            conn.execute(
+                """INSERT INTO sessions(sid, first_seen, last_seen, last_cost, total_cost, total_overage, model, cwd)
+                   VALUES(?,?,?,?,?,?,?,?)""",
+                (sid, now, now, cost, cost, overage_delta, model or None, cwd or None),
+            )
+
+        if delta > 0:
+            conn.execute(
+                """INSERT OR REPLACE INTO events
+                   (ts, sid, model, cost, cost_delta, overage_delta, fh_used, sd_used,
+                    ctx_pct, input_tokens, duration_ms, cwd, agent)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (now, sid, model or None, cost, delta, overage_delta, fh_used, sd_used,
+                 ctx_pct, input_tokens, duration_ms, cwd or None, agent_name),
+            )
+
+        if overage_delta > 0:
+            for kind, reset in (("5h", fh_reset), ("7d", sd_reset),
+                                ("month", month_reset), ("total", 0)):
+                conn.execute(
+                    """INSERT INTO windows(kind, reset_ts, overage) VALUES(?,?,?)
+                       ON CONFLICT(kind, reset_ts) DO UPDATE SET overage=overage+excluded.overage""",
+                    (kind, reset, overage_delta),
+                )
+
+        buckets = dict(empty)
+        for kind, reset, key in (("5h", fh_reset, "overage_5h"),
+                                 ("7d", sd_reset, "overage_7d"),
+                                 ("month", month_reset, "overage_month"),
+                                 ("total", 0, "overage_total")):
+            r = conn.execute(
+                "SELECT overage FROM windows WHERE kind=? AND reset_ts=?",
+                (kind, reset),
+            ).fetchone()
+            if r:
+                buckets[key] = r[0]
+        r = conn.execute("SELECT total_overage FROM sessions WHERE sid=?", (sid,)).fetchone()
+        if r:
+            buckets["overage_session"] = r[0]
+        conn.execute("COMMIT")
+        _maybe_prune(conn)
+        return buckets
+    except sqlite3.Error:
+        try:
+            conn.execute("ROLLBACK")
+        except sqlite3.Error:
+            pass
+        return empty
+    finally:
+        conn.close()
 
 
 def _to_ts(v):
@@ -490,6 +737,7 @@ def main():
     cwd = (data.get("workspace") or {}).get("current_dir", "")
     vim = data.get("vim")
     agent = data.get("agent")
+    quota = data.get("rate_limits") or {}
 
     # Bridge context % to hooks via per-session temp file
     sid = data.get("session_id", "")
@@ -499,6 +747,11 @@ def main():
                 f.write(str(pct))
         except OSError:
             pass
+
+    try:
+        overage = record_tick(data)
+    except Exception:
+        overage = {"overage_5h": 0.0, "overage_7d": 0.0, "overage_month": 0.0, "overage_total": 0.0, "overage_session": 0.0}
 
     # === LINE 1: Version | Model | context bar pct tokens | cost | duration ===
     parts1 = []
@@ -517,7 +770,10 @@ def main():
         f"{bar} {seg_pct(pct, bar_col)} {DIM}{fmt_tokens(input_tokens)}/{fmt_tokens(ctx_size)}{RESET}"
     )
     parts1.append(f"{LGRAY}󰅐 {fmt_duration(cost_data.get('total_duration_ms'))}{RESET}")
-    parts1.append(f"{DIM}󰇁 {fmt_cost(cost_data.get('total_cost_usd'))}{RESET}")
+    if overage["overage_session"] > 0:
+        parts1.append(f"{RED}󰇁 +{fmt_cost(overage['overage_session'])[1:]}{RESET}")
+    else:
+        parts1.append(f"{DIM}󰇁 {fmt_cost(cost_data.get('total_cost_usd'))}{RESET}")
     width = term_width()
     line1 = join_segments(parts1, width)
     if sid:
@@ -531,8 +787,6 @@ def main():
     gi = git_info(cwd)
     if gi:
         parts2.append(gi)
-
-    quota = data.get("rate_limits")
 
     suffix_parts = []
     if vim:
