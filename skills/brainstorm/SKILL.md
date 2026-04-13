@@ -132,7 +132,6 @@ files directly to the shared documentation directory using the same sibling-fold
 # Hub (vision-level spec)
 ct spec create \
   --topic "<hub topic>" \
-  --project "$(git rev-parse --show-toplevel)" \
   --tags "domain/<area>,stage/research,status/needs-review" \
   --body "<hub body>"
 # → ~/blueprints/<project>/spec/YYYYMMDD-<hub-slug>.md
@@ -143,7 +142,6 @@ ct spec create --dive \
   --topic "<dive subtopic>" \
   --slug "<hub-slug>-<dive-subtopic-slug>" \
   --source "<hub-stem>" \
-  --project "$(git rev-parse --show-toplevel)" \
   --tags "domain/<area>,stage/research,status/needs-review" \
   --body "<dive body>"
 # → ~/blueprints/<project>/dive/YYYYMMDD-<hub-slug>-<dive-subtopic>.md

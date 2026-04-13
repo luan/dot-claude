@@ -351,8 +351,8 @@ pub enum ArtifactAction {
         #[arg(long, help = "Artifact topic")]
         topic: String,
 
-        #[arg(long, help = "Project path")]
-        project: String,
+        #[arg(long, help = "Project path (defaults to current git repo / cwd)")]
+        project: Option<String>,
 
         #[arg(long, help = "Custom slug (auto-generated if omitted)")]
         slug: Option<String>,
@@ -465,8 +465,8 @@ pub enum VaultAction {
 
     #[command(about = "Find related artifacts by topic keyword overlap")]
     Related {
-        #[arg(long, help = "Project path")]
-        project: String,
+        #[arg(long, help = "Project path (defaults to current git repo / cwd)")]
+        project: Option<String>,
 
         #[arg(help = "Topic to match against")]
         topic: String,
@@ -1249,7 +1249,7 @@ pub fn run_artifact_show(
 pub struct ArtifactCreateArgs {
     pub kind: crate::artifact::ArtifactKind,
     pub topic: String,
-    pub project: String,
+    pub project: Option<String>,
     pub slug: Option<String>,
     pub source: Option<String>,
     pub tags: Option<String>,
@@ -1282,6 +1282,7 @@ pub fn run_artifact_create(args: ArtifactCreateArgs) -> Result<(), Box<dyn std::
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .collect();
+    let project = project.unwrap_or_else(crate::artifact::current_project);
     if let Err(e) = crate::artifact::cmd_create(crate::artifact::CreateOpts {
         kind,
         topic: &topic,

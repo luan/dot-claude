@@ -139,7 +139,7 @@ Reviewer Summaries → Approach Assessment → Verification stats → Consensus 
 ## Step 5: Store
 
 ```bash
-ct review create --topic "Review: $(git branch --show-current)" --project "$(git rev-parse --show-toplevel)"
+ct review create --topic "Review: $(git branch --show-current)"
 ```
 
 Auto-link to spec if `$HAS_SPEC`: add `--source "<spec-stem>"`.

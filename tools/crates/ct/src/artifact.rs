@@ -185,6 +185,22 @@ pub fn resolve_repo_root(toplevel: &str) -> String {
     toplevel.to_string()
 }
 
+/// Auto-detect the current project from cwd: prefer `git rev-parse --show-toplevel`
+/// (resolved through worktrees to the main repo root), fall back to cwd.
+pub fn current_project() -> String {
+    let output = process::Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .output();
+    if let Ok(o) = output
+        && o.status.success()
+    {
+        return resolve_repo_root(String::from_utf8_lossy(&o.stdout).trim());
+    }
+    env::current_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|_| fatal("cannot determine working directory"))
+}
+
 // ---------------------------------------------------------------------------
 // Project name derivation
 // ---------------------------------------------------------------------------

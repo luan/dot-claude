@@ -4,7 +4,7 @@ Write artifact body content to a temp file with the Write tool, then `cat` it in
 
 ```bash
 # Correct: Write tool creates the file, cat pipes it
-cat /tmp/artifact-body.md | ct spec create --topic "..." --project "$(git rev-parse --show-toplevel)"
+cat /tmp/artifact-body.md | ct spec create --topic "..."
 rm /tmp/artifact-body.md
 
 # Wrong: heredoc escapes backticks

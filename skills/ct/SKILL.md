@@ -19,20 +19,20 @@ Workflow skills (`/spec`, `/develop`, `/review`, `/report`, `/archive`) handle t
 
 | Operation | Command |
 |-----------|---------|
-| Create | `ct <type> create --topic "..." --project "$(git rev-parse --show-toplevel)"` |
-| Create dive | `ct spec create --dive --source "<hub-stem>" --slug "<hub-slug>-<subtopic>" --topic "..." --project "$(git rev-parse --show-toplevel)"` |
+| Create | `ct <type> create --topic "..."` |
+| Create dive | `ct spec create --dive --source "<hub-stem>" --slug "<hub-slug>-<subtopic>" --topic "..."` |
 | Read | `ct <type> read <path-or-slug>` |
 | List active | `ct <type> list` |
 | List with dives | `ct spec list --include-dives` |
 | List all | `ct <type> list --all` |
-| Latest | `ct <type> latest --project "$(git rev-parse --show-toplevel)"` |
+| Latest | `ct <type> latest` |
 | Archive | `ct <type> archive <path>` |
 | Archive batch | `ct <type> archive --batch <f1> <f2> ...` |
 | Archive preview | `ct <type> archive --dry-run [--batch ...] <path>` |
 | Prune old | `ct <type> prune [--days N]` |
 | Show by slug | `ct <type> show <slug>` |
 | Search vault | `ct vault search "<query>"` |
-| Find related | `ct vault related --project "$(git rev-parse --show-toplevel)" "<topic>"` |
+| Find related | `ct vault related "<topic>"` |
 | Check links | `ct vault check` |
 | Project name | `ct vault project` |
 
@@ -43,7 +43,6 @@ Workflow skills (`/spec`, `/develop`, `/review`, `/report`, `/archive`) handle t
 ```bash
 ct <type> create \
   --topic "<human-readable title>" \
-  --project "$(git rev-parse --show-toplevel)" \
   --source "<parent-artifact-stem>" \
   --tags "domain/combat,stage/research"
 ```
@@ -64,7 +63,6 @@ ct spec create --dive \
   --topic "<dive subtopic>" \
   --slug "<hub-slug>-<dive-subtopic-slug>" \
   --source "<hub-stem>" \
-  --project "$(git rev-parse --show-toplevel)" \
   --tags "domain/<area>,stage/research"
 ```
 
@@ -82,7 +80,7 @@ Rules for dives:
 After creating any artifact, check for related work:
 
 ```bash
-RELATED=$(ct vault related --project "$(git rev-parse --show-toplevel)" "<topic>")
+RELATED=$(ct vault related "<topic>")
 # If non-empty, append a ## Related section with [[wiki-links]] to the artifact
 ```
 
@@ -99,8 +97,8 @@ ct spec list && ct plan list && ct review list && ct report list && ct doc list
 **Resume from latest artifact:**
 
 ```bash
-ct plan latest --project "$(git rev-parse --show-toplevel)"
-# Falls back to: ct spec latest --project "$(git rev-parse --show-toplevel)"
+ct plan latest
+# Falls back to: ct spec latest
 ```
 
 **Read an artifact's content:**

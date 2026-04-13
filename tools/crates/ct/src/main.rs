@@ -188,6 +188,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 topic,
                 archive,
             } => {
+                let project = project.unwrap_or_else(artifact::current_project);
                 vault::cmd_related(&project, &topic, archive);
                 Ok(())
             }
