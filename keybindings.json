@@ -18,8 +18,8 @@
       "bindings": {
         "ctrl+x ctrl+x": "chat:cancel",
         "shift+tab": "chat:cycleMode",
-        "meta+p": "chat:modelPicker",
-        "meta+t": "chat:thinkingToggle",
+        "meta+m": "chat:modelPicker",
+        "meta+x": "chat:clear",
         "enter": "chat:submit",
         "up": "history:previous",
         "down": "history:next",

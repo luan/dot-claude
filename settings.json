@@ -9,6 +9,7 @@
     "pr": ""
   },
   "permissions": {
+    "allow": ["Skill(commit)", "Bash(git commit:*)"],
     "deny": [],
     "defaultMode": "bypassPermissions"
   },

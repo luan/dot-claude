@@ -10,5 +10,3 @@
 10. Fix exactly what was asked. No scope creep. Fix it or push back with a reason.
 11. All tests pass before committing. You own every failure you can see.
 12. Skill scripts: use `${CLAUDE_SKILL_DIR}` in SKILL.md.
-
-@RTK.md
