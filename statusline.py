@@ -439,15 +439,22 @@ def record_tick(data):
                 (sid, now, now, cost, cost, overage_delta, model or None, cwd or None),
             )
 
-        last = conn.execute(
-            "SELECT fh_used, fh_reset, sd_used, sd_reset FROM usage_samples ORDER BY ts DESC LIMIT 1"
-        ).fetchone()
-        if last != (fh_used, fh_reset, sd_used, sd_reset):
-            conn.execute(
-                """INSERT OR REPLACE INTO usage_samples(ts, fh_used, fh_reset, sd_used, sd_reset)
-                   VALUES(?,?,?,?,?)""",
-                (now, fh_used, fh_reset, sd_used, sd_reset),
-            )
+        # Skip samples whose window has already expired — stale rate_limit data
+        # from a session that hasn't made an API call this window.
+        stale = fh_reset <= now or sd_reset <= now
+        if not stale:
+            # Dedupe within current window: only write when quota values actually change.
+            last = conn.execute(
+                """SELECT fh_used, sd_used FROM usage_samples
+                   WHERE fh_reset=? AND sd_reset=? ORDER BY ts DESC LIMIT 1""",
+                (fh_reset, sd_reset),
+            ).fetchone()
+            if last != (fh_used, sd_used):
+                conn.execute(
+                    """INSERT OR REPLACE INTO usage_samples(ts, fh_used, fh_reset, sd_used, sd_reset)
+                       VALUES(?,?,?,?,?)""",
+                    (now, fh_used, fh_reset, sd_used, sd_reset),
+                )
 
         if delta > 0:
             conn.execute(
