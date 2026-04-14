@@ -77,13 +77,11 @@ DIM_ORANGE = "\033[38;5;130m"
 DIM_RED = "\033[38;5;131m"
 DIM_CYAN = "\033[38;5;67m"
 DIM_PINK = "\033[38;5;175m"
-SEG_DIGITS = "🯰🯱🯲🯳🯴🯵🯶🯷🯸🯹"
 
 
 def seg_pct(n, col):
-    """Format a number as segmented digit characters with color."""
-    v = max(0, int(n))
-    return f"{col}{''.join(SEG_DIGITS[int(d)] for d in str(v))}٪{RESET}"
+    """Format a percentage with color."""
+    return f"{col}{max(0, int(n))}٪{RESET}"
 
 
 PLUS = "+"
@@ -427,7 +425,7 @@ def _month_reset_ts():
 
 def record_tick(data):
     """Record one statusline tick. Returns dict of overage buckets + session overage."""
-    empty = {"overage_5h": 0.0, "overage_7d": 0.0, "overage_month": 0.0, "overage_total": 0.0, "overage_session": 0.0, "cache_writes": 0, "cache_hit_rate": 0.0}
+    empty = {"overage_5h": 0.0, "overage_7d": 0.0, "overage_month": 0.0, "overage_total": 0.0, "overage_session": 0.0, "cache_writes": 0, "cache_hit_rate": 0.0, "since_last_event": None}
     sid = data.get("session_id") or ""
     cost_data = data.get("cost") or {}
     cost = cost_data.get("total_cost_usd")
@@ -530,6 +528,11 @@ def record_tick(data):
                     (now, fh_used, fh_reset, sd_used, sd_reset),
                 )
 
+        # Capture time since previous event *before* we (maybe) insert this tick's event.
+        prev_event_ts = conn.execute(
+            "SELECT MAX(ts) FROM events WHERE sid=?", (sid,)
+        ).fetchone()[0]
+
         if delta > 0:
             conn.execute(
                 """INSERT OR REPLACE INTO events
@@ -569,9 +572,16 @@ def record_tick(data):
         billable = cache_reads + fresh_input
         cache_hit_rate = (cache_reads / billable) if billable > 0 else 0.0
 
+        # Time since previous event (captured before any insert above).
+        if prev_event_ts is None:
+            f = conn.execute("SELECT first_seen FROM sessions WHERE sid=?", (sid,)).fetchone()
+            prev_event_ts = f[0] if f else now
+        since_last_event = max(0, now - prev_event_ts)
+
         buckets = dict(empty)
         buckets["cache_writes"] = cache_writes
         buckets["cache_hit_rate"] = cache_hit_rate
+        buckets["since_last_event"] = since_last_event
         for kind, reset, key in (("5h", fh_reset, "overage_5h"),
                                  ("7d", sd_reset, "overage_7d"),
                                  ("month", month_reset, "overage_month"),
@@ -636,8 +646,7 @@ def fmt_pace(secs, window_secs, **_):
     a = abs(secs)
     hours = round(a / 3600)
     txt = f"{hours}h"
-    seg = "".join(SEG_DIGITS[int(c)] if c.isdigit() else c for c in txt)
-    return f"\033[3m{col}{sign}{seg}{RESET}"
+    return f"\033[3m{col}{sign}{txt}{RESET}"
 
 
 def quota_color(utilization, remaining_secs, window_secs):
@@ -867,7 +876,21 @@ def main():
     parts1.append(
         f"{bar} {seg_pct(pct, bar_col)} {DIM}{fmt_tokens(input_tokens)}/{fmt_tokens(ctx_size)}{RESET}"
     )
-    parts1.append(f"{LGRAY}󰅐 {fmt_duration(cost_data.get('total_duration_ms'))}{RESET}")
+    cache_dur = []
+    if overage.get("cache_writes", 0) > 0:
+        hit_pct = int(overage["cache_hit_rate"] * 100)
+        hit_col = DIM_GREEN if hit_pct >= 99 else (ORANGE if hit_pct >= 95 else RED)
+        cache_dur.append(
+            f"{DIM}󰆼 {fmt_tokens(int(overage['cache_writes']))} "
+            f"{hit_col}{hit_pct}٪{RESET}"
+        )
+    since = overage.get("since_last_event")
+    if since is not None:
+        dur_col = DIM_GREEN if since <= 300 else (BLUE if since <= 3600 else RED)
+        dur_txt = f"{since}s" if since < 60 else _fmt_duration(since)
+        cache_dur.append(f"{dur_col}󰅐 {dur_txt}{RESET}")
+    if cache_dur:
+        parts1.append(" ".join(cache_dur))
     if overage["overage_session"] > 0:
         parts1.append(f"{RED}󰇁 +{fmt_cost(overage['overage_session'])[1:]}{RESET}")
     else:
@@ -935,12 +958,6 @@ def main():
                 break
 
         parts2.append(usage_seg)
-
-    if overage.get("cache_writes", 0) > 0:
-        parts2.append(
-            f"{DIM}󰆼 {fmt_tokens(int(overage['cache_writes']))} "
-            f"{int(round(overage['cache_hit_rate'] * 100))}٪{RESET}"
-        )
 
     parts2.extend(suffix_parts)
 
