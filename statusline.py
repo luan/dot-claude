@@ -127,7 +127,7 @@ def context_bar(pct, width=12):
             char = CTX_CHARS[2]
         bar += f"{col}{char}"
 
-    label_col = RED if full >= 7 else (ORANGE if full >= 3 else GREEN)
+    label_col = RED if full >= CTX_THRESHOLDS[1] else (ORANGE if full >= CTX_THRESHOLDS[0] else GREEN)
     return f"{bar}{RESET}", label_col
 
 
