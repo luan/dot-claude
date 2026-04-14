@@ -236,33 +236,48 @@ MAX_DB_BYTES = 10 * 1024 * 1024
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS events (
-  ts            INTEGER NOT NULL,
-  sid           TEXT    NOT NULL,
-  model         TEXT,
-  cost          REAL    NOT NULL,
-  cost_delta    REAL    NOT NULL,
-  overage_delta REAL    NOT NULL,
-  fh_used       INTEGER NOT NULL,
-  sd_used       INTEGER NOT NULL,
-  ctx_pct       INTEGER,
-  input_tokens  INTEGER,
-  duration_ms   INTEGER,
-  cwd           TEXT,
-  agent         TEXT,
+  ts                    INTEGER NOT NULL,
+  sid                   TEXT    NOT NULL,
+  model                 TEXT,
+  cost                  REAL    NOT NULL,
+  cost_delta            REAL    NOT NULL,
+  overage_delta         REAL    NOT NULL,
+  fh_used               INTEGER NOT NULL,
+  sd_used               INTEGER NOT NULL,
+  ctx_pct               INTEGER,
+  ctx_size              INTEGER,
+  input_tokens          INTEGER,
+  output_tokens         INTEGER,
+  cache_read_tokens     INTEGER,
+  cache_creation_tokens INTEGER,
+  total_input_tokens    INTEGER,
+  total_output_tokens   INTEGER,
+  exceeds_200k          INTEGER,
+  duration_ms           INTEGER,
+  api_duration_ms       INTEGER,
+  lines_added           INTEGER,
+  lines_removed         INTEGER,
+  cwd                   TEXT,
+  agent                 TEXT,
   PRIMARY KEY (ts, sid)
 );
 CREATE INDEX IF NOT EXISTS events_sid_ts ON events(sid, ts);
 CREATE INDEX IF NOT EXISTS events_ts     ON events(ts);
 
 CREATE TABLE IF NOT EXISTS sessions (
-  sid           TEXT PRIMARY KEY,
-  first_seen    INTEGER NOT NULL,
-  last_seen     INTEGER NOT NULL,
-  last_cost     REAL    NOT NULL,
-  total_cost    REAL    NOT NULL,
-  total_overage REAL    NOT NULL DEFAULT 0,
-  model         TEXT,
-  cwd           TEXT
+  sid             TEXT PRIMARY KEY,
+  first_seen      INTEGER NOT NULL,
+  last_seen       INTEGER NOT NULL,
+  last_cost       REAL    NOT NULL,
+  total_cost      REAL    NOT NULL,
+  total_overage   REAL    NOT NULL DEFAULT 0,
+  model           TEXT,
+  model_id        TEXT,
+  cwd             TEXT,
+  project_dir     TEXT,
+  git_worktree    TEXT,
+  output_style    TEXT,
+  transcript_path TEXT
 );
 
 CREATE TABLE IF NOT EXISTS windows (
@@ -289,8 +304,35 @@ def _db():
     conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute("PRAGMA busy_timeout=3000")
     conn.executescript(_SCHEMA)
+    _migrate_schema(conn)
     _migrate_json(conn)
     return conn
+
+
+def _migrate_schema(conn):
+    """Add columns introduced after the initial schema. Idempotent."""
+    adds = [
+        ("events", "ctx_size INTEGER"),
+        ("events", "output_tokens INTEGER"),
+        ("events", "cache_read_tokens INTEGER"),
+        ("events", "cache_creation_tokens INTEGER"),
+        ("events", "total_input_tokens INTEGER"),
+        ("events", "total_output_tokens INTEGER"),
+        ("events", "exceeds_200k INTEGER"),
+        ("events", "api_duration_ms INTEGER"),
+        ("events", "lines_added INTEGER"),
+        ("events", "lines_removed INTEGER"),
+        ("sessions", "model_id TEXT"),
+        ("sessions", "project_dir TEXT"),
+        ("sessions", "git_worktree TEXT"),
+        ("sessions", "output_style TEXT"),
+        ("sessions", "transcript_path TEXT"),
+    ]
+    for tbl, col in adds:
+        try:
+            conn.execute(f"ALTER TABLE {tbl} ADD COLUMN {col}")
+        except sqlite3.OperationalError:
+            pass  # column already exists
 
 
 def _migrate_json(conn):
@@ -402,17 +444,38 @@ def record_tick(data):
     month_reset = _month_reset_ts()
 
     model_field = data.get("model") or ""
-    model = model_field.get("display_name") if isinstance(model_field, dict) else str(model_field)
+    if isinstance(model_field, dict):
+        model = model_field.get("display_name")
+        model_id = model_field.get("id")
+    else:
+        model = str(model_field) or None
+        model_id = None
+
     cw = data.get("context_window") or {}
     ctx_pct = int(cw.get("used_percentage") or 0)
+    ctx_size = cw.get("context_window_size")
+    total_input_tokens = cw.get("total_input_tokens")
+    total_output_tokens = cw.get("total_output_tokens")
     usage = cw.get("current_usage") or {}
-    input_tokens = (
-        (usage.get("input_tokens") or 0)
-        + (usage.get("cache_creation_input_tokens") or 0)
-        + (usage.get("cache_read_input_tokens") or 0)
-    )
+    input_tokens = usage.get("input_tokens") or 0
+    output_tokens = usage.get("output_tokens") or 0
+    cache_read_tokens = usage.get("cache_read_input_tokens") or 0
+    cache_creation_tokens = usage.get("cache_creation_input_tokens") or 0
+
     duration_ms = int(cost_data.get("total_duration_ms") or 0)
-    cwd = (data.get("workspace") or {}).get("current_dir", "")
+    api_duration_ms = int(cost_data.get("total_api_duration_ms") or 0)
+    lines_added = int(cost_data.get("total_lines_added") or 0)
+    lines_removed = int(cost_data.get("total_lines_removed") or 0)
+
+    workspace = data.get("workspace") or {}
+    cwd = workspace.get("current_dir") or data.get("cwd") or ""
+    project_dir = workspace.get("project_dir")
+    git_worktree = workspace.get("git_worktree")
+    output_style_obj = data.get("output_style")
+    output_style = output_style_obj.get("name") if isinstance(output_style_obj, dict) else None
+    transcript_path = data.get("transcript_path")
+    exceeds_200k = 1 if data.get("exceeds_200k_tokens") else 0
+
     agent_name = (data.get("agent") or {}).get("name") if isinstance(data.get("agent"), dict) else None
     capped = fh_used >= 100 or sd_used >= 100
     now = int(time.time())
@@ -428,15 +491,26 @@ def record_tick(data):
         if row:
             conn.execute(
                 """UPDATE sessions SET last_seen=?, last_cost=?, total_cost=?,
-                   total_overage=total_overage+?, model=COALESCE(?, model), cwd=COALESCE(?, cwd)
+                   total_overage=total_overage+?,
+                   model=COALESCE(?, model), model_id=COALESCE(?, model_id),
+                   cwd=COALESCE(?, cwd), project_dir=COALESCE(?, project_dir),
+                   git_worktree=COALESCE(?, git_worktree),
+                   output_style=COALESCE(?, output_style),
+                   transcript_path=COALESCE(?, transcript_path)
                    WHERE sid=?""",
-                (now, cost, cost, overage_delta, model or None, cwd or None, sid),
+                (now, cost, cost, overage_delta,
+                 model or None, model_id or None,
+                 cwd or None, project_dir or None, git_worktree or None,
+                 output_style or None, transcript_path or None, sid),
             )
         else:
             conn.execute(
-                """INSERT INTO sessions(sid, first_seen, last_seen, last_cost, total_cost, total_overage, model, cwd)
-                   VALUES(?,?,?,?,?,?,?,?)""",
-                (sid, now, now, cost, cost, overage_delta, model or None, cwd or None),
+                """INSERT INTO sessions(sid, first_seen, last_seen, last_cost, total_cost, total_overage,
+                                       model, model_id, cwd, project_dir, git_worktree, output_style, transcript_path)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (sid, now, now, cost, cost, overage_delta,
+                 model or None, model_id or None, cwd or None, project_dir or None,
+                 git_worktree or None, output_style or None, transcript_path or None),
             )
 
         # Skip samples whose window has already expired — stale rate_limit data
@@ -460,10 +534,18 @@ def record_tick(data):
             conn.execute(
                 """INSERT OR REPLACE INTO events
                    (ts, sid, model, cost, cost_delta, overage_delta, fh_used, sd_used,
-                    ctx_pct, input_tokens, duration_ms, cwd, agent)
-                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    ctx_pct, ctx_size, input_tokens, output_tokens,
+                    cache_read_tokens, cache_creation_tokens,
+                    total_input_tokens, total_output_tokens, exceeds_200k,
+                    duration_ms, api_duration_ms, lines_added, lines_removed,
+                    cwd, agent)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (now, sid, model or None, cost, delta, overage_delta, fh_used, sd_used,
-                 ctx_pct, input_tokens, duration_ms, cwd or None, agent_name),
+                 ctx_pct, ctx_size, input_tokens, output_tokens,
+                 cache_read_tokens, cache_creation_tokens,
+                 total_input_tokens, total_output_tokens, exceeds_200k,
+                 duration_ms, api_duration_ms, lines_added, lines_removed,
+                 cwd or None, agent_name),
             )
 
         if overage_delta > 0:
