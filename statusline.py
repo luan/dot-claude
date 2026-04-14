@@ -427,7 +427,7 @@ def _month_reset_ts():
 
 def record_tick(data):
     """Record one statusline tick. Returns dict of overage buckets + session overage."""
-    empty = {"overage_5h": 0.0, "overage_7d": 0.0, "overage_month": 0.0, "overage_total": 0.0, "overage_session": 0.0}
+    empty = {"overage_5h": 0.0, "overage_7d": 0.0, "overage_month": 0.0, "overage_total": 0.0, "overage_session": 0.0, "cache_writes": 0, "cache_hit_rate": 0.0}
     sid = data.get("session_id") or ""
     cost_data = data.get("cost") or {}
     cost = cost_data.get("total_cost_usd")
@@ -557,7 +557,21 @@ def record_tick(data):
                     (kind, reset, overage_delta),
                 )
 
+        # Session cache totals (summed across turns written to events)
+        cache_row = conn.execute(
+            """SELECT COALESCE(SUM(cache_creation_tokens),0),
+                      COALESCE(SUM(cache_read_tokens),0),
+                      COALESCE(SUM(input_tokens),0)
+               FROM events WHERE sid=?""",
+            (sid,),
+        ).fetchone()
+        cache_writes, cache_reads, fresh_input = cache_row
+        billable = cache_reads + fresh_input
+        cache_hit_rate = (cache_reads / billable) if billable > 0 else 0.0
+
         buckets = dict(empty)
+        buckets["cache_writes"] = cache_writes
+        buckets["cache_hit_rate"] = cache_hit_rate
         for kind, reset, key in (("5h", fh_reset, "overage_5h"),
                                  ("7d", sd_reset, "overage_7d"),
                                  ("month", month_reset, "overage_month"),
@@ -921,6 +935,12 @@ def main():
                 break
 
         parts2.append(usage_seg)
+
+    if overage.get("cache_writes", 0) > 0:
+        parts2.append(
+            f"{DIM}󰆼 {fmt_tokens(int(overage['cache_writes']))} "
+            f"{int(round(overage['cache_hit_rate'] * 100))}٪{RESET}"
+        )
 
     parts2.extend(suffix_parts)
 
