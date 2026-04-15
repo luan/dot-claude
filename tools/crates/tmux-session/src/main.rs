@@ -4,19 +4,25 @@ use std::process::{Command, Stdio};
 
 mod chooser;
 mod color;
+mod filter;
 mod group;
+mod logging;
 mod order;
+mod palette;
 mod picker;
+mod process;
 mod project;
 mod sidebar;
 mod status;
 mod tmux;
-mod usage_graph;
+mod usage;
+mod usage_bars;
 
 use color::compute_color;
 use group::GroupMeta;
-use order::{SessionStore, compute_order};
+use order::compute_order;
 use picker::{TextInputAction, TextInputConfig, run_text_input};
+use project::{rename_parts, rename_session};
 use status::{render_bar, render_windows};
 use tmux::{query_state, query_system_info, query_windows, tmux as tmux_cmd};
 
@@ -63,8 +69,8 @@ fn cmd_update_with_args(args: &[String]) {
     let left = if sidebar_open { "" } else { bar.left.as_str() };
 
     // Build status-format[0]: left=sessions, centre=windows, right=system-info
-    let status_fmt = format!(
-        "#[align=left]{left}#[align=centre]{win}#[align=right]#(~/.config/tmux/scripts/tmux-session system-info)",
+    let _status_fmt = format!(
+        "#[align=left]{left}#[align=centre]{win}#[align=right]#(tmux-session system-info)",
         left = left,
         win = win_str,
     );
@@ -94,8 +100,6 @@ fn cmd_update_with_args(args: &[String]) {
         "@session_color".into(),
         cur_color.into(),
     ]);
-    // Skip status-format[0] — the custom WezTerm click ranges (#[range=user|...])
-    // break native tmux tab clicking on standard terminals.
     tmux_args.extend([";".into(), "refresh-client".into(), "-S".into()]);
 
     let refs: Vec<&str> = tmux_args.iter().map(String::as_str).collect();
@@ -140,8 +144,8 @@ fn cmd_click(args: &[String]) {
     }
 }
 
+#[cfg(target_os = "macos")]
 fn toggle_caffeine() {
-    // Kill existing caffeinate, or start one
     let running = Command::new("pgrep")
         .args(["-x", "caffeinate"])
         .stdout(Stdio::null())
@@ -158,9 +162,11 @@ fn toggle_caffeine() {
             .stderr(Stdio::null())
             .spawn();
     }
-    // Refresh status bar to reflect change
     tmux_cmd(&["refresh-client", "-S"]);
 }
+
+#[cfg(not(target_os = "macos"))]
+fn toggle_caffeine() {}
 
 fn cmd_system_info() {
     let system = query_system_info();
@@ -250,18 +256,14 @@ fn cmd_move(args: &[String]) {
         .spawn();
 }
 
-fn cmd_rename() {
-    let old_name = tmux_cmd(&["display-message", "-p", "#S"]);
+fn cmd_rename(args: &[String]) {
+    let old_name = args
+        .first()
+        .filter(|s| !s.is_empty())
+        .cloned()
+        .unwrap_or_else(|| tmux_cmd(&["display-message", "-p", "#S"]));
 
-    // Split into fixed prefix (repo/) and editable suffix
-    let (prefix, suffix) = if let Some(slash) = old_name.find('/') {
-        (
-            format!("{}/", &old_name[..slash]),
-            old_name[slash + 1..].to_string(),
-        )
-    } else {
-        (String::new(), old_name.clone())
-    };
+    let (prefix, suffix) = rename_parts(&old_name);
 
     let new_suffix = match run_text_input(TextInputConfig {
         prompt: "\u{f044}  Rename".to_string(),
@@ -278,28 +280,7 @@ fn cmd_rename() {
     }
 
     let new_name = format!("{prefix}{new_suffix}");
-    if new_name == old_name {
-        return;
-    }
-
-    // Check for collision
-    if Command::new("tmux")
-        .args(["has-session", "-t", &format!("={new_name}")])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .is_ok_and(|s| s.success())
-    {
-        eprintln!("Session '{new_name}' already exists");
-        return;
-    }
-
-    tmux_cmd(&["rename-session", "-t", &format!("={old_name}"), &new_name]);
-
-    // Update order store
-    let mut store = SessionStore::load();
-    store.rename(&old_name, &new_name);
-    store.save();
+    let _ = rename_session(&old_name, &new_name);
 }
 
 fn cmd_select(args: &[String]) {
@@ -341,6 +322,44 @@ fn cmd_hide_toggle(args: &[String]) {
     order::save_lines(&path, &lines);
 }
 
+fn cmd_picker(args: &[String]) {
+    let action = args.first().map_or("chooser", String::as_str);
+
+    // If sidebar is open, route the action into it via tmux send-keys
+    if tmux_cmd(&["show-option", "-gv", "@sidebar_open"]) == "1" {
+        // Find the sidebar pane: look for a pane running tmux-session
+        let panes = tmux_cmd(&["list-panes", "-a", "-F", "#{pane_id}\t#{pane_current_command}"]);
+        for line in panes.lines() {
+            let parts: Vec<&str> = line.splitn(2, '\t').collect();
+            if parts.len() == 2 && parts[1].contains("tmux-session") {
+                let key = match action {
+                    "rename" => "r",
+                    "chooser" => "/",
+                    "new-session" => "n",
+                    "new-worktree" => "w",
+                    "ditch" => "x",
+                    _ => "/",
+                };
+                tmux_cmd(&["send-keys", "-t", parts[0], key, ""]);
+                return;
+            }
+        }
+    }
+
+    // Sidebar not open or not found: fall back to popup
+    let popup_args = match action {
+        "rename" => vec!["display-popup", "-E", "-B", "-w", "50", "-h", "3",
+                         "tmux-session", "rename"],
+        "new-session" => vec!["display-popup", "-E", "-B", "-w", "60%", "-h", "70%",
+                              "tmux-session", "new-session"],
+        "ditch" => vec!["display-popup", "-E", "-B", "-w", "60%", "-h", "50%",
+                        "tmux-session", "ditch"],
+        _ => vec!["display-popup", "-E", "-B", "-w", "60%", "-h", "70%",
+                  "tmux-session", "chooser"],
+    };
+    tmux_cmd(&popup_args);
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let cmd = args.get(1).map_or("list", String::as_str);
@@ -356,15 +375,16 @@ fn main() {
         "project-list" => project::cmd_project_list(&rest),
         "toggle-favorite" => project::cmd_toggle_favorite(&rest),
         "new-session" => project::cmd_new_session(),
-        "new-worktree" => project::cmd_new_worktree(),
-        "ditch" => project::cmd_ditch(),
-        "rename" => cmd_rename(),
+        "new-worktree" => project::cmd_new_worktree(&rest),
+        "ditch" => project::cmd_ditch(&rest),
+        "rename" => cmd_rename(&rest),
         "select" => cmd_select(&rest),
         "attention" => cmd_attention(),
         "hide-toggle" => cmd_hide_toggle(&rest),
         "update" => cmd_update_with_args(&rest),
         "click" => cmd_click(&rest),
         "sidebar" => sidebar::cmd_sidebar(),
+        "picker" => cmd_picker(&rest),
         "system-info" => cmd_system_info(),
         _ => {
             eprintln!("Unknown: {cmd}");

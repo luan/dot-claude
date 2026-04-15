@@ -20,6 +20,7 @@ const TEXT: Color = Color::Rgb(0xcd, 0xd6, 0xf4);
 const YELLOW: Color = Color::Rgb(0xf9, 0xe2, 0xaf);
 const BLUE: Color = Color::Rgb(0x89, 0xb4, 0xfa);
 
+#[derive(Clone)]
 pub struct PickerItem {
     pub id: String,
     pub display: String,
@@ -723,6 +724,7 @@ pub struct ConfirmConfig {
     pub prompt: String,
 }
 
+#[derive(Clone)]
 pub enum ConfirmLine {
     Ok(String),
     Warn(String),

@@ -20,6 +20,21 @@ pub fn tmux(args: &[&str]) -> String {
     .to_string()
 }
 
+/// Like `tmux()` but does NOT trim the output. Use for batch commands where
+/// leading/trailing newlines encode meaningful empty fields (e.g. unset options
+/// producing an empty first line in a multi-command batch).
+pub fn tmux_lines(args: &[&str]) -> String {
+    String::from_utf8_lossy(
+        &Command::new("tmux")
+            .args(args)
+            .stderr(Stdio::null())
+            .output()
+            .expect("failed to run tmux")
+            .stdout,
+    )
+    .to_string()
+}
+
 pub struct TmuxState {
     pub current: String,
     pub alive: HashSet<String>,
@@ -128,39 +143,19 @@ pub enum BatteryState {
     NoBattery,
 }
 
-fn shell(cmd: &str) -> String {
-    Command::new("sh")
-        .args(["-c", cmd])
-        .output()
-        .ok()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .unwrap_or_default()
-}
-
 pub fn query_system_info() -> SystemInfo {
-    // CPU: 1-minute load average
-    let cpu_load: f32 = shell("sysctl -n vm.loadavg")
-        .trim_start_matches('{')
-        .split_whitespace()
-        .next()
-        .unwrap_or("0")
-        .parse()
+    // CPU: 1-minute load average from /proc/loadavg
+    let cpu_load: f32 = std::fs::read_to_string("/proc/loadavg")
+        .ok()
+        .as_deref()
+        .and_then(|s| s.split_whitespace().next().and_then(|t| t.parse().ok()))
         .unwrap_or(0.0);
 
-    // Memory: parse vm_stat
+    // Memory from /proc/meminfo
     let mem_pct = parse_memory();
 
-    // Battery via pmset
-    let batt_raw = shell("pmset -g batt");
-    let (battery_pct, battery_state, battery_time) = parse_battery(&batt_raw);
-
-    // Caffeinate: check if running
-    let caffeinated = Command::new("pgrep")
-        .args(["-x", "caffeinate"])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .is_ok_and(|s| s.success());
+    // Battery from /sys/class/power_supply/
+    let (battery_pct, battery_state, battery_time) = parse_battery();
 
     // Clock
     let clock = chrono::Local::now().format("%H:%M").to_string();
@@ -171,59 +166,62 @@ pub fn query_system_info() -> SystemInfo {
         battery_pct,
         battery_state,
         battery_time,
-        caffeinated,
+        caffeinated: false,
         clock,
     }
 }
 
 fn parse_memory() -> u32 {
-    // macOS memory pressure: "System-wide memory free percentage: 69%"
-    let raw = shell("memory_pressure -Q");
-    let free_pct: u32 = raw
-        .lines()
-        .find(|l| l.contains("free percentage"))
-        .and_then(|l| {
-            l.split_whitespace()
-                .find(|w| w.ends_with('%'))
-                .and_then(|w| w.trim_end_matches('%').parse().ok())
-        })
-        .unwrap_or(100);
-    100u32.saturating_sub(free_pct)
+    let raw = match std::fs::read_to_string("/proc/meminfo") {
+        Ok(s) => s,
+        Err(_) => return 0,
+    };
+    let mut total: Option<u64> = None;
+    let mut available: Option<u64> = None;
+    for line in raw.lines() {
+        if line.starts_with("MemTotal:") {
+            total = line.split_whitespace().nth(1).and_then(|v| v.parse().ok());
+        } else if line.starts_with("MemAvailable:") {
+            available = line.split_whitespace().nth(1).and_then(|v| v.parse().ok());
+        }
+        if total.is_some() && available.is_some() {
+            break;
+        }
+    }
+    match (total, available) {
+        (Some(t), Some(a)) if t > 0 => ((t - a) * 100 / t) as u32,
+        _ => 0,
+    }
 }
 
-fn parse_battery(raw: &str) -> (Option<u32>, BatteryState, String) {
-    let batt_line = match raw.lines().find(|l| l.contains("InternalBattery")) {
-        Some(l) => l,
-        None => return (None, BatteryState::NoBattery, String::new()),
+fn parse_battery() -> (Option<u32>, BatteryState, String) {
+    let dir = match std::fs::read_dir("/sys/class/power_supply") {
+        Ok(d) => d,
+        Err(_) => return (None, BatteryState::NoBattery, String::new()),
     };
-
-    let pct: u32 = batt_line
-        .split_whitespace()
-        .find(|w| w.ends_with("%;"))
-        .and_then(|w| w.trim_end_matches("%;").parse().ok())
-        .unwrap_or(0);
-
-    let state =
-        if raw.contains("charged") && !raw.contains("discharging") && !raw.contains("charging;") {
-            BatteryState::Charged
-        } else if raw.contains("charging")
-            && !raw.contains("discharging")
-            && !raw.contains("not charging")
-        {
-            BatteryState::Charging
-        } else {
-            BatteryState::Discharging
+    for entry in dir.flatten() {
+        let path = entry.path();
+        let type_content = match std::fs::read_to_string(path.join("type")) {
+            Ok(s) => s,
+            Err(_) => continue,
         };
-
-    // Time remaining: "3:42 remaining"
-    let time = batt_line
-        .split_whitespace()
-        .zip(batt_line.split_whitespace().skip(1))
-        .find(|(_, next)| *next == "remaining")
-        .map(|(t, _)| t.to_string())
-        .unwrap_or_default();
-
-    (Some(pct), state, time)
+        if !type_content.trim().eq_ignore_ascii_case("Battery") {
+            continue;
+        }
+        let pct: u32 = std::fs::read_to_string(path.join("capacity"))
+            .ok()
+            .and_then(|s| s.trim().parse().ok())
+            .unwrap_or(0);
+        let status = std::fs::read_to_string(path.join("status"))
+            .unwrap_or_default();
+        let state = match status.trim() {
+            "Charging" => BatteryState::Charging,
+            "Full" => BatteryState::Charged,
+            _ => BatteryState::Discharging,
+        };
+        return (Some(pct), state, String::new());
+    }
+    (None, BatteryState::NoBattery, String::new())
 }
 
 pub fn git_toplevel(dir: &str) -> Option<String> {
