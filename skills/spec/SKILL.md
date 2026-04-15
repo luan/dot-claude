@@ -90,14 +90,14 @@ Build the spec from validated research. The spec defines the **target state** �
 Write the spec content to a temp file using the Write tool (never heredocs — backticks and special characters get escaped and corrupt the markdown). Then pipe it to ct:
 
 ```bash
-SPEC_FILE=$(cat /tmp/spec-body.md | ct spec create --topic "<topic>" --project "$(git rev-parse --show-toplevel)" 2>/dev/null)
+SPEC_FILE=$(cat /tmp/spec-body.md | ct spec create --topic "<topic>" 2>/dev/null)
 rm /tmp/spec-body.md
 ```
 
 The spec file is the durable artifact. After writing, check for related artifacts and append wiki-links if found:
 
 ```bash
-RELATED=$(ct vault related --project "$(git rev-parse --show-toplevel)" "<topic>")
+RELATED=$(ct vault related "<topic>")
 # If non-empty, append a ## Related section to the spec file with the links
 ```
 
@@ -158,7 +158,7 @@ Write the plan content to a temp file using the Write tool, then pipe it:
 
 ```bash
 SPEC_STEM=$(basename "$SPEC_FILE" .md)
-PLAN_FILE=$(cat /tmp/plan-body.md | ct plan create --topic "<topic>" --source "$SPEC_STEM" --project "$(git rev-parse --show-toplevel)" 2>/dev/null)
+PLAN_FILE=$(cat /tmp/plan-body.md | ct plan create --topic "<topic>" --source "$SPEC_STEM" 2>/dev/null)
 rm /tmp/plan-body.md
 ```
 
@@ -191,6 +191,6 @@ Next: /develop <plan-path> or /vibe
 
 ## Resume (`--continue`)
 
-Check for existing plan first: `ct plan latest --project "$(git rev-parse --show-toplevel)"`. If found, read via `ct plan read <path>`, re-present, resume from step 9.
+Check for existing plan first: `ct plan latest`. If found, read via `ct plan read <path>`, re-present, resume from step 9.
 
-Otherwise check for spec: `ct spec latest --project "$(git rev-parse --show-toplevel)"`. If found, read via `ct spec read <path>`, then run `ct spec comments <path>`. If comments are non-empty, append them as `## Inline Comments` to the re-presented spec — these are user review feedback that should be addressed during refinement. Resume from step 5 (spec review → plan generation).
+Otherwise check for spec: `ct spec latest`. If found, read via `ct spec read <path>`, then run `ct spec comments <path>`. If comments are non-empty, append them as `## Inline Comments` to the re-presented spec — these are user review feedback that should be addressed during refinement. Resume from step 5 (spec review → plan generation).

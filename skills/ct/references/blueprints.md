@@ -74,7 +74,7 @@ via the `--dive` flag on `ct spec create`, keeping the top-level `spec/` list sc
 2. Otherwise → final path component
 3. Fallback: `(no project)`
 
-Always pass `--project "$(git rev-parse --show-toplevel)"` to ensure correct detection.
+`--project` is auto-detected from cwd (`git rev-parse --show-toplevel`, falls back to cwd). Override only when creating artifacts for a different project.
 
 ## Obsidian Integration
 
@@ -89,7 +89,7 @@ The blueprints repo is an Obsidian vault. Cross-reference artifacts using wiki-l
 ### Finding Related Artifacts
 
 ```bash
-ct vault related --project "$(git rev-parse --show-toplevel)" "<topic>"
+ct vault related "<topic>"
 ```
 
 Returns artifacts with overlapping keywords. If non-empty, append a `## Related` section to your artifact:

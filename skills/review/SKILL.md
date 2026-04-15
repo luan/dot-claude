@@ -138,7 +138,7 @@ Output `# Review Summary`:
 - **IGNORE** section (collapsed): findings below threshold
 - **Verdict**: PASS (no FIX items) | CHANGES_REQUESTED (any FIX) | FAIL (any Critical)
 
-Store via `ct review create --topic "Review: $(git branch --show-current)" --project "$(git rev-parse --show-toplevel)"`.
+Store via `ct review create --topic "Review: $(git branch --show-current)"`.
 
 ## Step 6: Fix
 

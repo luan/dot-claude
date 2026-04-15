@@ -22,7 +22,7 @@ Read a plan (preferred) or spec, dispatch workers per phase, verify each worker'
 
 - `<path>` — path to plan file (preferred) or spec file
 - `--auto` — skip user confirmations (for vibe/supervibe calls)
-- No argument → find most recent plan: `ct plan latest --project "$(git rev-parse --show-toplevel)"`. If no plan, fall back to `ct spec latest`.
+- No argument → find most recent plan: `ct plan latest`. If no plan, fall back to `ct spec latest`.
 
 ## Step 1: Read Plan and Spec
 
