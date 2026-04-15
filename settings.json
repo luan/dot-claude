@@ -8,18 +8,12 @@
     "commit": "",
     "pr": ""
   },
-  "alwaysThinkingEnabled": true,
-  "showThinkingSummaries": true,
-  "effortLevel": "medium",
-  "promptSuggestionEnabled": true,
-  "voiceEnabled": true,
-  "autoDreamEnabled": true,
-  "skipDangerousModePermissionPrompt": true,
-  "skipAutoPermissionPrompt": true,
   "includeGitInstructions": false,
-  "outputStyle": "Concise",
   "permissions": {
-    "allow": ["Skill(commit)", "Bash(git commit:*)"],
+    "allow": [
+      "Skill(commit)",
+      "Bash(git commit:*)"
+    ],
     "deny": [],
     "defaultMode": "bypassPermissions"
   },
@@ -86,5 +80,15 @@
         "repo": "max-sixty/worktrunk"
       }
     }
-  }
+  },
+  "outputStyle": "Concise",
+  "alwaysThinkingEnabled": true,
+  "effortLevel": "medium",
+  "promptSuggestionEnabled": true,
+  "autoDreamEnabled": true,
+  "showThinkingSummaries": true,
+  "skipDangerousModePermissionPrompt": true,
+  "skipAutoPermissionPrompt": true,
+  "voiceEnabled": true,
+  "tui": "fullscreen"
 }
