@@ -26,7 +26,7 @@ All structured artifacts (specs, plans, reviews, reports, docs) live in the blue
 | Init repo | `ct vault init` |
 | Migrate from ~/.claude/ | `ct vault migrate` |
 | Project name | `ct vault project` |
-| Create | `ct <type> create --topic "..." --project "$(git rev-parse --show-toplevel)"` |
+| Create | `ct <type> create --topic "..."` |
 | Read | `ct <type> read <file>` |
 | List | `ct <type> list [--all]` |
 | Latest | `ct <type> latest` |
@@ -40,13 +40,13 @@ Where `<type>` is `spec`, `plan`, `review`, `report`, or `doc`.
 The blueprints repo is an Obsidian vault. Use `[[wiki-links]]` to connect related artifacts.
 
 - **`--source`**: When creating an artifact derived from another (plan from spec, review against spec), pass `--source <stem>` to `ct create`. This adds `source: "[[stem]]"` to frontmatter.
-- **Related artifacts**: After creating an artifact, run `ct vault related --project "$(git rev-parse --show-toplevel)" "<topic>"`. If matches found, append a `## Related` section with the wiki-links.
+- **Related artifacts**: After creating an artifact, run `ct vault related "<topic>"`. If matches found, append a `## Related` section with the wiki-links.
 - **Inline links**: When referencing another artifact in body text, use `[[stem]]` (filename without extension or path — Obsidian resolves across the vault).
 - Keep linking shallow — don't read related files to summarize them, just link by name.
 
 | Operation | Command |
 |-----------|---------|
-| Find related | `ct vault related --project "..." "<topic>"` |
+| Find related | `ct vault related "<topic>"` |
 | Link source | `ct <type> create --source "<stem>" ...` |
 | Check links | `ct vault check` |
 | Search | `ct vault search "<query>"` |
@@ -69,6 +69,7 @@ All artifacts have `tags:` in frontmatter. `ct` auto-derives `type/` and `projec
 ## Rules
 
 - Always use `ct <type> create` for artifact writes — never write blueprint files directly.
+- `--project` auto-detects from cwd (git toplevel, falls back to cwd). Pass it only to target a different project.
 - If push fails during commit+push, stop and report to user. Never force-push.
 - `ct vault init` must be run before first use. `ct` errors if the vault directory is missing.
 - Set `CT_BLUEPRINTS_DIR` to override the default `~/blueprints/` location.
