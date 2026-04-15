@@ -102,12 +102,8 @@ fn ring_terminal_bell() {
 }
 
 fn set_tmux_attention(session: &str) {
-    let home = std::env::var("HOME").unwrap_or_default();
-    let bin = format!("{home}/.config/tmux/scripts/tmux-session");
-
-    // Mark this session as needing attention (file-based, per-session)
-    let _ = Command::new(&bin)
-        .args(["attention", session])
+    let _ = Command::new("tmux")
+        .args(["set-option", "-t", session, "@attention", "1"])
         .output();
 
     // Get the actual active client session (not the session that fired the notification)
@@ -122,6 +118,8 @@ fn set_tmux_attention(session: &str) {
         });
 
     if let Some(active) = client_session {
+        let home = std::env::var("HOME").unwrap_or_default();
+        let bin = format!("{home}/.config/tmux/scripts/tmux-session");
         let _ = Command::new(&bin).args(["update", &active]).output();
     }
 }
