@@ -25,10 +25,11 @@ Generate a post-implementation summary as a blueprint artifact. Captures what wa
 ### 1. Gather context
 
 ```bash
-BASE=$(gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||' || echo main)
+BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||' || echo main)
 ```
 
 Collect:
+
 - `git log --oneline $BASE..HEAD` — commit history
 - `git diff --stat $BASE..HEAD` — file change summary
 - `git diff $BASE..HEAD -- '*.rs' '*.ts' '*.py'` — actual diff (truncate at 3000 lines)

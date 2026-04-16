@@ -34,7 +34,7 @@ Template: !`cat .github/PULL_REQUEST_TEMPLATE.md 2>/dev/null`
 Resolve at runtime:
 
 - **PR**: `gh pr view --json number,title,body,headRefName -q '{number,title,headRefName}'`. If empty, tell user and stop.
-- **BASE**: `gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||' || echo main`
+- **BASE**: `gh stack view --json 2>/dev/null | jq -r '.trunk // empty' || gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||' || echo main`
 
 `--auto` → skip edge case questions, assume committed changes only. Without `--auto`:
 

@@ -1,6 +1,10 @@
 use std::path::Path;
 use std::process::Command;
 
+fn terminal_app() -> String {
+    std::env::var("CT_TERMINAL").unwrap_or_else(|_| "WezTerm".to_string())
+}
+
 /// Returns true if the given app name is currently the frontmost application.
 pub fn is_app_focused(app_name: &str) -> bool {
     let front = Command::new("lsappinfo")
@@ -96,11 +100,12 @@ fn ensure_app_registered() {
 
 /// Builds the --execute command string for grrr, inlining focus-session.sh logic with absolute binary paths.
 pub fn build_focus_command(session: &str) -> String {
+    let terminal = terminal_app();
     let tmux_bin = which_bin("tmux").unwrap_or_else(|| "/usr/local/bin/tmux".to_string());
     let grrr_bin = which_bin("grrr").unwrap_or_else(|| "/usr/local/bin/grrr".to_string());
 
     format!(
-        "open -a Ghostty & {grrr_bin} clear 'claude-{session}' >/dev/null 2>&1 & \
+        "open -a '{terminal}' & {grrr_bin} clear 'claude-{session}' >/dev/null 2>&1 & \
          client=$({tmux_bin} list-clients -F '#{{client_tty}}' | head -1) ; \
          [ -n \"$client\" ] && {tmux_bin} switch-client -c \"$client\" -t '{session}'"
     )
@@ -126,7 +131,7 @@ pub fn build_grrr_command(
     message: &str,
     sound: &str,
     icon_path: Option<&str>,
-    ghostty_focused: bool,
+    terminal_focused: bool,
 ) -> Command {
     let mut cmd = Command::new("grrr");
     cmd.arg("send");
@@ -135,7 +140,7 @@ pub fn build_grrr_command(
     cmd.args(["--title", title]);
     cmd.args(["--subtitle", subtitle]);
 
-    if ghostty_focused {
+    if terminal_focused {
         cmd.args(["--sound", "none"]);
     } else {
         cmd.args(["--sound", sound]);
@@ -154,7 +159,8 @@ pub fn build_grrr_command(
         let focus_cmd = build_focus_command(sess);
         cmd.args(["--execute", &focus_cmd]);
     } else {
-        cmd.args(["--execute", "open -a Ghostty"]);
+        let terminal = terminal_app();
+        cmd.args(["--execute", &format!("open -a '{terminal}'")]);
     }
 
     cmd.arg(message);
@@ -173,9 +179,9 @@ pub fn notify(
     sound: &str,
     icon_path: Option<&str>,
 ) -> Result<(), String> {
-    let ghostty_focused = is_app_focused("Ghostty");
+    let terminal_focused = is_app_focused(&terminal_app());
 
-    if ghostty_focused
+    if terminal_focused
         && let Some(sess) = session
         && is_session_active(sess)
     {
@@ -200,7 +206,7 @@ pub fn notify(
         message,
         sound,
         icon_path,
-        ghostty_focused,
+        terminal_focused,
     );
 
     cmd.output().map_err(|e| format!("grrr failed: {e}"))?;
@@ -242,11 +248,11 @@ LSAppInfoItem 0x600003744540 "com.mitchellh.ghostty" (Ghostty)
         let cmd = build_focus_command("my-session");
         assert!(cmd.contains("claude-my-session"));
         assert!(cmd.contains("switch-client"));
-        assert!(cmd.contains("open -a Ghostty"));
+        assert!(cmd.contains("open -a '"));
     }
 
     #[test]
-    fn build_grrr_command_uses_none_sound_when_ghostty_focused() {
+    fn build_grrr_command_uses_none_sound_when_terminal_focused() {
         let cmd = build_grrr_command(None, "Claude Code", "Ready", "Ready", "Hero", None, true);
         let args: Vec<_> = cmd.get_args().collect();
         let args: Vec<&str> = args.iter().map(|a| a.to_str().unwrap()).collect();

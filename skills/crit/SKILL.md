@@ -26,7 +26,7 @@ Fast adversarial review: simplify pre-pass, then 2 parallel reviewers — one fo
 
 ## Step 1: Scope
 
-Resolve BASE: `gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`. Args override.
+Resolve BASE: `gh stack view --json 2>/dev/null | jq -r '.trunk // empty' || gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`. Args override.
 
 | Input        | Diff source                       |
 | ------------ | --------------------------------- |

@@ -39,7 +39,7 @@ pub fn shell_escape(s: &str) -> String {
 }
 
 fn terminal_name() -> String {
-    std::env::var("CT_TERMINAL").unwrap_or_else(|_| "ghostty".to_string())
+    std::env::var("CT_TERMINAL").unwrap_or_else(|_| "wezterm".to_string())
 }
 
 /// Returns the name of the currently focused window, if detectable.

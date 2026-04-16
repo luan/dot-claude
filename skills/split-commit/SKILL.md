@@ -13,7 +13,7 @@ Repackage branch changes into clean vertical commits. Each commit compiles + pas
 
 ## Phase 1: Analyze
 
-Parse: `<base-branch>`, optional `--test='command'`. If no base-branch arg, resolve at runtime: `gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`.
+Parse: `<base-branch>`, optional `--test='command'`. If no base-branch arg, resolve at runtime: `gh stack view --json 2>/dev/null | jq -r '.trunk // empty' || gt parent 2>/dev/null || gt trunk 2>/dev/null || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/||'`.
 
 **Noop check** — `git log --oneline <base>..HEAD | wc -l`. If ≤1 → stop: "Nothing to repackage — use /commit."
 
