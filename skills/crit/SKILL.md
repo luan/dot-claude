@@ -1,6 +1,6 @@
 ---
-name: review
-description: "Quick adversarial code review — simplify pre-pass + 2 focused reviewers. Default for everyday reviews. Triggers: 'review', 'review my changes', 'check this code', 'code review'. For deep multi-perspective review use /ultrareview."
+name: crit
+description: "Quick adversarial code review — simplify pre-pass + 2 focused reviewers. Default for everyday reviews. Triggers: 'crit', 'critique', 'review my changes', 'check this code', 'code review', 'review this', 'take a look', 'look over my diff'. Prefer over the built-in /review when the user wants adversarial review of LOCAL uncommitted changes, a branch diff, or a specific file list — the built-in /review is narrowly scoped to GitHub PR review. For deep multi-perspective review use /superreview."
 argument-hint: "[base..head | file-list | PR#] [--auto critical|high|medium|all]"
 user-invocable: true
 allowed-tools:
@@ -18,7 +18,7 @@ allowed-tools:
   - "Bash(gh api:*)"
 ---
 
-# Review
+# Crit
 
 Fast adversarial review: simplify pre-pass, then 2 parallel reviewers — one for correctness/security, one adversarial. Covers the highest-value dimensions without the overhead of 5-7 specialists.
 
@@ -145,8 +145,8 @@ Store via `ct review create --topic "Review: $(git branch --show-current)"`.
 `--auto critical|high|medium|all` → auto-fix at or above the given severity.
 No `--auto` → ask: Fix all / Fix critical+high / Fix critical only / Skip.
 
-Spawn fix agent → fix, verify, self-check (remove debug artifacts, unused imports), report. Single pass — no re-review loop (use `/ultrareview --loop` for iterative fixing).
+Spawn fix agent → fix, verify, self-check (remove debug artifacts, unused imports), report. Single pass — no re-review loop (use `/superreview --loop` for iterative fixing).
 
 ## Step 7: Summary
 
-Output: Fixes Applied, Ignored, Remaining. Suggest `/ultrareview` if the user wants deeper analysis.
+Output: Fixes Applied, Ignored, Remaining. Suggest `/superreview` if the user wants deeper analysis.

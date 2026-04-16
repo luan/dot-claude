@@ -13,7 +13,7 @@ allowed-tools:
 
 `ct` manages structured artifacts in `~/blueprints/`, a separate git repo and Obsidian vault. Five artifact types share identical CRUD commands: **spec**, **plan**, **review**, **report**, **doc**.
 
-Workflow skills (`/spec`, `/develop`, `/review`, `/report`, `/archive`) handle their respective lifecycle phases. This skill is the reference for direct ct operations and correct command patterns.
+Workflow skills (`/spec`, `/develop`, `/crit`, `/report`, `/archive`) handle their respective lifecycle phases. This skill is the reference for direct ct operations and correct command patterns.
 
 ## Quick Reference
 

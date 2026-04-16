@@ -112,7 +112,7 @@ ct vault search "<query>"   # Full-text search (Obsidian CLI)
 
 1. **Create** — `ct <type> create` writes file, commits, pushes
 2. **Read/List** — `ct <type> read|list|latest|show` for discovery
-3. **Consume** — workflow skills (`/develop`, `/review`) read artifacts
+3. **Consume** — workflow skills (`/develop`, `/crit`) read artifacts
 4. **Archive** — `ct <type> archive` moves to `archive/`, stores in git notes
 5. **Prune** — `ct <type> prune --days N` auto-archives old artifacts
 

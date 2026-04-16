@@ -44,9 +44,9 @@
     {
       "id": 5,
       "prompt": "after develop finishes, what does it suggest as next steps?",
-      "expected_output": "Suggests /review and /commit. Does not suggest /scope or /acceptance.",
+      "expected_output": "Suggests /crit and /commit. Does not suggest /scope or /acceptance.",
       "expectations": [
-        "Suggests /review as the next step for code review",
+        "Suggests /crit as the next step for code review",
         "Does NOT suggest /scope (no longer exists)",
         "Does NOT suggest /acceptance (replaced by inline spec compliance)"
       ]

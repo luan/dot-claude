@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "running /vibe 'add webhook retry with exponential backoff'. about to start.\n\nshow the exact Skill() calls in order and what each gets.",
-      "expected_output": "First: Skill('spec', args='add webhook retry with exponential backoff --auto'). Spec returns a file path. Second: Skill('develop', args='<spec-file-path> --auto'). Third: Skill('review'). Fourth: Skill('commit').",
+      "expected_output": "First: Skill('spec', args='add webhook retry with exponential backoff --auto'). Spec returns a file path. Second: Skill('develop', args='<spec-file-path> --auto'). Third: Skill('crit'). Fourth: Skill('commit').",
       "expectations": [
         "Spec is first, with --auto flag",
         "Develop receives the spec file path (not a task ID)",

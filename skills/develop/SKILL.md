@@ -132,5 +132,5 @@ Output:
 Develop: <spec topic>
 Workers: N/N completed, all passed spec compliance
 Files changed: <list>
-Next: verify the implementation, then /review and /commit
+Next: verify the implementation, then /crit and /commit
 ```

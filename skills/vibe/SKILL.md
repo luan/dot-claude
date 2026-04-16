@@ -57,7 +57,7 @@ Output `[3/M] Review`.
 Skip if `--no-review`.
 
 ```
-Skill("review")
+Skill("crit")
 ```
 
 Fix any critical issues inline. Immediately proceed to commit.

@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
     "GIT_USERNAME": "luan",
-    "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1"
+    "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "0"
   },
   "attribution": {
     "commit": "",
@@ -10,10 +10,6 @@
   },
   "includeGitInstructions": false,
   "permissions": {
-    "allow": [
-      "Skill(commit)",
-      "Bash(git commit:*)"
-    ],
     "deny": [],
     "defaultMode": "bypassPermissions"
   },
@@ -81,9 +77,8 @@
       }
     }
   },
-  "outputStyle": "Concise",
   "alwaysThinkingEnabled": true,
-  "effortLevel": "medium",
+  "effortLevel": "high",
   "promptSuggestionEnabled": true,
   "autoDreamEnabled": true,
   "showThinkingSummaries": true,

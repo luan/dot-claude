@@ -1,9 +1,9 @@
 {
-  "skill_name": "ultrareview",
+  "skill_name": "superreview",
   "evals": [
     {
       "id": 1,
-      "prompt": "/ultrareview -- rewrote the payment processing flow, 12 files changed",
+      "prompt": "/superreview -- rewrote the payment processing flow, 12 files changed",
       "expected_output": "Dispatches 5+ perspective agents (architect, code-quality, devils-advocate, operations, test-quality). Aggregation includes shared concerns, consensus, approach evaluation, correctness verification.",
       "expectations": [
         "Dispatches 5 core perspective agents in one message",
@@ -13,7 +13,7 @@
     },
     {
       "id": 2,
-      "prompt": "/ultrareview --auto all --loop -- critical security fix",
+      "prompt": "/superreview --auto all --loop -- critical security fix",
       "expected_output": "Fixes everything including nits. Re-review loop with no iteration cap. Continues until zero findings.",
       "expectations": [
         "--auto all means every finding is FIX",
@@ -23,7 +23,7 @@
     },
     {
       "id": 3,
-      "prompt": "/ultrareview -- added rate limiting. spec exists in blueprints for this branch",
+      "prompt": "/superreview -- added rate limiting. spec exists in blueprints for this branch",
       "expected_output": "Auto-detects spec via branch slug search. Spawns coherence reviewer alongside core 5.",
       "expectations": [
         "Auto-detects spec without --against flag",
@@ -33,7 +33,7 @@
     },
     {
       "id": 4,
-      "prompt": "/ultrareview -- changed 8 Go files in the backend API",
+      "prompt": "/superreview -- changed 8 Go files in the backend API",
       "expected_output": "Detects Go as primary language. Spawns 5 core + Go language reviewer (6 agents).",
       "expectations": [
         "Detects Go from .go file extensions",
@@ -43,7 +43,7 @@
     },
     {
       "id": 5,
-      "prompt": "/ultrareview -- architect flags coupling as High, code-quality considers it acceptable",
+      "prompt": "/superreview -- architect flags coupling as High, code-quality considers it acceptable",
       "expected_output": "Aggregation surfaces the disagreement in Perspective Disagreements section.",
       "expectations": [
         "Shows perspective disagreement between architect and code-quality",
@@ -53,7 +53,7 @@
     },
     {
       "id": 6,
-      "prompt": "/ultrareview --auto critical -- small 30-line fix in src/utils/format.ts",
+      "prompt": "/superreview --auto critical -- small 30-line fix in src/utils/format.ts",
       "expected_output": "Still uses full perspective mode even for small diff. Only auto-fixes Critical severity.",
       "expectations": [
         "Uses 5 perspective agents regardless of diff size",

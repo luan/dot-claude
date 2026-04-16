@@ -49,7 +49,7 @@ For each chunk, in order:
 
 After all chunks complete, run one final review:
 ```
-Skill("review")
+Skill("crit")
 Skill("commit")
 ```
 

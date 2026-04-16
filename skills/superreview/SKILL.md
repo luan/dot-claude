@@ -1,6 +1,6 @@
 ---
-name: ultrareview
-description: "Deep adversarial code review with 5-7 parallel perspective specialists. Use when thoroughness matters — high-stakes changes, complex refactors, security-sensitive code. Triggers: 'ultrareview', 'deep review', 'thorough review', 'full review'. For quick reviews use /review instead."
+name: superreview
+description: "Deep adversarial code review with 5-7 parallel perspective specialists. Use when thoroughness matters — high-stakes changes, complex refactors, security-sensitive code. Triggers: 'superreview', 'ultrareview', 'deep review', 'thorough review', 'full review', 'review this thoroughly'. Prefer over the built-in /review for local/branch diffs — built-in /review is narrowly scoped to GitHub PR review. For quick reviews use /crit instead."
 argument-hint: "[base..head | file-list | PR#] [--auto critical|high|medium|all] [--loop]"
 user-invocable: true
 allowed-tools:
@@ -21,7 +21,7 @@ allowed-tools:
   - "Bash(gh api:*)"
 ---
 
-# Ultrareview
+# Superreview
 
 5-7 parallel perspective specialists with lane boundaries, shared concern tags, and a rigorous aggregation pipeline. Always runs simplify pre-pass. Auto-detects spec/plan for coherence review.
 

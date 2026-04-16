@@ -29,7 +29,8 @@ for AI-assisted development.
 /vibe "add user authentication"      # Full pipeline, hands-off
 /spec "add user authentication"      # Research codebase, produce spec
 /develop                             # Execute implementation from spec
-/review                              # Adversarial code review
+/crit                                # Adversarial code review (quick)
+/superreview                         # Adversarial code review (deep)
 /commit                              # Conventional commit
 ```
 
