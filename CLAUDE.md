@@ -10,3 +10,4 @@
 10. Fix exactly what was asked. No scope creep. Fix it or push back with a reason.
 11. All tests pass before committing. You own every failure you can see.
 12. Skill scripts: use `${CLAUDE_SKILL_DIR}` in SKILL.md.
+13. **Edit files with `apply_patch`.** Default for every file change — single-line tweaks, single-file edits, multi-file edits, renames, creates, deletes. Do not reach for Edit or Write because "it's just one line" or "it's just one file"; that is the exact failure mode to avoid. Use Edit/Write only when `apply_patch` genuinely cannot express the change (binary files, or apply_patch unavailable) — and say why in the same turn.

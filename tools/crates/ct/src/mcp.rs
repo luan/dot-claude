@@ -193,7 +193,7 @@ struct VaultCheckIn {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 struct ApplyPatchIn {
-    #[schemars(description = "Patch body in codex apply_patch envelope format")]
+    #[schemars(description = "Patch body in the apply_patch envelope format")]
     patch: String,
     #[schemars(
         description = "Working directory (absolute path). Defaults to the server's process cwd"
@@ -474,7 +474,7 @@ impl CtMcpServer {
 
     #[tool(
         name = "apply_patch",
-        description = r#"Apply a patch (codex envelope format) to files under cwd. Use this for multi-file edits — it accepts a single envelope describing add/update/delete/move operations on multiple files at once and is more forgiving than line-numbered unified diffs.
+        description = r#"Apply a patch (envelope format) to files under cwd. This is the primary file-edit tool — prefer it over Edit/Write for every change, single-file or multi-file. A single envelope can add, update, delete, or move many files at once, and it's more forgiving than line-numbered unified diffs.
 
 Envelope shape:
 

@@ -705,7 +705,12 @@ pub fn create(opts: CreateOpts<'_>) -> Result<CreateOutcome, CtError> {
     } = opts;
     if dive && kind != ArtifactKind::Spec {
         return Err(CtError::Validation(
-            "--dive is only valid for spec artifacts".to_string(),
+            "dive is only valid for spec artifacts".to_string(),
+        ));
+    }
+    if dive && source.is_none() {
+        return Err(CtError::Validation(
+            "dive requires source (a dive without a hub link is meaningless)".to_string(),
         ));
     }
     // Resolve worktree paths to the main repo root
@@ -2728,8 +2733,40 @@ source: plain-ref
             );
             let msg = result.unwrap_err().to_string();
             assert!(
-                msg.contains("--dive is only valid for spec artifacts"),
-                "error message must mention --dive restriction; got: {msg}"
+                msg.contains("dive is only valid for spec artifacts"),
+                "error message must mention dive restriction; got: {msg}"
+            );
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    // C.1b — dive without source is rejected (orphan dive is meaningless).
+    #[test]
+    fn dive_requires_source() {
+        let tmp = std::env::temp_dir().join(format!("ct-dive-no-source-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let project = tmp.join("myproj");
+        std::fs::create_dir_all(&project).unwrap();
+
+        with_blueprints_dir(&tmp, || {
+            let result = create(CreateOpts {
+                kind: ArtifactKind::Spec,
+                topic: "Orphan Dive",
+                project: project.to_str().unwrap(),
+                slug_override: None,
+                source: None,
+                user_tags: &[],
+                dive: true,
+            });
+            assert!(
+                result.is_err(),
+                "create with dive=true and source=None must return Err"
+            );
+            let msg = result.unwrap_err().to_string();
+            assert!(
+                msg.contains("dive requires source"),
+                "error message must mention source requirement; got: {msg}"
             );
         });
         std::fs::remove_dir_all(&tmp).ok();

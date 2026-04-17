@@ -255,13 +255,7 @@ understand the system well enough to make their first change without asking some
 Output the doc body only (no frontmatter — ct adds that).
 ```
 
-Store with a clean topic name (no timestamps for docs). Scaffold with `artifact_create` (MCP) or `ct doc create` (CLI), Edit to fill the body, then commit edits.
-
-```bash
-# CLI fallback
-DOC_FILE=$(ct doc create --topic "<clean-topic-name>" --project "$PROJECT_ROOT" --tags "<domain-tags>")
-# Edit $DOC_FILE, then commit+push
-```
+Store with a clean topic name (no timestamps for docs). Scaffold with `blueprint_create` (kind=doc), Edit the body, then `blueprint_commit`.
 
 Link related artifacts after creation:
 

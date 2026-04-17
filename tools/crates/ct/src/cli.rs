@@ -316,7 +316,7 @@ pub enum ToolAction {
         min_loc: usize,
     },
 
-    #[command(about = "Apply a patch (codex format) to files under cwd")]
+    #[command(about = "Apply a patch (envelope format) to files under cwd")]
     ApplyPatch {
         #[arg(long, help = "Working directory (default: process cwd)")]
         cwd: Option<String>,

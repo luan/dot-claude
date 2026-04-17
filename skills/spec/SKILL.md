@@ -87,20 +87,7 @@ Build the spec from validated research. The spec defines the **target state** �
 
 ### 4. Store spec
 
-Create the frontmatter-only scaffold via the `artifact_create` MCP tool (preferred) or `ct spec create`, capture the returned path, then use Edit to fill the body. Commit the edits with `artifact_commit_edits` (MCP) or `git -C $CT_BLUEPRINTS_DIR commit -am "…" && git push` (CLI).
-
-```bash
-# CLI fallback — when MCP unavailable
-SPEC_FILE=$(ct spec create --topic "<topic>")
-# Now Edit $SPEC_FILE to fill body; then commit+push
-```
-
-The spec file is the durable artifact. After writing, check for related artifacts and append wiki-links if found:
-
-```bash
-RELATED=$(ct vault related "<topic>")
-# If non-empty, append a ## Related section to the spec file with the links
-```
+Scaffold with `blueprint_create`, Edit the body, then `blueprint_commit`. Before committing, call `vault_related` on the topic — if matches, append a `## Related` section with wiki-links.
 
 ### 5. Present spec
 
@@ -155,16 +142,7 @@ Add **gates** (build/test/review checkpoints) between phases when the next phase
 
 ### 8. Store plan
 
-Same pattern as spec storage: scaffold with `artifact_create` (MCP) or `ct plan create` (CLI), then Edit the body, then commit the edits.
-
-```bash
-# CLI fallback
-SPEC_STEM=$(basename "$SPEC_FILE" .md)
-PLAN_FILE=$(ct plan create --topic "<topic>" --source "$SPEC_STEM")
-# Edit $PLAN_FILE, then commit+push
-```
-
-The plan links back to its source spec via `--source` (`source` input for the MCP tool).
+Same pattern as spec storage — scaffold with `blueprint_create`, Edit, commit. Pass the spec stem as `source` so the plan wiki-links back to it.
 
 ### 9. Present plan
 
@@ -193,6 +171,6 @@ Next: /develop <plan-path> or /vibe
 
 ## Resume (`--continue`)
 
-Check for existing plan first: `ct plan latest`. If found, read via `ct plan read <path>`, re-present, resume from step 9.
+Check for an existing plan first (`blueprint_latest` with kind=plan). If found, `blueprint_read` it, re-present, resume from step 9.
 
-Otherwise check for spec: `ct spec latest`. If found, read via `ct spec read <path>`, then run `ct spec comments <path>`. If comments are non-empty, append them as `## Inline Comments` to the re-presented spec — these are user review feedback that should be addressed during refinement. Resume from step 5 (spec review → plan generation).
+Otherwise check for a spec (`blueprint_latest` with kind=spec). `blueprint_read` returns body and inline HTML comments together — if comments are non-empty, append them as `## Inline Comments` to the re-presented spec (user review feedback to address during refinement). Resume from step 5.

@@ -66,6 +66,16 @@ All artifacts have `tags:` in frontmatter. `ct` auto-derives `type/` and `projec
 
 **Permanent docs** in `docs/` use `type/doc` tag. These are reference documents (architecture, API guides) — not workflow artifacts.
 
+## Dives
+
+A dive is a vision-level spec linked to a hub spec. It lives in a sibling `dive/` folder so the top-level `spec/` list stays scannable as "major things we're building." Dives share the `type/spec` tag.
+
+- Create via `dive: true` (MCP `blueprint_create`) or `--dive` (CLI). Both require a `source` — a dive without a hub link is rejected.
+- Dive-only for specs; rejected for other artifact kinds.
+- Slug convention: `<hub-slug>-<subtopic>` so dives from the same hub sort together.
+- `ct spec list` hides dives by default; `--include-dives` to see them. `blueprint_read` / `ct spec read <stem>` finds dives by bare stem.
+- Archive preserves the subfolder: dives archive to `archive/<project>/dive/`.
+
 ## Rules
 
 - Always use `ct <type> create` for artifact writes — never write blueprint files directly.
