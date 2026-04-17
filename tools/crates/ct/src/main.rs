@@ -6,6 +6,7 @@ mod cli;
 mod cochanges;
 mod editor;
 mod gitcontext;
+mod mcp;
 mod notify;
 mod phases;
 mod refs;
@@ -51,7 +52,6 @@ fn dispatch_artifact(
             slug,
             source,
             tags,
-            body,
             dive,
         } => cli::run_artifact_create(cli::ArtifactCreateArgs {
             kind,
@@ -60,7 +60,6 @@ fn dispatch_artifact(
             slug,
             source,
             tags,
-            body,
             dive,
         }),
         cli::ArtifactAction::Read { file, frontmatter } => {
@@ -203,7 +202,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 project,
                 archive,
             } => {
-                vault::cmd_search(&query, json, r#type.as_deref(), project.as_deref(), archive);
+                let kind = r#type.as_deref().and_then(|k| match k {
+                    "spec" => Some(artifact::ArtifactKind::Spec),
+                    "plan" => Some(artifact::ArtifactKind::Plan),
+                    "review" => Some(artifact::ArtifactKind::Review),
+                    "report" => Some(artifact::ArtifactKind::Report),
+                    "doc" => Some(artifact::ArtifactKind::Doc),
+                    _ => None,
+                });
+                vault::cmd_search(&query, json, kind, project.as_deref(), archive);
                 Ok(())
             }
             cli::VaultAction::Status => {
@@ -222,11 +229,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         },
         Some(cli::Command::Read { file, frontmatter }) => {
-            let resolved = artifact::resolve_stem_universal(&file);
+            let resolved = match artifact::resolve_stem_universal(&file) {
+                Ok(p) => p,
+                Err(e) => {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                }
+            };
             artifact::cmd_read_resolved(&resolved, frontmatter);
             Ok(())
         }
         Some(cli::Command::Notify) => notify::run(),
+        Some(cli::Command::Mcp { action }) => match action {
+            cli::McpAction::Serve => mcp::run_server(),
+        },
         Some(cli::Command::Tool { action }) => match action {
             cli::ToolAction::Slug { words } => cli::run_slug(words),
             cli::ToolAction::Phases { file } => phases::run_phases(file),

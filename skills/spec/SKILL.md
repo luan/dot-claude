@@ -87,11 +87,12 @@ Build the spec from validated research. The spec defines the **target state** �
 
 ### 4. Store spec
 
-Write the spec content to a temp file using the Write tool (never heredocs — backticks and special characters get escaped and corrupt the markdown). Then pipe it to ct:
+Create the frontmatter-only scaffold via the `artifact_create` MCP tool (preferred) or `ct spec create`, capture the returned path, then use Edit to fill the body. Commit the edits with `artifact_commit_edits` (MCP) or `git -C $CT_BLUEPRINTS_DIR commit -am "…" && git push` (CLI).
 
 ```bash
-SPEC_FILE=$(cat /tmp/spec-body.md | ct spec create --topic "<topic>" 2>/dev/null)
-rm /tmp/spec-body.md
+# CLI fallback — when MCP unavailable
+SPEC_FILE=$(ct spec create --topic "<topic>")
+# Now Edit $SPEC_FILE to fill body; then commit+push
 ```
 
 The spec file is the durable artifact. After writing, check for related artifacts and append wiki-links if found:
@@ -154,15 +155,16 @@ Add **gates** (build/test/review checkpoints) between phases when the next phase
 
 ### 8. Store plan
 
-Write the plan content to a temp file using the Write tool, then pipe it:
+Same pattern as spec storage: scaffold with `artifact_create` (MCP) or `ct plan create` (CLI), then Edit the body, then commit the edits.
 
 ```bash
+# CLI fallback
 SPEC_STEM=$(basename "$SPEC_FILE" .md)
-PLAN_FILE=$(cat /tmp/plan-body.md | ct plan create --topic "<topic>" --source "$SPEC_STEM" 2>/dev/null)
-rm /tmp/plan-body.md
+PLAN_FILE=$(ct plan create --topic "<topic>" --source "$SPEC_STEM")
+# Edit $PLAN_FILE, then commit+push
 ```
 
-The plan links back to its source spec via `--source`.
+The plan links back to its source spec via `--source` (`source` input for the MCP tool).
 
 ### 9. Present plan
 

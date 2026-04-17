@@ -1,10 +1,12 @@
 use std::collections::HashSet;
 use std::env;
 use std::fs;
-use std::io::{self, IsTerminal, Read};
 use std::path::{Path, PathBuf};
 use std::process;
 use std::time::SystemTime;
+
+use rmcp::schemars;
+use serde::{Deserialize, Serialize};
 
 pub(crate) fn fatal(msg: &str) -> ! {
     eprintln!("artifact: {msg}");
@@ -21,7 +23,8 @@ pub(crate) fn home_dir() -> String {
 // ArtifactKind
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "lowercase")]
 pub enum ArtifactKind {
     Plan,
     Spec,
@@ -50,6 +53,10 @@ impl ArtifactKind {
         }
     }
 
+    pub fn from_dir_name(name: &str) -> Option<Self> {
+        ALL_KINDS.iter().copied().find(|k| k.dir_name() == name)
+    }
+
     pub fn notes_ref(self) -> &'static str {
         match self {
             Self::Plan => "plans",
@@ -76,18 +83,33 @@ impl ArtifactKind {
 // Artifact struct (replaces Plan and Spec)
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Artifact {
     pub name: String,
     pub path: PathBuf,
     pub title: String,
+    #[serde(serialize_with = "serialize_project_name")]
     pub project: String,
+    #[serde(rename = "modified", serialize_with = "serialize_mod_time")]
     pub mod_time: SystemTime,
+    #[serde(serialize_with = "serialize_size")]
     pub size: u64,
     pub created: Option<String>,
     pub source: Option<String>,
     pub tags: Vec<String>,
     pub author: Option<String>,
+}
+
+fn serialize_mod_time<S: serde::Serializer>(t: &SystemTime, s: S) -> Result<S::Ok, S::Error> {
+    s.serialize_str(&format_date(*t))
+}
+
+fn serialize_size<S: serde::Serializer>(b: &u64, s: S) -> Result<S::Ok, S::Error> {
+    s.serialize_str(&format_size(*b))
+}
+
+fn serialize_project_name<S: serde::Serializer>(p: &str, s: S) -> Result<S::Ok, S::Error> {
+    s.serialize_str(&project_name(p))
 }
 
 // ---------------------------------------------------------------------------
@@ -108,6 +130,19 @@ pub fn blueprints_dir() -> PathBuf {
     dir
 }
 
+/// Non-panicking variant for server contexts where `fatal()` would kill the
+/// whole MCP server mid-request.
+pub fn blueprints_dir_checked() -> Result<PathBuf, CtError> {
+    let dir = blueprints_dir_unchecked();
+    if !dir.is_dir() {
+        return Err(CtError::Validation(format!(
+            "blueprints directory missing: {}. Run `ct vault init` first.",
+            dir.display()
+        )));
+    }
+    Ok(dir)
+}
+
 /// Returns the blueprints vault directory without checking existence (for init).
 pub fn blueprints_dir_unchecked() -> PathBuf {
     if let Ok(custom) = env::var("CT_BLUEPRINTS_DIR") {
@@ -115,6 +150,26 @@ pub fn blueprints_dir_unchecked() -> PathBuf {
     }
     let home = home_dir();
     Path::new(&home).join("blueprints")
+}
+
+/// Assert that `p` resides inside the vault. Canonicalizes both the path and
+/// the vault root before comparing so `..` components and symlinks are
+/// resolved — defense-in-depth against path-traversal arguments. Returns the
+/// original (non-canonicalized) path on success so existing call sites keep
+/// working against the same prefix they saw before.
+fn ensure_in_vault(p: &Path) -> Result<PathBuf, ResolveError> {
+    let bp = blueprints_dir_unchecked();
+    let bp_canon = bp
+        .canonicalize()
+        .map_err(|_| ResolveError::NotFound(p.display().to_string()))?;
+    let p_canon = p
+        .canonicalize()
+        .map_err(|_| ResolveError::NotFound(p.display().to_string()))?;
+    if p_canon.starts_with(&bp_canon) {
+        Ok(p.to_path_buf())
+    } else {
+        Err(ResolveError::NotFound(p.display().to_string()))
+    }
 }
 
 /// Returns <vault>/<project>/<kind>/
@@ -485,7 +540,6 @@ pub enum SyncError {
     Add(String),
     Commit(String),
     Push(String),
-    Other(String),
 }
 
 impl std::fmt::Display for SyncError {
@@ -494,12 +548,72 @@ impl std::fmt::Display for SyncError {
             Self::Add(msg) => write!(f, "git add failed: {msg}"),
             Self::Commit(msg) => write!(f, "git commit failed: {msg}"),
             Self::Push(msg) => write!(f, "git push failed: {msg}"),
-            Self::Other(msg) => write!(f, "{msg}"),
         }
     }
 }
 
 impl std::error::Error for SyncError {}
+
+/// Stem resolution failure — either nothing matched or multiple candidates did.
+#[derive(Debug)]
+pub enum ResolveError {
+    NotFound(String),
+    Ambiguous(Vec<PathBuf>),
+}
+
+impl std::fmt::Display for ResolveError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NotFound(arg) => write!(f, "artifact not found: {arg}"),
+            Self::Ambiguous(matches) => {
+                let list: Vec<_> = matches.iter().map(|m| m.display().to_string()).collect();
+                write!(f, "ambiguous stem, matches:\n  {}", list.join("\n  "))
+            }
+        }
+    }
+}
+
+impl std::error::Error for ResolveError {}
+
+/// Unified error type for library-level ct operations.
+#[derive(Debug)]
+pub enum CtError {
+    Sync(SyncError),
+    Resolve(ResolveError),
+    Io(std::io::Error),
+    Validation(String),
+}
+
+impl std::fmt::Display for CtError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Sync(e) => write!(f, "{e}"),
+            Self::Resolve(e) => write!(f, "{e}"),
+            Self::Io(e) => write!(f, "{e}"),
+            Self::Validation(msg) => write!(f, "{msg}"),
+        }
+    }
+}
+
+impl std::error::Error for CtError {}
+
+impl From<SyncError> for CtError {
+    fn from(e: SyncError) -> Self {
+        Self::Sync(e)
+    }
+}
+
+impl From<std::io::Error> for CtError {
+    fn from(e: std::io::Error) -> Self {
+        Self::Io(e)
+    }
+}
+
+impl From<ResolveError> for CtError {
+    fn from(e: ResolveError) -> Self {
+        Self::Resolve(e)
+    }
+}
 
 /// Commit and push a file in the blueprints repo.
 pub fn commit_and_push(relative_path: &Path, message: &str) -> Result<(), SyncError> {
@@ -566,11 +680,20 @@ pub struct CreateOpts<'a> {
     pub slug_override: Option<&'a str>,
     pub source: Option<&'a str>,
     pub user_tags: &'a [String],
-    pub body: String,
     pub dive: bool,
 }
 
-pub fn cmd_create(opts: CreateOpts<'_>) -> Result<(), SyncError> {
+/// Result of a successful `create` call. `pushed = false` means the commit
+/// stayed local — push failures propagate as `CtError::Sync` instead.
+#[derive(Debug, Clone, Serialize)]
+pub struct CreateOutcome {
+    pub path: PathBuf,
+    pub project: String,
+    pub kind: ArtifactKind,
+    pub pushed: bool,
+}
+
+pub fn create(opts: CreateOpts<'_>) -> Result<CreateOutcome, CtError> {
     let CreateOpts {
         kind,
         topic,
@@ -578,22 +701,40 @@ pub fn cmd_create(opts: CreateOpts<'_>) -> Result<(), SyncError> {
         slug_override,
         source,
         user_tags,
-        mut body,
         dive,
     } = opts;
     if dive && kind != ArtifactKind::Spec {
-        return Err(SyncError::Other(
-            "error: --dive is only valid for spec artifacts".to_string(),
+        return Err(CtError::Validation(
+            "--dive is only valid for spec artifacts".to_string(),
         ));
     }
     // Resolve worktree paths to the main repo root
     let project = &resolve_repo_root(project);
+    // slug_override is MCP-client-supplied; sanitize through the same filter
+    // the topic path uses so `"../evil"` can't land outside the vault. An
+    // override of only whitespace or filler words is rejected as invalid.
     let s = match slug_override {
-        Some(s) if !s.is_empty() => s.to_string(),
-        _ => crate::slug::slug(topic),
+        Some(raw) => {
+            let trimmed = raw.trim();
+            if trimmed.is_empty() {
+                return Err(CtError::Validation(
+                    "slug override is empty after trimming".to_string(),
+                ));
+            }
+            let sanitized = crate::slug::slug(trimmed);
+            if sanitized.is_empty() {
+                return Err(CtError::Validation(format!(
+                    "slug override {raw:?} sanitizes to empty; pick a different slug"
+                )));
+            }
+            sanitized
+        }
+        None => crate::slug::slug(topic),
     };
     if s.is_empty() {
-        fatal("could not derive slug from topic");
+        return Err(CtError::Validation(
+            "could not derive slug from topic".to_string(),
+        ));
     }
 
     let filename = if kind == ArtifactKind::Doc {
@@ -610,18 +751,16 @@ pub fn cmd_create(opts: CreateOpts<'_>) -> Result<(), SyncError> {
     } else {
         artifact_dir(project, kind)
     };
-    fs::create_dir_all(&dir).unwrap_or_else(|e| fatal(&format!("cannot create directory: {e}")));
+    fs::create_dir_all(&dir)?;
 
     let full_path = dir.join(&filename);
-    if kind == ArtifactKind::Doc && full_path.exists() {
-        fatal(&format!("doc already exists: {}", full_path.display()));
-    }
-
-    // Read body from stdin if not provided and stdin is piped
-    if body.is_empty() && !io::stdin().is_terminal() {
-        io::stdin()
-            .read_to_string(&mut body)
-            .unwrap_or_else(|e| fatal(&format!("reading stdin: {e}")));
+    // Timestamp prefix is hour-precision — two creates in the same hour with
+    // the same slug produce the same filename, so refuse to clobber.
+    if full_path.exists() {
+        return Err(CtError::Validation(format!(
+            "artifact already exists: {}",
+            full_path.display()
+        )));
     }
 
     let now = chrono_rfc3339();
@@ -652,37 +791,39 @@ pub fn cmd_create(opts: CreateOpts<'_>) -> Result<(), SyncError> {
         buf.push_str(&format!("  - {tag}\n"));
     }
     buf.push_str("---\n");
-    if !body.is_empty() {
-        buf.push_str(&body);
-        if !body.ends_with('\n') {
-            buf.push('\n');
-        }
-    }
 
-    fs::write(&full_path, &buf).unwrap_or_else(|e| fatal(&format!("writing file: {e}")));
-    // Print path before sync — skills capture stdout
-    println!("{}", full_path.display());
+    fs::write(&full_path, &buf)?;
 
-    // Commit + push
-    if let Ok(rel) = full_path.strip_prefix(blueprints_dir()) {
+    // Commit + push: push failure propagates so callers see it
+    if let Ok(rel) = full_path.strip_prefix(&bp) {
         commit_and_push(rel, &format!("{}({}): {}", kind.dir_name(), proj_name, s))?;
     }
-    Ok(())
+    Ok(CreateOutcome {
+        path: full_path,
+        project: proj_name,
+        kind,
+        pushed: true,
+    })
 }
 
 /// Resolve an artifact file argument to a real path.
 /// Accepts: absolute/relative path, `project/kind/stem`, or bare stem.
 /// For bare stems, scans ~/blueprints/*/kind/ for a unique match.
-pub fn resolve_artifact_path(file_arg: &str, kind: ArtifactKind) -> PathBuf {
+///
+/// Every successful return is canonicalized and verified to live under the
+/// vault — path-traversal arguments like `"../../etc/passwd"` fail with
+/// `ResolveError::NotFound(file_arg)` even when the underlying file exists.
+pub fn resolve_artifact_path(file_arg: &str, kind: ArtifactKind) -> Result<PathBuf, ResolveError> {
     let p = Path::new(file_arg);
     // Exact path (absolute or relative)
     if p.exists() {
-        return p.to_path_buf();
+        return ensure_in_vault(p).map_err(|_| ResolveError::NotFound(file_arg.to_string()));
     }
     // Try with .md extension
     let with_ext = p.with_extension("md");
     if with_ext.exists() {
-        return with_ext;
+        return ensure_in_vault(&with_ext)
+            .map_err(|_| ResolveError::NotFound(file_arg.to_string()));
     }
 
     let bp = blueprints_dir();
@@ -691,11 +832,12 @@ pub fn resolve_artifact_path(file_arg: &str, kind: ArtifactKind) -> PathBuf {
     // Try as project-relative: <project>/<kind>/stem[.md]
     let bp_path = bp.join(file_arg);
     if bp_path.exists() {
-        return bp_path;
+        return ensure_in_vault(&bp_path).map_err(|_| ResolveError::NotFound(file_arg.to_string()));
     }
     let bp_path_ext = bp_path.with_extension("md");
     if bp_path_ext.exists() {
-        return bp_path_ext;
+        return ensure_in_vault(&bp_path_ext)
+            .map_err(|_| ResolveError::NotFound(file_arg.to_string()));
     }
 
     // Bare stem — scan all projects for ~/blueprints/*/kind/stem.md
@@ -750,20 +892,62 @@ pub fn resolve_artifact_path(file_arg: &str, kind: ArtifactKind) -> PathBuf {
         &mut matches
     };
     match resolved.len() {
-        0 => fatal(&format!("artifact not found: {file_arg}")),
-        1 => resolved.remove(0),
-        _ => {
-            let list: Vec<_> = resolved.iter().map(|m| m.display().to_string()).collect();
-            fatal(&format!(
-                "ambiguous stem '{file_arg}', matches:\n  {}",
-                list.join("\n  ")
-            ))
+        0 => Err(ResolveError::NotFound(file_arg.to_string())),
+        1 => {
+            let hit = resolved.remove(0);
+            ensure_in_vault(&hit).map_err(|_| ResolveError::NotFound(file_arg.to_string()))
         }
+        _ => Err(ResolveError::Ambiguous(std::mem::take(resolved))),
     }
 }
 
+/// Frontmatter fields an artifact carries. Populated by `read`.
+#[derive(Debug, Clone, Serialize)]
+pub struct Frontmatter {
+    pub topic: Option<String>,
+    pub created: Option<String>,
+    pub author: Option<String>,
+    pub source: Option<String>,
+    pub tags: Vec<String>,
+}
+
+/// Result of a `read` call: parsed frontmatter, raw body, and inline comments.
+#[derive(Debug, Clone, Serialize)]
+pub struct ReadOutcome {
+    pub path: PathBuf,
+    pub frontmatter: Option<Frontmatter>,
+    pub body: String,
+    pub comments: Vec<Comment>,
+}
+
+/// Read an artifact file and parse its frontmatter + body + inline comments.
+pub fn read(path: &Path) -> Result<ReadOutcome, CtError> {
+    let content = fs::read_to_string(path)?;
+    let (yaml, body) = parse_frontmatter(&content);
+    let frontmatter = yaml.map(|_| {
+        let (title, _, created, source, tags, author) = extract_frontmatter_full_from_str(&content);
+        Frontmatter {
+            topic: if title.is_empty() { None } else { Some(title) },
+            created,
+            author,
+            source,
+            tags,
+        }
+    });
+    let comments = parse_comments(body);
+    Ok(ReadOutcome {
+        path: path.to_path_buf(),
+        frontmatter,
+        body: body.to_string(),
+        comments,
+    })
+}
+
 pub fn cmd_read(file_path: &str, kind: ArtifactKind, frontmatter_mode: bool) {
-    let resolved = resolve_artifact_path(file_path, kind);
+    let resolved = match resolve_artifact_path(file_path, kind) {
+        Ok(p) => p,
+        Err(e) => fatal(&e.to_string()),
+    };
     cmd_read_resolved(&resolved, frontmatter_mode);
 }
 
@@ -771,7 +955,7 @@ pub fn cmd_read(file_path: &str, kind: ArtifactKind, frontmatter_mode: bool) {
 // Inline comment extraction
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Comment {
     pub line: usize,
     pub highlight: Option<String>,
@@ -834,7 +1018,10 @@ fn frontmatter_line_count(content: &str) -> usize {
 }
 
 pub fn cmd_comments(file_path: &str, kind: ArtifactKind, json: bool) {
-    let resolved = resolve_artifact_path(file_path, kind);
+    let resolved = match resolve_artifact_path(file_path, kind) {
+        Ok(p) => p,
+        Err(e) => fatal(&e.to_string()),
+    };
     let content = fs::read_to_string(&resolved)
         .unwrap_or_else(|e| fatal(&format!("cannot read {}: {e}", resolved.display())));
 
@@ -993,8 +1180,8 @@ fn detect_subfolder(path: &Path, bp: &Path, kind: ArtifactKind) -> String {
 }
 
 /// Core archive logic for a single file: git notes, move, stage deletion.
-/// Returns the destination path. Does NOT commit or push.
-/// Preserves the source subfolder (spec/ or dive/) in the archive path.
+/// Returns the destination path. Does NOT commit or push and does NOT emit
+/// user-facing output — the CLI wrapper reports the move.
 fn archive_single(
     kind: ArtifactKind,
     path: &Path,
@@ -1034,7 +1221,6 @@ fn archive_single(
         .ok_or_else(|| "cannot determine file name".to_string())?;
     let dest = archive_dir.join(file_name);
     fs::rename(path, &dest).map_err(|e| format!("archiving file: {e}"))?;
-    eprintln!("Archived: {} → {}", path.display(), dest.display());
 
     // Stage the deletion of the original
     if let Ok(src_rel) = path.strip_prefix(bp) {
@@ -1058,25 +1244,30 @@ fn archive_dest(path: &Path, bp: &Path, proj_name: &str, kind: ArtifactKind) -> 
 
 /// Validate a file path for archiving: must exist and live inside the vault.
 /// Returns (canonical path, project name).
-fn validate_archive_path(file_path: &str, bp: &Path) -> (PathBuf, String) {
+fn validate_archive_path(file_path: &str, bp: &Path) -> Result<(PathBuf, String), CtError> {
     let path = Path::new(file_path);
     if !path.exists() {
-        fatal(&format!("file not found: {file_path}"));
+        return Err(CtError::Validation(format!("file not found: {file_path}")));
     }
     let rel_path = path
         .strip_prefix(bp)
-        .unwrap_or_else(|_| fatal(&format!("file is not inside {}", bp.display())));
+        .map_err(|_| CtError::Validation(format!("file is not inside {}", bp.display())))?;
     let proj_name = rel_path
         .components()
         .next()
         .map(|c| c.as_os_str().to_string_lossy().to_string())
-        .unwrap_or_else(|| fatal("cannot determine project from file path"));
-    (path.to_path_buf(), proj_name)
+        .ok_or_else(|| {
+            CtError::Validation("cannot determine project from file path".to_string())
+        })?;
+    Ok((path.to_path_buf(), proj_name))
 }
 
 pub fn cmd_retag(kind: ArtifactKind, file_arg: &str) -> Result<(), SyncError> {
     let bp = blueprints_dir();
-    let resolved = resolve_artifact_path(file_arg, kind);
+    let resolved = match resolve_artifact_path(file_arg, kind) {
+        Ok(p) => p,
+        Err(e) => fatal(&e.to_string()),
+    };
     let resolved_str = resolved.to_string_lossy();
 
     let content = fs::read_to_string(&resolved)
@@ -1161,20 +1352,22 @@ pub fn cmd_retag(kind: ArtifactKind, file_arg: &str) -> Result<(), SyncError> {
     Ok(())
 }
 
-pub fn cmd_archive(kind: ArtifactKind, file_path: &str, dry_run: bool) -> Result<(), SyncError> {
+/// Outcome of a successful `archive` call. Dry-runs use `ArchiveOutcome` too,
+/// signalling the prospective destination without having moved the file.
+#[derive(Debug, Clone, Serialize)]
+pub struct ArchiveOutcome {
+    pub path: PathBuf,
+}
+
+/// Archive a single resolved artifact path. Does NOT print — the CLI wrapper
+/// reports `Archived: <src> → <dest>`.
+pub fn archive(kind: ArtifactKind, path: &Path) -> Result<ArchiveOutcome, CtError> {
     let bp = blueprints_dir();
-    let resolved = resolve_artifact_path(file_path, kind);
-    let resolved_str = resolved.to_string_lossy();
-    let (path, proj_name) = validate_archive_path(&resolved_str, &bp);
+    let path_str = path.to_string_lossy();
+    let (path, proj_name) = validate_archive_path(&path_str, &bp)?;
 
-    if dry_run {
-        let dest = archive_dest(&path, &bp, &proj_name, kind);
-        println!("Would archive: {} → {}", path.display(), dest.display());
-        println!("Total: 1 artifact");
-        return Ok(());
-    }
-
-    let dest = archive_single(kind, &path, &bp, &proj_name).map_err(SyncError::Add)?;
+    let dest = archive_single(kind, &path, &bp, &proj_name)
+        .map_err(|e| CtError::Sync(SyncError::Add(e)))?;
 
     if let Ok(dest_rel) = dest.strip_prefix(&bp) {
         let slug = path
@@ -1183,6 +1376,34 @@ pub fn cmd_archive(kind: ArtifactKind, file_path: &str, dry_run: bool) -> Result
             .unwrap_or_default();
         commit_and_push(dest_rel, &format!("archive({}): {}", proj_name, slug))?;
     }
+    Ok(ArchiveOutcome { path: dest })
+}
+
+pub fn cmd_archive(kind: ArtifactKind, file_path: &str, dry_run: bool) -> Result<(), SyncError> {
+    let bp = blueprints_dir();
+    let resolved = match resolve_artifact_path(file_path, kind) {
+        Ok(p) => p,
+        Err(e) => fatal(&e.to_string()),
+    };
+    let resolved_str = resolved.to_string_lossy();
+    let (path, proj_name) = match validate_archive_path(&resolved_str, &bp) {
+        Ok(v) => v,
+        Err(e) => fatal(&e.to_string()),
+    };
+
+    if dry_run {
+        let dest = archive_dest(&path, &bp, &proj_name, kind);
+        println!("Would archive: {} → {}", path.display(), dest.display());
+        println!("Total: 1 artifact");
+        return Ok(());
+    }
+
+    let dest = match archive(kind, &path) {
+        Ok(o) => o.path,
+        Err(CtError::Sync(e)) => return Err(e),
+        Err(e) => fatal(&e.to_string()),
+    };
+    eprintln!("Archived: {} → {}", path.display(), dest.display());
     Ok(())
 }
 
@@ -1197,9 +1418,15 @@ pub fn cmd_archive_batch(
     let validated: Vec<(PathBuf, String)> = file_paths
         .iter()
         .map(|fp| {
-            let resolved = resolve_artifact_path(fp, kind);
+            let resolved = match resolve_artifact_path(fp, kind) {
+                Ok(p) => p,
+                Err(e) => fatal(&e.to_string()),
+            };
             let resolved_str = resolved.to_string_lossy();
-            validate_archive_path(&resolved_str, &bp)
+            match validate_archive_path(&resolved_str, &bp) {
+                Ok(v) => v,
+                Err(e) => fatal(&e.to_string()),
+            }
         })
         .collect();
 
@@ -1233,7 +1460,10 @@ pub fn cmd_archive_batch(
     let mut batch_err: Option<String> = None;
     for (path, _) in &validated {
         match archive_single(kind, path, &bp, proj_name) {
-            Ok(dest) => dests.push(dest),
+            Ok(dest) => {
+                eprintln!("Archived: {} → {}", path.display(), dest.display());
+                dests.push(dest);
+            }
             Err(e) => {
                 eprintln!("archive failed for {}: {e}", path.display());
                 batch_err = Some(e);
@@ -1311,17 +1541,35 @@ pub fn cmd_archive_batch(
 // ---------------------------------------------------------------------------
 
 pub fn list_artifacts(kind: ArtifactKind, include_dives: bool) -> Vec<Artifact> {
-    list_artifacts_filtered(kind, false, include_dives)
+    list_artifacts_filtered(kind, false, include_dives, None)
 }
 
 pub fn list_archived_artifacts(kind: ArtifactKind) -> Vec<Artifact> {
-    list_artifacts_filtered(kind, true, false)
+    list_artifacts_filtered(kind, true, false, None)
+}
+
+/// Like `list_artifacts`, but only scans a single project subdirectory.
+pub fn list_artifacts_for_project(
+    kind: ArtifactKind,
+    include_dives: bool,
+    project_name_filter: &str,
+) -> Vec<Artifact> {
+    list_artifacts_filtered(kind, false, include_dives, Some(project_name_filter))
+}
+
+/// Like `list_archived_artifacts`, but only scans a single project subdirectory.
+pub fn list_archived_artifacts_for_project(
+    kind: ArtifactKind,
+    project_name_filter: &str,
+) -> Vec<Artifact> {
+    list_artifacts_filtered(kind, true, false, Some(project_name_filter))
 }
 
 fn list_artifacts_filtered(
     kind: ArtifactKind,
     archived: bool,
     include_dives: bool,
+    project_filter: Option<&str>,
 ) -> Vec<Artifact> {
     let bp = blueprints_dir();
     // Walk all project subdirs in ~/blueprints/
@@ -1339,6 +1587,12 @@ fn list_artifacts_filtered(
             .unwrap_or_default()
             .to_string_lossy()
             .to_string();
+
+        if let Some(filter) = project_filter
+            && proj_name != filter
+        {
+            continue;
+        }
 
         if archived {
             let archive_dir = proj_path.join("archive").join(kind.dir_name());
@@ -1681,15 +1935,15 @@ fn extract_frontmatter_full(
 ///
 /// If the stem is an existing path (absolute or relative), returns it directly.
 /// Otherwise scans `blueprints_dir()/*/kind/` for a matching file_stem.
-pub fn resolve_stem_universal(stem: &str) -> PathBuf {
+pub fn resolve_stem_universal(stem: &str) -> Result<PathBuf, ResolveError> {
     let p = Path::new(stem);
     // Exact path (absolute or relative)
     if p.exists() {
-        return p.to_path_buf();
+        return ensure_in_vault(p).map_err(|_| ResolveError::NotFound(stem.to_string()));
     }
     let with_ext = p.with_extension("md");
     if with_ext.exists() {
-        return with_ext;
+        return ensure_in_vault(&with_ext).map_err(|_| ResolveError::NotFound(stem.to_string()));
     }
 
     let bp = blueprints_dir();
@@ -1697,11 +1951,11 @@ pub fn resolve_stem_universal(stem: &str) -> PathBuf {
     // Try as project-relative path inside vault
     let bp_path = bp.join(stem);
     if bp_path.exists() {
-        return bp_path;
+        return ensure_in_vault(&bp_path).map_err(|_| ResolveError::NotFound(stem.to_string()));
     }
     let bp_path_ext = bp_path.with_extension("md");
     if bp_path_ext.exists() {
-        return bp_path_ext;
+        return ensure_in_vault(&bp_path_ext).map_err(|_| ResolveError::NotFound(stem.to_string()));
     }
 
     // Bare stem — scan all projects × all kinds in priority order
@@ -1753,11 +2007,12 @@ pub fn resolve_stem_universal(stem: &str) -> PathBuf {
     };
 
     if resolved.is_empty() {
-        fatal(&format!("artifact not found: {stem}"));
+        return Err(ResolveError::NotFound(stem.to_string()));
     }
 
     if resolved.len() == 1 {
-        return resolved.remove(0).1;
+        let hit = resolved.remove(0).1;
+        return ensure_in_vault(&hit).map_err(|_| ResolveError::NotFound(stem.to_string()));
     }
 
     // Multiple matches — check if they span different kinds
@@ -1766,30 +2021,30 @@ pub fn resolve_stem_universal(stem: &str) -> PathBuf {
         // Return highest-priority (ALL_KINDS is already in priority order)
         for &kind in &ALL_KINDS {
             if let Some(pos) = resolved.iter().position(|(k, _)| *k == kind) {
-                return resolved.remove(pos).1;
+                let hit = resolved.remove(pos).1;
+                return ensure_in_vault(&hit).map_err(|_| ResolveError::NotFound(stem.to_string()));
             }
         }
     }
 
     // Same kind, different projects — ambiguous
-    let list: Vec<_> = resolved
-        .iter()
-        .map(|(_, p)| p.display().to_string())
-        .collect();
-    fatal(&format!(
-        "ambiguous stem '{stem}', matches:\n  {}",
-        list.join("\n  ")
+    Err(ResolveError::Ambiguous(
+        std::mem::take(resolved)
+            .into_iter()
+            .map(|(_, p)| p)
+            .collect(),
     ))
 }
 
 /// Read and print an artifact from a resolved path (no kind needed).
 pub fn cmd_read_resolved(resolved: &Path, frontmatter_mode: bool) {
-    let content =
-        fs::read_to_string(resolved).unwrap_or_else(|e| fatal(&format!("reading file: {e}")));
-
-    let (yaml, body) = parse_frontmatter(&content);
-
+    // For non-frontmatter mode, use the structured `read` core so CLI and MCP
+    // agree on what the body is. Frontmatter-as-JSON mode preserves the raw
+    // YAML key order from the file (downstream skills parse this line).
     if frontmatter_mode {
+        let content =
+            fs::read_to_string(resolved).unwrap_or_else(|e| fatal(&format!("reading file: {e}")));
+        let (yaml, _) = parse_frontmatter(&content);
         match yaml {
             None => println!("{{}}"),
             Some(y) => {
@@ -1807,7 +2062,11 @@ pub fn cmd_read_resolved(resolved: &Path, frontmatter_mode: bool) {
             }
         }
     } else {
-        print!("{body}");
+        let outcome = match read(resolved) {
+            Ok(o) => o,
+            Err(e) => fatal(&e.to_string()),
+        };
+        print!("{}", outcome.body);
     }
 }
 
@@ -1816,7 +2075,10 @@ pub fn cmd_read_resolved(resolved: &Path, frontmatter_mode: bool) {
 // ---------------------------------------------------------------------------
 
 pub fn cmd_rename(kind: ArtifactKind, old_arg: &str, new_slug: &str) -> Result<(), SyncError> {
-    let old_path = resolve_artifact_path(old_arg, kind);
+    let old_path = match resolve_artifact_path(old_arg, kind) {
+        Ok(p) => p,
+        Err(e) => fatal(&e.to_string()),
+    };
     let bp = blueprints_dir();
 
     // Derive project name (same pattern as validate_archive_path)
@@ -2109,7 +2371,7 @@ mod tests {
         let doc = create_artifact_file(&tmp, "myproj", ArtifactKind::Doc, "widget");
 
         with_blueprints_dir(&tmp, || {
-            let result = resolve_stem_universal("widget");
+            let result = resolve_stem_universal("widget").expect("resolve widget");
             assert_eq!(result, doc, "Doc should take priority over Spec");
         });
         std::fs::remove_dir_all(&tmp).ok();
@@ -2123,7 +2385,7 @@ mod tests {
         let plan = create_artifact_file(&tmp, "myproj", ArtifactKind::Plan, "deploy");
 
         with_blueprints_dir(&tmp, || {
-            let result = resolve_stem_universal("deploy");
+            let result = resolve_stem_universal("deploy").expect("resolve deploy");
             assert_eq!(result, plan);
         });
         std::fs::remove_dir_all(&tmp).ok();
@@ -2138,7 +2400,7 @@ mod tests {
         let report = create_artifact_file(&tmp, "myproj", ArtifactKind::Report, "auth");
 
         with_blueprints_dir(&tmp, || {
-            let result = resolve_stem_universal("auth");
+            let result = resolve_stem_universal("auth").expect("resolve auth");
             assert_eq!(result, report, "Report should take priority over Plan");
         });
         std::fs::remove_dir_all(&tmp).ok();
@@ -2319,17 +2581,16 @@ source: plain-ref
         std::fs::create_dir_all(&project).unwrap();
 
         with_blueprints_dir(&tmp, || {
-            // cmd_create with dive=true should write to dive/, not spec/
-            // git commit/push will fail (no repo) — we ignore SyncError.
-            // Pass bare stem (no [[...]] wrapping) — cmd_create wraps it automatically.
-            let _ = cmd_create(CreateOpts {
+            // create with dive=true should write to dive/, not spec/
+            // git commit/push will fail (no repo) — we ignore the Err.
+            // Pass bare stem (no [[...]] wrapping) — create wraps it automatically.
+            let _ = create(CreateOpts {
                 kind: ArtifactKind::Spec,
                 topic: "Sub Topic A",
                 project: project.to_str().unwrap(),
                 slug_override: Some("hub-sub-topic-a"),
                 source: Some("20260411-hub"),
                 user_tags: &[],
-                body: String::new(),
                 dive: true,
             });
 
@@ -2452,19 +2713,18 @@ source: plain-ref
         std::fs::create_dir_all(&project).unwrap();
 
         with_blueprints_dir(&tmp, || {
-            let result = cmd_create(CreateOpts {
+            let result = create(CreateOpts {
                 kind: ArtifactKind::Plan,
                 topic: "Some Plan",
                 project: project.to_str().unwrap(),
                 slug_override: None,
                 source: Some("foo"),
                 user_tags: &[],
-                body: String::new(),
                 dive: true,
             });
             assert!(
                 result.is_err(),
-                "cmd_create with dive=true on a non-Spec kind must return Err"
+                "create with dive=true on a non-Spec kind must return Err"
             );
             let msg = result.unwrap_err().to_string();
             assert!(
@@ -2523,7 +2783,8 @@ source: plain-ref
         std::fs::write(&dive_file, "---\ntopic: Detail\n---\n").unwrap();
 
         with_blueprints_dir(&tmp, || {
-            let resolved = resolve_artifact_path("20260411-hub-detail", ArtifactKind::Spec);
+            let resolved = resolve_artifact_path("20260411-hub-detail", ArtifactKind::Spec)
+                .expect("resolve dive stem");
             assert!(
                 resolved.to_string_lossy().contains("dive/"),
                 "resolved path must be inside dive/; got: {}",
@@ -2583,7 +2844,8 @@ source: plain-ref
         );
 
         with_blueprints_dir(&tmp, || {
-            let result = resolve_artifact_path("kdl-derive-reference", ArtifactKind::Doc);
+            let result = resolve_artifact_path("kdl-derive-reference", ArtifactKind::Doc)
+                .expect("resolve kdl stem");
             assert_eq!(result, file);
         });
         std::fs::remove_dir_all(&tmp).ok();
@@ -2610,7 +2872,8 @@ source: plain-ref
 
         with_blueprints_dir(&tmp, || {
             let result =
-                resolve_artifact_path("20260411-07-kdl-derive-reference", ArtifactKind::Doc);
+                resolve_artifact_path("20260411-07-kdl-derive-reference", ArtifactKind::Doc)
+                    .expect("resolve kdl stem exact");
             assert_eq!(result, exact);
         });
         std::fs::remove_dir_all(&tmp).ok();
@@ -2624,7 +2887,8 @@ source: plain-ref
         let file = create_artifact_file(&tmp, "myproj", ArtifactKind::Doc, "foo");
 
         with_blueprints_dir(&tmp, || {
-            let result = resolve_artifact_path("20260411-07-foo", ArtifactKind::Doc);
+            let result = resolve_artifact_path("20260411-07-foo", ArtifactKind::Doc)
+                .expect("resolve foo stem fuzzy");
             assert_eq!(result, file);
         });
         std::fs::remove_dir_all(&tmp).ok();
@@ -2643,7 +2907,8 @@ source: plain-ref
         );
 
         with_blueprints_dir(&tmp, || {
-            let result = resolve_stem_universal("kdl-derive-reference");
+            let result =
+                resolve_stem_universal("kdl-derive-reference").expect("universal resolve kdl");
             assert_eq!(result, file);
         });
         std::fs::remove_dir_all(&tmp).ok();
@@ -2657,7 +2922,7 @@ source: plain-ref
         let file = create_artifact_file(&tmp, "myproj", ArtifactKind::Plan, "bar");
 
         with_blueprints_dir(&tmp, || {
-            let result = resolve_stem_universal("20260411-07-bar");
+            let result = resolve_stem_universal("20260411-07-bar").expect("universal resolve bar");
             assert_eq!(result, file);
         });
         std::fs::remove_dir_all(&tmp).ok();
@@ -2723,6 +2988,305 @@ source: plain-ref
 
             let after = std::fs::read_to_string(&file).unwrap();
             assert_eq!(after, content, "file should be unchanged");
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn read_returns_structured_frontmatter_and_body() {
+        let tmp = std::env::temp_dir().join(format!("ct-read-core-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let file = tmp.join("sample.md");
+        std::fs::write(
+            &file,
+            "---\ntopic: My Topic\nauthor: me\ncreated: 2026-04-16\nsource: \"[[ref]]\"\ntags:\n  - type/spec\n  - domain/x\n---\nbody line 1\n<!--todo-->\n",
+        )
+        .unwrap();
+
+        let outcome = read(&file).expect("read ok");
+        assert_eq!(outcome.path, file);
+        assert_eq!(outcome.body, "body line 1\n<!--todo-->\n");
+        assert_eq!(outcome.comments.len(), 1, "one inline comment");
+        let fm = outcome.frontmatter.expect("frontmatter present");
+        assert_eq!(fm.topic.as_deref(), Some("My Topic"));
+        assert_eq!(fm.author.as_deref(), Some("me"));
+        assert_eq!(fm.created.as_deref(), Some("2026-04-16"));
+        assert_eq!(fm.source.as_deref(), Some("ref"));
+        assert_eq!(fm.tags, vec!["type/spec", "domain/x"]);
+
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn create_returns_outcome_with_populated_fields() {
+        let tmp = std::env::temp_dir().join(format!("ct-create-core-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let project = tmp.join("myproj");
+        std::fs::create_dir_all(&project).unwrap();
+
+        with_blueprints_dir(&tmp, || {
+            // commit_and_push will fail (no git repo) — we assert on Err fields
+            // via the filesystem state after the write.
+            let outcome = create(CreateOpts {
+                kind: ArtifactKind::Plan,
+                topic: "New Plan",
+                project: project.to_str().unwrap(),
+                slug_override: Some("new-plan"),
+                source: None,
+                user_tags: &[],
+                dive: false,
+            });
+            // Either we got CreateOutcome (push succeeded — unlikely in test)
+            // or a SyncError (expected). In both cases the file is written.
+            let plan_dir = tmp.join("myproj").join("plan");
+            let files: Vec<_> = fs::read_dir(&plan_dir)
+                .expect("plan/ exists")
+                .flatten()
+                .collect();
+            assert_eq!(files.len(), 1, "exactly one plan file written");
+
+            if let Ok(o) = outcome {
+                assert_eq!(o.kind, ArtifactKind::Plan);
+                assert_eq!(o.project, "myproj");
+                assert!(o.pushed);
+                assert!(o.path.exists());
+            }
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn archive_core_moves_file_and_returns_destination() {
+        let tmp = std::env::temp_dir().join(format!("ct-archive-core-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let spec_dir = tmp.join("myproj").join("spec");
+        std::fs::create_dir_all(&spec_dir).unwrap();
+        let spec_file = spec_dir.join("20260411-target.md");
+        std::fs::write(&spec_file, "---\ntopic: T\n---\n").unwrap();
+
+        with_blueprints_dir(&tmp, || {
+            // commit_and_push will fail in the test, so `archive` returns Err
+            // after the move already happened. Assert filesystem either way.
+            let _ = archive(ArtifactKind::Spec, &spec_file);
+            let expected = tmp
+                .join("myproj")
+                .join("archive")
+                .join("spec")
+                .join("20260411-target.md");
+            assert!(expected.exists(), "file moved to archive/spec/");
+            assert!(!spec_file.exists(), "source file removed");
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn resolve_artifact_path_returns_not_found_error() {
+        let tmp = std::env::temp_dir().join(format!("ct-nf-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        with_blueprints_dir(&tmp, || {
+            let err = resolve_artifact_path("nonexistent-stem", ArtifactKind::Plan)
+                .expect_err("no match -> Err");
+            assert!(matches!(err, ResolveError::NotFound(_)));
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn resolve_stem_universal_returns_ambiguous_when_same_kind_multiple_projects() {
+        let tmp = std::env::temp_dir().join(format!("ct-univ-ambig-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let _a = create_artifact_file(&tmp, "p1", ArtifactKind::Plan, "duplicated");
+        let _b = create_artifact_file(&tmp, "p2", ArtifactKind::Plan, "duplicated");
+
+        with_blueprints_dir(&tmp, || {
+            let err = resolve_stem_universal("duplicated").expect_err("ambiguous");
+            let ResolveError::Ambiguous(matches) = err else {
+                panic!("expected Ambiguous");
+            };
+            assert_eq!(matches.len(), 2, "both duplicated matches returned");
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn ct_error_wraps_component_errors() {
+        // Just exercise the From impls and Display — keeps the CtError variants
+        // off the dead-code list and guards against their Display drifting.
+        let sync: CtError = SyncError::Push("x".to_string()).into();
+        assert!(sync.to_string().contains("push"));
+        let resolve: CtError = ResolveError::NotFound("y".to_string()).into();
+        assert!(resolve.to_string().contains("not found"));
+        let io: CtError = std::io::Error::other("z").into();
+        assert!(io.to_string().contains('z'));
+        let val = CtError::Validation("bad".to_string());
+        assert_eq!(val.to_string(), "bad");
+    }
+
+    // ── security regression tests ───────────────────────────────────────────
+
+    #[test]
+    fn resolve_stem_universal_rejects_path_traversal() {
+        // Pre-fix this returned /etc/passwd because exists() was the only gate.
+        // The vault dir has to exist for blueprints_dir() not to fatal.
+        let tmp = std::env::temp_dir().join(format!("ct-sec-traverse-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        with_blueprints_dir(&tmp, || {
+            let err = resolve_stem_universal("../../../etc/passwd")
+                .expect_err("path traversal must be rejected");
+            assert!(
+                matches!(err, ResolveError::NotFound(_)),
+                "expected NotFound, got {err:?}"
+            );
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn resolve_artifact_path_rejects_path_traversal() {
+        let tmp = std::env::temp_dir().join(format!("ct-sec-artpath-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        with_blueprints_dir(&tmp, || {
+            let err = resolve_artifact_path("../../../etc/passwd", ArtifactKind::Spec)
+                .expect_err("path traversal must be rejected");
+            assert!(
+                matches!(err, ResolveError::NotFound(_)),
+                "expected NotFound, got {err:?}"
+            );
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn create_sanitizes_slug_override_with_path_separator() {
+        // "../evil" used to pass through verbatim into the filename. After the
+        // fix the slug sanitizer must neutralize it: no file lands outside the
+        // per-project spec/ directory. A git-push sync error is fine — the
+        // write already happened, so inspect the filesystem to verify no
+        // traversal occurred.
+        let tmp = std::env::temp_dir().join(format!("ct-sec-slug-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let project = tmp.join("myproj");
+        std::fs::create_dir_all(&project).unwrap();
+        with_blueprints_dir(&tmp, || {
+            let outcome = create(CreateOpts {
+                kind: ArtifactKind::Spec,
+                topic: "Harmless Topic",
+                project: project.to_str().unwrap(),
+                slug_override: Some("../evil"),
+                source: None,
+                user_tags: &[],
+                dive: false,
+            });
+            // Validation rejection is the strong outcome; a sync failure is
+            // also acceptable as long as whatever got written stays in vault.
+            match outcome {
+                Err(CtError::Validation(_)) => return,
+                Ok(_) | Err(CtError::Sync(_)) => {}
+                Err(e) => panic!("unexpected error variant: {e:?}"),
+            }
+            let spec_dir = tmp.join("myproj").join("spec");
+            let files: Vec<PathBuf> = fs::read_dir(&spec_dir)
+                .map(|d| d.flatten().map(|e| e.path()).collect())
+                .unwrap_or_default();
+            assert!(
+                !files.is_empty(),
+                "sanitized slug should have produced a file under {}",
+                spec_dir.display()
+            );
+            for path in &files {
+                assert!(
+                    path.starts_with(&spec_dir),
+                    "file escaped project/spec: {}",
+                    path.display()
+                );
+                let fname = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+                assert!(!fname.contains('/'), "slug leaked / into {fname}");
+                assert!(!fname.contains('\\'), "slug leaked \\ into {fname}");
+                assert!(!fname.contains(".."), "slug leaked .. into {fname}");
+            }
+            // No sibling archive/etc/passwd-style spillover under the vault.
+            let bad = tmp.join("etc");
+            assert!(!bad.exists(), "traversal produced {}", bad.display());
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn create_rejects_whitespace_slug_override() {
+        // Pre-fix whitespace passed is_empty() and produced filenames like
+        // "20260417-03-   .md".
+        let tmp = std::env::temp_dir().join(format!("ct-sec-ws-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let project = tmp.join("myproj");
+        std::fs::create_dir_all(&project).unwrap();
+        with_blueprints_dir(&tmp, || {
+            let outcome = create(CreateOpts {
+                kind: ArtifactKind::Spec,
+                topic: "Topic",
+                project: project.to_str().unwrap(),
+                slug_override: Some("   "),
+                source: None,
+                user_tags: &[],
+                dive: false,
+            });
+            assert!(
+                matches!(outcome, Err(CtError::Validation(_))),
+                "expected Validation for whitespace slug, got {outcome:?}"
+            );
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn create_rejects_duplicate_same_hour() {
+        // Two creates in the same hour with the same slug collide at the
+        // filename level; the second must error instead of clobbering.
+        let tmp = std::env::temp_dir().join(format!("ct-sec-dupe-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let project = tmp.join("myproj");
+        std::fs::create_dir_all(&project).unwrap();
+        with_blueprints_dir(&tmp, || {
+            // First create writes the file. commit_and_push will fail (no git
+            // repo) — we only need the write to land.
+            let first = create(CreateOpts {
+                kind: ArtifactKind::Plan,
+                topic: "Some Plan",
+                project: project.to_str().unwrap(),
+                slug_override: Some("fixed-slug"),
+                source: None,
+                user_tags: &[],
+                dive: false,
+            });
+            let path_exists = match &first {
+                Ok(o) => o.path.exists(),
+                Err(CtError::Sync(_)) => {
+                    // Sync error after successful write — find the file manually.
+                    let plan_dir = tmp.join("myproj").join("plan");
+                    fs::read_dir(&plan_dir)
+                        .map(|d| d.flatten().next().is_some())
+                        .unwrap_or(false)
+                }
+                Err(e) => panic!("unexpected first-create error: {e:?}"),
+            };
+            assert!(path_exists, "first create should have written the file");
+
+            let second = create(CreateOpts {
+                kind: ArtifactKind::Plan,
+                topic: "Some Plan",
+                project: project.to_str().unwrap(),
+                slug_override: Some("fixed-slug"),
+                source: None,
+                user_tags: &[],
+                dive: false,
+            });
+            assert!(
+                matches!(second, Err(CtError::Validation(ref m)) if m.contains("already exists")),
+                "second create must error with 'already exists', got {second:?}"
+            );
         });
         std::fs::remove_dir_all(&tmp).ok();
     }

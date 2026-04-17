@@ -19,7 +19,7 @@ Workflow skills (`/spec`, `/develop`, `/crit`, `/report`, `/archive`) handle the
 
 | Operation | Command |
 |-----------|---------|
-| Create | `ct <type> create --topic "..."` |
+| Create (scaffold) | `ct <type> create --topic "..."` — prints path, author body via Read/Edit |
 | Create dive | `ct spec create --dive --source "<hub-stem>" --slug "<hub-slug>-<subtopic>" --topic "..."` |
 | Read | `ct <type> read <path-or-slug>` |
 | List active | `ct <type> list` |
@@ -40,19 +40,39 @@ Workflow skills (`/spec`, `/develop`, `/crit`, `/report`, `/archive`) handle the
 
 ## Create with Full Metadata
 
+`ct create` scaffolds an empty artifact — it writes frontmatter only, prints the absolute path, and commits. **Author the body after creation using Read/Edit on the returned path**, then re-commit. Never pipe body content into `ct create`.
+
+### Pattern A — MCP (preferred)
+
+When `ct` is exposed as an MCP server, prefer the MCP tools over the CLI. The exact tool names depend on how the harness prefixes MCP tools; look for a create tool on the `ct` server (e.g. `artifact_create`). Typical flow:
+
+1. Call the `artifact_create` tool with `{ kind, topic, project?, slug?, source?, tags? }`. Capture `path` from the structured response.
+2. Use Read/Edit to author the body at that path.
+3. Call the `artifact_commit_edits` tool with `{ path }` to commit and push the edits.
+
+### Pattern B — CLI (fallback)
+
 ```bash
-ct <type> create \
+ARTIFACT=$(ct <type> create \
   --topic "<human-readable title>" \
   --source "<parent-artifact-stem>" \
-  --tags "domain/combat,stage/research"
+  --tags "domain/combat,stage/research")
+# $ARTIFACT is the absolute path to the new (frontmatter-only) file.
 ```
 
-Body piped via stdin or passed with `--body`. Output: full file path.
+Then Read/Edit the body at `$ARTIFACT`. To commit the edits afterwards, prefer calling `artifact_commit_edits` via MCP. If MCP is unavailable, commit by hand from the vault:
+
+```bash
+git -C "$(dirname "$(dirname "$ARTIFACT")")" commit -am "<message>" && \
+git -C "$(dirname "$(dirname "$ARTIFACT")")" push
+```
+
+### Metadata
 
 **Auto-derived tags** (always added): `type/<kind>`, `project/<name>`.
-**User tags** (via `--tags`): `domain/<area>`, `stage/<phase>`, or freeform.
+**User tags** (via `--tags` or the MCP `tags` field): `domain/<area>`, `stage/<phase>`, or freeform.
 
-`--source` adds `source: "[[stem]]"` to frontmatter — use when an artifact derives from another (plan from spec, review against spec).
+`--source` (or MCP `source`) adds `source: "[[stem]]"` to frontmatter — use when an artifact derives from another (plan from spec, review against spec). Pass a bare stem; ct wraps it in `[[...]]`.
 
 ## Dives: vision-level specs in `dive/`
 
@@ -137,8 +157,10 @@ ct tool churn --project-root "$PROJECT_ROOT" --since 2w --min-loc 500
 
 ## Rules
 
-- Always use `ct <type> create` — never write blueprint files directly.
-- `ct` auto-commits and pushes after every write. If push fails, stop and report.
+- Always use `ct <type> create` (or the MCP `artifact_create` tool) — never write blueprint files directly.
+- Prefer MCP tools when `ct` is registered as an MCP server; fall back to the CLI otherwise.
+- `ct create` scaffolds frontmatter only. Author the body via Read/Edit on the returned path, then commit (MCP `artifact_commit_edits`, or `git -C <vault> commit/push`).
+- `ct` auto-commits and pushes after `create` and `archive`. If push fails, stop and report.
 - Never force-push the blueprints repo.
 - No absolute paths in frontmatter — use tags and project names.
 - The vault is canonical. Repos may snapshot frozen copies, but edits happen in the vault.

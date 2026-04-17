@@ -255,13 +255,12 @@ understand the system well enough to make their first change without asking some
 Output the doc body only (no frontmatter — ct adds that).
 ```
 
-Store with a clean topic name (no timestamps for docs):
-
-Write the doc content to a temp file using the Write tool (never heredocs — backticks get escaped and corrupt markdown), then pipe it:
+Store with a clean topic name (no timestamps for docs). Scaffold with `artifact_create` (MCP) or `ct doc create` (CLI), Edit to fill the body, then commit edits.
 
 ```bash
-cat /tmp/doc-body.md | ct doc create --topic "<clean-topic-name>" --project "$PROJECT_ROOT" --tags "<domain-tags>"
-rm /tmp/doc-body.md
+# CLI fallback
+DOC_FILE=$(ct doc create --topic "<clean-topic-name>" --project "$PROJECT_ROOT" --tags "<domain-tags>")
+# Edit $DOC_FILE, then commit+push
 ```
 
 Link related artifacts after creation:

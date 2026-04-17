@@ -120,6 +120,12 @@ pub enum Command {
         #[command(subcommand)]
         action: ToolAction,
     },
+
+    #[command(about = "Run the MCP stdio server")]
+    Mcp {
+        #[command(subcommand)]
+        action: McpAction,
+    },
 }
 
 #[derive(Subcommand)]
@@ -312,6 +318,12 @@ pub enum ToolAction {
 }
 
 #[derive(Subcommand)]
+pub enum McpAction {
+    #[command(about = "Serve MCP protocol over stdio")]
+    Serve,
+}
+
+#[derive(Subcommand)]
 pub enum ProjectAction {
     #[command(about = "List known projects")]
     List {
@@ -365,9 +377,6 @@ pub enum ArtifactAction {
             help = "Comma-separated tags (e.g. domain/combat,stage/research)"
         )]
         tags: Option<String>,
-
-        #[arg(long, help = "Artifact body content")]
-        body: Option<String>,
 
         #[arg(
             long,
@@ -1253,7 +1262,6 @@ pub struct ArtifactCreateArgs {
     pub slug: Option<String>,
     pub source: Option<String>,
     pub tags: Option<String>,
-    pub body: Option<String>,
     pub dive: bool,
 }
 
@@ -1265,7 +1273,6 @@ pub fn run_artifact_create(args: ArtifactCreateArgs) -> Result<(), Box<dyn std::
         slug,
         source,
         tags,
-        body,
         dive,
     } = args;
     if dive && source.is_none() {
@@ -1283,17 +1290,23 @@ pub fn run_artifact_create(args: ArtifactCreateArgs) -> Result<(), Box<dyn std::
         .filter(|s| !s.is_empty())
         .collect();
     let project = project.unwrap_or_else(crate::artifact::current_project);
-    if let Err(e) = crate::artifact::cmd_create(crate::artifact::CreateOpts {
+    match crate::artifact::create(crate::artifact::CreateOpts {
         kind,
         topic: &topic,
         project: &project,
         slug_override: slug.as_deref(),
         source: source.as_deref(),
         user_tags: &tag_list,
-        body: body.unwrap_or_default(),
         dive,
     }) {
-        handle_sync_error(e);
+        Ok(outcome) => {
+            println!("{}", outcome.path.display());
+        }
+        Err(crate::artifact::CtError::Sync(e)) => handle_sync_error(e),
+        Err(e) => {
+            eprintln!("{e}");
+            std::process::exit(1);
+        }
     }
     Ok(())
 }

@@ -186,7 +186,8 @@ pub fn run(
     doc_path: String,
     project_root: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let resolved = artifact::resolve_artifact_path(&doc_path, ArtifactKind::Doc);
+    let resolved =
+        artifact::resolve_artifact_path(&doc_path, ArtifactKind::Doc).map_err(|e| e.to_string())?;
     let content = std::fs::read_to_string(&resolved)
         .map_err(|e| format!("cannot read {}: {e}", resolved.display()))?;
 

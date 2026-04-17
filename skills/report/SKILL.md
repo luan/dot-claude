@@ -50,11 +50,12 @@ If `--spec` or `--plan` provided, read via `ct spec read` / `ct plan read`. Othe
 
 ### 4. Store
 
-Write the report content to a temp file using the Write tool (never heredocs — backticks get escaped), then pipe it:
+Scaffold with `artifact_create` (MCP) or `ct report create` (CLI), capture the returned path, Edit to fill the body, then commit edits (`artifact_commit_edits` via MCP, or `git -C $CT_BLUEPRINTS_DIR commit -am "…" && git push`).
 
 ```bash
-REPORT_FILE=$(cat /tmp/report-body.md | ct report create --topic "<topic>" --source "<spec-or-plan-stem-if-known>")
-rm /tmp/report-body.md
+# CLI fallback
+REPORT_FILE=$(ct report create --topic "<topic>" --source "<spec-or-plan-stem-if-known>")
+# Edit $REPORT_FILE, then commit+push
 ```
 
 ### 5. Output

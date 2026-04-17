@@ -12,8 +12,12 @@ image = "^0.25"
 fs-notify = { package = "notify", version = "^7" }
 ratatui = "^0.30"
 regex = "^1"
+rmcp = { version = "^1", features = ["server", "macros", "transport-io"] }
 serde = { version = "^1", features = ["derive"] }
 serde_json = "^1"
+tokio = { version = "^1", features = ["rt", "macros", "io-std"] }
 
 [dev-dependencies]
+assert_cmd = "^2"
+predicates = "^3"
 tempfile = "^3"

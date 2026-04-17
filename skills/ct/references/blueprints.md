@@ -110,11 +110,23 @@ ct vault search "<query>"   # Full-text search (Obsidian CLI)
 
 ## Lifecycle
 
-1. **Create** — `ct <type> create` writes file, commits, pushes
+1. **Create** — `ct <type> create` (or MCP `artifact_create`) scaffolds frontmatter, commits, pushes. Author the body via Read/Edit on the returned path, then commit edits via MCP `artifact_commit_edits` (or `git -C <vault>` manually).
 2. **Read/List** — `ct <type> read|list|latest|show` for discovery
 3. **Consume** — workflow skills (`/develop`, `/crit`) read artifacts
 4. **Archive** — `ct <type> archive` moves to `archive/`, stores in git notes
 5. **Prune** — `ct <type> prune --days N` auto-archives old artifacts
+
+## MCP Surface
+
+When `ct` is registered as an MCP stdio server (`ct mcp serve`), these tools are exposed:
+
+- `artifact_create` — scaffolds an artifact; returns `{ path, stem, ... }`
+- `artifact_read` / `artifact_list` / `artifact_latest` — discovery
+- `artifact_archive` — move to archive, commit+push
+- `artifact_commit_edits` — commit+push body edits after Read/Edit
+- `vault_search` / `vault_related` / `vault_check` — vault-wide ops
+
+Prefer MCP tools when available; fall back to CLI otherwise. Actual tool names may be prefixed by the harness (e.g. `mcp__ct__artifact_create`).
 
 ## Utility Commands
 
