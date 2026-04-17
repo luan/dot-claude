@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "ct": {
+      "type": "stdio",
+      "command": "ct",
+      "args": ["mcp", "serve"]
+    }
+  }
+}

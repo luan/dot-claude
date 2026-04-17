@@ -53,8 +53,8 @@ brainstorm → spec → develop → split-commit → review → commit
 |----------|--------|
 | **Workflow** | `/supervibe`, `/simplify`, `/loop`, `/schedule`, `/challenge` |
 | **Git & PRs** | `/start`, `/gt`, `/git-surgeon`, `/pr-descr`, `/pr-comments`, `/pr-ci`, `/babysit` |
-| **Testing & Debug** | `/test-plan`, `/debugging`, `/agent-tdd` |
-| **Creation** | `/rule-creator`, `/skill-creator`, `/frontend-design`, `/claude-api` |
+| **Testing & Debug** | `/test-plan`, `/debugging` |
+| **Creation** | `/skill-creator`, `/frontend-design`, `/claude-api` |
 | **Utilities** | `/show-image`, `/update-config`, `/keybindings-help` |
 
 ## License
