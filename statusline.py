@@ -269,6 +269,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   last_cost       REAL    NOT NULL,
   total_cost      REAL    NOT NULL,
   total_overage   REAL    NOT NULL DEFAULT 0,
+  last_capped     INTEGER NOT NULL DEFAULT 0,
   model           TEXT,
   model_id        TEXT,
   cwd             TEXT,
@@ -320,6 +321,7 @@ def _migrate_schema(conn):
         ("events", "api_duration_ms INTEGER"),
         ("events", "lines_added INTEGER"),
         ("events", "lines_removed INTEGER"),
+        ("sessions", "last_capped INTEGER NOT NULL DEFAULT 0"),
         ("sessions", "model_id TEXT"),
         ("sessions", "project_dir TEXT"),
         ("sessions", "git_worktree TEXT"),
@@ -481,32 +483,40 @@ def record_tick(data):
     conn = _db()
     try:
         conn.execute("BEGIN IMMEDIATE")
-        row = conn.execute("SELECT last_cost FROM sessions WHERE sid=?", (sid,)).fetchone()
-        last_cost = row[0] if row else cost
+        row = conn.execute("SELECT last_cost, last_capped FROM sessions WHERE sid=?", (sid,)).fetchone()
+        if row:
+            last_cost = row[0]
+            prev_capped = bool(row[1])
+        else:
+            last_cost = cost
+            prev_capped = False
         delta = max(0.0, cost - last_cost)
-        overage_delta = delta if capped else 0.0
+        # Skip the boundary-crossing tick: reported quota % clamps at 100, so we
+        # can't split that tick's cost delta into pre- and post-cap portions.
+        # Only count delta as overage when we were already capped going in.
+        overage_delta = delta if (capped and prev_capped) else 0.0
 
         if row:
             conn.execute(
                 """UPDATE sessions SET last_seen=?, last_cost=?, total_cost=?,
-                   total_overage=total_overage+?,
+                   total_overage=total_overage+?, last_capped=?,
                    model=COALESCE(?, model), model_id=COALESCE(?, model_id),
                    cwd=COALESCE(?, cwd), project_dir=COALESCE(?, project_dir),
                    git_worktree=COALESCE(?, git_worktree),
                    output_style=COALESCE(?, output_style),
                    transcript_path=COALESCE(?, transcript_path)
                    WHERE sid=?""",
-                (now, cost, cost, overage_delta,
+                (now, cost, cost, overage_delta, int(capped),
                  model or None, model_id or None,
                  cwd or None, project_dir or None, git_worktree or None,
                  output_style or None, transcript_path or None, sid),
             )
         else:
             conn.execute(
-                """INSERT INTO sessions(sid, first_seen, last_seen, last_cost, total_cost, total_overage,
+                """INSERT INTO sessions(sid, first_seen, last_seen, last_cost, total_cost, total_overage, last_capped,
                                        model, model_id, cwd, project_dir, git_worktree, output_style, transcript_path)
-                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (sid, now, now, cost, cost, overage_delta,
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (sid, now, now, cost, cost, overage_delta, int(capped),
                  model or None, model_id or None, cwd or None, project_dir or None,
                  git_worktree or None, output_style or None, transcript_path or None),
             )

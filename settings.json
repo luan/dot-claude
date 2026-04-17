@@ -61,7 +61,7 @@
     }
   },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "high",
+  "effortLevel": "xhigh",
   "promptSuggestionEnabled": true,
   "tui": "fullscreen",
   "autoDreamEnabled": true,
