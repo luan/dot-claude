@@ -1,8 +1,0 @@
-{
-  "name": "ct",
-  "version": "0.1.0",
-  "description": "ct CLI MCP server — exposes blueprints vault operations (artifact create/read/list/archive/commit_edits + vault search/related/check) to Claude Code",
-  "author": {
-    "name": "Luan"
-  }
-}

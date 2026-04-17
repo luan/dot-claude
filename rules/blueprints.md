@@ -66,9 +66,35 @@ All artifacts have `tags:` in frontmatter. `ct` auto-derives `type/` and `projec
 
 **Permanent docs** in `docs/` use `type/doc` tag. These are reference documents (architecture, API guides) — not workflow artifacts.
 
+## Dives
+
+A dive is a vision-level spec linked to a hub spec. It lives in a sibling `dive/` folder so the top-level `spec/` list stays scannable as "major things we're building." Dives share the `type/spec` tag.
+
+- Create via `dive: true` (MCP `blueprint_create`) or `--dive` (CLI). Both require a `source` — a dive without a hub link is rejected.
+- Dive-only for specs; rejected for other artifact kinds.
+- Slug convention: `<hub-slug>-<subtopic>` so dives from the same hub sort together.
+- `ct spec list` hides dives by default; `--include-dives` to see them. `blueprint_read` / `ct spec read <stem>` finds dives by bare stem.
+- Archive preserves the subfolder: dives archive to `archive/<project>/dive/`.
+
+## Writing artifact bodies
+
+Preferred path: `blueprint_create` (MCP) scaffolds the file with frontmatter, Edit/apply_patch writes the body, `blueprint_commit` commits+pushes. Bypasses shell quoting entirely.
+
+CLI path (still supported): `ct <type> create` reads the body from stdin. Write the body to a temp file first, then `cat` it into the command — heredocs and `echo` escape backticks (`` ` `` → `` \` ``) and corrupt markdown.
+
+```bash
+# Correct
+cat /tmp/artifact-body.md | ct spec create --topic "..."
+rm /tmp/artifact-body.md
+
+# Wrong — backticks get escaped
+cat <<'EOF' | ct spec create ...
+echo "..." | ct spec create ...
+```
+
 ## Rules
 
-- Always use `ct <type> create` for artifact writes — never write blueprint files directly.
+- Use `blueprint_create` + Edit + `blueprint_commit`, or `ct <type> create` with stdin — never write blueprint files directly.
 - `--project` auto-detects from cwd (git toplevel, falls back to cwd). Pass it only to target a different project.
 - If push fails during commit+push, stop and report to user. Never force-push.
 - `ct vault init` must be run before first use. `ct` errors if the vault directory is missing.

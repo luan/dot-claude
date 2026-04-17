@@ -23,6 +23,16 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/session_start_apply_patch.sh"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
@@ -39,7 +49,6 @@
     "rust-analyzer-lsp@claude-plugins-official": false,
     "swift-lsp@claude-plugins-official": false,
     "gt@local": false,
-    "ct@local": true,
     "skill-creator@claude-plugins-official": false,
     "lua-lsp@claude-plugins-official": false,
     "linear@claude-plugins-official": false,

@@ -46,10 +46,14 @@ If exactly one match → archive it. Multiple matches → present choices. No ma
 
 ### Archive
 
-```bash
-ct <type> archive <file-path>
-```
+Prefer the MCP `blueprint_archive` tool (`{ stem, kind? }`). It moves the file to `~/blueprints/<project>/archive/`, stores content as a git note, and commits+pushes.
 
-This moves the file to `~/blueprints/<project>/archive/`, stores content as a git note, and commits+pushes.
+CLI equivalent, useful for batch archival or previewing:
+
+```bash
+ct <type> archive <file-path>                     # single
+ct <type> archive --batch <f1> <f2> <f3>          # one commit for all
+ct <type> archive --dry-run --batch <f1> <f2>     # preview, no writes
+```
 
 Report what was archived.

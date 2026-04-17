@@ -67,6 +67,18 @@ impl ArtifactKind {
         }
     }
 
+    /// Singular name used in commit messages ("doc" not "docs"). Callers
+    /// previously round-tripped through serde_json::to_value just to get this.
+    pub fn commit_name(self) -> &'static str {
+        match self {
+            Self::Plan => "plan",
+            Self::Spec => "spec",
+            Self::Review => "review",
+            Self::Report => "report",
+            Self::Doc => "doc",
+        }
+    }
+
     /// Legacy directory name used in ~/.claude/ (before blueprints migration).
     pub fn legacy_dir_name(self) -> &'static str {
         match self {
@@ -158,6 +170,13 @@ pub fn blueprints_dir_unchecked() -> PathBuf {
 /// original (non-canonicalized) path on success so existing call sites keep
 /// working against the same prefix they saw before.
 fn ensure_in_vault(p: &Path) -> Result<PathBuf, ResolveError> {
+    canonicalize_in_vault(p).map(|_| p.to_path_buf())
+}
+
+/// Shared canonicalization helper — returns both the canonicalized target and
+/// the canonicalized vault root. Used by `ensure_in_vault` and by MCP handlers
+/// that need the relative path after containment has been verified.
+pub(crate) fn canonicalize_in_vault(p: &Path) -> Result<(PathBuf, PathBuf), ResolveError> {
     let bp = blueprints_dir_unchecked();
     let bp_canon = bp
         .canonicalize()
@@ -166,7 +185,7 @@ fn ensure_in_vault(p: &Path) -> Result<PathBuf, ResolveError> {
         .canonicalize()
         .map_err(|_| ResolveError::NotFound(p.display().to_string()))?;
     if p_canon.starts_with(&bp_canon) {
-        Ok(p.to_path_buf())
+        Ok((p_canon, bp_canon))
     } else {
         Err(ResolveError::NotFound(p.display().to_string()))
     }
@@ -278,10 +297,13 @@ pub fn project_name(project_path: &str) -> String {
         }
     }
 
+    // path.file_name() is None for `.`, `..`, or empty — fall through to the
+    // raw input rather than `fatal()` so library callers (MCP server) don't
+    // crash the process on a malformed project hint.
     let name = path
         .file_name()
-        .unwrap_or_else(|| fatal("invalid project path"))
-        .to_string_lossy();
+        .map(|f| f.to_string_lossy().into_owned())
+        .unwrap_or_else(|| project_path.to_string());
     // Dots break Obsidian wiki-links and tag rendering
     name.replace('.', "_")
 }
@@ -289,6 +311,63 @@ pub fn project_name(project_path: &str) -> String {
 // ---------------------------------------------------------------------------
 // YAML / frontmatter utilities
 // ---------------------------------------------------------------------------
+
+/// Reject tags that would break YAML frontmatter: newlines, `---` fences, or
+/// leading/trailing whitespace all let a crafted tag escape the tag list and
+/// inject arbitrary frontmatter into a file that gets committed and pushed.
+/// Empty tags are also rejected.
+pub fn validate_tag(tag: &str) -> Result<(), CtError> {
+    if tag.is_empty() {
+        return Err(CtError::Validation("tag is empty".to_string()));
+    }
+    if tag != tag.trim() {
+        return Err(CtError::Validation(format!(
+            "tag {tag:?} has leading/trailing whitespace"
+        )));
+    }
+    for ch in tag.chars() {
+        if ch == '\n' || ch == '\r' {
+            return Err(CtError::Validation(format!(
+                "tag {tag:?} contains a line break"
+            )));
+        }
+        // Control chars (other than tab) are never valid in a YAML plain scalar.
+        if ch.is_control() && ch != '\t' {
+            return Err(CtError::Validation(format!(
+                "tag {tag:?} contains a control character"
+            )));
+        }
+    }
+    if tag.contains("---") {
+        return Err(CtError::Validation(format!(
+            "tag {tag:?} contains a YAML document separator"
+        )));
+    }
+    Ok(())
+}
+
+/// Reject project name inputs that would escape the vault or confuse path
+/// resolution. Meant for bare-name paths from MCP callers — real filesystem
+/// paths skip this and flow through `resolve_repo_root` instead.
+pub fn validate_project_name(name: &str) -> Result<(), CtError> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err(CtError::Validation("project name is empty".to_string()));
+    }
+    if trimmed == "." || trimmed == ".." {
+        return Err(CtError::Validation(format!(
+            "project name {trimmed:?} is not a valid vault subdirectory"
+        )));
+    }
+    for ch in trimmed.chars() {
+        if ch == '/' || ch == '\\' || ch == '\0' || ch.is_control() {
+            return Err(CtError::Validation(format!(
+                "project name {trimmed:?} contains a path separator or control character"
+            )));
+        }
+    }
+    Ok(())
+}
 
 pub fn yaml_quote(s: &str) -> String {
     if s.contains(':')
@@ -615,17 +694,24 @@ impl From<ResolveError> for CtError {
     }
 }
 
-/// Commit and push a file in the blueprints repo.
-pub fn commit_and_push(relative_path: &Path, message: &str) -> Result<(), SyncError> {
+/// Commit and push one or more files in the blueprints repo. Relative paths
+/// must already be anchored to the vault root. Returns `Ok(())` when there was
+/// nothing to commit (idempotent no-op), `SyncError::Push` when the commit
+/// exists locally but the remote push failed, and `SyncError::{Add, Commit}`
+/// for earlier-stage failures.
+pub fn commit_and_push_paths(relative_paths: &[&Path], message: &str) -> Result<(), SyncError> {
+    if relative_paths.is_empty() {
+        return Ok(());
+    }
     let bp = blueprints_dir();
     let bp_str = bp.to_string_lossy();
 
-    let add_ok = process::Command::new("git")
-        .args(["-C", &bp_str, "add"])
-        .arg(relative_path)
-        .status()
-        .is_ok_and(|s| s.success());
-
+    let mut add = process::Command::new("git");
+    add.args(["-C", &bp_str, "add", "--"]);
+    for p in relative_paths {
+        add.arg(p);
+    }
+    let add_ok = add.status().is_ok_and(|s| s.success());
     if !add_ok {
         return Err(SyncError::Add(format!(
             "git add failed in {}",
@@ -669,6 +755,11 @@ pub fn commit_and_push(relative_path: &Path, message: &str) -> Result<(), SyncEr
     Ok(())
 }
 
+/// Commit and push a single file in the blueprints repo.
+pub fn commit_and_push(relative_path: &Path, message: &str) -> Result<(), SyncError> {
+    commit_and_push_paths(&[relative_path], message)
+}
+
 // ---------------------------------------------------------------------------
 // Generic CRUD (replaces planfile.rs / specfile.rs)
 // ---------------------------------------------------------------------------
@@ -705,8 +796,16 @@ pub fn create(opts: CreateOpts<'_>) -> Result<CreateOutcome, CtError> {
     } = opts;
     if dive && kind != ArtifactKind::Spec {
         return Err(CtError::Validation(
-            "--dive is only valid for spec artifacts".to_string(),
+            "dive is only valid for spec artifacts".to_string(),
         ));
+    }
+    if dive && source.is_none() {
+        return Err(CtError::Validation(
+            "dive requires source (a dive without a hub link is meaningless)".to_string(),
+        ));
+    }
+    for tag in user_tags {
+        validate_tag(tag)?;
     }
     // Resolve worktree paths to the main repo root
     let project = &resolve_repo_root(project);
@@ -794,15 +893,24 @@ pub fn create(opts: CreateOpts<'_>) -> Result<CreateOutcome, CtError> {
 
     fs::write(&full_path, &buf)?;
 
-    // Commit + push: push failure propagates so callers see it
+    // Commit + push. Push failure is a partial success: the commit exists
+    // locally but was not propagated, so surface that via `pushed: false`
+    // instead of an error (retries would create orphan commits with new
+    // timestamps).
+    let mut pushed = true;
     if let Ok(rel) = full_path.strip_prefix(&bp) {
-        commit_and_push(rel, &format!("{}({}): {}", kind.dir_name(), proj_name, s))?;
+        let msg = format!("{}({}): {}", kind.commit_name(), proj_name, s);
+        match commit_and_push(rel, &msg) {
+            Ok(()) => {}
+            Err(SyncError::Push(_)) => pushed = false,
+            Err(e) => return Err(e.into()),
+        }
     }
     Ok(CreateOutcome {
         path: full_path,
         project: proj_name,
         kind,
-        pushed: true,
+        pushed,
     })
 }
 
@@ -924,8 +1032,8 @@ pub struct ReadOutcome {
 pub fn read(path: &Path) -> Result<ReadOutcome, CtError> {
     let content = fs::read_to_string(path)?;
     let (yaml, body) = parse_frontmatter(&content);
-    let frontmatter = yaml.map(|_| {
-        let (title, _, created, source, tags, author) = extract_frontmatter_full_from_str(&content);
+    let frontmatter = yaml.map(|y| {
+        let (title, _, created, source, tags, author) = parse_frontmatter_fields(y);
         Frontmatter {
             topic: if title.is_empty() { None } else { Some(title) },
             created,
@@ -1479,55 +1587,12 @@ pub fn cmd_archive_batch(
         return Ok(());
     }
 
-    // Stage all archive destinations and commit once
-    let bp_str = bp.to_string_lossy();
-    for dest in &dests {
-        if let Ok(dest_rel) = dest.strip_prefix(&bp) {
-            let _ = process::Command::new("git")
-                .args(["-C", &bp_str, "add"])
-                .arg(dest_rel)
-                .status();
-        }
-    }
-
     let n = dests.len();
-    let commit_ok = process::Command::new("git")
-        .args([
-            "-C",
-            &bp_str,
-            "commit",
-            "-m",
-            &format!("archive({proj_name}): {n} artifacts"),
-        ])
-        .output();
-
-    match commit_ok {
-        Ok(o) if o.status.success() => {}
-        Ok(o) => {
-            let stderr = String::from_utf8_lossy(&o.stderr);
-            if !stderr.contains("nothing to commit") {
-                return Err(SyncError::Commit(stderr.trim().to_string()));
-            }
-        }
-        Err(e) => {
-            return Err(SyncError::Commit(format!(
-                "failed to run git commit in {}: {e}",
-                bp.display()
-            )));
-        }
-    }
-
-    let push_ok = process::Command::new("git")
-        .args(["-C", &bp_str, "push"])
-        .status()
-        .is_ok_and(|s| s.success());
-
-    if !push_ok {
-        return Err(SyncError::Push(format!(
-            "commit saved locally in {}, push manually",
-            bp.display()
-        )));
-    }
+    let rel_dests: Vec<&Path> = dests
+        .iter()
+        .filter_map(|d| d.strip_prefix(&bp).ok())
+        .collect();
+    commit_and_push_paths(&rel_dests, &format!("archive({proj_name}): {n} artifacts"))?;
 
     if let Some(e) = batch_err {
         eprintln!("committed {n} successful archives, but batch had an error: {e}");
@@ -1830,9 +1895,10 @@ fn strip_yaml_quotes(s: &str) -> String {
     }
 }
 
-/// Full frontmatter extraction: title, project, created, source, tags, author.
-fn extract_frontmatter_full_from_str(
-    content: &str,
+/// Parse the `title/topic, project, created, source, tags, author` fields out
+/// of an already-isolated YAML frontmatter slice.
+fn parse_frontmatter_fields(
+    yaml: &str,
 ) -> (
     String,
     String,
@@ -1847,33 +1913,16 @@ fn extract_frontmatter_full_from_str(
     let mut source = None;
     let mut tags = Vec::new();
     let mut author = None;
-    let mut in_frontmatter = false;
     let mut in_tags = false;
 
-    for line in content.lines() {
+    for line in yaml.lines() {
         let trimmed = line.trim();
-        if trimmed == "---" {
-            if in_frontmatter {
-                break;
-            }
-            in_frontmatter = true;
-            continue;
-        }
-        if !in_frontmatter {
-            if let Some(t) = trimmed.strip_prefix("# ") {
-                title = t.to_string();
-                break;
-            }
-            continue;
-        }
 
-        // Inside frontmatter: detect YAML list items under `tags:`
         if in_tags {
             if let Some(item) = trimmed.strip_prefix("- ") {
                 tags.push(strip_yaml_quotes(item));
                 continue;
             }
-            // No longer a list item — stop collecting tags
             in_tags = false;
         }
 
@@ -1889,17 +1938,13 @@ fn extract_frontmatter_full_from_str(
         } else if let Some(val) = trimmed.strip_prefix("source:") {
             let v = strip_yaml_quotes(val);
             if !v.is_empty() {
-                // Strip wiki-link brackets: [[stem]] -> stem
                 let stripped = v.trim_start_matches("[[").trim_end_matches("]]");
                 source = Some(stripped.to_string());
             }
         } else if let Some(val) = trimmed.strip_prefix("tags:") {
-            let v = val.trim();
-            if v.is_empty() {
-                // Tags on following lines as YAML list
+            if val.trim().is_empty() {
                 in_tags = true;
             }
-            // Inline tags (e.g. `tags: [a, b]`) not used by ct — skip
         } else if let Some(val) = trimmed.strip_prefix("author:") {
             let v = strip_yaml_quotes(val);
             if !v.is_empty() {
@@ -1908,6 +1953,51 @@ fn extract_frontmatter_full_from_str(
         }
     }
     (title, project, created, source, tags, author)
+}
+
+/// Full frontmatter extraction: title, project, created, source, tags, author.
+/// Falls back to the first `# ` H1 in the body when no `topic:` field is set.
+fn extract_frontmatter_full_from_str(
+    content: &str,
+) -> (
+    String,
+    String,
+    Option<String>,
+    Option<String>,
+    Vec<String>,
+    Option<String>,
+) {
+    let (yaml, body) = parse_frontmatter(content);
+    let scan = body;
+    let (mut title, project, created, source, tags, author) = match yaml {
+        Some(y) => parse_frontmatter_fields(y),
+        None => (String::new(), String::new(), None, None, Vec::new(), None),
+    };
+    if title.is_empty() {
+        // H1 fallback — files without a topic: frontmatter field surface their
+        // first Markdown heading as the artifact title.
+        for line in scan.lines() {
+            let trimmed = line.trim();
+            if let Some(t) = trimmed.strip_prefix("# ") {
+                title = t.to_string();
+                break;
+            }
+        }
+    }
+    (title, project, created, source, tags, author)
+}
+
+/// Bounded read for frontmatter parsing. Reads at most `HEADER_READ_CAP` bytes
+/// so `list_artifacts` doesn't slurp entire multi-MB artifacts just to peek at
+/// their YAML header. 16 KiB is well past any real frontmatter + H1 title.
+const HEADER_READ_CAP: u64 = 16 * 1024;
+
+fn read_frontmatter_prefix(path: &Path) -> Option<String> {
+    use std::io::Read;
+    let f = fs::File::open(path).ok()?;
+    let mut buf = Vec::with_capacity(HEADER_READ_CAP as usize);
+    f.take(HEADER_READ_CAP).read_to_end(&mut buf).ok()?;
+    Some(String::from_utf8_lossy(&buf).into_owned())
 }
 
 fn extract_frontmatter_full(
@@ -1920,10 +2010,10 @@ fn extract_frontmatter_full(
     Vec<String>,
     Option<String>,
 ) {
-    let Ok(content) = fs::read_to_string(path) else {
-        return (String::new(), String::new(), None, None, Vec::new(), None);
-    };
-    extract_frontmatter_full_from_str(&content)
+    match read_frontmatter_prefix(path) {
+        Some(content) => extract_frontmatter_full_from_str(&content),
+        None => (String::new(), String::new(), None, None, Vec::new(), None),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -2121,7 +2211,6 @@ pub fn cmd_rename(kind: ArtifactKind, old_arg: &str, new_slug: &str) -> Result<(
     }
 
     // Warn about incoming wiki-links to old stem
-    let bp_str = bp.to_string_lossy();
     let link_pattern = format!("[[{old_stem}]]");
     if let Ok(output) = process::Command::new("rg")
         .args(["-lF", &link_pattern])
@@ -2199,57 +2288,10 @@ pub fn cmd_rename(kind: ArtifactKind, old_arg: &str, new_slug: &str) -> Result<(
         .strip_prefix(&bp)
         .unwrap_or_else(|_| fatal("cannot compute relative path for new file"));
 
-    let add_ok = process::Command::new("git")
-        .args(["-C", &bp_str, "add", "--"])
-        .arg(old_rel)
-        .arg(new_rel)
-        .status()
-        .is_ok_and(|s| s.success());
-
-    if !add_ok {
-        return Err(SyncError::Add(format!(
-            "git add failed in {}",
-            bp.display()
-        )));
-    }
-
     let new_stem = new_path.file_stem().unwrap_or_default().to_string_lossy();
     let message = format!("rename({proj_name}): {old_stem} → {new_stem}");
 
-    let commit_output = process::Command::new("git")
-        .args(["-C", &bp_str, "commit", "-m", &message])
-        .output();
-
-    match commit_output {
-        Ok(o) if o.status.success() => {}
-        Ok(o) => {
-            let stderr = String::from_utf8_lossy(&o.stderr);
-            if stderr.contains("nothing to commit") {
-                return Ok(());
-            }
-            return Err(SyncError::Commit(stderr.trim().to_string()));
-        }
-        Err(e) => {
-            return Err(SyncError::Commit(format!(
-                "failed to run git commit in {}: {e}",
-                bp.display()
-            )));
-        }
-    }
-
-    let push_ok = process::Command::new("git")
-        .args(["-C", &bp_str, "push"])
-        .status()
-        .is_ok_and(|s| s.success());
-
-    if !push_ok {
-        return Err(SyncError::Push(format!(
-            "commit saved locally in {}, push manually",
-            bp.display()
-        )));
-    }
-
-    Ok(())
+    commit_and_push_paths(&[old_rel, new_rel], &message)
 }
 
 #[cfg(test)]
@@ -2728,8 +2770,40 @@ source: plain-ref
             );
             let msg = result.unwrap_err().to_string();
             assert!(
-                msg.contains("--dive is only valid for spec artifacts"),
-                "error message must mention --dive restriction; got: {msg}"
+                msg.contains("dive is only valid for spec artifacts"),
+                "error message must mention dive restriction; got: {msg}"
+            );
+        });
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    // C.1b — dive without source is rejected (orphan dive is meaningless).
+    #[test]
+    fn dive_requires_source() {
+        let tmp = std::env::temp_dir().join(format!("ct-dive-no-source-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let project = tmp.join("myproj");
+        std::fs::create_dir_all(&project).unwrap();
+
+        with_blueprints_dir(&tmp, || {
+            let result = create(CreateOpts {
+                kind: ArtifactKind::Spec,
+                topic: "Orphan Dive",
+                project: project.to_str().unwrap(),
+                slug_override: None,
+                source: None,
+                user_tags: &[],
+                dive: true,
+            });
+            assert!(
+                result.is_err(),
+                "create with dive=true and source=None must return Err"
+            );
+            let msg = result.unwrap_err().to_string();
+            assert!(
+                msg.contains("dive requires source"),
+                "error message must mention source requirement; got: {msg}"
             );
         });
         std::fs::remove_dir_all(&tmp).ok();

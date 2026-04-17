@@ -332,3 +332,89 @@ fn traversal_move_rejected() {
         "traversal must not create file outside sandbox: {escape_path:?}"
     );
 }
+
+#[test]
+fn absolute_add_rejected() {
+    let sandbox = TempDir::new().unwrap();
+    let patch = "\
+*** Begin Patch
+*** Add File: /tmp/ct-apply-patch-absolute-escape.txt
++pwned
+*** End Patch
+";
+
+    let result = ct()
+        .arg("tool")
+        .arg("apply-patch")
+        .arg("--cwd")
+        .arg(sandbox.path())
+        .write_stdin(patch)
+        .assert()
+        .failure();
+    let stderr = String::from_utf8_lossy(&result.get_output().stderr).to_string();
+    assert!(
+        stderr.contains("absolute path"),
+        "expected absolute-path rejection, got: {stderr}"
+    );
+    assert!(
+        !std::path::Path::new("/tmp/ct-apply-patch-absolute-escape.txt").exists(),
+        "absolute Add must not create a file outside cwd"
+    );
+}
+
+#[test]
+fn traversal_add_rejected() {
+    let sandbox = TempDir::new().unwrap();
+    let patch = "\
+*** Begin Patch
+*** Add File: ../escape-add.txt
++pwned
+*** End Patch
+";
+
+    ct().arg("tool")
+        .arg("apply-patch")
+        .arg("--cwd")
+        .arg(sandbox.path())
+        .write_stdin(patch)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("path escapes cwd"));
+
+    let escape_path = sandbox.path().parent().unwrap().join("escape-add.txt");
+    assert!(
+        !escape_path.exists(),
+        "traversal Add must not create file outside sandbox: {escape_path:?}"
+    );
+}
+
+#[test]
+fn malformed_envelope_rejected() {
+    let sandbox = TempDir::new().unwrap();
+    // Missing `*** End Patch` — parser should reject, not silently succeed.
+    let patch = "\
+*** Begin Patch
+*** Add File: foo.txt
++hello
+";
+
+    let result = ct()
+        .arg("tool")
+        .arg("apply-patch")
+        .arg("--cwd")
+        .arg(sandbox.path())
+        .write_stdin(patch)
+        .assert()
+        .failure();
+    let stderr = String::from_utf8_lossy(&result.get_output().stderr).to_string();
+    assert!(
+        stderr.contains("parse error")
+            || stderr.contains("End Patch")
+            || stderr.contains("sentinel"),
+        "expected parse error for missing End Patch sentinel, got: {stderr}"
+    );
+    assert!(
+        !sandbox.path().join("foo.txt").exists(),
+        "malformed patch must not partially apply"
+    );
+}

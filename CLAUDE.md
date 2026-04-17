@@ -10,3 +10,4 @@
 10. Fix exactly what was asked. No scope creep. Fix it or push back with a reason.
 11. All tests pass before committing. You own every failure you can see.
 12. Skill scripts: use `${CLAUDE_SKILL_DIR}` in SKILL.md.
+13. **Prefer `apply_patch` for multi-file edits, renames, creates, deletes, and hunks with unambiguous context.** For single-line tweaks in repetitive contexts (imports, `}`, common boilerplate), use Edit — apply_patch matches the first context hit and falls back to trim/Unicode-normalized matching, so ambiguous patches silently edit the wrong line. Use Edit/Write when the change is ambiguous or apply_patch cannot express it (binary files, apply_patch unavailable).

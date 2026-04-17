@@ -16,12 +16,6 @@
       "description": "GitHub CLI gh-stack wrapper for stacked branch management — create, navigate, rebase, sync, submit, and push stacked PRs",
       "source": "./plugins/gh-stack",
       "category": "productivity"
-    },
-    {
-      "name": "ct",
-      "description": "ct CLI MCP server — exposes blueprints vault operations (artifact create/read/list/archive/commit_edits + vault search/related/check) to Claude Code",
-      "source": "./plugins/ct",
-      "category": "productivity"
     }
   ]
 }

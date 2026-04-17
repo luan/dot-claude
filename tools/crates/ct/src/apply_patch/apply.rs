@@ -43,8 +43,17 @@ pub enum ApplyPatchError {
     PathEscape(String),
     #[error("absolute path not allowed: {0}")]
     AbsolutePath(String),
-    #[error("context not found in {path}")]
-    ContextNotFound { path: String },
+    #[error(
+        "context not found in {path} at chunk #{chunk}{}{}",
+        .change_context.as_deref().map(|c| format!(" (@@ {c})")).unwrap_or_default(),
+        .first_old_line.as_deref().map(|l| format!(": first expected line was {l:?}")).unwrap_or_default()
+    )]
+    ContextNotFound {
+        path: String,
+        chunk: usize,
+        change_context: Option<String>,
+        first_old_line: Option<String>,
+    },
     #[error("delete target is a directory: {0}")]
     DeleteIsDirectory(String),
     #[error("add target already exists: {0}")]
@@ -63,7 +72,11 @@ pub enum ApplyPatchError {
     },
 }
 
-struct ContextFailure;
+struct ContextFailure {
+    chunk_index: usize,
+    change_context: Option<String>,
+    first_old_line: Option<String>,
+}
 
 pub fn apply(patch: &str, cwd: &Path, dry_run: bool) -> Result<Vec<FileChange>, ApplyPatchError> {
     let changes = plan(patch, cwd)?;
@@ -138,8 +151,14 @@ pub fn plan(patch: &str, cwd: &Path) -> Result<Vec<FileChange>, ApplyPatchError>
                 let abs = ensure_in_cwd(&cwd_canon, &path)?;
                 let rel = display_rel(&path);
                 let original = read_file(&abs, &rel)?;
-                let new_content = derive_new_contents(&original, &chunks)
-                    .map_err(|_| ApplyPatchError::ContextNotFound { path: rel.clone() })?;
+                let new_content = derive_new_contents(&original, &chunks).map_err(|fail| {
+                    ApplyPatchError::ContextNotFound {
+                        path: rel.clone(),
+                        chunk: fail.chunk_index,
+                        change_context: fail.change_context,
+                        first_old_line: fail.first_old_line,
+                    }
+                })?;
 
                 match move_path {
                     Some(dest) => {
@@ -336,7 +355,7 @@ fn derive_new_contents(
     }
 
     let replacements = compute_replacements(&original_lines, chunks)?;
-    let mut new_lines = apply_replacements(original_lines, &replacements);
+    let mut new_lines = apply_replacements(original_lines, replacements);
     if !new_lines.last().is_some_and(String::is_empty) {
         new_lines.push(String::new());
     }
@@ -350,7 +369,13 @@ fn compute_replacements(
     let mut replacements: Vec<(usize, usize, Vec<String>)> = Vec::new();
     let mut line_index: usize = 0;
 
-    for chunk in chunks {
+    for (chunk_index, chunk) in chunks.iter().enumerate() {
+        let failure = || ContextFailure {
+            chunk_index,
+            change_context: chunk.change_context.clone(),
+            first_old_line: chunk.old_lines.first().cloned(),
+        };
+
         if let Some(ctx_line) = &chunk.change_context {
             if let Some(idx) = seek_sequence(
                 original_lines,
@@ -360,7 +385,7 @@ fn compute_replacements(
             ) {
                 line_index = idx + 1;
             } else {
-                return Err(ContextFailure);
+                return Err(failure());
             }
         }
 
@@ -390,7 +415,7 @@ fn compute_replacements(
             replacements.push((start_idx, pattern.len(), new_slice.to_vec()));
             line_index = start_idx + pattern.len();
         } else {
-            return Err(ContextFailure);
+            return Err(failure());
         }
     }
 
@@ -400,21 +425,15 @@ fn compute_replacements(
 
 fn apply_replacements(
     mut lines: Vec<String>,
-    replacements: &[(usize, usize, Vec<String>)],
+    replacements: Vec<(usize, usize, Vec<String>)>,
 ) -> Vec<String> {
-    for (start_idx, old_len, new_segment) in replacements.iter().rev() {
-        let start_idx = *start_idx;
-        let old_len = *old_len;
-
-        for _ in 0..old_len {
-            if start_idx < lines.len() {
-                lines.remove(start_idx);
-            }
-        }
-
-        for (offset, new_line) in new_segment.iter().enumerate() {
-            lines.insert(start_idx + offset, new_line.clone());
-        }
+    // Iterate in reverse so earlier edits' offsets stay valid as later ones
+    // land. `splice` is O(n) once per hunk (vs O(k·n) for remove+insert) and
+    // moves owned `String`s into place without cloning.
+    for (start_idx, old_len, new_segment) in replacements.into_iter().rev() {
+        let start = start_idx.min(lines.len());
+        let end = (start_idx + old_len).min(lines.len());
+        lines.splice(start..end, new_segment);
     }
     lines
 }

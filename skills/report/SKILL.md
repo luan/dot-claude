@@ -50,13 +50,7 @@ If `--spec` or `--plan` provided, read via `ct spec read` / `ct plan read`. Othe
 
 ### 4. Store
 
-Scaffold with `artifact_create` (MCP) or `ct report create` (CLI), capture the returned path, Edit to fill the body, then commit edits (`artifact_commit_edits` via MCP, or `git -C $CT_BLUEPRINTS_DIR commit -am "…" && git push`).
-
-```bash
-# CLI fallback
-REPORT_FILE=$(ct report create --topic "<topic>" --source "<spec-or-plan-stem-if-known>")
-# Edit $REPORT_FILE, then commit+push
-```
+Scaffold with `blueprint_create`, Edit the body, then `blueprint_commit`.
 
 ### 5. Output
 
