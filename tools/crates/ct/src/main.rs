@@ -1,5 +1,6 @@
 mod ansi;
 mod app;
+mod apply_patch;
 mod artifact;
 mod churn;
 mod cli;
@@ -268,6 +269,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 since,
                 min_loc,
             } => churn::run(project_root, since, min_loc),
+            cli::ToolAction::ApplyPatch { cwd, dry_run } => cli::run_apply_patch(cwd, dry_run),
         },
     }
 }

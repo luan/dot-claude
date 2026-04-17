@@ -9,6 +9,7 @@ use rmcp::{ServerHandler, ServiceExt, tool, tool_handler, tool_router};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+use crate::apply_patch::{ApplyPatchError, MAX_PATCH_SIZE_BYTES};
 use crate::artifact::{self, ArtifactKind, CreateOpts, CtError, ResolveError};
 use crate::vault::{self, SearchFilters};
 
@@ -33,6 +34,25 @@ fn ct_error_to_tool(err: CtError) -> ErrorData {
         CtError::Validation(msg) => ErrorData::invalid_params(msg, None),
         CtError::Sync(e) => ErrorData::internal_error(e.to_string(), None),
         CtError::Io(e) => ErrorData::internal_error(e.to_string(), None),
+    }
+}
+
+/// Map an `ApplyPatchError` to an MCP `ErrorData`. Bad-input variants (parse,
+/// path validation, context miss, state conflicts) surface as `invalid_params`;
+/// `Io` is a server-side failure and becomes `internal_error`.
+fn apply_patch_error_to_tool(err: ApplyPatchError) -> ErrorData {
+    match err {
+        ApplyPatchError::Parse(_)
+        | ApplyPatchError::PathEscape(_)
+        | ApplyPatchError::AbsolutePath(_)
+        | ApplyPatchError::DeleteIsDirectory(_)
+        | ApplyPatchError::AddTargetExists(_)
+        | ApplyPatchError::DuplicateUpdate(_)
+        | ApplyPatchError::MoveTargetExists(_)
+        | ApplyPatchError::ContextNotFound { .. } => {
+            ErrorData::invalid_params(err.to_string(), None)
+        }
+        ApplyPatchError::Io { .. } => ErrorData::internal_error(err.to_string(), None),
     }
 }
 
@@ -89,6 +109,10 @@ struct ArtifactCreateIn {
     source: Option<String>,
     #[schemars(description = "Additional tags appended to auto-derived type/ and project/ tags")]
     tags: Option<Vec<String>>,
+    #[schemars(
+        description = "If true, route the artifact to the project's dive/ subfolder (spec only, requires source)"
+    )]
+    dive: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -167,6 +191,18 @@ struct VaultCheckIn {
     include_archive: Option<bool>,
 }
 
+#[derive(Debug, Deserialize, JsonSchema)]
+struct ApplyPatchIn {
+    #[schemars(description = "Patch body in codex apply_patch envelope format")]
+    patch: String,
+    #[schemars(
+        description = "Working directory (absolute path). Defaults to the server's process cwd"
+    )]
+    cwd: Option<String>,
+    #[schemars(description = "If true, parse + plan but do not write to disk")]
+    dry_run: Option<bool>,
+}
+
 // ---------------------------------------------------------------------------
 // Server
 // ---------------------------------------------------------------------------
@@ -187,11 +223,11 @@ impl CtMcpServer {
 #[tool_router(router = tool_router)]
 impl CtMcpServer {
     #[tool(
-        name = "artifact_create",
-        description = "Create a new artifact (spec/plan/review/report/doc) in the blueprints vault. \
+        name = "blueprint_create",
+        description = "Create a new blueprint (spec/plan/review/report/doc) in the blueprints vault. \
                        Scaffolds frontmatter only; the caller fills in the body via file edits."
     )]
-    async fn artifact_create(
+    async fn blueprint_create(
         &self,
         Parameters(input): Parameters<ArtifactCreateIn>,
     ) -> Result<CallToolResult, ErrorData> {
@@ -205,18 +241,18 @@ impl CtMcpServer {
             slug_override: input.slug.as_deref(),
             source: input.source.as_deref(),
             user_tags: &tags,
-            dive: false,
+            dive: input.dive.unwrap_or(false),
         })
         .map_err(ct_error_to_tool)?;
         json_success(&outcome)
     }
 
     #[tool(
-        name = "artifact_read",
-        description = "Read an artifact by stem (or path) and return parsed frontmatter, body, \
+        name = "blueprint_read",
+        description = "Read a blueprint by stem (or path) and return parsed frontmatter, body, \
                        and inline HTML comments."
     )]
-    async fn artifact_read(
+    async fn blueprint_read(
         &self,
         Parameters(input): Parameters<ArtifactReadIn>,
     ) -> Result<CallToolResult, ErrorData> {
@@ -227,11 +263,11 @@ impl CtMcpServer {
     }
 
     #[tool(
-        name = "artifact_list",
-        description = "List artifacts of a given kind. Defaults to the current project; set all=true \
+        name = "blueprint_list",
+        description = "List blueprints of a given kind. Defaults to the current project; set all=true \
                        for all projects or archived=true for the archive."
     )]
-    async fn artifact_list(
+    async fn blueprint_list(
         &self,
         Parameters(input): Parameters<ArtifactListIn>,
     ) -> Result<CallToolResult, ErrorData> {
@@ -259,11 +295,11 @@ impl CtMcpServer {
     }
 
     #[tool(
-        name = "artifact_latest",
-        description = "Return the most recently modified artifact of a given kind in a project, \
+        name = "blueprint_latest",
+        description = "Return the most recently modified blueprint of a given kind in a project, \
                        or null when none exists."
     )]
-    async fn artifact_latest(
+    async fn blueprint_latest(
         &self,
         Parameters(input): Parameters<ArtifactLatestIn>,
     ) -> Result<CallToolResult, ErrorData> {
@@ -280,11 +316,11 @@ impl CtMcpServer {
     }
 
     #[tool(
-        name = "artifact_archive",
-        description = "Archive an artifact: store its content in a git note and move the file under \
+        name = "blueprint_archive",
+        description = "Archive a blueprint: store its content in a git note and move the file under \
                        the project's archive/ directory. Commits and pushes the change."
     )]
-    async fn artifact_archive(
+    async fn blueprint_archive(
         &self,
         Parameters(input): Parameters<ArtifactArchiveIn>,
     ) -> Result<CallToolResult, ErrorData> {
@@ -304,11 +340,11 @@ impl CtMcpServer {
     }
 
     #[tool(
-        name = "artifact_commit_edits",
-        description = "Commit and push edits made to an existing artifact file. Use after writing to \
-                       a path returned from artifact_create or artifact_read."
+        name = "blueprint_commit",
+        description = "Commit and push edits made to an existing blueprint file. Use after writing to \
+                       a path returned from blueprint_create or blueprint_read."
     )]
-    async fn artifact_commit_edits(
+    async fn blueprint_commit(
         &self,
         Parameters(input): Parameters<ArtifactCommitEditsIn>,
     ) -> Result<CallToolResult, ErrorData> {
@@ -434,6 +470,78 @@ impl CtMcpServer {
             .map(|l| l.line.as_str())
             .collect();
         json_success(&json!({ "unresolved_links": lines }))
+    }
+
+    #[tool(
+        name = "apply_patch",
+        description = r#"Apply a patch (codex envelope format) to files under cwd. Use this for multi-file edits — it accepts a single envelope describing add/update/delete/move operations on multiple files at once and is more forgiving than line-numbered unified diffs.
+
+Envelope shape:
+
+*** Begin Patch
+[ one or more file sections ]
+*** End Patch
+
+Each file section starts with one of three headers:
+
+*** Add File: <path>      — create a new file. Every following line is a + line (the initial contents).
+*** Delete File: <path>   — remove an existing file. Nothing follows.
+*** Update File: <path>   — patch an existing file in place (optionally with a rename).
+
+`*** Update File:` may be immediately followed by `*** Move to: <new path>` to rename. Then one or more hunks, each introduced by `@@` (optionally followed by an anchor like a class or function name to disambiguate). Within a hunk each line is prefixed with ` ` (context), `-` (removed), or `+` (added).
+
+Context lines: include 3 lines of context above and below each change. If 3 lines aren't enough to uniquely identify the location in the file, use one or more `@@ <anchor>` lines to narrow the search.
+
+Example combining all operations:
+
+*** Begin Patch
+*** Add File: hello.txt
++Hello world
+*** Update File: src/app.py
+*** Move to: src/main.py
+@@ def greet():
+-    print("Hi")
++    print("Hello, world!")
+*** Delete File: obsolete.txt
+*** End Patch
+
+Rules:
+- All paths MUST be relative to cwd. Absolute paths and paths that escape cwd are rejected.
+- You must include a header (Add/Delete/Update) for each file section.
+- New lines must be prefixed with `+` even when creating a new file.
+- Don't issue two `*** Update File:` sections for the same path in one patch — combine the changes into one section with multiple hunks.
+- `*** Add File:` requires the destination not to exist; `*** Move to:` requires the destination not to exist (use a separate Delete to clear it first if intentional).
+
+Set `dry_run` to true to preview the unified diff without writing."#
+    )]
+    async fn apply_patch(
+        &self,
+        Parameters(input): Parameters<ApplyPatchIn>,
+    ) -> Result<CallToolResult, ErrorData> {
+        if input.patch.len() > MAX_PATCH_SIZE_BYTES {
+            return Err(ErrorData::invalid_params(
+                format!("patch exceeds {MAX_PATCH_SIZE_BYTES} byte limit"),
+                None,
+            ));
+        }
+        let cwd = match input.cwd {
+            Some(s) => std::path::PathBuf::from(s),
+            None => std::env::current_dir()
+                .map_err(|e| ErrorData::internal_error(format!("cwd: {e}"), None))?,
+        };
+        if !cwd.is_dir() {
+            return Err(ErrorData::invalid_params(
+                format!("cwd is not a directory: {}", cwd.display()),
+                None,
+            ));
+        }
+        let dry_run = input.dry_run.unwrap_or(false);
+        let changes = crate::apply_patch::apply(&input.patch, &cwd, dry_run)
+            .map_err(apply_patch_error_to_tool)?;
+        json_success(&serde_json::json!({
+            "dry_run": dry_run,
+            "files": changes,
+        }))
     }
 }
 

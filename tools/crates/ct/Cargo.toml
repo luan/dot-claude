@@ -15,6 +15,8 @@ regex = "^1"
 rmcp = { version = "^1", features = ["server", "macros", "transport-io"] }
 serde = { version = "^1", features = ["derive"] }
 serde_json = "^1"
+similar = "^2"
+thiserror = "^2"
 tokio = { version = "^1", features = ["rt", "macros", "io-std"] }
 
 [dev-dependencies]
