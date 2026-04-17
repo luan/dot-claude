@@ -82,12 +82,17 @@ fn require_vault() -> Result<(), ErrorData> {
 }
 
 /// Turn a user-supplied project hint into a project name. Bare names (no path
-/// separator) skip the git round-trip that `resolve_repo_root` would perform.
-fn project_input_to_name(input: Option<String>) -> String {
+/// separator) skip the git round-trip that `resolve_repo_root` would perform,
+/// but must still be valid subdirectory names — a bare ".." would otherwise
+/// crash the server downstream via `project_name`.
+fn project_input_to_name(input: Option<String>) -> Result<String, ErrorData> {
     match input {
-        Some(s) if !s.contains('/') && !s.contains('\\') => s,
-        Some(path) => artifact::project_name(&artifact::resolve_repo_root(&path)),
-        None => artifact::project_name(&artifact::current_project()),
+        Some(s) if !s.contains('/') && !s.contains('\\') => {
+            artifact::validate_project_name(&s).map_err(ct_error_to_tool)?;
+            Ok(s)
+        }
+        Some(path) => Ok(artifact::project_name(&artifact::resolve_repo_root(&path))),
+        None => Ok(artifact::project_name(&artifact::current_project())),
     }
 }
 
@@ -232,7 +237,14 @@ impl CtMcpServer {
         Parameters(input): Parameters<ArtifactCreateIn>,
     ) -> Result<CallToolResult, ErrorData> {
         require_vault()?;
-        let project = input.project.unwrap_or_else(artifact::current_project);
+        let project = match input.project {
+            Some(p) if !p.contains('/') && !p.contains('\\') => {
+                artifact::validate_project_name(&p).map_err(ct_error_to_tool)?;
+                p
+            }
+            Some(p) => p,
+            None => artifact::current_project(),
+        };
         let tags: Vec<String> = input.tags.unwrap_or_default();
         let outcome = artifact::create(CreateOpts {
             kind: input.kind,
@@ -283,7 +295,7 @@ impl CtMcpServer {
                 artifact::list_artifacts(kind, false)
             }
         } else {
-            let proj_name = project_input_to_name(input.project);
+            let proj_name = project_input_to_name(input.project)?;
             if archived {
                 artifact::list_archived_artifacts_for_project(kind, &proj_name)
             } else {
@@ -304,7 +316,7 @@ impl CtMcpServer {
         Parameters(input): Parameters<ArtifactLatestIn>,
     ) -> Result<CallToolResult, ErrorData> {
         require_vault()?;
-        let proj_name = project_input_to_name(input.project);
+        let proj_name = project_input_to_name(input.project)?;
         // Already sorted by mod_time desc — first match is latest.
         let latest = artifact::list_artifacts_for_project(input.kind, false, &proj_name)
             .into_iter()
@@ -356,21 +368,10 @@ impl CtMcpServer {
             bp.join(path)
         };
 
-        // Canonicalize both paths before comparing: textual strip_prefix lets
-        // `bp.join("../../etc/hosts")` pass even though the real target is
-        // outside the vault. Canonicalization resolves `..` and symlinks.
-        let full_canonical = full_path.canonicalize().map_err(|e| {
-            ErrorData::invalid_params(format!("cannot resolve {}: {e}", full_path.display()), None)
-        })?;
-        let bp_canonical = bp.canonicalize().map_err(|e| {
-            ErrorData::internal_error(format!("cannot resolve vault {}: {e}", bp.display()), None)
-        })?;
-        if !full_canonical.starts_with(&bp_canonical) {
-            return Err(ErrorData::invalid_params(
-                format!("file is not inside {}", bp_canonical.display()),
-                None,
-            ));
-        }
+        // Canonicalize via the shared vault-containment check: resolves `..`
+        // and symlinks, then verifies the result stays inside the vault root.
+        let (full_canonical, bp_canonical) = artifact::canonicalize_in_vault(&full_path)
+            .map_err(|e| ct_error_to_tool(CtError::from(e)))?;
         // Refuse git-internal paths and non-markdown files — a stray `.git/`
         // component would let a caller commit git config, and only `.md`
         // artifacts belong in the edit flow.
@@ -389,7 +390,7 @@ impl CtMcpServer {
 
         let rel_path = full_canonical
             .strip_prefix(&bp_canonical)
-            .expect("starts_with verified above")
+            .expect("canonicalize_in_vault guarantees prefix")
             .to_path_buf();
 
         let message = input
@@ -574,8 +575,7 @@ fn infer_kind_from_path(path: &Path) -> Option<ArtifactKind> {
 }
 
 /// Build a default commit message of the form `<kind>(<project>): edit <slug>`
-/// from a vault-relative path like `myproj/spec/20260416-10-foo.md`. Uses the
-/// serde-lowercase kind name so messages say "doc" instead of "docs".
+/// from a vault-relative path like `myproj/spec/20260416-10-foo.md`.
 fn default_edit_message(rel_path: &Path) -> String {
     let components: Vec<&str> = rel_path
         .components()
@@ -584,10 +584,7 @@ fn default_edit_message(rel_path: &Path) -> String {
     let project = components.first().copied().unwrap_or("unknown");
     let kind_dir = components.get(1).copied().unwrap_or("edit");
     let kind = ArtifactKind::from_dir_name(kind_dir)
-        .and_then(|k| match serde_json::to_value(k).ok()? {
-            Value::String(s) => Some(s),
-            _ => None,
-        })
+        .map(|k| k.commit_name().to_string())
         .unwrap_or_else(|| kind_dir.to_string());
     let slug = rel_path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
     format!("{kind}({project}): edit {slug}")

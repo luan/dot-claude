@@ -124,64 +124,63 @@ When the conversation has matured and the user is satisfied with the direction, 
   linked back to hub via `source: "[[hub-stem]]"` frontmatter and `Part of [[hub-name]]` in body
 
 **Writing to the vault.**
-For projects using the blueprints system, write via `ct` — the hub as a regular spec,
-each deep dive as a spec routed to `dive/` via the `--dive` flag. For other vaults, write
-files directly to the shared documentation directory using the same sibling-folder layout.
+For projects using the blueprints system, scaffold each spec via `blueprint_create` (MCP),
+Edit the body, then `blueprint_commit`. The hub is a regular spec; each deep dive is a spec
+with `dive: true` and a `source` linking back to the hub. For other vaults, write files
+directly using the same sibling-folder layout.
 
-```bash
+```
 # Hub (vision-level spec)
-ct spec create \
-  --topic "<hub topic>" \
-  --tags "domain/<area>,stage/research,status/needs-review" \
-  --body "<hub body>"
+blueprint_create { kind: "spec", topic: "<hub topic>",
+                   tags: ["domain/<area>", "stage/research", "status/needs-review"] }
 # → ~/blueprints/<project>/spec/YYYYMMDD-<hub-slug>.md
+# Edit the scaffold body, then:
+blueprint_commit { path: "<returned path>" }
 
-# Each deep dive (spec, routed to dive/ via --dive, linked via --source)
-# Pass source as a bare stem — ct wraps it in [[...]] automatically.
-ct spec create --dive \
-  --topic "<dive subtopic>" \
-  --slug "<hub-slug>-<dive-subtopic-slug>" \
-  --source "<hub-stem>" \
-  --tags "domain/<area>,stage/research,status/needs-review" \
-  --body "<dive body>"
+# Each deep dive (routed to dive/ via dive=true, linked via source)
+blueprint_create { kind: "spec", dive: true,
+                   topic: "<dive subtopic>",
+                   slug: "<hub-slug>-<dive-subtopic-slug>",
+                   source: "<hub-stem>",
+                   tags: ["domain/<area>", "stage/research", "status/needs-review"] }
 # → ~/blueprints/<project>/dive/YYYYMMDD-<hub-slug>-<dive-subtopic>.md
+# Edit, then blueprint_commit.
 ```
 
 **Dive slug composition.**
-The dive slug must be explicitly composed as `<hub-slug>-<dive-subtopic-slug>` and passed via
-`--slug`. This is the skill's responsibility, not ct's. The hub prefix prevents collisions
+The dive slug must be explicitly composed as `<hub-slug>-<dive-subtopic-slug>` and passed as
+`slug`. This is the skill's responsibility, not ct's. The hub prefix prevents collisions
 across brainstorms and groups dives from the same hub together in alphabetical sort.
-Do not rely on ct's auto-slug for dives — it would derive from `--topic` alone and lose the
+Do not rely on ct's auto-slug for dives — it would derive from `topic` alone and lose the
 hub prefix.
 
 **`ct spec list` defaults.**
-By default, `ct spec list` hides dives so the top-level list stays scannable as "major specs
-only." Use `ct spec list --include-dives` to see dives alongside hubs.
+`blueprint_list` with `kind: "spec"` hides dives by default. Pass `include_dives: true`
+(or `ct spec list --include-dives`) to see dives alongside hubs.
 
 **Frontmatter** (every hub and every dive gets the same rich shape — Obsidian needs it for
 queries, tag filters, and backlinks):
 
 ```yaml
 ---
-topic: <topic>                         # ct: from --topic
-created: <date>                        # ct: auto
+topic: <topic>                         # from topic arg
+created: <date>                        # auto
 author: <user>                         # skill-supplied (ct does not add this)
-source: "[[<hub-stem>]]"               # ct: from --source (dives only)
+source: "[[<hub-stem>]]"               # from source arg (dives only)
 tags:
-  - type/spec                          # ct: auto-derived
-  - project/<project>                  # ct: auto-derived
-  - domain/<area>                      # skill-supplied via --tags
-  - stage/research                     # skill-supplied via --tags
-  - status/needs-review                # skill-supplied via --tags
+  - type/spec                          # auto-derived
+  - project/<project>                  # auto-derived
+  - domain/<area>                      # skill-supplied
+  - stage/research                     # skill-supplied
+  - status/needs-review                # skill-supplied
 ---
 ```
 
-`ct` writes the `topic`, `created`, `type/spec`, `project/<name>`, and (for dives) `source`
-fields automatically. The brainstorm skill is responsible for passing `--tags
-"domain/<area>,stage/research,status/needs-review"` on every `ct spec create` invocation
-and for appending an `author: <user>` line to the frontmatter after ct writes the file
-(or whatever convention the project uses). Keep hub and dive frontmatter identical in shape
-so Obsidian queries work uniformly across both folders.
+`blueprint_create` writes `topic`, `created`, `type/spec`, `project/<name>`, and (for dives)
+`source` automatically. The brainstorm skill is responsible for passing the domain/stage/status
+tags on every call and for appending an `author: <user>` line to the frontmatter after
+scaffolding (or whatever convention the project uses). Keep hub and dive frontmatter
+identical in shape so Obsidian queries work uniformly across both folders.
 
 **Actionable direction section** (in the hub):
 - **Now** — concrete actionables with ticket-ready titles, not vague TODOs

@@ -138,7 +138,7 @@ Output `# Review Summary`:
 - **IGNORE** section (collapsed): findings below threshold
 - **Verdict**: PASS (no FIX items) | CHANGES_REQUESTED (any FIX) | FAIL (any Critical)
 
-Store via `ct review create --topic "Review: $(git branch --show-current)"`.
+Store the review via `blueprint_create { kind: "review", topic: "Review: <branch>" }`, Edit the scaffold with the findings body, then `blueprint_commit`.
 
 ## Step 6: Fix
 

@@ -138,11 +138,7 @@ Reviewer Summaries → Approach Assessment → Verification stats → Consensus 
 
 ## Step 5: Store
 
-```bash
-ct review create --topic "Review: $(git branch --show-current)"
-```
-
-Auto-link to spec if `$HAS_SPEC`: add `--source "<spec-stem>"`.
+Scaffold with `blueprint_create { kind: "review", topic: "Review: <branch>" }`, Edit the body with the review output, then `blueprint_commit`. Pass `source: "<spec-stem>"` if `$HAS_SPEC`.
 
 ## Step 6: Fix
 

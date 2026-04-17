@@ -35,37 +35,23 @@ pub(crate) fn seek_sequence(
     } else {
         start
     };
-    // Exact match first.
-    for i in search_start..=lines.len().saturating_sub(pattern.len()) {
+    let end = lines.len().saturating_sub(pattern.len());
+
+    // Pass 1: exact match.
+    for i in search_start..=end {
         if lines[i..i + pattern.len()] == *pattern {
             return Some(i);
         }
     }
-    // Then rstrip match.
-    for i in search_start..=lines.len().saturating_sub(pattern.len()) {
-        let mut ok = true;
-        for (p_idx, pat) in pattern.iter().enumerate() {
-            if lines[i + p_idx].trim_end() != pat.trim_end() {
-                ok = false;
-                break;
-            }
-        }
-        if ok {
-            return Some(i);
-        }
+
+    // Passes 2 and 3 use pure-slice trims, so pre-compute a Vec<&str> view of
+    // each side once instead of re-trimming on every window. trim/trim_end
+    // return slices of the original string, no allocation.
+    if let Some(i) = find_with_trim(lines, pattern, search_start, end, str::trim_end) {
+        return Some(i);
     }
-    // Finally, trim both sides to allow more lenience.
-    for i in search_start..=lines.len().saturating_sub(pattern.len()) {
-        let mut ok = true;
-        for (p_idx, pat) in pattern.iter().enumerate() {
-            if lines[i + p_idx].trim() != pat.trim() {
-                ok = false;
-                break;
-            }
-        }
-        if ok {
-            return Some(i);
-        }
+    if let Some(i) = find_with_trim(lines, pattern, search_start, end, str::trim) {
+        return Some(i);
     }
 
     // ------------------------------------------------------------------
@@ -74,43 +60,44 @@ pub(crate) fn seek_sequence(
     // authored with plain ASCII characters can still be applied to source
     // files that contain typographic dashes / quotes, etc.  This mirrors the
     // fuzzy behaviour of `git apply` which ignores minor byte-level
-    // differences when locating context lines.
+    // differences when locating context lines. Pre-normalise both sides once
+    // up-front so the inner loop is a pointer-and-length compare.
     // ------------------------------------------------------------------
+    let norm_lines: Vec<String> = lines.iter().map(|s| normalise(s)).collect();
+    let norm_pat: Vec<String> = pattern.iter().map(|s| normalise(s)).collect();
+    (search_start..=end).find(|&i| norm_lines[i..i + pattern.len()] == *norm_pat)
+}
 
-    fn normalise(s: &str) -> String {
-        s.trim()
-            .chars()
-            .map(|c| match c {
-                // Various dash / hyphen code-points → ASCII '-'
-                '\u{2010}' | '\u{2011}' | '\u{2012}' | '\u{2013}' | '\u{2014}' | '\u{2015}'
-                | '\u{2212}' => '-',
-                // Fancy single quotes → '\''
-                '\u{2018}' | '\u{2019}' | '\u{201A}' | '\u{201B}' => '\'',
-                // Fancy double quotes → '"'
-                '\u{201C}' | '\u{201D}' | '\u{201E}' | '\u{201F}' => '"',
-                // Non-breaking space and other odd spaces → normal space
-                '\u{00A0}' | '\u{2002}' | '\u{2003}' | '\u{2004}' | '\u{2005}' | '\u{2006}'
-                | '\u{2007}' | '\u{2008}' | '\u{2009}' | '\u{200A}' | '\u{202F}' | '\u{205F}'
-                | '\u{3000}' => ' ',
-                other => other,
-            })
-            .collect::<String>()
-    }
+fn find_with_trim<F: Fn(&str) -> &str>(
+    lines: &[String],
+    pattern: &[String],
+    search_start: usize,
+    end: usize,
+    trim: F,
+) -> Option<usize> {
+    let trimmed_lines: Vec<&str> = lines.iter().map(|s| trim(s)).collect();
+    let trimmed_pat: Vec<&str> = pattern.iter().map(|s| trim(s)).collect();
+    (search_start..=end).find(|&i| trimmed_lines[i..i + pattern.len()] == *trimmed_pat)
+}
 
-    for i in search_start..=lines.len().saturating_sub(pattern.len()) {
-        let mut ok = true;
-        for (p_idx, pat) in pattern.iter().enumerate() {
-            if normalise(&lines[i + p_idx]) != normalise(pat) {
-                ok = false;
-                break;
-            }
-        }
-        if ok {
-            return Some(i);
-        }
-    }
-
-    None
+fn normalise(s: &str) -> String {
+    s.trim()
+        .chars()
+        .map(|c| match c {
+            // Various dash / hyphen code-points → ASCII '-'
+            '\u{2010}' | '\u{2011}' | '\u{2012}' | '\u{2013}' | '\u{2014}' | '\u{2015}'
+            | '\u{2212}' => '-',
+            // Fancy single quotes → '\''
+            '\u{2018}' | '\u{2019}' | '\u{201A}' | '\u{201B}' => '\'',
+            // Fancy double quotes → '"'
+            '\u{201C}' | '\u{201D}' | '\u{201E}' | '\u{201F}' => '"',
+            // Non-breaking space and other odd spaces → normal space
+            '\u{00A0}' | '\u{2002}' | '\u{2003}' | '\u{2004}' | '\u{2005}' | '\u{2006}'
+            | '\u{2007}' | '\u{2008}' | '\u{2009}' | '\u{200A}' | '\u{202F}' | '\u{205F}'
+            | '\u{3000}' => ' ',
+            other => other,
+        })
+        .collect::<String>()
 }
 
 #[cfg(test)]

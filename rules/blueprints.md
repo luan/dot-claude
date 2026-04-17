@@ -76,9 +76,25 @@ A dive is a vision-level spec linked to a hub spec. It lives in a sibling `dive/
 - `ct spec list` hides dives by default; `--include-dives` to see them. `blueprint_read` / `ct spec read <stem>` finds dives by bare stem.
 - Archive preserves the subfolder: dives archive to `archive/<project>/dive/`.
 
+## Writing artifact bodies
+
+Preferred path: `blueprint_create` (MCP) scaffolds the file with frontmatter, Edit/apply_patch writes the body, `blueprint_commit` commits+pushes. Bypasses shell quoting entirely.
+
+CLI path (still supported): `ct <type> create` reads the body from stdin. Write the body to a temp file first, then `cat` it into the command — heredocs and `echo` escape backticks (`` ` `` → `` \` ``) and corrupt markdown.
+
+```bash
+# Correct
+cat /tmp/artifact-body.md | ct spec create --topic "..."
+rm /tmp/artifact-body.md
+
+# Wrong — backticks get escaped
+cat <<'EOF' | ct spec create ...
+echo "..." | ct spec create ...
+```
+
 ## Rules
 
-- Always use `ct <type> create` for artifact writes — never write blueprint files directly.
+- Use `blueprint_create` + Edit + `blueprint_commit`, or `ct <type> create` with stdin — never write blueprint files directly.
 - `--project` auto-detects from cwd (git toplevel, falls back to cwd). Pass it only to target a different project.
 - If push fails during commit+push, stop and report to user. Never force-push.
 - `ct vault init` must be run before first use. `ct` errors if the vault directory is missing.
