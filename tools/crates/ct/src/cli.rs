@@ -126,6 +126,39 @@ pub enum Command {
         #[command(subcommand)]
         action: McpAction,
     },
+
+    #[command(about = "Symbol index operations (find, reindex, bulk, hook)")]
+    Sym {
+        #[command(subcommand)]
+        action: SymAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum SymAction {
+    #[command(about = "Find locations of a symbol by name")]
+    Find {
+        #[arg(help = "Symbol name to look up")]
+        name: String,
+
+        #[arg(long, default_value_t = 50, help = "Max rows to return")]
+        limit: usize,
+    },
+
+    #[command(about = "Reindex a single file (called by PostToolUse hook)")]
+    Reindex {
+        #[arg(help = "File path to reindex")]
+        file: String,
+    },
+
+    #[command(about = "Rebuild the entire project index")]
+    Bulk,
+
+    #[command(about = "Drop index rows for files that no longer exist on disk")]
+    Prune,
+
+    #[command(about = "PostToolUse hook entry point — reads stdin, spawns detached reindex")]
+    Hook,
 }
 
 #[derive(Subcommand)]
@@ -323,6 +356,26 @@ pub enum ToolAction {
 
         #[arg(long, help = "Preview changes without writing to disk")]
         dry_run: bool,
+    },
+
+    #[command(about = "Emit PreToolUse hook JSON envelope (allow+context or deny+reason)")]
+    HookContext {
+        #[arg(
+            long,
+            default_value = "allow",
+            value_parser = ["allow", "deny"],
+            help = "Decision — allow wraps message as additionalContext; deny wraps as permissionDecisionReason"
+        )]
+        decision: String,
+
+        #[arg(long, help = "Message body (reads stdin if omitted)")]
+        message: Option<String>,
+    },
+
+    #[command(about = "Tree-sitter structural summary of a source file (Rust, Swift)")]
+    FileSummary {
+        #[arg(help = "File path to summarize")]
+        path: String,
     },
 }
 
@@ -1573,6 +1626,18 @@ pub fn run_apply_patch(
                 }
             }
         }
+        reindex_apply_patch_changes(&cwd_path, &changes);
     }
     Ok(())
+}
+
+fn reindex_apply_patch_changes(cwd: &std::path::Path, changes: &[crate::apply_patch::FileChange]) {
+    let mut files: Vec<std::path::PathBuf> = Vec::new();
+    for change in changes {
+        files.push(cwd.join(&change.path));
+        if let Some(dest) = &change.move_path {
+            files.push(cwd.join(dest));
+        }
+    }
+    crate::symbol_index::reindex_files(files);
 }

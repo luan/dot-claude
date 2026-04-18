@@ -6,13 +6,16 @@ mod churn;
 mod cli;
 mod cochanges;
 mod editor;
+mod file_summary;
 mod gitcontext;
+mod hook_context;
 mod mcp;
 mod notify;
 mod phases;
 mod refs;
 mod slug;
 mod store;
+mod symbol_index;
 mod ui;
 mod vault;
 
@@ -244,6 +247,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(cli::Command::Mcp { action }) => match action {
             cli::McpAction::Serve => mcp::run_server(),
         },
+        Some(cli::Command::Sym { action }) => match action {
+            cli::SymAction::Find { name, limit } => symbol_index::cmd_find(name, limit),
+            cli::SymAction::Reindex { file } => symbol_index::cmd_reindex(file),
+            cli::SymAction::Bulk => symbol_index::cmd_bulk(),
+            cli::SymAction::Prune => symbol_index::cmd_prune(),
+            cli::SymAction::Hook => symbol_index::cmd_hook(),
+        },
         Some(cli::Command::Tool { action }) => match action {
             cli::ToolAction::Slug { words } => cli::run_slug(words),
             cli::ToolAction::Phases { file } => phases::run_phases(file),
@@ -270,6 +280,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 min_loc,
             } => churn::run(project_root, since, min_loc),
             cli::ToolAction::ApplyPatch { cwd, dry_run } => cli::run_apply_patch(cwd, dry_run),
+            cli::ToolAction::HookContext { decision, message } => {
+                hook_context::run(decision, message)
+            }
+            cli::ToolAction::FileSummary { path } => file_summary::run(path),
         },
     }
 }

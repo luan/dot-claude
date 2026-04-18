@@ -3,7 +3,7 @@ mod diff;
 mod parser;
 mod seek_sequence;
 
-pub use apply::{ApplyPatchError, ChangeType, apply};
+pub use apply::{ApplyPatchError, ChangeType, FileChange, apply};
 pub(crate) use seek_sequence::seek_sequence;
 
 /// Maximum accepted patch body length. Guards against unbounded allocation

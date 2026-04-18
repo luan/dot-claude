@@ -539,6 +539,16 @@ Set `dry_run` to true to preview the unified diff without writing."#
         let dry_run = input.dry_run.unwrap_or(false);
         let changes = crate::apply_patch::apply(&input.patch, &cwd, dry_run)
             .map_err(apply_patch_error_to_tool)?;
+        if !dry_run {
+            let mut files: Vec<std::path::PathBuf> = Vec::new();
+            for change in &changes {
+                files.push(cwd.join(&change.path));
+                if let Some(dest) = &change.move_path {
+                    files.push(cwd.join(dest));
+                }
+            }
+            crate::symbol_index::reindex_files(files);
+        }
         json_success(&serde_json::json!({
             "dry_run": dry_run,
             "files": changes,

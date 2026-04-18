@@ -44,6 +44,17 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ct sym hook"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
