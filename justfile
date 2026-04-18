@@ -1,11 +1,11 @@
 build:
-    cd tools && cargo build --release
+    cargo build --release
 
 check:
-    cd tools && cargo fmt --check && cargo clippy -- -W clippy::all && cargo test
+    cargo fmt --check && cargo clippy -- -W clippy::all && cargo test
 
 install:
-    cd tools && cargo install --path crates/ct
+    cargo install --path .
     claude mcp remove -s user ct 2>/dev/null || true
     claude mcp add -s user ct ct mcp serve
 

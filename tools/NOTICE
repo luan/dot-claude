@@ -1,9 +1,0 @@
-This project includes code derived from:
-
-openai/codex (https://github.com/openai/codex)
-Licensed under the Apache License, Version 2.0.
-
-Files derived (see per-file header for source commit):
-  - tools/crates/ct/src/apply_patch/parser.rs
-  - tools/crates/ct/src/apply_patch/seek_sequence.rs
-  - tools/crates/ct/src/apply_patch/apply.rs (derive_new_contents_from_chunks)
