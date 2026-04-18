@@ -4,13 +4,16 @@ mod args;
 mod artifact;
 mod tool;
 
-pub use args::{ArtifactAction, McpAction, ToolAction, VaultAction};
+pub use args::{ApplyPatchCmd, ArtifactAction, McpAction, ToolAction, VaultAction};
 pub use artifact::{
     ArtifactCreateArgs, run_artifact_archive, run_artifact_comments, run_artifact_create,
     run_artifact_latest, run_artifact_list, run_artifact_prune, run_artifact_read,
     run_artifact_rename, run_artifact_retag, run_artifact_show,
 };
-pub use tool::{run_apply_patch, run_cochanges, run_completion, run_slug};
+pub use tool::{
+    run_apply_patch, run_apply_patch_prune, run_apply_patch_stats, run_cochanges, run_completion,
+    run_slug,
+};
 
 #[derive(Parser)]
 #[command(name = "ct")]
@@ -80,6 +83,12 @@ pub enum Command {
     Mcp {
         #[command(subcommand)]
         action: McpAction,
+    },
+
+    #[command(about = "Inspect or prune apply_patch telemetry")]
+    ApplyPatch {
+        #[command(subcommand)]
+        cmd: ApplyPatchCmd,
     },
 }
 

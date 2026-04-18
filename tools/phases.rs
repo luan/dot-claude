@@ -198,6 +198,23 @@ pub fn to_json(phases: &[Phase]) -> String {
     out
 }
 
+pub fn run_phases(file_arg: Option<String>) -> Result<(), Box<dyn std::error::Error>> {
+    let content = if let Some(file) = file_arg {
+        fs::read_to_string(file)?
+    } else if !io::stdin().is_terminal() {
+        let mut buf = String::new();
+        io::stdin().read_to_string(&mut buf)?;
+        buf
+    } else {
+        println!("[]");
+        return Ok(());
+    };
+
+    let phases = parse_phases(&content);
+    println!("{}", to_json(&phases));
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -419,21 +436,4 @@ mod tests {
         assert!(json.contains(r#""sub\twith\ttabs""#));
         assert!(!json.contains('\n') || !json.contains("line1\nline2"));
     }
-}
-
-pub fn run_phases(file_arg: Option<String>) -> Result<(), Box<dyn std::error::Error>> {
-    let content = if let Some(file) = file_arg {
-        fs::read_to_string(file)?
-    } else if !io::stdin().is_terminal() {
-        let mut buf = String::new();
-        io::stdin().read_to_string(&mut buf)?;
-        buf
-    } else {
-        println!("[]");
-        return Ok(());
-    };
-
-    let phases = parse_phases(&content);
-    println!("{}", to_json(&phases));
-    Ok(())
 }

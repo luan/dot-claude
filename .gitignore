@@ -54,6 +54,7 @@ paste-cache
 plans
 specs/
 telemetry
+!tools/apply_patch/telemetry/
 stats-cache.json
 tasks
 chrome

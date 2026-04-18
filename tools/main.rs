@@ -161,7 +161,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(cli::Command::Notify) => notify::run(),
         Some(cli::Command::Mcp { action }) => match action {
-            cli::McpAction::Serve => mcp::run_server(),
+            cli::McpAction::Blueprint => mcp::run_blueprint_server(),
+            cli::McpAction::ApplyPatch => mcp::run_apply_patch_server(),
         },
         Some(cli::Command::Tool { action }) => match action {
             cli::ToolAction::Slug { words } => cli::run_slug(words),
@@ -189,6 +190,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 min_loc,
             } => churn::run(project_root, since, min_loc),
             cli::ToolAction::ApplyPatch { cwd, dry_run } => cli::run_apply_patch(cwd, dry_run),
+        },
+        Some(cli::Command::ApplyPatch { cmd }) => match cmd {
+            cli::ApplyPatchCmd::Stats { all_projects, days } => {
+                cli::run_apply_patch_stats(all_projects, days)
+            }
+            cli::ApplyPatchCmd::Prune { days } => cli::run_apply_patch_prune(days),
         },
     }
 }

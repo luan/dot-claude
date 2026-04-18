@@ -4,97 +4,13 @@ use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{CallToolResult, ErrorData};
 use rmcp::schemars::{self, JsonSchema};
-use rmcp::transport::stdio;
-use rmcp::{ServerHandler, ServiceExt, tool, tool_handler, tool_router};
+use rmcp::{ServerHandler, tool, tool_handler, tool_router};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use crate::apply_patch::{ApplyPatchError, MAX_PATCH_SIZE_BYTES};
-use crate::artifact::{self, ArtifactKind, CreateOpts, CtError, ResolveError};
+use super::{ct_error_to_tool, json_success, project_input_to_name, require_vault, resolve};
+use crate::artifact::{self, ArtifactKind, CreateOpts, CtError};
 use crate::vault::{self, SearchFilters};
-
-// ---------------------------------------------------------------------------
-// Error mapping
-// ---------------------------------------------------------------------------
-
-/// Map a `CtError` to an MCP `ErrorData`. Push failures still include the
-/// scaffolded path so callers can recover.
-fn ct_error_to_tool(err: CtError) -> ErrorData {
-    match err {
-        CtError::Resolve(ResolveError::NotFound(s)) => {
-            ErrorData::invalid_params(format!("artifact not found: {s}"), None)
-        }
-        CtError::Resolve(ResolveError::Ambiguous(paths)) => {
-            let candidates: Vec<String> = paths.iter().map(|p| p.display().to_string()).collect();
-            ErrorData::invalid_params(
-                format!("ambiguous stem, matches: {}", candidates.join(", ")),
-                Some(json!({ "candidates": candidates })),
-            )
-        }
-        CtError::Validation(msg) => ErrorData::invalid_params(msg, None),
-        CtError::Sync(e) => ErrorData::internal_error(e.to_string(), None),
-        CtError::Io(e) => ErrorData::internal_error(e.to_string(), None),
-    }
-}
-
-/// Map an `ApplyPatchError` to an MCP `ErrorData`. Bad-input variants (parse,
-/// path validation, context miss, state conflicts) surface as `invalid_params`;
-/// `Io` is a server-side failure and becomes `internal_error`.
-fn apply_patch_error_to_tool(err: ApplyPatchError) -> ErrorData {
-    match err {
-        ApplyPatchError::Parse(_)
-        | ApplyPatchError::PathEscape(_)
-        | ApplyPatchError::AbsolutePath(_)
-        | ApplyPatchError::DeleteIsDirectory(_)
-        | ApplyPatchError::AddTargetExists(_)
-        | ApplyPatchError::DuplicateUpdate(_)
-        | ApplyPatchError::MoveTargetExists(_)
-        | ApplyPatchError::ContextNotFound { .. } => {
-            ErrorData::invalid_params(err.to_string(), None)
-        }
-        ApplyPatchError::Io { .. } => ErrorData::internal_error(err.to_string(), None),
-    }
-}
-
-/// Wrap a serializable value as a successful tool result.
-fn json_success<T: serde::Serialize>(value: &T) -> Result<CallToolResult, ErrorData> {
-    let v = serde_json::to_value(value)
-        .map_err(|e| ErrorData::internal_error(format!("serialize: {e}"), None))?;
-    Ok(CallToolResult::structured(v))
-}
-
-/// Resolve a stem (optionally scoped to a kind) to a vault path.
-fn resolve(stem: &str, kind: Option<ArtifactKind>) -> Result<PathBuf, ErrorData> {
-    let result = match kind {
-        Some(k) => artifact::resolve_artifact_path(stem, k),
-        None => artifact::resolve_stem_universal(stem),
-    };
-    result.map_err(|e| ct_error_to_tool(CtError::from(e)))
-}
-
-/// Ensure the vault directory exists before a handler does real work. A missing
-/// vault at request time used to call `fatal()` and exit the server process —
-/// this turns it into a per-request validation error instead.
-fn require_vault() -> Result<(), ErrorData> {
-    artifact::blueprints_dir_checked()
-        .map(|_| ())
-        .map_err(ct_error_to_tool)
-}
-
-/// Turn a user-supplied project hint into a project name. Bare names (no path
-/// separator) skip the git round-trip that `resolve_repo_root` would perform,
-/// but must still be valid subdirectory names — a bare ".." would otherwise
-/// crash the server downstream via `project_name`.
-fn project_input_to_name(input: Option<String>) -> Result<String, ErrorData> {
-    match input {
-        Some(s) if !s.contains('/') && !s.contains('\\') => {
-            artifact::validate_project_name(&s).map_err(ct_error_to_tool)?;
-            Ok(s)
-        }
-        Some(path) => Ok(artifact::project_name(&artifact::resolve_repo_root(&path))),
-        None => Ok(artifact::project_name(&artifact::current_project())),
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Input schemas
@@ -196,29 +112,17 @@ struct VaultCheckIn {
     include_archive: Option<bool>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
-struct ApplyPatchIn {
-    #[schemars(description = "Patch body in the apply_patch envelope format")]
-    patch: String,
-    #[schemars(
-        description = "Working directory (absolute path). Defaults to the server's process cwd"
-    )]
-    cwd: Option<String>,
-    #[schemars(description = "If true, parse + plan but do not write to disk")]
-    dry_run: Option<bool>,
-}
-
 // ---------------------------------------------------------------------------
 // Server
 // ---------------------------------------------------------------------------
 
 #[derive(Clone)]
-struct CtMcpServer {
+pub(super) struct BlueprintMcpServer {
     tool_router: ToolRouter<Self>,
 }
 
-impl CtMcpServer {
-    fn new() -> Self {
+impl BlueprintMcpServer {
+    pub(super) fn new() -> Self {
         Self {
             tool_router: Self::tool_router(),
         }
@@ -226,7 +130,7 @@ impl CtMcpServer {
 }
 
 #[tool_router(router = tool_router)]
-impl CtMcpServer {
+impl BlueprintMcpServer {
     #[tool(
         name = "blueprint_create",
         description = "Create a new blueprint (spec/plan/review/report/doc) in the blueprints vault. \
@@ -472,82 +376,10 @@ impl CtMcpServer {
             .collect();
         json_success(&json!({ "unresolved_links": lines }))
     }
-
-    #[tool(
-        name = "apply_patch",
-        description = r#"Apply a patch (envelope format) to files under cwd. This is the primary file-edit tool — prefer it over Edit/Write for every change, single-file or multi-file. A single envelope can add, update, delete, or move many files at once, and it's more forgiving than line-numbered unified diffs.
-
-Envelope shape:
-
-*** Begin Patch
-[ one or more file sections ]
-*** End Patch
-
-Each file section starts with one of three headers:
-
-*** Add File: <path>      — create a new file. Every following line is a + line (the initial contents).
-*** Delete File: <path>   — remove an existing file. Nothing follows.
-*** Update File: <path>   — patch an existing file in place (optionally with a rename).
-
-`*** Update File:` may be immediately followed by `*** Move to: <new path>` to rename. Then one or more hunks, each introduced by `@@` (optionally followed by an anchor like a class or function name to disambiguate). Within a hunk each line is prefixed with ` ` (context), `-` (removed), or `+` (added).
-
-Context lines: include 3 lines of context above and below each change. If 3 lines aren't enough to uniquely identify the location in the file, use one or more `@@ <anchor>` lines to narrow the search.
-
-Example combining all operations:
-
-*** Begin Patch
-*** Add File: hello.txt
-+Hello world
-*** Update File: src/app.py
-*** Move to: src/main.py
-@@ def greet():
--    print("Hi")
-+    print("Hello, world!")
-*** Delete File: obsolete.txt
-*** End Patch
-
-Rules:
-- All paths MUST be relative to cwd. Absolute paths and paths that escape cwd are rejected.
-- You must include a header (Add/Delete/Update) for each file section.
-- New lines must be prefixed with `+` even when creating a new file.
-- Don't issue two `*** Update File:` sections for the same path in one patch — combine the changes into one section with multiple hunks.
-- `*** Add File:` requires the destination not to exist; `*** Move to:` requires the destination not to exist (use a separate Delete to clear it first if intentional).
-
-Set `dry_run` to true to preview the unified diff without writing."#
-    )]
-    async fn apply_patch(
-        &self,
-        Parameters(input): Parameters<ApplyPatchIn>,
-    ) -> Result<CallToolResult, ErrorData> {
-        if input.patch.len() > MAX_PATCH_SIZE_BYTES {
-            return Err(ErrorData::invalid_params(
-                format!("patch exceeds {MAX_PATCH_SIZE_BYTES} byte limit"),
-                None,
-            ));
-        }
-        let cwd = match input.cwd {
-            Some(s) => std::path::PathBuf::from(s),
-            None => std::env::current_dir()
-                .map_err(|e| ErrorData::internal_error(format!("cwd: {e}"), None))?,
-        };
-        if !cwd.is_dir() {
-            return Err(ErrorData::invalid_params(
-                format!("cwd is not a directory: {}", cwd.display()),
-                None,
-            ));
-        }
-        let dry_run = input.dry_run.unwrap_or(false);
-        let changes = crate::apply_patch::apply(&input.patch, &cwd, dry_run)
-            .map_err(apply_patch_error_to_tool)?;
-        json_success(&serde_json::json!({
-            "dry_run": dry_run,
-            "files": changes,
-        }))
-    }
 }
 
 #[tool_handler(router = self.tool_router)]
-impl ServerHandler for CtMcpServer {
+impl ServerHandler for BlueprintMcpServer {
     fn get_info(&self) -> rmcp::model::ServerInfo {
         rmcp::model::ServerInfo::new(
             rmcp::model::ServerCapabilities::builder()
@@ -555,7 +387,7 @@ impl ServerHandler for CtMcpServer {
                 .build(),
         )
         .with_server_info(rmcp::model::Implementation::new(
-            "ct",
+            "blueprint",
             env!("CARGO_PKG_VERSION"),
         ))
     }
@@ -605,21 +437,4 @@ fn no_pending_changes(bp: &Path, rel_path: &Path) -> bool {
             .is_ok_and(|s| s.success())
     };
     is_clean(false) && is_clean(true)
-}
-
-pub fn run_server() -> Result<(), Box<dyn std::error::Error>> {
-    // One-shot vault health warning so operators see the problem at startup;
-    // handlers still re-check per request via `require_vault()` so the server
-    // fails each call cleanly instead of crashing once the dir goes missing.
-    if let Err(e) = artifact::blueprints_dir_checked() {
-        eprintln!("ct-mcp: warning — {e}");
-    }
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()?;
-    runtime.block_on(async {
-        let service = CtMcpServer::new().serve(stdio()).await?;
-        service.waiting().await?;
-        Ok::<(), Box<dyn std::error::Error>>(())
-    })
 }

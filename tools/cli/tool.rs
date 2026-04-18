@@ -41,6 +41,70 @@ pub fn run_cochanges(
     crate::cochanges::run(base, threshold, min_commits, max_files, num_commits)
 }
 
+pub fn run_apply_patch_stats(
+    all_projects: bool,
+    days: i64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use crate::apply_patch::telemetry::{Telemetry, stats};
+
+    if all_projects {
+        let report = stats::run_all_projects(days)?;
+        println!("{report}");
+        return Ok(());
+    }
+
+    let project_name = crate::artifact::project_name(&crate::artifact::current_project());
+    let base = match dirs::data_local_dir() {
+        Some(b) => b,
+        None => {
+            eprintln!("apply-patch stats: no data_local_dir available");
+            std::process::exit(1);
+        }
+    };
+    let db_path = base
+        .join("ct")
+        .join("projects")
+        .join(&project_name)
+        .join("apply_patch.db");
+    if !db_path.is_file() {
+        println!("(no telemetry data — database not found for project: {project_name})");
+        return Ok(());
+    }
+    let tel = Telemetry::open(&project_name)?;
+    let report = stats::run(&tel, &project_name, days)?;
+    println!("{report}");
+    Ok(())
+}
+
+pub fn run_apply_patch_prune(days: i64) -> Result<(), Box<dyn std::error::Error>> {
+    use crate::apply_patch::telemetry::{Telemetry, prune};
+
+    let project_name = crate::artifact::project_name(&crate::artifact::current_project());
+    let base = match dirs::data_local_dir() {
+        Some(b) => b,
+        None => {
+            eprintln!("apply-patch prune: no data_local_dir available");
+            std::process::exit(1);
+        }
+    };
+    let db_path = base
+        .join("ct")
+        .join("projects")
+        .join(&project_name)
+        .join("apply_patch.db");
+    if !db_path.is_file() {
+        println!("(no telemetry data — database not found for project: {project_name})");
+        return Ok(());
+    }
+    let tel = Telemetry::open(&project_name)?;
+    let report = prune::run(&tel, days)?;
+    println!(
+        "pruned: {} calls, {} anchor attempts, {} patch bodies",
+        report.calls_deleted, report.anchor_attempts_deleted, report.patch_bodies_deleted
+    );
+    Ok(())
+}
+
 pub fn run_apply_patch(
     cwd: Option<String>,
     dry_run: bool,
@@ -79,13 +143,14 @@ pub fn run_apply_patch(
         std::process::exit(1);
     }
 
-    let changes = match crate::apply_patch::apply(&patch, &cwd_path, dry_run) {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("{e}");
+    let outcome = match crate::apply_patch::apply(&patch, &cwd_path, dry_run) {
+        Ok(o) => o,
+        Err(failure) => {
+            eprintln!("{}", failure.error);
             std::process::exit(1);
         }
     };
+    let changes = outcome.changes;
 
     if dry_run {
         let mut first = true;

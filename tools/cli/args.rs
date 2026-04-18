@@ -122,9 +122,30 @@ pub enum ToolAction {
 }
 
 #[derive(Subcommand)]
+pub enum ApplyPatchCmd {
+    #[command(about = "Show apply_patch telemetry summary")]
+    Stats {
+        #[arg(long, help = "Walk all project databases")]
+        all_projects: bool,
+
+        #[arg(long, default_value_t = 30, help = "Window in days")]
+        days: i64,
+    },
+
+    #[command(about = "Delete telemetry older than --days")]
+    Prune {
+        #[arg(long, default_value_t = 90, help = "Retention window in days")]
+        days: i64,
+    },
+}
+
+#[derive(Subcommand)]
 pub enum McpAction {
-    #[command(about = "Serve MCP protocol over stdio")]
-    Serve,
+    #[command(about = "Serve the blueprint/vault MCP over stdio")]
+    Blueprint,
+
+    #[command(about = "Serve the apply_patch MCP over stdio")]
+    ApplyPatch,
 }
 
 #[derive(Subcommand)]

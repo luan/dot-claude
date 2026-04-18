@@ -41,7 +41,11 @@ const EMPTY_CHANGE_CONTEXT_MARKER: &str = "@@";
 #[derive(Debug, PartialEq, Clone)]
 pub enum ParseError {
     InvalidPatchError(String),
-    InvalidHunkError { message: String, line_number: usize },
+    InvalidHunkError {
+        message: String,
+        line_number: usize,
+        snippet: Option<String>,
+    },
 }
 
 impl std::fmt::Display for ParseError {
@@ -51,7 +55,12 @@ impl std::fmt::Display for ParseError {
             ParseError::InvalidHunkError {
                 message,
                 line_number,
-            } => write!(f, "invalid hunk at line {line_number}, {message}"),
+                snippet,
+            } => write!(
+                f,
+                "invalid hunk at line {line_number}, {message}{}",
+                snippet.as_deref().unwrap_or("")
+            ),
         }
     }
 }
@@ -110,12 +119,54 @@ fn parse_patch_text(patch: &str) -> Result<Vec<Hunk>, ParseError> {
     let mut remaining_lines = hunk_lines;
     let mut line_number = 2;
     while !remaining_lines.is_empty() {
-        let (hunk, hunk_lines) = parse_one_hunk(remaining_lines, line_number)?;
+        let (hunk, hunk_lines) =
+            parse_one_hunk(remaining_lines, line_number).map_err(|e| annotate(e, &lines))?;
         hunks.push(hunk);
         line_number += hunk_lines;
         remaining_lines = &remaining_lines[hunk_lines..]
     }
     Ok(hunks)
+}
+
+/// Attach a snippet of the patch body around the failing line to a hunk
+/// parse error, so callers can see what they wrote without counting lines.
+fn annotate(err: ParseError, all_lines: &[&str]) -> ParseError {
+    match err {
+        ParseError::InvalidHunkError {
+            message,
+            line_number,
+            snippet: None,
+        } => {
+            let snippet = snippet_for(all_lines, line_number);
+            ParseError::InvalidHunkError {
+                message,
+                line_number,
+                snippet,
+            }
+        }
+        other => other,
+    }
+}
+
+fn snippet_for(lines: &[&str], line_number: usize) -> Option<String> {
+    if line_number == 0 || line_number > lines.len() {
+        return None;
+    }
+    let idx = line_number - 1;
+    let start = idx.saturating_sub(1);
+    let end = (idx + 2).min(lines.len());
+    let width = end.to_string().len();
+    let mut out = String::from("\npatch near error:\n");
+    for (offset, line) in lines[start..end].iter().enumerate() {
+        let num = start + offset + 1;
+        let marker = if start + offset == idx {
+            ">>> "
+        } else {
+            "    "
+        };
+        out.push_str(&format!("{marker}{num:>width$}: {}\n", line, width = width));
+    }
+    Some(out)
 }
 
 /// Checks the start and end lines of the patch text for `apply_patch`,
@@ -136,20 +187,49 @@ fn check_start_and_end_lines_strict(
     first_line: Option<&&str>,
     last_line: Option<&&str>,
 ) -> Result<(), ParseError> {
-    let first_line = first_line.map(|line| line.trim());
-    let last_line = last_line.map(|line| line.trim());
+    let first_trimmed = first_line.map(|line| line.trim());
+    let last_trimmed = last_line.map(|line| line.trim());
 
-    match (first_line, last_line) {
+    match (first_trimmed, last_trimmed) {
         (Some(first), Some(last)) if first == BEGIN_PATCH_MARKER && last == END_PATCH_MARKER => {
             Ok(())
         }
-        (Some(first), _) if first != BEGIN_PATCH_MARKER => Err(InvalidPatchError(String::from(
-            "The first line of the patch must be '*** Begin Patch'",
-        ))),
-        _ => Err(InvalidPatchError(String::from(
-            "The last line of the patch must be '*** End Patch'",
+        (Some(first), _) if first != BEGIN_PATCH_MARKER => Err(InvalidPatchError(
+            boundary_error_message("first", BEGIN_PATCH_MARKER, first_line.copied()),
+        )),
+        _ => Err(InvalidPatchError(boundary_error_message(
+            "last",
+            END_PATCH_MARKER,
+            last_line.copied(),
         ))),
     }
+}
+
+fn boundary_error_message(which: &str, expected: &str, observed: Option<&str>) -> String {
+    let Some(line) = observed else {
+        return format!("The {which} line of the patch must be '{expected}' (patch was empty)");
+    };
+    let trimmed = line.trim();
+    let hint = marker_prefix_hint(trimmed, expected);
+    let base = format!("The {which} line of the patch must be '{expected}', got: {line:?}");
+    match hint {
+        Some(h) => format!("{base}. {h}"),
+        None => base,
+    }
+}
+
+fn marker_prefix_hint(trimmed: &str, expected: &str) -> Option<&'static str> {
+    for prefix in ["+", "-", " "] {
+        if let Some(rest) = trimmed.strip_prefix(prefix)
+            && rest.trim_start() == expected
+        {
+            return Some(
+                "It looks like the envelope marker was written as a hunk line. \
+                 Drop the leading '+', '-', or ' ' prefix so the marker terminates the envelope.",
+            );
+        }
+    }
+    None
 }
 
 /// Attempts to parse a single hunk from the start of lines.
@@ -224,10 +304,11 @@ fn parse_one_hunk(lines: &[&str], line_number: usize) -> Result<(Hunk, usize), P
             remaining_lines = &remaining_lines[chunk_lines..]
         }
 
-        if chunks.is_empty() {
+        if chunks.is_empty() && move_path.is_none() {
             return Err(InvalidHunkError {
                 message: format!("Update file hunk for path '{path}' is empty"),
                 line_number,
+                snippet: None,
             });
         }
 
@@ -246,6 +327,7 @@ fn parse_one_hunk(lines: &[&str], line_number: usize) -> Result<(Hunk, usize), P
             "'{first_line}' is not a valid hunk header. Valid hunk headers: '*** Add File: {{path}}', '*** Delete File: {{path}}', '*** Update File: {{path}}'"
         ),
         line_number,
+        snippet: None,
     })
 }
 
@@ -258,6 +340,7 @@ fn parse_update_file_chunk(
         return Err(InvalidHunkError {
             message: "Update hunk does not contain any lines".to_string(),
             line_number,
+            snippet: None,
         });
     }
     // If we see an explicit context marker @@ or @@ <context>, consume it; otherwise, optionally
@@ -274,6 +357,7 @@ fn parse_update_file_chunk(
                     lines[0]
                 ),
                 line_number,
+                snippet: None,
             });
         }
         (None, 0)
@@ -282,6 +366,7 @@ fn parse_update_file_chunk(
         return Err(InvalidHunkError {
             message: "Update hunk does not contain any lines".to_string(),
             line_number: line_number + 1,
+            snippet: None,
         });
     }
     let mut chunk = UpdateFileChunk {
@@ -298,6 +383,7 @@ fn parse_update_file_chunk(
                     return Err(InvalidHunkError {
                         message: "Update hunk does not contain any lines".to_string(),
                         line_number: line_number + 1,
+                        snippet: None,
                     });
                 }
                 chunk.is_end_of_file = true;
@@ -328,6 +414,7 @@ fn parse_update_file_chunk(
                                     "Unexpected line found in update hunk: '{line_contents}'. Every line should start with ' ' (context line), '+' (added line), or '-' (removed line)"
                                 ),
                                 line_number: line_number + 1,
+                                snippet: None,
                             });
                         }
                         // Assume this is the start of the next hunk.
@@ -351,13 +438,13 @@ mod tests {
         assert_eq!(
             parse_patch_text("bad"),
             Err(InvalidPatchError(
-                "The first line of the patch must be '*** Begin Patch'".to_string()
+                "The first line of the patch must be '*** Begin Patch', got: \"bad\"".to_string()
             ))
         );
         assert_eq!(
             parse_patch_text("*** Begin Patch\nbad"),
             Err(InvalidPatchError(
-                "The last line of the patch must be '*** End Patch'".to_string()
+                "The last line of the patch must be '*** End Patch', got: \"bad\"".to_string()
             ))
         );
 
@@ -375,17 +462,20 @@ mod tests {
                 contents: "hi\n".to_string()
             }]
         );
-        assert_eq!(
-            parse_patch_text(
-                "*** Begin Patch\n\
-                 *** Update File: test.py\n\
-                 *** End Patch",
-            ),
-            Err(InvalidHunkError {
-                message: "Update file hunk for path 'test.py' is empty".to_string(),
+        match parse_patch_text(
+            "*** Begin Patch\n\
+             *** Update File: test.py\n\
+             *** End Patch",
+        ) {
+            Err(ParseError::InvalidHunkError {
+                ref message,
                 line_number: 2,
-            })
-        );
+                snippet: Some(_),
+            }) => {
+                assert_eq!(message, "Update file hunk for path 'test.py' is empty");
+            }
+            other => panic!("expected annotated InvalidHunkError, got {other:?}"),
+        }
         assert_eq!(
             parse_patch_text(
                 "*** Begin Patch\n\
@@ -393,6 +483,22 @@ mod tests {
             )
             .unwrap(),
             Vec::<Hunk>::new()
+        );
+
+        let err = parse_patch_text(
+            "*** Begin Patch\n\
+             *** Add File: foo\n\
+             +hi\n\
+             +*** End Patch",
+        )
+        .unwrap_err();
+        let ParseError::InvalidPatchError(msg) = err else {
+            panic!("expected InvalidPatchError, got {err:?}");
+        };
+        assert!(msg.contains("got: \"+*** End Patch\""), "msg = {msg}");
+        assert!(
+            msg.contains("envelope marker was written as a hunk line"),
+            "msg = {msg}"
         );
         assert_eq!(
             parse_patch_text(
@@ -533,7 +639,8 @@ mod tests {
             Err(InvalidHunkError {
                 message: "'bad' is not a valid hunk header. \
             Valid hunk headers: '*** Add File: {path}', '*** Delete File: {path}', '*** Update File: {path}'".to_string(),
-                line_number: 234
+                line_number: 234,
+                snippet: None,
             })
         );
         // Other edge cases are already covered by tests above/below.
@@ -550,7 +657,8 @@ mod tests {
             Err(InvalidHunkError {
                 message: "Expected update hunk to start with a @@ context marker, got: 'bad'"
                     .to_string(),
-                line_number: 123
+                line_number: 123,
+                snippet: None,
             })
         );
         assert_eq!(
@@ -561,7 +669,8 @@ mod tests {
             ),
             Err(InvalidHunkError {
                 message: "Update hunk does not contain any lines".to_string(),
-                line_number: 124
+                line_number: 124,
+                snippet: None,
             })
         );
         assert_eq!(
@@ -569,7 +678,8 @@ mod tests {
             Err(InvalidHunkError {
                 message:  "Unexpected line found in update hunk: 'bad'. \
                        Every line should start with ' ' (context line), '+' (added line), or '-' (removed line)".to_string(),
-                line_number: 124
+                line_number: 124,
+                snippet: None,
             })
         );
         assert_eq!(
@@ -580,7 +690,8 @@ mod tests {
             ),
             Err(InvalidHunkError {
                 message: "Update hunk does not contain any lines".to_string(),
-                line_number: 124
+                line_number: 124,
+                snippet: None,
             })
         );
         assert_eq!(

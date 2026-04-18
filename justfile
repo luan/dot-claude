@@ -7,7 +7,10 @@ check:
 install:
     cargo install --path .
     claude mcp remove -s user ct 2>/dev/null || true
-    claude mcp add -s user ct ct mcp serve
+    claude mcp remove -s user blueprint 2>/dev/null || true
+    claude mcp remove -s user apply-patch 2>/dev/null || true
+    claude mcp add -s user blueprint ct mcp blueprint
+    claude mcp add -s user apply-patch ct mcp apply-patch
 
 completions:
     mkdir -p ~/.config/fish/completions
