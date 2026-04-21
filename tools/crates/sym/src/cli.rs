@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::bail;
-use clap::{Args, Subcommand};
+use clap::{Args, Subcommand, ValueEnum};
 use serde::Serialize;
 use serde_json::json;
 
@@ -286,7 +286,8 @@ pub enum HookCommand {
 
     #[command(about = "Install sym hooks into the given agent")]
     Install {
-        agent: String,
+        #[arg(value_enum)]
+        agent: HookAgent,
 
         #[arg(long, default_value = "user")]
         scope: String,
@@ -297,7 +298,8 @@ pub enum HookCommand {
 
     #[command(about = "Remove sym hooks from the given agent")]
     Uninstall {
-        agent: String,
+        #[arg(value_enum)]
+        agent: HookAgent,
 
         #[arg(long, default_value = "user")]
         scope: String,
@@ -305,6 +307,20 @@ pub enum HookCommand {
         #[arg(long, default_value_t = false)]
         dry_run: bool,
     },
+}
+
+#[derive(Copy, Clone, Debug, ValueEnum)]
+pub enum HookAgent {
+    #[value(name = "claude-code")]
+    ClaudeCode,
+}
+
+impl HookAgent {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            HookAgent::ClaudeCode => "claude-code",
+        }
+    }
 }
 
 pub fn run_index(path: &Path, force: bool, reset: bool, ignore: &[String]) -> anyhow::Result<()> {
@@ -1104,7 +1120,10 @@ pub fn run_hook(command: HookCommand) -> anyhow::Result<()> {
             scope,
             dry_run,
         } => {
-            print!("{}", hook::run_hook_install(&agent, &scope, dry_run, false)?);
+            print!(
+                "{}",
+                hook::run_hook_install(agent.as_str(), &scope, dry_run, false)?
+            );
             Ok(())
         }
         HookCommand::Uninstall {
@@ -1112,7 +1131,10 @@ pub fn run_hook(command: HookCommand) -> anyhow::Result<()> {
             scope,
             dry_run,
         } => {
-            print!("{}", hook::run_hook_install(&agent, &scope, dry_run, true)?);
+            print!(
+                "{}",
+                hook::run_hook_install(agent.as_str(), &scope, dry_run, true)?
+            );
             Ok(())
         }
     }

@@ -359,8 +359,8 @@ pub fn uninstall_claude_code(scope: &str, dry_run: bool) -> Result<(String, Stri
 }
 
 pub fn lookup_hook_adapter(name: &str) -> Result<HookAdapter> {
-    match name.to_ascii_lowercase().as_str() {
-        "claude-code" | "claudecode" | "claude" => Ok(HookAdapter {
+    match name {
+        "claude-code" => Ok(HookAdapter {
             install: install_claude_code,
             uninstall: uninstall_claude_code,
         }),
