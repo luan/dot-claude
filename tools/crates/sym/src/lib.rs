@@ -17,6 +17,7 @@ pub mod repo;
 pub mod resolve;
 pub mod search;
 pub mod show;
+pub mod source_context;
 pub mod store;
 pub mod structure;
 pub mod symbols;
@@ -86,8 +87,10 @@ pub fn run(args: cli::SymArgs) -> anyhow::Result<()> {
             impact,
             depth,
             limit,
+            context,
             path_filters,
             excludes,
+            file,
             stdin,
         } => cli::run_refs(
             &targets,
@@ -95,8 +98,10 @@ pub fn run(args: cli::SymArgs) -> anyhow::Result<()> {
             impact,
             depth,
             limit,
+            context,
             &path_filters,
             &excludes,
+            file.as_deref(),
             stdin,
         ),
         cli::Command::Importers {
@@ -108,8 +113,9 @@ pub fn run(args: cli::SymArgs) -> anyhow::Result<()> {
             targets,
             depth,
             limit,
+            context,
             stdin,
-        } => cli::run_impact(&targets, depth, limit, stdin),
+        } => cli::run_impact(&targets, depth, limit, context, stdin),
         cli::Command::Trace {
             targets,
             depth,

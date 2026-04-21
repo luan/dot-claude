@@ -18,6 +18,7 @@ use crate::outline;
 use crate::output;
 use crate::search;
 use crate::show;
+use crate::source_context;
 use crate::structure;
 use crate::version;
 
@@ -143,11 +144,17 @@ pub enum Command {
         #[arg(short = 'n', long, default_value_t = 20)]
         limit: usize,
 
+        #[arg(short = 'C', long = "context", default_value_t = 1)]
+        context: usize,
+
         #[arg(long = "path")]
         path_filters: Vec<String>,
 
         #[arg(long = "exclude")]
         excludes: Vec<String>,
+
+        #[arg(long)]
+        file: Option<String>,
 
         #[arg(long, default_value_t = false)]
         stdin: bool,
@@ -173,6 +180,9 @@ pub enum Command {
 
         #[arg(short = 'n', long, default_value_t = 50)]
         limit: usize,
+
+        #[arg(short = 'C', long = "context", default_value_t = 1)]
+        context: usize,
 
         #[arg(long, default_value_t = false)]
         stdin: bool,
@@ -577,38 +587,62 @@ pub fn run_refs(
     impact: bool,
     depth: usize,
     limit: usize,
+    context: usize,
     path_filters: &[String],
     excludes: &[String],
+    file: Option<&str>,
     stdin: bool,
 ) -> anyhow::Result<()> {
     let cwd = std::env::current_dir()?;
     let targets = multisym::collect_symbols(targets, stdin)?;
 
     if impact {
-        return run_impact(&targets, depth.max(2), limit, false);
+        return run_impact(&targets, depth.max(2), limit, context, false);
+    }
+
+    let mut includes: Vec<String> = path_filters.to_vec();
+    if let Some(fragment) = file {
+        includes.push(fragment.to_string());
     }
 
     if output::json_enabled() {
         let mut grouped = Vec::new();
         for target in targets {
             if importers {
-                let results = graph::find_importers(&cwd, &target, depth, limit, path_filters, excludes)?;
+                let results = graph::find_importers(&cwd, &target, depth, limit, &includes, excludes)?;
                 grouped.push(TargetResult { target, results: json!(results) });
             } else {
-                let results = graph::find_references(&cwd, &target, limit, path_filters, excludes)?;
-                grouped.push(TargetResult { target, results: json!(results) });
+                let results = graph::find_references(&cwd, &target, limit, &includes, excludes)?;
+                let enriched = results
+                    .into_iter()
+                    .map(|row| {
+                        let (ctx_lines, _) =
+                            source_context::read_source_context(Path::new(&row.file), row.line, context);
+                        json!({
+                            "name": row.name,
+                            "rel_path": row.rel_path,
+                            "file": row.file,
+                            "line": row.line,
+                            "context": ctx_lines,
+                        })
+                    })
+                    .collect::<Vec<_>>();
+                grouped.push(TargetResult {
+                    target,
+                    results: json!(enriched),
+                });
             }
         }
         return output::write_json(&grouped);
     }
 
-    for (index, target) in targets.iter().enumerate() {
-        if index > 0 {
+    for (target_index, target) in targets.iter().enumerate() {
+        if target_index > 0 {
             println!();
         }
 
         if importers {
-            let results = graph::find_importers(&cwd, target, depth, limit, path_filters, excludes)?;
+            let results = graph::find_importers(&cwd, target, depth, limit, &includes, excludes)?;
             if results.is_empty() {
                 println!("No importers found for '{target}'.");
                 continue;
@@ -624,19 +658,42 @@ pub fn run_refs(
             continue;
         }
 
-        let results = graph::find_references(&cwd, target, limit, path_filters, excludes)?;
+        let results = graph::find_references(&cwd, target, limit, &includes, excludes)?;
         if results.is_empty() {
             println!("No references found for '{target}'.");
             continue;
         }
+        let refs: Vec<source_context::RefLine> = results
+            .iter()
+            .map(|row| {
+                let (ctx_lines, ctx_start) =
+                    source_context::read_source_context(Path::new(&row.file), row.line, context);
+                source_context::RefLine {
+                    rel_path: row.rel_path.clone(),
+                    line: row.line,
+                    text: source_context::read_source_line(Path::new(&row.file), row.line)
+                        .trim()
+                        .to_string(),
+                    context_lines: ctx_lines,
+                    context_start: ctx_start,
+                }
+            })
+            .collect();
+        let (lines, groups) = source_context::dedup_ref_lines(&refs);
         let mut content = String::new();
-        for result in &results {
-            content.push_str(&format!("{}:{}\n", result.rel_path, result.line));
+        for line in &lines {
+            content.push_str(line);
+            content.push('\n');
         }
-        output::write_frontmatter(
-            &[("symbol", target.clone()), ("ref_count", results.len().to_string())],
-            &content,
-        )?;
+
+        let mut meta = vec![("symbol", target.clone())];
+        if groups < results.len() {
+            meta.push(("groups", groups.to_string()));
+            meta.push(("total_refs", results.len().to_string()));
+        } else {
+            meta.push(("ref_count", results.len().to_string()));
+        }
+        output::write_frontmatter(&meta, &content)?;
     }
 
     Ok(())
@@ -661,7 +718,13 @@ pub fn run_importers(target: &str, depth: usize, limit: usize) -> anyhow::Result
     )
 }
 
-pub fn run_impact(targets: &[String], depth: usize, limit: usize, stdin: bool) -> anyhow::Result<()> {
+pub fn run_impact(
+    targets: &[String],
+    depth: usize,
+    limit: usize,
+    context: usize,
+    stdin: bool,
+) -> anyhow::Result<()> {
     let cwd = std::env::current_dir()?;
     let targets = multisym::collect_symbols(targets, stdin)?;
 
@@ -697,6 +760,8 @@ pub fn run_impact(targets: &[String], depth: usize, limit: usize, stdin: bool) -
             .map(|row| {
                 let key = format!("{}:{}|{}", row.file, row.line, row.caller);
                 let hits = source_map.get(&key).cloned().unwrap_or_default();
+                let (ctx_lines, _) =
+                    source_context::read_source_context(Path::new(&row.file), row.line, context);
                 json!({
                     "depth": row.depth,
                     "caller": row.caller,
@@ -705,28 +770,60 @@ pub fn run_impact(targets: &[String], depth: usize, limit: usize, stdin: bool) -
                     "rel_path": row.rel_path,
                     "line": row.line,
                     "hit_symbols": hits,
+                    "context": ctx_lines,
                 })
             })
             .collect::<Vec<_>>();
         return output::write_json(&results);
     }
 
-    for row in merged {
-        let key = format!("{}:{}|{}", row.file, row.line, row.caller);
-        let hits = source_map.get(&key).cloned().unwrap_or_default();
-        if hits.is_empty() {
-            println!("[{}] {} <- {}:{}", row.depth, row.caller, row.rel_path, row.line);
-        } else {
-            println!(
-                "[{}] {} <- {}:{} [{}]",
-                row.depth,
-                row.caller,
-                row.rel_path,
-                row.line,
-                hits.join(",")
-            );
+    let max_depth = merged.iter().map(|row| row.depth).max().unwrap_or(0);
+    let mut content = String::new();
+    let mut total_groups = 0usize;
+    for depth_level in 1..=max_depth {
+        let refs: Vec<source_context::RefLine> = merged
+            .iter()
+            .filter(|row| row.depth == depth_level)
+            .map(|row| {
+                let key = format!("{}:{}|{}", row.file, row.line, row.caller);
+                let hits = source_map.get(&key).cloned().unwrap_or_default();
+                let label = source_context::read_source_line(Path::new(&row.file), row.line);
+                let label = label.trim().to_string();
+                let text = if hits.is_empty() {
+                    label
+                } else {
+                    format!("{label}  [{}]", hits.join(","))
+                };
+                let (ctx_lines, ctx_start) =
+                    source_context::read_source_context(Path::new(&row.file), row.line, context);
+                source_context::RefLine {
+                    rel_path: row.rel_path.clone(),
+                    line: row.line,
+                    text,
+                    context_lines: ctx_lines,
+                    context_start: ctx_start,
+                }
+            })
+            .collect();
+        if refs.is_empty() {
+            continue;
+        }
+        let (lines, groups) = source_context::dedup_ref_lines(&refs);
+        total_groups += groups;
+        content.push_str(&format!("# depth {depth_level}\n"));
+        for line in &lines {
+            content.push_str(line);
+            content.push('\n');
         }
     }
+
+    let mut meta: Vec<(&str, String)> = Vec::new();
+    meta.push(("depth", depth.to_string()));
+    if total_groups < merged.len() {
+        meta.push(("groups", total_groups.to_string()));
+    }
+    meta.push(("total_callers", merged.len().to_string()));
+    output::write_frontmatter(&meta, &content)?;
 
     Ok(())
 }
