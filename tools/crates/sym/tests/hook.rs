@@ -11,7 +11,8 @@ use sym::hook::{
 #[test]
 fn detect_ripgrep_and_find_queries() {
     let rg = detect_search_command(&["rg", "-n", "HandleRegister", "."], "");
-    assert!(rg.replacement.contains("sym search HandleRegister"));
+    assert!(rg.replacement.contains("ct sym search HandleRegister"));
+    assert!(rg.replacement.starts_with("ct sym "));
     assert_eq!(rg.tool, "rg");
 
     let grep = detect_search_command(&["grep", "-rn", "-e", "OpenStore", "src/"], "");
@@ -40,7 +41,7 @@ fn detect_skips_noise_and_non_shell_tools() {
 fn emit_nudge_shapes() -> Result<()> {
     let suggestion = Suggestion {
         tool: "rg".into(),
-        replacement: "sym search Foo".into(),
+        replacement: "ct sym search Foo".into(),
         why: "ranked symbol results".into(),
     };
 
@@ -53,11 +54,11 @@ fn emit_nudge_shapes() -> Result<()> {
     assert!(value["hookSpecificOutput"]["additionalContext"]
         .as_str()
         .unwrap()
-        .contains("sym search Foo"));
+        .contains("ct sym search Foo"));
 
     let text = emit_nudge("text", &["rg", "Foo"], &suggestion)?;
     assert!(text.stdout.is_empty());
-    assert!(text.stderr.contains("sym search Foo"));
+    assert!(text.stderr.contains("ct sym search Foo"));
 
     let silent = emit_nudge("claude-code", &["ls", "-la"], &Suggestion::default())?;
     assert!(silent.stdout.is_empty());
@@ -68,7 +69,8 @@ fn emit_nudge_shapes() -> Result<()> {
 #[test]
 fn emit_remind_shapes() -> Result<()> {
     let text = emit_remind("text")?;
-    assert!(text.contains("sym search"));
+    assert!(text.contains("ct sym search"));
+    assert!(!text.contains("\n  sym "), "reminder must not suggest bare `sym`");
 
     let json = emit_remind("json")?;
     let value: Value = serde_json::from_str(&json)?;
@@ -81,7 +83,7 @@ fn emit_remind_shapes() -> Result<()> {
     assert!(value["hookSpecificOutput"]["additionalContext"]
         .as_str()
         .unwrap()
-        .contains("sym search"));
+        .contains("ct sym search"));
     Ok(())
 }
 

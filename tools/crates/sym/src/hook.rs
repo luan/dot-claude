@@ -6,11 +6,11 @@ use anyhow::{Result, anyhow, bail};
 use serde_json::{Value, json};
 
 pub const CLAUDE_HOOK_MARKER: &str = "sym-hook";
-const CLAUDE_NUDGE_CMD: &str = "sym hook nudge --format=claude-code";
-const CLAUDE_REMIND_CMD: &str = "sym hook remind --format=claude-code";
+const CLAUDE_NUDGE_CMD: &str = "ct sym hook nudge --format=claude-code";
+const CLAUDE_REMIND_CMD: &str = "ct sym hook remind --format=claude-code";
 const CLAUDE_HOOK_KEYS: &[&str] = &["PreToolUse", "SessionStart", "UserPromptSubmit"];
 
-pub const REMINDER_TEXT: &str = "This project is indexed by sym. Prefer these commands before falling\nback to grep/find:\n\n  sym search <name>        ranked symbol search (add --file, --kind, --lang)\n  sym show <sym>           source for a symbol (or file:L1-L2)\n  sym investigate <sym>    kind-adaptive summary\n  sym impact <sym>         who depends on this?\n  sym trace <sym>          what does this depend on?\n  sym impls <sym>          who implements this interface/protocol?\n\nMulti-symbol: all of the above accept several names in one call, or pipe\nnewline-separated names via --stdin. JSON output is available on every\ncommand with --json.\n\nUse 'sym search --text <pattern>' only for literal text matches sym\ncan't resolve by symbol.";
+pub const REMINDER_TEXT: &str = "This project is indexed by sym. Prefer these commands before falling\nback to grep/find:\n\n  ct sym search <name>        ranked symbol search (add --file, --kind, --lang)\n  ct sym show <sym>           source for a symbol (or file:L1-L2)\n  ct sym investigate <sym>    kind-adaptive summary\n  ct sym impact <sym>         who depends on this?\n  ct sym trace <sym>          what does this depend on?\n  ct sym impls <sym>          who implements this interface/protocol?\n\nMulti-symbol: all of the above accept several names in one call, or pipe\nnewline-separated names via --stdin. JSON output is available on every\ncommand with --json.\n\nUse 'ct sym search --text <pattern>' only for literal text matches sym\ncan't resolve by symbol.";
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Suggestion {
@@ -55,7 +55,7 @@ pub fn detect_search_command(fields: &[&str], tool_name: &str) -> Suggestion {
             }
             Suggestion {
                 tool,
-                replacement: format!("sym search {}", sh_quote_if_needed(&query)),
+                replacement: format!("ct sym search {}", sh_quote_if_needed(&query)),
                 why: "Ranked symbol results with file+line, file-scoped with --file, JSON with --json. Faster than scanning every match.".into(),
             }
         }
@@ -66,8 +66,8 @@ pub fn detect_search_command(fields: &[&str], tool_name: &str) -> Suggestion {
             }
             Suggestion {
                 tool,
-                replacement: format!("sym search {}", sh_quote_if_needed(&name)),
-                why: "sym search also matches by name and returns symbol locations, not just paths.".into(),
+                replacement: format!("ct sym search {}", sh_quote_if_needed(&name)),
+                why: "ct sym search also matches by name and returns symbol locations, not just paths.".into(),
             }
         }
         "fd" | "fdfind" => {
@@ -77,8 +77,8 @@ pub fn detect_search_command(fields: &[&str], tool_name: &str) -> Suggestion {
             }
             Suggestion {
                 tool,
-                replacement: format!("sym search {}", sh_quote_if_needed(&query)),
-                why: "sym indexes symbols by name; for file discovery use `sym ls --stats`.".into(),
+                replacement: format!("ct sym search {}", sh_quote_if_needed(&query)),
+                why: "sym indexes symbols by name; for file discovery use `ct sym ls --stats`.".into(),
             }
         }
         _ => Suggestion::default(),
@@ -370,7 +370,7 @@ pub fn lookup_hook_adapter(name: &str) -> Result<HookAdapter> {
             uninstall: uninstall_claude_code,
         }),
         _ => bail!(
-            "unknown agent {:?} (supported: claude-code). For other agents see docs/AGENT_HOOKS.md — 'sym hook nudge' and 'sym hook remind' can be wired by hand into any agent's hook point.",
+            "unknown agent {:?} (supported: claude-code). For other agents see docs/AGENT_HOOKS.md — 'ct sym hook nudge' and 'ct sym hook remind' can be wired by hand into any agent's hook point.",
             name
         ),
     }
