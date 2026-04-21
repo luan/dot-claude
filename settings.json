@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/luan/.claude/hooks/rtk-rewrite.sh"
+            "command": "~/.claude/hooks/rtk-rewrite.sh"
           }
         ]
       }
@@ -90,3 +90,4 @@
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true
 }
+
