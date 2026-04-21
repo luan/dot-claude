@@ -9,11 +9,11 @@ use sym::repo;
 use sym::store::Store;
 
 #[test]
-fn index_merges_symignore_and_cli_patterns() -> Result<()> {
+fn index_respects_gitignore_alongside_cli_patterns() -> Result<()> {
     let temp_dir = tempfile::tempdir()?;
     write(
         temp_dir.path(),
-        ".symignore",
+        ".gitignore",
         "generated\n# comment\n\nfrontend/**\n",
     )?;
     write(
@@ -37,10 +37,8 @@ fn index_merges_symignore_and_cli_patterns() -> Result<()> {
         },
     )?;
 
-    assert_eq!(
-        stats.ignore_patterns,
-        vec!["generated", "frontend/**", "docs/**"]
-    );
+    assert_eq!(stats.ignore_patterns, vec!["docs/**"]);
+    assert_eq!(stats.files_indexed, 1);
 
     Ok(())
 }
@@ -48,7 +46,7 @@ fn index_merges_symignore_and_cli_patterns() -> Result<()> {
 #[test]
 fn index_respects_file_and_cli_ignore_patterns() -> Result<()> {
     let temp_dir = tempfile::tempdir()?;
-    write(temp_dir.path(), ".symignore", "generated\n")?;
+    write(temp_dir.path(), ".gitignore", "generated\n")?;
     write(
         temp_dir.path(),
         "generated/skip_me.go",

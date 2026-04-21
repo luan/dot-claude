@@ -3,27 +3,19 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use anyhow::{Context, Result};
-use globset::{Glob, GlobSet, GlobSetBuilder};
-use walkdir::WalkDir;
+use ignore::WalkBuilder;
+use ignore::gitignore::{Gitignore, GitignoreBuilder};
 
 use crate::lang;
 
 const DEFAULT_SKIP_DIRS: &[&str] = &[
-    ".git",
     "node_modules",
     "vendor",
-    ".venv",
     "venv",
     "__pycache__",
-    ".tox",
-    ".mypy_cache",
     "dist",
     "build",
-    ".next",
-    ".nuxt",
     "target",
-    ".idea",
-    ".vscode",
 ];
 
 pub(crate) fn is_skipped_dir_name(name: &str) -> bool {
@@ -54,38 +46,62 @@ pub struct WalkOptions {
 }
 
 pub fn walk(root: &Path, options: &WalkOptions) -> Result<Vec<FileEntry>> {
-    let matchers = IgnoreMatchers::new(&options.ignore)?;
+    let extra = build_extra_ignore(root, &options.ignore)?;
     let mut files = Vec::new();
 
-    for entry in WalkDir::new(root)
-        .into_iter()
-        .filter_entry(|entry| should_enter(entry.path(), root, &matchers))
-    {
+    let mut builder = WalkBuilder::new(root);
+    builder
+        .standard_filters(true)
+        .require_git(false)
+        .follow_links(false);
+
+    for entry in builder.build() {
         let entry = entry.with_context(|| format!("walking {}", root.display()))?;
-        if !entry.file_type().is_file() {
+        let Some(file_type) = entry.file_type() else {
+            continue;
+        };
+
+        let path = entry.path();
+        if path == root {
             continue;
         }
 
-        let rel_path = entry
-            .path()
+        let rel_path = path
             .strip_prefix(root)
-            .with_context(|| format!("computing relative path for {}", entry.path().display()))?
+            .with_context(|| format!("computing relative path for {}", path.display()))?
             .to_path_buf();
-        if matchers.matches(&rel_path) {
+
+        if rel_path.components().any(|component| {
+            component
+                .as_os_str()
+                .to_str()
+                .is_some_and(|name| DEFAULT_SKIP_DIRS.contains(&name))
+        }) {
             continue;
         }
 
-        let Some(language) = lang::language_for_file(entry.path()) else {
+        if extra
+            .matched_path_or_any_parents(&rel_path, file_type.is_dir())
+            .is_ignore()
+        {
+            continue;
+        }
+
+        if !file_type.is_file() {
+            continue;
+        }
+
+        let Some(language) = lang::language_for_file(path) else {
             continue;
         };
         if options.parseable_only && !language.parseable {
             continue;
         }
 
-        let metadata = fs::metadata(entry.path())
-            .with_context(|| format!("reading metadata for {}", entry.path().display()))?;
+        let metadata = fs::metadata(path)
+            .with_context(|| format!("reading metadata for {}", path.display()))?;
         files.push(FileEntry {
-            path: entry.path().to_path_buf(),
+            path: path.to_path_buf(),
             rel_path,
             size: metadata.len(),
             language: language.id.to_string(),
@@ -164,24 +180,6 @@ fn render_tree(node: &TreeNode, prefix: &str, is_root: bool, out: &mut String) {
     }
 }
 
-fn should_enter(path: &Path, root: &Path, matchers: &IgnoreMatchers) -> bool {
-    if path == root {
-        return true;
-    }
-
-    let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
-        return true;
-    };
-    if is_skipped_dir_name(name) {
-        return false;
-    }
-
-    let Ok(rel_path) = path.strip_prefix(root) else {
-        return true;
-    };
-    !matchers.matches(rel_path)
-}
-
 fn should_skip_tree_entry(path: &Path, root: &Path) -> bool {
     if path == root {
         return false;
@@ -193,49 +191,16 @@ fn should_skip_tree_entry(path: &Path, root: &Path) -> bool {
     is_skipped_dir_name(name)
 }
 
-struct IgnoreMatchers {
-    exact_names: Vec<String>,
-    globset: GlobSet,
-}
-
-impl IgnoreMatchers {
-    fn new(patterns: &[String]) -> Result<Self> {
-        let mut exact_names = Vec::new();
-        let mut builder = GlobSetBuilder::new();
-
-        for pattern in patterns
-            .iter()
-            .map(|pattern| pattern.trim())
-            .filter(|pattern| !pattern.is_empty())
-        {
-            if !pattern.contains('*') && !pattern.contains('?') && !pattern.contains('[') {
-                exact_names.push(pattern.trim_matches('/').to_string());
-            }
-
-            let normalized = pattern.trim_start_matches("./").trim_matches('/');
-            if normalized.is_empty() {
-                continue;
-            }
-
-            builder.add(Glob::new(normalized)?);
-            builder.add(Glob::new(&format!("{normalized}/**"))?);
-        }
-
-        Ok(Self {
-            exact_names,
-            globset: builder.build()?,
-        })
+fn build_extra_ignore(root: &Path, patterns: &[String]) -> Result<Gitignore> {
+    let mut builder = GitignoreBuilder::new(root);
+    for pattern in patterns
+        .iter()
+        .map(|pattern| pattern.trim())
+        .filter(|pattern| !pattern.is_empty())
+    {
+        builder
+            .add_line(None, pattern)
+            .with_context(|| format!("invalid ignore pattern {pattern:?}"))?;
     }
-
-    fn matches(&self, rel_path: &Path) -> bool {
-        let rel = rel_path.to_string_lossy().replace('\\', "/");
-        if self.globset.is_match(&rel) {
-            return true;
-        }
-
-        rel_path.components().any(|component| {
-            let name = component.as_os_str().to_string_lossy();
-            self.exact_names.iter().any(|pattern| pattern == &name)
-        })
-    }
+    builder.build().context("building ignore matcher")
 }

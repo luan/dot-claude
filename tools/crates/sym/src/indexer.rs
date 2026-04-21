@@ -6,7 +6,6 @@ use anyhow::{Context, Result};
 use sha2::{Digest, Sha256};
 use walkdir::WalkDir;
 
-use crate::config;
 use crate::parser;
 use crate::repo;
 use crate::store::Store;
@@ -29,7 +28,7 @@ pub struct IndexOptions {
 }
 
 pub fn index(root: &Path, options: &IndexOptions) -> Result<IndexStats> {
-    let ignore_patterns = config::load_ignore_patterns(root, &options.cli_ignore_patterns)?;
+    let ignore_patterns = options.cli_ignore_patterns.clone();
     let files = walk(
         root,
         &WalkOptions {
