@@ -77,6 +77,7 @@ pub fn search_text(
 pub fn search_symbols(
     cwd: &Path,
     query: &str,
+    kind: Option<&str>,
     lang: Option<&str>,
     limit: usize,
     exact: bool,
@@ -84,17 +85,19 @@ pub fn search_symbols(
     includes: &[String],
     excludes: &[String],
 ) -> Result<Vec<SymbolResult>> {
-    let fetch_limit = widen_path_filter_limit(limit, !includes.is_empty() || !excludes.is_empty());
+    let widened = widen_path_filter_limit(limit, !includes.is_empty() || !excludes.is_empty());
+    let fetch_limit = resolve::rank_fetch_window(widened, exact);
     let store = resolve::open_store(cwd)?;
     let mut results = store.search_symbols(
         query,
-        "",
+        kind.unwrap_or(""),
         lang.unwrap_or(""),
         exact,
         ignore_case,
         fetch_limit,
     )?;
     results.retain(|result| include_path(Path::new(&result.rel_path), includes, excludes));
+    resolve::rank_symbols(&mut results);
     if limit > 0 && results.len() > limit {
         results.truncate(limit);
     }

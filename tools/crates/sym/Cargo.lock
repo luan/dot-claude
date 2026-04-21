@@ -681,7 +681,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "globset",
  "hex",
  "ignore",
  "rusqlite",

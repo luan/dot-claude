@@ -69,6 +69,9 @@ pub enum Command {
         #[arg(short = 'n', long, default_value_t = 20)]
         limit: usize,
 
+        #[arg(short = 'k', long)]
+        kind: Option<String>,
+
         #[arg(short = 'l', long)]
         lang: Option<String>,
 
@@ -359,6 +362,7 @@ pub fn run_search(
     query: &[String],
     text: bool,
     limit: usize,
+    kind: Option<&str>,
     lang: Option<&str>,
     exact: bool,
     ignore_case: bool,
@@ -401,6 +405,7 @@ pub fn run_search(
     let results = search::search_symbols(
         &root,
         &query,
+        kind,
         lang,
         limit,
         effective_exact,

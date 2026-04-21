@@ -108,6 +108,20 @@ pub fn rank_symbols(results: &mut [SymbolResult]) {
     results.sort_by(|left, right| symbol_score(right).cmp(&symbol_score(left)));
 }
 
+/// Over-fetch window for ranking: exact queries fetch unbounded (0 means "no
+/// SQL LIMIT") so the ranking pass sees every row matching the exact name;
+/// prefix/FTS queries cap at min(limit*5, 500) so ranking has headroom
+/// without blowing up for large corpora.
+pub fn rank_fetch_window(user_limit: usize, exact: bool) -> usize {
+    if exact {
+        return 0;
+    }
+    if user_limit == 0 {
+        return 500;
+    }
+    (user_limit * 5).min(500)
+}
+
 fn symbol_score(result: &SymbolResult) -> i32 {
     let mut score = 0;
     let path = result.rel_path.to_lowercase();
