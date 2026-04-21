@@ -79,6 +79,9 @@ pub enum Command {
         action: ToolAction,
     },
 
+    #[command(about = "Code indexing and symbol discovery")]
+    Sym(sym::cli::SymArgs),
+
     #[command(about = "Run the MCP stdio server")]
     Mcp {
         #[command(subcommand)]

@@ -160,6 +160,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         }
         Some(cli::Command::Notify) => notify::run(),
+        Some(cli::Command::Sym(args)) => sym::run(args).map_err(|e| e.into()),
         Some(cli::Command::Mcp { action }) => match action {
             cli::McpAction::Blueprint => mcp::run_blueprint_server(),
             cli::McpAction::ApplyPatch => mcp::run_apply_patch_server(),
