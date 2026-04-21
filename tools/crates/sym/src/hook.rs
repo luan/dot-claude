@@ -246,12 +246,22 @@ pub fn merge_claude_hooks(settings: &mut ClaudeSettings) {
         .or_insert_with(|| Value::Object(Default::default()));
     let hooks = hooks.as_object_mut().expect("hooks must be object");
 
-    let pre_tool_existing = hooks.remove("PreToolUse").unwrap_or_else(|| Value::Array(vec![]));
+    // Use `get`+`insert` (not `remove`+`insert`): IndexMap's `insert` on an
+    // existing key preserves its position in the map. A prior `remove` would
+    // drop the position and the re-insert would shift the key to the end,
+    // silently reordering the user's `hooks` object on every install.
+    let pre_tool_existing = hooks
+        .get("PreToolUse")
+        .cloned()
+        .unwrap_or_else(|| Value::Array(vec![]));
     hooks.insert(
         "PreToolUse".into(),
         Value::Array(append_unique_hook_group(&pre_tool_existing, pre_tool)),
     );
-    let session_existing = hooks.remove("SessionStart").unwrap_or_else(|| Value::Array(vec![]));
+    let session_existing = hooks
+        .get("SessionStart")
+        .cloned()
+        .unwrap_or_else(|| Value::Array(vec![]));
     hooks.insert(
         "SessionStart".into(),
         Value::Array(append_unique_hook_group(&session_existing, session_start)),

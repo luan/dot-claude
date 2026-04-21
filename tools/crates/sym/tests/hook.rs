@@ -167,9 +167,12 @@ fn install_preserves_user_key_order_and_is_byte_idempotent() -> Result<()> {
     let dir = tempfile::tempdir()?;
     let path = PathBuf::from(dir.path()).join("settings.json");
 
-    // User's existing settings with a deliberate key order — $schema first,
-    // then env, then permissions. Alphabetical sort would scramble this.
-    let original = b"{\n  \"$schema\": \"https://example.com/schema.json\",\n  \"env\": {\n    \"FOO\": \"bar\"\n  },\n  \"permissions\": {\n    \"allow\": []\n  }\n}\n";
+    // User's existing settings with a deliberate key order. Two things must
+    // survive install: top-level order ($schema, env, permissions, hooks) and
+    // the order of existing keys inside `hooks` — here SessionStart appears
+    // before PreToolUse, and a pre-existing user-owned hook block under
+    // PreToolUse must stay in its original slot rather than moving to the end.
+    let original = b"{\n  \"$schema\": \"https://example.com/schema.json\",\n  \"env\": {\n    \"FOO\": \"bar\"\n  },\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\"type\": \"command\", \"command\": \"user-session-thing\"}\n        ]\n      }\n    ],\n    \"PreToolUse\": [\n      {\n        \"matcher\": \"Bash\",\n        \"hooks\": [\n          {\"type\": \"command\", \"command\": \"user-bash-thing\"}\n        ]\n      }\n    ]\n  },\n  \"permissions\": {\n    \"allow\": []\n  }\n}\n";
     std::fs::write(&path, original)?;
 
     // First install writes the merged result.
@@ -179,8 +182,20 @@ fn install_preserves_user_key_order_and_is_byte_idempotent() -> Result<()> {
 
     let after_first = std::fs::read(&path)?;
     let parsed: serde_json::Value = serde_json::from_slice(&after_first)?;
-    let keys: Vec<String> = parsed.as_object().unwrap().keys().cloned().collect();
-    assert_eq!(keys, ["$schema", "env", "permissions", "hooks"]);
+    let top_keys: Vec<String> = parsed.as_object().unwrap().keys().cloned().collect();
+    assert_eq!(top_keys, ["$schema", "env", "hooks", "permissions"]);
+
+    let hooks_keys: Vec<String> = parsed["hooks"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .cloned()
+        .collect();
+    assert_eq!(
+        hooks_keys,
+        ["SessionStart", "PreToolUse"],
+        "install must not reorder existing keys inside the hooks object"
+    );
 
     // Second install with no changes must not rewrite the file.
     let mtime_before = std::fs::metadata(&path)?.modified()?;
