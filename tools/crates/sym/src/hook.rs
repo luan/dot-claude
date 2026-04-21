@@ -332,6 +332,11 @@ pub fn write_claude_settings(path: &Path, settings: &ClaudeSettings) -> Result<(
     }
     let mut data = serde_json::to_vec_pretty(&settings.raw)?;
     data.push(b'\n');
+    if let Ok(existing) = fs::read(path)
+        && existing == data
+    {
+        return Ok(());
+    }
     fs::write(path, data)?;
     Ok(())
 }

@@ -159,3 +159,35 @@ fn settings_roundtrip_to_disk() -> Result<()> {
     assert_eq!(loaded.raw["hooks"]["PreToolUse"].as_array().unwrap().len(), 1);
     Ok(())
 }
+
+#[test]
+fn install_preserves_user_key_order_and_is_byte_idempotent() -> Result<()> {
+    let dir = tempfile::tempdir()?;
+    let path = PathBuf::from(dir.path()).join("settings.json");
+
+    // User's existing settings with a deliberate key order — $schema first,
+    // then env, then permissions. Alphabetical sort would scramble this.
+    let original = b"{\n  \"$schema\": \"https://example.com/schema.json\",\n  \"env\": {\n    \"FOO\": \"bar\"\n  },\n  \"permissions\": {\n    \"allow\": []\n  }\n}\n";
+    std::fs::write(&path, original)?;
+
+    // First install writes the merged result.
+    let mut settings = sym::hook::load_claude_settings(&path)?;
+    merge_claude_hooks(&mut settings);
+    sym::hook::write_claude_settings(&path, &settings)?;
+
+    let after_first = std::fs::read(&path)?;
+    let parsed: serde_json::Value = serde_json::from_slice(&after_first)?;
+    let keys: Vec<String> = parsed.as_object().unwrap().keys().cloned().collect();
+    assert_eq!(keys, ["$schema", "env", "permissions", "hooks"]);
+
+    // Second install with no changes must not rewrite the file.
+    let mtime_before = std::fs::metadata(&path)?.modified()?;
+    std::thread::sleep(std::time::Duration::from_millis(10));
+    let mut settings = sym::hook::load_claude_settings(&path)?;
+    merge_claude_hooks(&mut settings);
+    sym::hook::write_claude_settings(&path, &settings)?;
+    let mtime_after = std::fs::metadata(&path)?.modified()?;
+    assert_eq!(mtime_before, mtime_after, "no-op install must not rewrite");
+
+    Ok(())
+}
