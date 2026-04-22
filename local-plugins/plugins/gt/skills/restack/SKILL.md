@@ -5,7 +5,6 @@ description: >
   REPLACES git rebase — never use it directly. Triggers: 'restack', 'rebase', 'rebase on
   main', 'sync with main', 'update stack', 'resolve conflicts', 'branches out of date'.
 user-invocable: true
-context: fork
 agent: general-purpose
 allowed-tools:
   - "Bash(gt:*)"

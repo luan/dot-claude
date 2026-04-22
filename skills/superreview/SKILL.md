@@ -5,7 +5,6 @@ argument-hint: "[base..head | file-list | PR#] [--auto critical|high|medium|all]
 user-invocable: true
 allowed-tools:
   - Agent
-  - Skill
   - Read
   - Glob
   - Grep
@@ -23,7 +22,7 @@ allowed-tools:
 
 # Superreview
 
-5-7 parallel perspective specialists with lane boundaries, shared concern tags, and a rigorous aggregation pipeline. Always runs simplify pre-pass. Auto-detects spec/plan for coherence review.
+5-7 parallel perspective specialists with lane boundaries, shared concern tags, and a rigorous aggregation pipeline. Always runs cleanup pre-pass (reuse / quality / efficiency). Auto-detects spec/plan for coherence review.
 
 **NEVER review inline.** Always dispatch subagents via the Agent tool.
 
@@ -44,11 +43,55 @@ Resolve BASE: `gh stack view --json 2>/dev/null | jq -r '.trunk // empty' || gt 
 | file list    | `git diff HEAD -- <files>` + read |
 | `#123`       | `gh pr diff 123`                  |
 
-## Step 1.5: Simplify Pre-pass
+## Step 1.5: Cleanup Pre-pass
 
-**ALWAYS run** unless `#<PR>` input.
+**ALWAYS run** unless `#<PR>` input. Spawn 3 agents in ONE message, each with the full diff. Wait for all three, aggregate findings, and apply each fix directly. Skip false positives without arguing, then proceed to Step 2.
 
-`Skill("simplify")`
+### Agent A — Code Reuse
+
+```
+You are reviewing a diff for missed opportunities to reuse existing code.
+
+## Focus
+1. **Existing utilities and helpers**: search utility directories, shared modules, and files adjacent to the changed ones. Flag any new function that duplicates existing functionality — name the existing function to use instead.
+2. **Inline logic that could use an existing utility**: hand-rolled string manipulation, manual path handling, custom environment checks, ad-hoc type guards.
+
+Output: table with File:Line | Issue | Replacement. Brief summary.
+```
+
+### Agent B — Code Quality
+
+```
+You are reviewing a diff for hacky patterns.
+
+## Focus
+1. **Redundant state**: duplicates existing state, cached values that could be derived, observers/effects that could be direct calls.
+2. **Parameter sprawl**: new parameters added instead of generalizing or restructuring existing ones.
+3. **Copy-paste with slight variation**: near-duplicate blocks that should unify behind a shared abstraction.
+4. **Leaky abstractions**: internal details exposed, existing abstraction boundaries broken.
+5. **Stringly-typed code**: raw strings where constants, enums (string unions), or branded types already exist.
+6. **Unnecessary JSX nesting**: wrapper Boxes/elements that add no layout value — check if inner component props (flexShrink, alignItems, etc.) already provide the needed behavior.
+7. **Unnecessary comments**: comments explaining WHAT, narrating the change, or referencing the task/caller — keep only non-obvious WHY.
+
+Output: table with File:Line | Issue | Fix. Brief summary.
+```
+
+### Agent C — Efficiency
+
+```
+You are reviewing a diff for efficiency problems.
+
+## Focus
+1. **Unnecessary work**: redundant computations, repeated file reads, duplicate network/API calls, N+1 patterns.
+2. **Missed concurrency**: independent operations run sequentially when they could run in parallel.
+3. **Hot-path bloat**: new blocking work added to startup or per-request/per-render hot paths.
+4. **Recurring no-op updates**: state/store updates inside polling loops, intervals, or event handlers that fire unconditionally — add a change-detection guard. If a wrapper takes an updater/reducer callback, verify it honors same-reference returns so callers' early-return no-ops aren't silently defeated.
+5. **Unnecessary existence checks**: pre-checking file/resource existence before operating (TOCTOU) — operate directly and handle the error.
+6. **Memory**: unbounded data structures, missing cleanup, event listener leaks.
+7. **Overly broad operations**: reading entire files when only a portion is needed, loading all items when filtering for one.
+
+Output: table with File:Line | Issue | Fix. Brief summary.
+```
 
 ## Step 2: Setup + Context
 

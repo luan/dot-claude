@@ -30,6 +30,12 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/session_start_apply_patch.sh"
+          },
+          {
+            "type": "command",
+            "command": "ct sym hook remind --format=claude-code",
+            "marker": "sym-hook",
+            "timeout": 5
           }
         ]
       }
@@ -41,6 +47,17 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/rtk-rewrite.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ct sym hook nudge --format=claude-code",
+            "marker": "sym-hook",
+            "timeout": 5
           }
         ]
       }
@@ -59,7 +76,7 @@
     "pyright-lsp@claude-plugins-official": false,
     "rust-analyzer-lsp@claude-plugins-official": false,
     "swift-lsp@claude-plugins-official": false,
-    "gt@local": false,
+    "gt@local": true,
     "skill-creator@claude-plugins-official": false,
     "lua-lsp@claude-plugins-official": false,
     "linear@claude-plugins-official": false,
@@ -90,4 +107,3 @@
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true
 }
-

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use aho_corasick::AhoCorasick;
 use anyhow::{Context, Result};
 use rusqlite::{Connection, OptionalExtension, params};
 
@@ -58,6 +59,9 @@ CREATE INDEX IF NOT EXISTS idx_symbols_name ON symbols(name);
 CREATE INDEX IF NOT EXISTS idx_symbols_kind ON symbols(kind);
 CREATE INDEX IF NOT EXISTS idx_symbols_language ON symbols(language);
 CREATE INDEX IF NOT EXISTS idx_files_path ON files(path);
+CREATE INDEX IF NOT EXISTS idx_refs_name ON refs(name);
+CREATE INDEX IF NOT EXISTS idx_symbols_file ON symbols(file_id);
+CREATE INDEX IF NOT EXISTS idx_imports_file ON imports(file_id);
 "#;
 
 #[derive(Debug)]
@@ -575,16 +579,22 @@ impl Store {
 
         let mut ref_stmt = self.conn.prepare(
             r#"
-            SELECT r.name, COUNT(*) as cnt, s.kind, s.parent, s.language, f.rel_path, f.path, s.start_line, s.end_line, s.depth, s.signature
-            FROM refs r
-            JOIN symbols s ON s.name = r.name AND s.depth = 0
+            WITH top_names AS (
+                SELECT name, COUNT(*) AS cnt
+                FROM refs
+                GROUP BY name
+                ORDER BY cnt DESC
+                LIMIT ?2
+            )
+            SELECT t.name, t.cnt, s.kind, s.parent, s.language, f.rel_path, f.path, s.start_line, s.end_line, s.depth, s.signature
+            FROM top_names t
+            JOIN symbols s ON s.name = t.name AND s.depth = 0
             JOIN files f ON s.file_id = f.id
-            GROUP BY r.name, f.path
-            ORDER BY cnt DESC, f.rel_path
+            ORDER BY t.cnt DESC, f.rel_path
             LIMIT ?1
             "#,
         )?;
-        let ref_rows = ref_stmt.query_map([limit as i64], |row| {
+        let ref_rows = ref_stmt.query_map([limit as i64, (limit as i64).saturating_mul(4)], |row| {
             Ok(RankedSymbol {
                 symbol: SymbolResult {
                     name: row.get(0)?,
@@ -603,43 +613,7 @@ impl Store {
         })?;
         result.top_by_refs = ref_rows.collect::<std::result::Result<Vec<_>, _>>()?;
 
-        let files = self.all_files(None)?;
-        let mut import_stmt = self.conn.prepare(
-            r#"
-            SELECT importer.rel_path, i.raw_path
-            FROM imports i
-            JOIN files importer ON importer.id = i.file_id
-            "#,
-        )?;
-        let import_rows = import_stmt.query_map([], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-        })?;
-        let import_rows = import_rows.collect::<std::result::Result<Vec<_>, _>>()?;
-
-        let mut top_by_import_fan = Vec::new();
-        for file in &files {
-            let rel_without_ext = strip_known_extension(&file.rel_path);
-            let stem = file_stem_fragment(&file.rel_path);
-            let mut importers = std::collections::BTreeSet::new();
-            for (importer_rel_path, raw_path) in &import_rows {
-                if raw_path.contains(&file.rel_path)
-                    || raw_path.contains(&rel_without_ext)
-                    || (!stem.is_empty() && raw_path.contains(&stem))
-                {
-                    importers.insert(importer_rel_path.clone());
-                }
-            }
-            if importers.len() > 1 {
-                top_by_import_fan.push(RankedFile {
-                    rel_path: file.rel_path.clone(),
-                    language: file.language.clone(),
-                    count: importers.len(),
-                });
-            }
-        }
-        top_by_import_fan.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.rel_path.cmp(&b.rel_path)));
-        top_by_import_fan.truncate(limit);
-        result.top_by_import_fan = top_by_import_fan;
+        result.top_by_import_fan = self.compute_import_fan(limit)?;
 
         let mut pkg_stmt = self.conn.prepare(
             r#"
@@ -670,6 +644,75 @@ impl Store {
         result.top_packages = top_packages;
 
         Ok(result)
+    }
+
+    fn compute_import_fan(&self, limit: usize) -> Result<Vec<RankedFile>> {
+        let files = self.all_files(None)?;
+        if files.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let mut patterns: Vec<String> = Vec::with_capacity(files.len() * 3);
+        let mut pattern_owners: Vec<usize> = Vec::with_capacity(files.len() * 3);
+        for (idx, file) in files.iter().enumerate() {
+            let rel_without_ext = strip_known_extension(&file.rel_path);
+            let stem = file_stem_fragment(&file.rel_path);
+            patterns.push(file.rel_path.clone());
+            pattern_owners.push(idx);
+            if rel_without_ext != file.rel_path {
+                patterns.push(rel_without_ext);
+                pattern_owners.push(idx);
+            }
+            if !stem.is_empty() {
+                patterns.push(stem);
+                pattern_owners.push(idx);
+            }
+        }
+        let ac = AhoCorasick::new(&patterns).context("building aho-corasick automaton")?;
+
+        let mut import_stmt = self.conn.prepare(
+            r#"
+            SELECT importer.id, i.raw_path
+            FROM imports i
+            JOIN files importer ON importer.id = i.file_id
+            "#,
+        )?;
+        let import_rows = import_stmt.query_map([], |row| {
+            Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+        })?;
+
+        let mut fan_in: Vec<std::collections::HashSet<i64>> =
+            (0..files.len()).map(|_| std::collections::HashSet::new()).collect();
+        let mut hit_files: std::collections::HashSet<usize> = std::collections::HashSet::new();
+        for row in import_rows {
+            let (importer_id, raw_path) = row?;
+            hit_files.clear();
+            for m in ac.find_overlapping_iter(&raw_path) {
+                hit_files.insert(pattern_owners[m.pattern().as_usize()]);
+            }
+            for &file_idx in &hit_files {
+                fan_in[file_idx].insert(importer_id);
+            }
+        }
+
+        let mut top: Vec<RankedFile> = files
+            .iter()
+            .zip(fan_in.iter())
+            .filter_map(|(file, importers)| {
+                if importers.len() > 1 {
+                    Some(RankedFile {
+                        rel_path: file.rel_path.clone(),
+                        language: file.language.clone(),
+                        count: importers.len(),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
+        top.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.rel_path.cmp(&b.rel_path)));
+        top.truncate(limit);
+        Ok(top)
     }
 
     pub fn find_references(&self, name: &str, limit: usize, kinds: &[&str]) -> Result<Vec<RefResult>> {

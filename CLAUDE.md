@@ -3,7 +3,7 @@
 3. Delete dead code completely. No commented-out code, shims, or "just in case."
 4. Comments for WHY / edge cases / surprises only. No docstrings unless convention. Don't comment code you didn't write.
 5. Subagent trust is adversarial. Spot-check: 1-2 claims for small tasks, ALL architectural claims for epics. If a subagent confirms everything without tradeoffs, re-verify the likeliest nuanced claim. Build/test-verified results skip checks.
-6. Tool precedence: LSP > Grep > Glob > `rg`/`fd` in Bash.
+6. Tool precedence for symbol lookup and code exploration (including "how does X work" / "explain this file"): `ct sym`
 7. Restore files with targeted edits. Confirm before discarding uncommitted work.
 8. Unrecognized artifacts are user work — ask before modifying.
 9. Skills: brainstorm → spec → develop → review → commit. Shortcut: vibe.

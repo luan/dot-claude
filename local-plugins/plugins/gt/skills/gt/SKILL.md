@@ -98,6 +98,7 @@ main (trunk)
 Split when changes are large or multi-concern. Each PR: small, self-contained, buildable.
 
 **Good split candidates:**
+
 - Utility/support code for feature
 - New types, models, protocols feature depends on
 - Refactoring to make room (extractions, renames)
@@ -108,6 +109,7 @@ Split when changes are large or multi-concern. Each PR: small, self-contained, b
 - Cleanup/tech debt discovered during implementation
 
 **Principles:**
+
 - Each PR independently reviewable — no cross-PR context needed
 - Each PR compiles + passes tests — no "fixed in next PR"
 - Lower-risk/mechanical changes first, riskier logic later
@@ -138,26 +140,26 @@ To write a good message: analyze the staged diff (or all changes if nothing stag
 
 ## Common Workflows
 
-| Task | Commands |
-|------|----------|
-| Start new work | `gt create luan/auth-token-refresh` then commit separately |
-| Add to stack | `gt create luan/auth-handle-expired` then commit separately |
-| Insert mid-stack | `gt create luan/auth-shared-utils -i` then commit separately |
-| Commit on current branch | `git add -A && git commit -m "msg"` or `gt modify -a` |
-| Push changes | `gt ss` (or `gt ss -u` for existing) |
-| Update from main | `gt sync` |
-| Amend current branch | `gt modify -a` |
-| Distribute fixes to correct downstack commits | `gt absorb -af` |
-| View current stack | `gt log --stack` |
-| View all branches | `gt log` |
+| Task                                          | Commands                                                     |
+| --------------------------------------------- | ------------------------------------------------------------ |
+| Start new work                                | `gt create luan/auth-token-refresh` then commit separately   |
+| Add to stack                                  | `gt create luan/auth-handle-expired` then commit separately  |
+| Insert mid-stack                              | `gt create luan/auth-shared-utils -i` then commit separately |
+| Commit on current branch                      | `git add -A && git commit -m "msg"` or `gt modify -a`        |
+| Push changes                                  | `gt ss` (or `gt ss -u` for existing)                         |
+| Update from main                              | `gt sync`                                                    |
+| Amend current branch                          | `gt modify -a`                                               |
+| Distribute fixes to correct downstack commits | `gt absorb -af`                                              |
+| View current stack                            | `gt log --stack`                                             |
+| View all branches                             | `gt log`                                                     |
 
 ## Forbidden Git Commands
 
 Never use on stacked branches:
 
-| Forbidden | Use Instead |
-|-----------|-------------|
-| `git rebase` | `gt restack` |
-| `git push --force` | `gt submit` |
-| `git branch -d` | `gt delete` |
-| `git checkout -b` | `gt create` |
+| Forbidden          | Use Instead  |
+| ------------------ | ------------ |
+| `git rebase`       | `gt restack` |
+| `git push --force` | `gt submit`  |
+| `git branch -d`    | `gt delete`  |
+| `git checkout -b`  | `gt create`  |

@@ -1,6 +1,6 @@
 {
   "name": "gt",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "Graphite CLI wrapper for stacked branch management — create, navigate, modify, sync, restack, submit, and push stacked PRs",
   "author": {
     "name": "Luan"
