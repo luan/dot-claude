@@ -1,6 +1,3 @@
----
----
-
 # Blueprints
 
 All structured artifacts (specs, plans, reviews, reports, docs) live in the blueprints vault (`$CT_BLUEPRINTS_DIR`, default `~/blueprints/`) via the `ct` tool. The blueprints repo is a separate git repository — `ct` handles commit+push automatically after every write.
@@ -21,17 +18,17 @@ All structured artifacts (specs, plans, reviews, reports, docs) live in the blue
 
 ## Commands
 
-| Operation | Command |
-|-----------|---------|
-| Init repo | `ct vault init` |
-| Migrate from ~/.claude/ | `ct vault migrate` |
-| Project name | `ct vault project` |
-| Create | `ct <type> create --topic "..."` |
-| Read | `ct <type> read <file>` |
-| List | `ct <type> list [--all]` |
-| Latest | `ct <type> latest` |
-| Archive | `ct <type> archive <file>` |
-| Prune | `ct <type> prune [--days N]` |
+| Operation               | Command                          |
+| ----------------------- | -------------------------------- |
+| Init repo               | `ct vault init`                  |
+| Migrate from ~/.claude/ | `ct vault migrate`               |
+| Project name            | `ct vault project`               |
+| Create                  | `ct <type> create --topic "..."` |
+| Read                    | `ct <type> read <file>`          |
+| List                    | `ct <type> list [--all]`         |
+| Latest                  | `ct <type> latest`               |
+| Archive                 | `ct <type> archive <file>`       |
+| Prune                   | `ct <type> prune [--days N]`     |
 
 Where `<type>` is `spec`, `plan`, `review`, `report`, or `doc`.
 
@@ -44,22 +41,24 @@ The blueprints repo is an Obsidian vault. Use `[[wiki-links]]` to connect relate
 - **Inline links**: When referencing another artifact in body text, use `[[stem]]` (filename without extension or path — Obsidian resolves across the vault).
 - Keep linking shallow — don't read related files to summarize them, just link by name.
 
-| Operation | Command |
-|-----------|---------|
-| Find related | `ct vault related "<topic>"` |
-| Link source | `ct <type> create --source "<stem>" ...` |
-| Check links | `ct vault check` |
-| Search | `ct vault search "<query>"` |
+| Operation    | Command                                  |
+| ------------ | ---------------------------------------- |
+| Find related | `ct vault related "<topic>"`             |
+| Link source  | `ct <type> create --source "<stem>" ...` |
+| Check links  | `ct vault check`                         |
+| Search       | `ct vault search "<query>"`              |
 
 ## Tags
 
 All artifacts have `tags:` in frontmatter. `ct` auto-derives `type/` and `project/` tags; add domain/stage tags via `--tags`.
 
 **Auto-derived** (always added by `ct create`):
+
 - `type/spec`, `type/plan`, `type/review`, `type/report`, `type/doc`
 - `project/<name>` (from project path)
 
 **User-supplied** (via `--tags "domain/combat,stage/research"`):
+
 - `domain/<area>` — combat, lua, ui, network, etc.
 - `stage/<phase>` — research, implementing, shipped, stale
 - Any freeform tag
